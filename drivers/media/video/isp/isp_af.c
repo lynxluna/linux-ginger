@@ -31,6 +31,7 @@
 #include <linux/errno.h>
 #include <linux/types.h>
 #include <linux/dma-mapping.h>
+#include <asm/atomic.h>
 
 #include <media/v4l2-int-device.h>
 #include "isp.h"
@@ -60,6 +61,7 @@ struct isp_af_buffer {
 
 	u8 locked;
 	u16 frame_num;
+	u32 config_counter;
 	struct isp_af_xtrastats xtrastats;
 	struct isp_af_buffer *next;
 };
@@ -93,6 +95,7 @@ static struct isp_af_status {
 
 	u32 frame_count;
 	wait_queue_head_t stats_wait;
+	atomic_t config_counter;
 	spinlock_t buffer_lock;		/* For stats buffers read/write sync */
 } afstat;
 
@@ -392,6 +395,7 @@ int isp_af_configure(struct af_configuration *afconfig)
 	if (result < 0)
 		return result;
 	af_dev_configptr->size_paxel = buff_size;
+	atomic_inc(&afstat.config_counter);
 	afstat.initialized = 1;
 	/*Set configuration flag to indicate HW setup done */
 	if (af_dev_configptr->config->af_config)
@@ -672,6 +676,7 @@ static void isp_af_isr(unsigned long status, isp_vbq_callback_ptr arg1,
 
 	/* timestamp stats buffer */
 	do_gettimeofday(&active_buff->xtrastats.ts);
+	active_buff->config_counter = atomic_read(&afstat.config_counter);
 
 	/* Exchange buffers */
 	active_buff = active_buff->next;
