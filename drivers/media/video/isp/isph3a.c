@@ -28,6 +28,7 @@
 #include <linux/io.h>
 #include <linux/uaccess.h>
 #include <asm/cacheflush.h>
+#include <linux/delay.h>
 
 #include "isp.h"
 #include "ispreg.h"
@@ -215,9 +216,20 @@ static void isph3a_aewb_enable(u8 enable)
 								ISPH3A_PCR);
 		DPRINTK_ISPH3A("    H3A enabled \n");
 	} else {
+		int timeout = 20;
 		aewb_regs.reg_pcr &= ~ISPH3A_PCR_AEW_EN;
 		omap_writel(omap_readl(ISPH3A_PCR) & ~ISPH3A_PCR_AEW_EN,
 								ISPH3A_PCR);
+		while ((omap_readl(ISPH3A_PCR) & ISPH3A_PCR_AEW_BUSY) &&
+								timeout) {
+			mdelay(10);
+			timeout--;
+		}
+		if (timeout == 0) {
+			printk(KERN_DEBUG "%s - can't disable AEWB H3A\n",
+								__func__);
+		}
+
 		DPRINTK_ISPH3A("    H3A disabled \n");
 	}
 	aewb_config_local.aewb_enable = enable;

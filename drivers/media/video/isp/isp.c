@@ -71,6 +71,10 @@ const static struct v4l2_fmtdesc isp_formats[] = {
 		.description = "Bayer10 (GrR/BGb)",
 		.pixelformat = V4L2_PIX_FMT_SGRBG10,
 	},
+	{
+		.description = "Bayer10 (pattern)",
+		.pixelformat = V4L2_PIX_FMT_PATT,
+	}
 };
 
 /* ISP Crop capabilities */
@@ -982,6 +986,14 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *ispirq_disp)
 		goto out;
 	}
 
+	if ((irqstatus & HS_VS) == HS_VS) {
+		if (irqdis->isp_callbk[CBK_HS_VS])
+			irqdis->isp_callbk[CBK_HS_VS](HS_VS,
+				irqdis->isp_callbk_arg1[CBK_HS_VS],
+				irqdis->isp_callbk_arg2[CBK_HS_VS]);
+		is_irqhandled = 1;
+	}
+
 	if ((irqstatus & CCDC_VD1) == CCDC_VD1) {
 		if (irqdis->isp_callbk[CBK_CCDC_VD1])
 				irqdis->isp_callbk[CBK_CCDC_VD1](CCDC_VD1,
@@ -1027,14 +1039,6 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *ispirq_disp)
 			irqdis->isp_callbk[CBK_HIST_DONE](HIST_DONE,
 				irqdis->isp_callbk_arg1[CBK_HIST_DONE],
 				irqdis->isp_callbk_arg2[CBK_HIST_DONE]);
-		is_irqhandled = 1;
-	}
-
-	if ((irqstatus & HS_VS) == HS_VS) {
-		if (irqdis->isp_callbk[CBK_HS_VS])
-			irqdis->isp_callbk[CBK_HS_VS](HS_VS,
-				irqdis->isp_callbk_arg1[CBK_HS_VS],
-				irqdis->isp_callbk_arg2[CBK_HS_VS]);
 		is_irqhandled = 1;
 	}
 
@@ -1192,6 +1196,9 @@ void isp_start(void)
 						is_isppreview_enabled())
 		isppreview_enable(1);
 
+	/* clear any pending IRQs */
+	omap_writel(0xFFFFFFFF, ISP_IRQ0STATUS);
+
 	return;
 }
 EXPORT_SYMBOL(isp_start);
@@ -1271,7 +1278,8 @@ u32 isp_calc_pipeline(struct v4l2_pix_format *pix_input,
 
 	isp_release_resources();
 	if ((pix_input->pixelformat == V4L2_PIX_FMT_SGRBG10) &&
-		(pix_output->pixelformat != V4L2_PIX_FMT_SGRBG10)) {
+		((pix_output->pixelformat == V4L2_PIX_FMT_YUYV) ||
+		(pix_output->pixelformat == V4L2_PIX_FMT_UYVY))) {
 			ispmodule_obj.isp_pipeline = OMAP_ISP_CCDC |
 					OMAP_ISP_PREVIEW | OMAP_ISP_RESIZER;
 			ispccdc_request();
@@ -1290,15 +1298,23 @@ u32 isp_calc_pipeline(struct v4l2_pix_format *pix_input,
 		isppreview_config_datapath(PRV_RAW_CCDC, PREVIEW_RSZ);
 		ispresizer_config_datapath(RSZ_OTFLY_YUV);
 #endif
-	} else {
+	} else if (pix_input->pixelformat == pix_output->pixelformat) {
 		ispmodule_obj.isp_pipeline = OMAP_ISP_CCDC;
 		ispccdc_request();
 		if (pix_input->pixelformat == V4L2_PIX_FMT_SGRBG10)
 			ispccdc_config_datapath(CCDC_RAW, CCDC_OTHERS_MEM);
-		else
+		else if (pix_input->pixelformat == V4L2_PIX_FMT_PATT) {
+			/* MMS */
+			ispccdc_config_datapath(CCDC_RAW_PATTERN,
+							CCDC_OTHERS_LSC_MEM);
+		} else if ((pix_input->pixelformat == V4L2_PIX_FMT_YUYV) ||
+				(pix_input->pixelformat == V4L2_PIX_FMT_UYVY)) {
 			ispccdc_config_datapath(CCDC_YUV_SYNC,
 							CCDC_OTHERS_MEM);
-	}
+		} else
+			return -EINVAL;
+	} else
+		return -EINVAL;
 	return 0;
 }
 

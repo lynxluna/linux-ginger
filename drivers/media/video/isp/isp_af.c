@@ -313,9 +313,10 @@ int isp_af_configure(struct af_configuration *afconfig)
 	busyaf = omap_readl(ISPH3A_PCR);
 
 	if ((busyaf & AF_BUSYAF) == AF_BUSYAF) {
-		DPRINTK_ISPH3A("AF_register_setup_ERROR : Engine Busy");
-		DPRINTK_ISPH3A("\n Configuration cannot be done ");
-		return -AF_ERR_ENGINE_BUSY;
+		/* DPRINTK_ISPH3A("AF_register_setup_ERROR : Engine Busy"); */
+		/* DPRINTK_ISPH3A("\n Configuration cannot be done "); */
+		/* return -AF_ERR_ENGINE_BUSY; */
+		isp_af_enable(0);
 	}
 
 	/*Check IIR Coefficient and start Values */
@@ -396,8 +397,6 @@ int isp_af_configure(struct af_configuration *afconfig)
 	/*Set configuration flag to indicate HW setup done */
 	if (af_dev_configptr->config->af_config)
 		isp_af_enable(1);
-	else
-		isp_af_enable(0);
 
 	/*Success */
 	return 0;
@@ -702,9 +701,8 @@ static void isp_af_isr(unsigned long status, isp_vbq_callback_ptr arg1,
 /* Function to Enable/Disable AF Engine */
 int isp_af_enable(int enable)
 {
-	unsigned int pcr;
-
-	pcr = omap_readl(ISPH3A_PCR);
+	/* Before enabling AF H3A we need to clear pending interrupts */
+	omap_writel(IRQ0STATUS_H3A_AF_DONE_IRQ, ISP_IRQ0STATUS);
 
 	/* Set AF_EN bit in PCR Register */
 	if (enable) {
@@ -714,12 +712,20 @@ int isp_af_enable(int enable)
 			return -EINVAL;
 		}
 
-		pcr |= AF_EN;
+		omap_writel((omap_readl(ISPH3A_PCR) | AF_EN), ISPH3A_PCR);
 	} else {
+		u32 timeout = 20;
 		isp_unset_callback(CBK_H3A_AF_DONE);
-		pcr &= ~AF_EN;
+		omap_writel((omap_readl(ISPH3A_PCR) & ~AF_EN), ISPH3A_PCR);
+		while ((omap_readl(ISPH3A_PCR) & AF_BUSYAF) && timeout) {
+			mdelay(10);
+			timeout--;
+		}
+		if (timeout == 0) {
+			printk(KERN_DEBUG "%s - can't disable AF H3A\n",
+								__func__);
+		}
 	}
-	omap_writel(pcr, ISPH3A_PCR);
 	return 0;
 }
 

@@ -69,7 +69,8 @@ static struct isp_reg ispprev_reg_list[] = {
 	{ISPPRV_CDC_THR1, 0x0000},
 	{ISPPRV_CDC_THR2, 0x0000},
 	{ISPPRV_CDC_THR3, 0x0000},
-	{ISPPRV_PCR, 0x0000},
+/* Removed by MMS */
+/*	{ISPPRV_PCR, 0x0000}, */
 	{ISP_TOK_TERM, 0x0000}
 };
 

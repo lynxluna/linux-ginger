@@ -42,6 +42,7 @@ enum ccdc_input {
 	CCDC_RAW,
 	CCDC_YUV_SYNC,
 	CCDC_YUV_BT,
+	CCDC_RAW_PATTERN,
 	CCDC_OTHERS
 };
 
@@ -50,7 +51,8 @@ enum ccdc_output {
 	CCDC_YUV_MEM_RSZ,
 	CCDC_OTHERS_VP,
 	CCDC_OTHERS_MEM,
-	CCDC_OTHERS_VP_MEM
+	CCDC_OTHERS_VP_MEM,
+	CCDC_OTHERS_LSC_MEM
 };
 
 /* Enumeration constants for the sync interface parameters */
