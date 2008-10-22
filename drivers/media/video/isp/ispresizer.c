@@ -29,6 +29,10 @@
 #include "ispreg.h"
 #include "ispresizer.h"
 
+#if ISP_WORKAROUND
+dma_addr_t buff_addr_lsc_wa;
+#endif
+
 /* Default configuration of resizer,filter coefficients,yenh for camera isp */
 static struct isprsz_yenh ispreszdefaultyenh = {0, 0, 0, 0};
 static struct isprsz_coef ispreszdefcoef = {
@@ -498,17 +502,35 @@ int ispresizer_config_size(u32 input_w, u32 input_h, u32 output_w,
 						" \n", output_w , output_h);
 		return -EINVAL;
 	}
+
+#if ISP_WORKAROUND
+	buff_addr_lsc_wa = isp_buf_get();
+	if (buff_addr_lsc_wa) {
+		/* Set Resizer input address and offset adderss */
+		ispresizer_set_inaddr(buff_addr_lsc_wa);
+		ispresizer_config_inlineoffset(omap_readl(ISPPRV_WADD_OFFSET));
+	}
+#endif
+
 	res = omap_readl(ISPRSZ_CNT) & (~(ISPRSZ_CNT_HSTPH_MASK |
 					ISPRSZ_CNT_VSTPH_MASK));
 	omap_writel(res | (ispres_obj.h_startphase << ISPRSZ_CNT_HSTPH_SHIFT) |
 						(ispres_obj.v_startphase <<
 						ISPRSZ_CNT_VSTPH_SHIFT),
 						ISPRSZ_CNT);
+#if ISP_WORKAROUND
+	omap_writel((0x00 <<	ISPRSZ_IN_START_HORZ_ST_SHIFT) |
+					(0x00 <<
+					ISPRSZ_IN_START_VERT_ST_SHIFT),
+					ISPRSZ_IN_START);
+
+#else
 	omap_writel(((ispres_obj.ipwd_crop * 2) <<
 					ISPRSZ_IN_START_HORZ_ST_SHIFT) |
 					(ispres_obj.ipht_crop <<
 					ISPRSZ_IN_START_VERT_ST_SHIFT),
 					ISPRSZ_IN_START);
+#endif
 
 	omap_writel((ispres_obj.inputwidth << ISPRSZ_IN_SIZE_HORZ_SHIFT) |
 						(ispres_obj.inputheight <<

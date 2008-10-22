@@ -37,6 +37,7 @@
 #include <asm/mach-types.h>
 #include <linux/device.h>
 #include <linux/videodev2.h>
+#include <linux/vmalloc.h>
 
 #include "isp.h"
 #include "ispmmu.h"
@@ -47,6 +48,14 @@
 #include "isp_af.h"
 #include "isppreview.h"
 #include "ispresizer.h"
+
+#if ISP_WORKAROUND
+void *buff_addr;
+dma_addr_t buff_addr_mapped;
+struct scatterlist *sglist_alloc;
+static int alloc_done, num_sc;
+unsigned long offset_value;
+#endif
 
 /* List of image formats supported via OMAP ISP */
 const static struct v4l2_fmtdesc isp_formats[] = {
@@ -1111,6 +1120,66 @@ void omapisp_unset_callback()
 	omap_writel(omap_readl(ISP_IRQ0STATUS) | ISP_INT_CLR, ISP_IRQ0STATUS);
 }
 
+#if ISP_WORKAROUND
+/**
+ *  isp_buf_allocation - To allocate a 10MB memory
+ *
+ **/
+u32 isp_buf_allocation(void)
+{
+	buff_addr = (void *) vmalloc(buffer_size);
+
+	if (!buff_addr) {
+		printk(KERN_ERR "Cannot allocate memory ");
+		return -ENOMEM;
+	}
+
+	sglist_alloc = videobuf_vmalloc_to_sg(buff_addr, no_of_pages);
+	if (!sglist_alloc) {
+		printk(KERN_ERR "videobuf_vmalloc_to_sg error");
+		return -ENOMEM;
+	}
+	num_sc = dma_map_sg(NULL, sglist_alloc, no_of_pages, 1);
+	buff_addr_mapped = ispmmu_map_sg(sglist_alloc, no_of_pages);
+	if (!buff_addr_mapped) {
+		printk(KERN_ERR "ispmmu_map_sg mapping failed ");
+		return -ENOMEM;
+	}
+	isppreview_set_outaddr(buff_addr_mapped);
+	alloc_done = 1;
+	return 0;
+}
+
+/**
+ *  isp_buf_get - Get the buffer pointer address
+ **/
+dma_addr_t isp_buf_get(void)
+{
+	dma_addr_t retaddr;
+
+	if (alloc_done == 1)
+		retaddr = buff_addr_mapped + offset_value;
+	else
+		retaddr = 0;
+	return retaddr;
+}
+
+/**
+ *  isp_buf_free - To free allocated 10MB memory
+ *
+ **/
+void isp_buf_free(void)
+{
+	if (alloc_done == 1) {
+		ispmmu_unmap(buff_addr_mapped);
+		dma_unmap_sg(NULL, sglist_alloc, no_of_pages, 1);
+		kfree(sglist_alloc);
+		vfree(buff_addr);
+		alloc_done = 0;
+	}
+}
+#endif
+
 /**
  * isp_start - Starts ISP submodule
  *
@@ -1178,9 +1247,11 @@ void isp_set_buf(struct isp_sgdma_state *sgdma_state)
 	if ((ispmodule_obj.isp_pipeline & OMAP_ISP_RESIZER) &&
 						is_ispresizer_enabled())
 		ispresizer_set_outaddr(sgdma_state->isp_addr);
+#if (ISP_WORKAROUND == 0)
 	else if ((ispmodule_obj.isp_pipeline & OMAP_ISP_PREVIEW) &&
 						is_isppreview_enabled())
 		isppreview_set_outaddr(sgdma_state->isp_addr);
+#endif
 	else if (ispmodule_obj.isp_pipeline & OMAP_ISP_CCDC)
 		ispccdc_set_outaddr(sgdma_state->isp_addr);
 
@@ -1191,9 +1262,13 @@ void isp_set_buf(struct isp_sgdma_state *sgdma_state)
  * @pix_input: Pointer to V4L2 pixel format structure for input image.
  * @pix_output: Pointer to V4L2 pixel format structure for output image.
  **/
-void isp_calc_pipeline(struct v4l2_pix_format *pix_input,
+u32 isp_calc_pipeline(struct v4l2_pix_format *pix_input,
 					struct v4l2_pix_format *pix_output)
 {
+#if ISP_WORKAROUND
+	int rval;
+#endif
+
 	isp_release_resources();
 	if ((pix_input->pixelformat == V4L2_PIX_FMT_SGRBG10) &&
 		(pix_output->pixelformat != V4L2_PIX_FMT_SGRBG10)) {
@@ -1203,8 +1278,18 @@ void isp_calc_pipeline(struct v4l2_pix_format *pix_input,
 			isppreview_request();
 			ispresizer_request();
 		ispccdc_config_datapath(CCDC_RAW, CCDC_OTHERS_VP);
+#if ISP_WORKAROUND
+		isppreview_config_datapath(PRV_RAW_CCDC, PREVIEW_MEM);
+		ispresizer_config_datapath(RSZ_MEM_YUV);
+		if (alloc_done == 0) {
+			rval = isp_buf_allocation();
+			if (rval)
+				return -EINVAL;
+		}
+#else
 		isppreview_config_datapath(PRV_RAW_CCDC, PREVIEW_RSZ);
 		ispresizer_config_datapath(RSZ_OTFLY_YUV);
+#endif
 	} else {
 		ispmodule_obj.isp_pipeline = OMAP_ISP_CCDC;
 		ispccdc_request();
@@ -1214,7 +1299,7 @@ void isp_calc_pipeline(struct v4l2_pix_format *pix_input,
 			ispccdc_config_datapath(CCDC_YUV_SYNC,
 							CCDC_OTHERS_MEM);
 	}
-	return;
+	return 0;
 }
 
 /**
@@ -1836,6 +1921,10 @@ void isp_config_crop(struct v4l2_pix_format *croppix)
 {
 	u8 crop_scaling_w;
 	u8 crop_scaling_h;
+#if ISP_WORKAROUND
+	unsigned long org_left, num_pix, new_top;
+#endif
+
 	struct v4l2_pix_format *pix = croppix;
 
 	crop_scaling_w = (ispmodule_obj.preview_output_width * 10) /
@@ -1847,6 +1936,24 @@ void isp_config_crop(struct v4l2_pix_format *croppix)
 	cur_rect.top = (ispcroprect.top * crop_scaling_h) / 10;
 	cur_rect.width = (ispcroprect.width * crop_scaling_w) / 10;
 	cur_rect.height = (ispcroprect.height * crop_scaling_h) / 10;
+
+#if ISP_WORKAROUND
+	org_left = cur_rect.left;
+	while (((int)cur_rect.left & 0xFFFFFFF0) != (int)cur_rect.left)
+		(int)cur_rect.left--;
+
+	num_pix = org_left - cur_rect.left;
+	new_top = (int)(num_pix * 3) / 4;
+	cur_rect.top = cur_rect.top - new_top;
+	cur_rect.height = (2 * new_top) + cur_rect.height;
+
+	cur_rect.width = cur_rect.width + (2 * num_pix);
+	while (((int)cur_rect.width & 0xFFFFFFF0) != (int)cur_rect.width)
+		(int)cur_rect.width--;
+
+	offset_value = ((cur_rect.left * 2) + \
+		((ispmodule_obj.preview_output_width) * 2 * cur_rect.top));
+#endif
 
 	ispresizer_trycrop(cur_rect.left, cur_rect.top, cur_rect.width,
 					cur_rect.height,
@@ -2183,6 +2290,9 @@ int isp_put(void)
 			clk_put(isp_obj.cam_mclk);
 			memset(&ispcroprect, 0, sizeof(ispcroprect));
 			memset(&cur_rect, 0, sizeof(cur_rect));
+#if ISP_WORKAROUND
+			isp_buf_free();
+#endif
 		}
 	mutex_unlock(&(isp_obj.isp_mutex));
 	DPRINTK_ISPCTRL("isp_put: new %d\n", isp_obj.ref_count);

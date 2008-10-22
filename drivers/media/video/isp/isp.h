@@ -68,6 +68,9 @@
 #define ISP_BYTES_PER_PIXEL		2
 #define NUM_ISP_CAPTURE_FORMATS 	(sizeof(isp_formats) /\
 							sizeof(isp_formats[0]))
+#define ISP_WORKAROUND 1
+#define buffer_size (1024 * 1024 * 10)
+#define no_of_pages (buffer_size / (4 * 1024))
 
 typedef int (*isp_vbq_callback_ptr) (struct videobuf_buffer *vb);
 typedef void (*isp_callback_t) (unsigned long status,
@@ -307,6 +310,7 @@ void isp_restore_ctx(void);
 
 void isp_print_status(void);
 
+dma_addr_t isp_buf_get(void);
 
 int __init isp_ccdc_init(void);
 int __init isp_hist_init(void);
