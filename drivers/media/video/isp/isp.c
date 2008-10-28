@@ -1244,10 +1244,11 @@ EXPORT_SYMBOL(isp_start);
 void isp_stop()
 {
 	unsigned long timeout = jiffies + ISP_STOP_TIMEOUT;
+	unsigned long flags;
 
-	spin_lock(&isp_obj.isp_temp_buf_lock);
+	spin_lock_irqsave(&isp_obj.isp_temp_buf_lock, flags);
 	ispmodule_obj.isp_temp_state = ISP_FREE_RUNNING;
-	spin_unlock(&isp_obj.isp_temp_buf_lock);
+	spin_unlock_irqrestore(&isp_obj.isp_temp_buf_lock, flags);
 
 	omapisp_unset_callback();
 
@@ -1407,13 +1408,16 @@ void isp_vbq_done(unsigned long status, isp_vbq_callback_ptr arg1, void *arg2)
 			(ispmodule_obj.isp_pipeline & OMAP_ISP_PREVIEW))
 			return;
 		else {
-			spin_lock(&isp_obj.isp_temp_buf_lock);
+
+			spin_lock_irqsave(&isp_obj.isp_temp_buf_lock, flags);
 			if (ispmodule_obj.isp_temp_state != ISP_BUF_INIT) {
-				spin_unlock(&isp_obj.isp_temp_buf_lock);
+				spin_unlock_irqrestore(
+					&isp_obj.isp_temp_buf_lock, flags);
 				return;
 
 			} else {
-				spin_unlock(&isp_obj.isp_temp_buf_lock);
+				spin_unlock_irqrestore(
+					&isp_obj.isp_temp_buf_lock, flags);
 				break;
 			}
 		}
@@ -1422,24 +1426,26 @@ void isp_vbq_done(unsigned long status, isp_vbq_callback_ptr arg1, void *arg2)
 		if ((ispmodule_obj.isp_pipeline & OMAP_ISP_RESIZER) ||
 			(ispmodule_obj.isp_pipeline & OMAP_ISP_PREVIEW))
 			return;
-		spin_lock(&isp_obj.isp_temp_buf_lock);
+		spin_lock_irqsave(&isp_obj.isp_temp_buf_lock, flags);
 		if (ispmodule_obj.isp_temp_state == ISP_BUF_INIT) {
-			spin_unlock(&isp_obj.isp_temp_buf_lock);
+			spin_unlock_irqrestore(&isp_obj.isp_temp_buf_lock,
+					       flags);
 			ispccdc_enable(0);
 			return;
 		}
-		spin_unlock(&isp_obj.isp_temp_buf_lock);
+		spin_unlock_irqrestore(&isp_obj.isp_temp_buf_lock, flags);
 		return;
 		break;
 	case PREV_DONE:
 		if (is_isppreview_enabled()) {
 		if (ispmodule_obj.isp_pipeline & OMAP_ISP_RESIZER) {
-			spin_lock(&isp_obj.isp_temp_buf_lock);
+			spin_lock_irqsave(&isp_obj.isp_temp_buf_lock, flags);
 			if (!ispmodule_obj.applyCrop &&
 					(ispmodule_obj.isp_temp_state ==
 					ISP_BUF_INIT))
 				ispresizer_enable(1);
-			spin_unlock(&isp_obj.isp_temp_buf_lock);
+			spin_unlock_irqrestore(&isp_obj.isp_temp_buf_lock,
+					       flags);
 			if (ispmodule_obj.applyCrop &&
 				!ispresizer_busy()) {
 				ispresizer_enable(0);
@@ -1456,21 +1462,23 @@ void isp_vbq_done(unsigned long status, isp_vbq_callback_ptr arg1, void *arg2)
 	case RESZ_DONE:
 		if (is_ispresizer_enabled()) {
 			ispresizer_config_shadow_registers();
-			spin_lock(&isp_obj.isp_temp_buf_lock);
+			spin_lock_irqsave(&isp_obj.isp_temp_buf_lock, flags);
 			if (ispmodule_obj.isp_temp_state != ISP_BUF_INIT) {
-				spin_unlock(&isp_obj.isp_temp_buf_lock);
+				spin_unlock_irqrestore(
+					&isp_obj.isp_temp_buf_lock, flags);
 				return;
 			}
-			spin_unlock(&isp_obj.isp_temp_buf_lock);
+			spin_unlock_irqrestore(&isp_obj.isp_temp_buf_lock,
+					       flags);
 		}
 		break;
 	case HS_VS:
-		spin_lock(&isp_obj.isp_temp_buf_lock);
+		spin_lock_irqsave(&isp_obj.isp_temp_buf_lock, flags);
 		if (ispmodule_obj.isp_temp_state == ISP_BUF_TRAN) {
 			isp_CCDC_VD01_enable();
 			ispmodule_obj.isp_temp_state = ISP_BUF_INIT;
 		}
-		spin_unlock(&isp_obj.isp_temp_buf_lock);
+		spin_unlock_irqrestore(&isp_obj.isp_temp_buf_lock, flags);
 		return;
 	default:
 		return;
@@ -1545,6 +1553,8 @@ void isp_sgdma_process(struct isp_sgdma *sgdma, int irq, int *dma_notify,
 	spin_lock_irqsave(&sgdma->lock, flags);
 
 	if (NUM_SG_DMA > sgdma->free_sgdma) {
+		unsigned long flags;
+
 		sgdma_state = sgdma->sg_state +
 			(sgdma->next_sgdma + sgdma->free_sgdma) % NUM_SG_DMA;
 		if (!irq) {
@@ -1554,7 +1564,8 @@ void isp_sgdma_process(struct isp_sgdma *sgdma, int irq, int *dma_notify,
 				ispccdc_enable(1);
 				isp_start();
 				*dma_notify = 0;
-				spin_lock(&isp_obj.isp_temp_buf_lock);
+				spin_lock_irqsave(&isp_obj.isp_temp_buf_lock,
+						  flags);
 				if (ispmodule_obj.isp_pipeline
 					& OMAP_ISP_RESIZER) {
 					ispmodule_obj.isp_temp_state =
@@ -1562,9 +1573,11 @@ void isp_sgdma_process(struct isp_sgdma *sgdma, int irq, int *dma_notify,
 				} else
 					ispmodule_obj.isp_temp_state =
 						ISP_BUF_TRAN;
-				spin_unlock(&isp_obj.isp_temp_buf_lock);
+				spin_unlock_irqrestore(
+					&isp_obj.isp_temp_buf_lock, flags);
 			} else {
-				spin_lock(&isp_obj.isp_temp_buf_lock);
+				spin_lock_irqsave(&isp_obj.isp_temp_buf_lock,
+						  flags);
 				if (ispmodule_obj.isp_temp_state ==
 							ISP_FREE_RUNNING) {
 					isp_set_sgdma_callback(sgdma_state,
@@ -1581,7 +1594,8 @@ void isp_sgdma_process(struct isp_sgdma *sgdma, int irq, int *dma_notify,
 						ispccdc_enable(1);
 					}
 				}
-				spin_unlock(&isp_obj.isp_temp_buf_lock);
+				spin_unlock_irqrestore(
+					&isp_obj.isp_temp_buf_lock, flags);
 			}
 		} else {
 			isp_set_sgdma_callback(sgdma_state, func_ptr);
@@ -1597,11 +1611,13 @@ void isp_sgdma_process(struct isp_sgdma *sgdma, int irq, int *dma_notify,
 			}
 		}
 	} else {
-		spin_lock(&isp_obj.isp_temp_buf_lock);
+		unsigned long flags;
+
+		spin_lock_irqsave(&isp_obj.isp_temp_buf_lock, flags);
 		isp_CCDC_VD01_disable();
 		ispresizer_enable(0);
 		ispmodule_obj.isp_temp_state = ISP_FREE_RUNNING;
-		spin_unlock(&isp_obj.isp_temp_buf_lock);
+		spin_unlock_irqrestore(&isp_obj.isp_temp_buf_lock, flags);
 	}
 	spin_unlock_irqrestore(&sgdma->lock, flags);
 	return;
