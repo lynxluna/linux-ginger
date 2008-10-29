@@ -201,8 +201,8 @@ static int et8ek8_setup_if(struct v4l2_int_device *s)
 	if (sensor->current_reglist) {
 		rval = sensor->platform_data->configure_interface(
 			s,
-			sensor->current_reglist->mode.width,
-			sensor->current_reglist->mode.height,
+			sensor->current_reglist->mode.window_width,
+			sensor->current_reglist->mode.window_height,
 			sensor->current_reglist->mode.pixel_format);
 		if (rval)
 			return rval;
@@ -418,8 +418,8 @@ static int et8ek8_ioctl_g_fmt_cap(struct v4l2_int_device *s,
 	struct et8ek8_sensor *sensor = s->priv;
 	struct v4l2_pix_format *pix = &f->fmt.pix;
 
-	pix->width = sensor->current_reglist->mode.width;
-	pix->height = sensor->current_reglist->mode.height;
+	pix->width = sensor->current_reglist->mode.window_width;
+	pix->height = sensor->current_reglist->mode.window_height;
 	pix->pixelformat = sensor->current_reglist->mode.pixel_format;
 
 	return 0;
