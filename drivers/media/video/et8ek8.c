@@ -31,6 +31,7 @@
 #include <linux/firmware.h>
 #include <linux/i2c.h>
 #include <linux/version.h>
+#include <linux/kernel.h>
 
 #include <media/smiaregs.h>
 #include <media/v4l2-int-device.h>
@@ -47,8 +48,6 @@
 #define DEFAULT_GAIN		0
 #define DEFAULT_EXPOSURE	ET8EK8_MES_MIN
 
-#define CLAMP(a,low,high) max((low),min((high),(a)))
-
 enum et8ek8_versions {
 	ET8EK8_REV_1 = 0x0001,
 	ET8EK8_REV_2,
@@ -62,7 +61,7 @@ enum et8ek8_versions {
  *
  * Analog gain [dB] = 20*log10(regvalue/32); 0x20..0x100
  */
-struct et8ek8_gain {
+static struct et8ek8_gain {
 	u16 analog;
 	u16 digital;
 } const et8ek8_gain_table[] = {
@@ -307,7 +306,7 @@ static int et8ek8_set_gain(struct et8ek8_sensor *sensor, int gain)
 	int r = 0;
 
 	sensor->current_gain =
-		CLAMP(gain, 0, (int)(ARRAY_SIZE(et8ek8_gain_table) - 1));
+		clamp(gain, 0, (int)(ARRAY_SIZE(et8ek8_gain_table) - 1));
 	if (sensor->power == V4L2_POWER_ON)
 		r = et8ek8_apply_gain(sensor);
 
@@ -319,7 +318,7 @@ static int et8ek8_set_exposure(struct et8ek8_sensor *sensor, int mode,
 {
 	int r = 0;
 	sensor->current_exposure =
-		CLAMP(exp_time, ET8EK8_MES_MIN,
+		clamp(exp_time, ET8EK8_MES_MIN,
 		      (int)sensor->current_reglist->mode.max_exp);
 	if (sensor->power == V4L2_POWER_ON)
 		et8ek8_apply_exposure(sensor);
@@ -331,7 +330,7 @@ static struct v4l2_queryctrl et8ek8_ctrls[] = {
 	{
 		.id		= V4L2_CID_GAIN,
 		.type		= V4L2_CTRL_TYPE_INTEGER,
-		.name		= "Gain in 0,1 EV",
+		.name		= "Gain [0.1 EV]",
 		.minimum	= 0,
 		.maximum	= ARRAY_SIZE(et8ek8_gain_table) - 1,
 		.step		= 1,
@@ -341,7 +340,7 @@ static struct v4l2_queryctrl et8ek8_ctrls[] = {
 	{
 		.id		= V4L2_CID_EXPOSURE,
 		.type		= V4L2_CTRL_TYPE_INTEGER,
-		.name		= "Coarse exposure time (in rows)",
+		.name		= "Exposure time [rows]",
 		.minimum	= ET8EK8_MES_MIN,
 		.maximum	= ET8EK8_MES_MAX,
 		.step		= 1,
@@ -350,8 +349,8 @@ static struct v4l2_queryctrl et8ek8_ctrls[] = {
 	},
 };
 
-static int ioctl_queryctrl(struct v4l2_int_device *s,
-			   struct v4l2_queryctrl *a)
+static int et8ek8_ioctl_queryctrl(struct v4l2_int_device *s,
+				  struct v4l2_queryctrl *a)
 {
 	struct et8ek8_sensor *sensor = s->priv;
 	int rval;
@@ -364,8 +363,8 @@ static int ioctl_queryctrl(struct v4l2_int_device *s,
 	return rval;
 }
 
-static int ioctl_g_ctrl(struct v4l2_int_device *s,
-			struct v4l2_control *vc)
+static int et8ek8_ioctl_g_ctrl(struct v4l2_int_device *s,
+			       struct v4l2_control *vc)
 {
 	struct et8ek8_sensor *sensor = s->priv;
 
@@ -382,7 +381,7 @@ static int ioctl_g_ctrl(struct v4l2_int_device *s,
 	return 0;
 }
 
-static int ioctl_s_ctrl(struct v4l2_int_device *s,
+static int et8ek8_ioctl_s_ctrl(struct v4l2_int_device *s,
 			struct v4l2_control *vc)
 {
 	struct et8ek8_sensor *sensor = s->priv;
@@ -401,10 +400,11 @@ static int ioctl_s_ctrl(struct v4l2_int_device *s,
 	return r;
 }
 
-static int ioctl_s_power(struct v4l2_int_device *s, enum v4l2_power state);
+static int et8ek8_ioctl_s_power(struct v4l2_int_device *s,
+				enum v4l2_power state);
 
-static int ioctl_enum_fmt_cap(struct v4l2_int_device *s,
-			      struct v4l2_fmtdesc *fmt)
+static int et8ek8_ioctl_enum_fmt_cap(struct v4l2_int_device *s,
+				     struct v4l2_fmtdesc *fmt)
 {
 	struct et8ek8_sensor *sensor = s->priv;
 
@@ -412,8 +412,8 @@ static int ioctl_enum_fmt_cap(struct v4l2_int_device *s,
 }
 
 
-static int ioctl_g_fmt_cap(struct v4l2_int_device *s,
-			   struct v4l2_format *f)
+static int et8ek8_ioctl_g_fmt_cap(struct v4l2_int_device *s,
+				  struct v4l2_format *f)
 {
 	struct et8ek8_sensor *sensor = s->priv;
 	struct v4l2_pix_format *pix = &f->fmt.pix;
@@ -425,8 +425,8 @@ static int ioctl_g_fmt_cap(struct v4l2_int_device *s,
 	return 0;
 }
 
-static int ioctl_s_fmt_cap(struct v4l2_int_device *s,
-			   struct v4l2_format *f)
+static int et8ek8_ioctl_s_fmt_cap(struct v4l2_int_device *s,
+				  struct v4l2_format *f)
 {
 	struct et8ek8_sensor *sensor = s->priv;
 	struct smia_reglist *reglist;
@@ -442,8 +442,8 @@ static int ioctl_s_fmt_cap(struct v4l2_int_device *s,
 	return 0;
 }
 
-static int ioctl_g_parm(struct v4l2_int_device *s,
-			struct v4l2_streamparm *a)
+static int et8ek8_ioctl_g_parm(struct v4l2_int_device *s,
+			       struct v4l2_streamparm *a)
 {
 	struct et8ek8_sensor *sensor = s->priv;
 	struct v4l2_captureparm *cparm = &a->parm.capture;
@@ -460,8 +460,8 @@ static int ioctl_g_parm(struct v4l2_int_device *s,
 	return 0;
 }
 
-static int ioctl_s_parm(struct v4l2_int_device *s,
-			struct v4l2_streamparm *a)
+static int et8ek8_ioctl_s_parm(struct v4l2_int_device *s,
+			       struct v4l2_streamparm *a)
 {
 	struct et8ek8_sensor *sensor = s->priv;
 	struct smia_reglist *reglist;
@@ -629,7 +629,8 @@ out_release:
 	return rval;
 }
 
-static int ioctl_s_power(struct v4l2_int_device *s, enum v4l2_power state)
+static int et8ek8_ioctl_s_power(struct v4l2_int_device *s,
+				enum v4l2_power state)
 {
 	struct et8ek8_sensor *sensor = s->priv;
 	int rval = 0;
@@ -666,31 +667,31 @@ out:
 	return rval;
 }
 
-static int ioctl_g_priv(struct v4l2_int_device *s, void *priv)
+static int et8ek8_ioctl_g_priv(struct v4l2_int_device *s, void *priv)
 {
 	struct et8ek8_sensor *sensor = s->priv;
 
 	return sensor->platform_data->g_priv(s, priv);
 }
 
-static int ioctl_enum_framesizes(struct v4l2_int_device *s,
-				 struct v4l2_frmsizeenum *frm)
+static int et8ek8_ioctl_enum_framesizes(struct v4l2_int_device *s,
+					struct v4l2_frmsizeenum *frm)
 {
 	struct et8ek8_sensor *sensor = s->priv;
 
 	return smia_reglist_enum_framesizes(sensor->meta_reglist, frm);
 }
 
-static int ioctl_enum_frameintervals(struct v4l2_int_device *s,
-				     struct v4l2_frmivalenum *frm)
+static int et8ek8_ioctl_enum_frameintervals(struct v4l2_int_device *s,
+					    struct v4l2_frmivalenum *frm)
 {
 	struct et8ek8_sensor *sensor = s->priv;
 
 	return smia_reglist_enum_frameintervals(sensor->meta_reglist, frm);
 }
 
-static int ioctl_enum_slaves(struct v4l2_int_device *s,
-			     struct v4l2_slave_info *si)
+static int et8ek8_ioctl_enum_slaves(struct v4l2_int_device *s,
+				    struct v4l2_slave_info *si)
 {
 	struct et8ek8_sensor *sensor = s->priv;
 
@@ -701,7 +702,7 @@ static int ioctl_enum_slaves(struct v4l2_int_device *s,
 	return 0;
 }
 
-static int ioctl_g_smia_mode(struct v4l2_int_device *s,
+static int et8ek8_ioctl_g_smia_mode(struct v4l2_int_device *s,
 			     struct v4l2_smia_mode *mode)
 {
 	struct et8ek8_sensor *sensor = s->priv;
@@ -738,35 +739,35 @@ static DEVICE_ATTR(priv_mem, S_IRUGO, et8ek8_priv_mem_read, NULL);
 
 static struct v4l2_int_ioctl_desc et8ek8_ioctl_desc[] = {
 	{ vidioc_int_enum_fmt_cap_num,
-	  (v4l2_int_ioctl_func *)ioctl_enum_fmt_cap },
+	  (v4l2_int_ioctl_func *)et8ek8_ioctl_enum_fmt_cap },
 	{ vidioc_int_try_fmt_cap_num,
-	  (v4l2_int_ioctl_func *)ioctl_g_fmt_cap },
+	  (v4l2_int_ioctl_func *)et8ek8_ioctl_g_fmt_cap },
 	{ vidioc_int_g_fmt_cap_num,
-	  (v4l2_int_ioctl_func *)ioctl_g_fmt_cap },
+	  (v4l2_int_ioctl_func *)et8ek8_ioctl_g_fmt_cap },
 	{ vidioc_int_s_fmt_cap_num,
-	  (v4l2_int_ioctl_func *)ioctl_s_fmt_cap },
+	  (v4l2_int_ioctl_func *)et8ek8_ioctl_s_fmt_cap },
 	{ vidioc_int_queryctrl_num,
-	  (v4l2_int_ioctl_func *)ioctl_queryctrl },
+	  (v4l2_int_ioctl_func *)et8ek8_ioctl_queryctrl },
 	{ vidioc_int_g_ctrl_num,
-	  (v4l2_int_ioctl_func *)ioctl_g_ctrl },
+	  (v4l2_int_ioctl_func *)et8ek8_ioctl_g_ctrl },
 	{ vidioc_int_s_ctrl_num,
-	  (v4l2_int_ioctl_func *)ioctl_s_ctrl },
+	  (v4l2_int_ioctl_func *)et8ek8_ioctl_s_ctrl },
 	{ vidioc_int_g_parm_num,
-	  (v4l2_int_ioctl_func *)ioctl_g_parm },
+	  (v4l2_int_ioctl_func *)et8ek8_ioctl_g_parm },
 	{ vidioc_int_s_parm_num,
-	  (v4l2_int_ioctl_func *)ioctl_s_parm },
+	  (v4l2_int_ioctl_func *)et8ek8_ioctl_s_parm },
 	{ vidioc_int_s_power_num,
-	  (v4l2_int_ioctl_func *)ioctl_s_power },
+	  (v4l2_int_ioctl_func *)et8ek8_ioctl_s_power },
 	{ vidioc_int_g_priv_num,
-	  (v4l2_int_ioctl_func *)ioctl_g_priv },
+	  (v4l2_int_ioctl_func *)et8ek8_ioctl_g_priv },
 	{ vidioc_int_enum_framesizes_num,
-	  (v4l2_int_ioctl_func *)ioctl_enum_framesizes },
+	  (v4l2_int_ioctl_func *)et8ek8_ioctl_enum_framesizes },
 	{ vidioc_int_enum_frameintervals_num,
-	  (v4l2_int_ioctl_func *)ioctl_enum_frameintervals },
+	  (v4l2_int_ioctl_func *)et8ek8_ioctl_enum_frameintervals },
 	{ vidioc_int_enum_slaves_num,
-	  (v4l2_int_ioctl_func *)ioctl_enum_slaves },
+	  (v4l2_int_ioctl_func *)et8ek8_ioctl_enum_slaves },
 	{ vidioc_int_g_smia_mode_num,
-	  (v4l2_int_ioctl_func *)ioctl_g_smia_mode },
+	  (v4l2_int_ioctl_func *)et8ek8_ioctl_g_smia_mode },
 };
 
 static struct v4l2_int_slave et8ek8_slave = {
@@ -870,8 +871,6 @@ static void __exit et8ek8_exit(void)
 {
 	i2c_del_driver(&et8ek8_i2c_driver);
 }
-
-static int ioctl_s_power(struct v4l2_int_device *s, enum v4l2_power state);
 
 /*
  * FIXME: Menelaus isn't ready (?) at module_init stage, so use

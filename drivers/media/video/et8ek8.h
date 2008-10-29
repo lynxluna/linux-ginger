@@ -48,10 +48,9 @@ struct et8ek8_sensor {
 
 	u16 version;
 
-	/* Index to gain table, combination of analog and digital gain. */
-	u16 current_gain;
-	/* Electrical exposure time */
-	int current_exposure;
+	/* Current values for V4L2 controls */
+	u32 current_gain;		/* Index to gain table */
+	u32 current_exposure;		/* Electrical exposure time */
 
 	struct smia_reglist *current_reglist;
 	struct v4l2_int_device *v4l2_int_device;
