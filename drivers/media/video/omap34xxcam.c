@@ -806,8 +806,10 @@ static int vidioc_streamoff(struct file *file, void *fh, enum v4l2_buf_type i)
 	if (!rval)
 		vdev->streaming = NULL;
 
+	omap34xxcam_slave_power_set(vdev, V4L2_POWER_STANDBY,
+					OMAP34XXCAM_SLAVE_POWER_SENSOR);
 	omap34xxcam_slave_power_suggest(vdev, V4L2_POWER_STANDBY,
-					OMAP34XXCAM_SLAVE_POWER_SENSOR_LENS);
+					OMAP34XXCAM_SLAVE_POWER_LENS);
 
 	mutex_unlock(&vdev->mutex);
 
@@ -1458,9 +1460,12 @@ static int omap34xxcam_open(struct inode *inode, struct file *file)
 		if (omap34xxcam_slave_power_set(vdev, V4L2_POWER_ON,
 						OMAP34XXCAM_SLAVE_POWER_ALL))
 			goto out_slave_power_set_standby;
+		omap34xxcam_slave_power_set(
+			vdev, V4L2_POWER_STANDBY,
+			OMAP34XXCAM_SLAVE_POWER_SENSOR);
 		omap34xxcam_slave_power_suggest(
 			vdev, V4L2_POWER_STANDBY,
-			OMAP34XXCAM_SLAVE_POWER_SENSOR_LENS);
+			OMAP34XXCAM_SLAVE_POWER_LENS);
 	}
 
 	fh->vdev = vdev;
@@ -1526,9 +1531,12 @@ static int omap34xxcam_release(struct inode *inode, struct file *file)
 	if (vdev->streaming == file) {
 		isp_stop();
 		videobuf_streamoff(&fh->vbq);
+		omap34xxcam_slave_power_set(
+			vdev, V4L2_POWER_STANDBY,
+			OMAP34XXCAM_SLAVE_POWER_SENSOR);
 		omap34xxcam_slave_power_suggest(
 			vdev, V4L2_POWER_STANDBY,
-			OMAP34XXCAM_SLAVE_POWER_SENSOR_LENS);
+			OMAP34XXCAM_SLAVE_POWER_LENS);
 		vdev->streaming = NULL;
 	}
 
