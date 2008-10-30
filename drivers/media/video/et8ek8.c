@@ -430,7 +430,6 @@ static int ioctl_s_fmt_cap(struct v4l2_int_device *s,
 {
 	struct et8ek8_sensor *sensor = s->priv;
 	struct smia_reglist *reglist;
-	int rval;
 
 	reglist = smia_reglist_find_mode_fmt(sensor->meta_reglist,
 					     sensor->current_reglist, f);
@@ -438,23 +437,7 @@ static int ioctl_s_fmt_cap(struct v4l2_int_device *s,
 	if (!reglist)
 		return -EINVAL;
 
-	if (sensor->power == V4L2_POWER_OFF)
-		return 0;
-
-	if (reglist != sensor->current_reglist) {
-		sensor->current_reglist = reglist;
-
-		rval = et8ek8_setup_if(s);
-		if (rval)
-			return rval;
-
-		/* FIXME: how to stop streaming otherwise? */
-		rval = smia_i2c_reglist_find_write(sensor->i2c_client,
-						   sensor->meta_reglist,
-						   SMIA_REGLIST_POWERON);
-
-		return et8ek8_configure(s);
-	}
+	sensor->current_reglist = reglist;
 
 	return 0;
 }
@@ -482,7 +465,6 @@ static int ioctl_s_parm(struct v4l2_int_device *s,
 {
 	struct et8ek8_sensor *sensor = s->priv;
 	struct smia_reglist *reglist;
-	int rval;
 
 	reglist = smia_reglist_find_mode_streamparm(sensor->meta_reglist,
 						    sensor->current_reglist, a);
@@ -490,23 +472,7 @@ static int ioctl_s_parm(struct v4l2_int_device *s,
 	if (!reglist)
 		return -EINVAL;
 
-	if (sensor->power == V4L2_POWER_OFF)
-		return 0;
-
-	if (reglist != sensor->current_reglist) {
-		sensor->current_reglist = reglist;
-
-		rval = et8ek8_setup_if(s);
-		if (rval)
-			return rval;
-
-		/* FIXME: how to stop streaming otherwise? */
-		rval = smia_i2c_reglist_find_write(sensor->i2c_client,
-						   sensor->meta_reglist,
-						   SMIA_REGLIST_POWERON);
-
-		return et8ek8_configure(s);
-	}
+	sensor->current_reglist = reglist;
 
 	return 0;
 }
