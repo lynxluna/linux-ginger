@@ -102,10 +102,10 @@ static int smia_reglist_cmp(const void *a, const void *b)
  * 	list1, *list1, list2, *list2); */
 
 /* 	printk(KERN_ALERT "%s: w1 %d h1 %d | w2 %d h2 %d \n", __func__, */
-/* 	       (*list1)->mode.width, */
-/* 	       (*list1)->mode.height, */
-/* 	       (*list2)->mode.width, */
-/* 	       (*list2)->mode.height */
+/* 	       (*list1)->mode.window_width, */
+/* 	       (*list1)->mode.window_height, */
+/* 	       (*list2)->mode.window_width, */
+/* 	       (*list2)->mode.window_height */
 /* 	       ); */
 
 	/* Put real modes in the beginning. */
@@ -117,9 +117,9 @@ static int smia_reglist_cmp(const void *a, const void *b)
 		return 1;
 
 	/* Descending width. */
-	if ((*list1)->mode.width > (*list2)->mode.width)
+	if ((*list1)->mode.window_width > (*list2)->mode.window_width)
 		return -1;
-	else if ((*list1)->mode.width < (*list2)->mode.width)
+	else if ((*list1)->mode.window_width < (*list2)->mode.window_width)
 		return 1;
 	else
 		return 0;
@@ -164,7 +164,8 @@ int smia_reglist_import(struct smia_meta_reglist *meta)
  * 		%x\n", */
 /* 		       __func__, */
 /* 		       offset, */
-/* 		       list->type, list->mode.width, list->mode.height, */
+/* 		       list->type, */
+/* 		       list->mode.window_width, list->mode.window_height, */
 /* 		       list->mode.pixel_format); */
 
 /* 		nlists++; */
@@ -210,7 +211,8 @@ struct smia_reglist *smia_reglist_find_mode_fmt(
 		if ((*list)->type != SMIA_REGLIST_MODE)
 			continue;
 
-		if (mode->width == pix->width && mode->height == pix->height)
+		if (mode->window_width == pix->width &&
+		    mode->window_height == pix->height)
 			return *list;
 	}
 
@@ -236,8 +238,8 @@ struct smia_reglist *smia_reglist_find_mode_streamparm(
 		if ((*list)->type != SMIA_REGLIST_MODE)
 			continue;
 
-		if (mode->width != current_mode->width
-		    || mode->height != current_mode->height)
+		if (mode->window_width != current_mode->window_width
+		    || mode->window_height != current_mode->window_height)
 			continue;
 
 		if (TIMEPERFRAME_AVG_FPS(mode->timeperframe) == fps)
@@ -307,15 +309,15 @@ int smia_reglist_enum_framesizes(struct smia_meta_reglist *meta,
 		 * Assume that the modes are in descending width
 		 * ordered.
 		 */
-		if (mode->width >= width_low)
+		if (mode->window_width >= width_low)
 			continue;
 
-		width_low = mode->width;
+		width_low = mode->window_width;
 
 		if (frm_index-- == 0) {
 			frm->type = V4L2_FRMSIZE_TYPE_DISCRETE;
-			frm->discrete.width = mode->width;
-			frm->discrete.height = mode->height;
+			frm->discrete.width = mode->window_width;
+			frm->discrete.height = mode->window_height;
 
 			return 0;
 		}
@@ -343,7 +345,8 @@ int smia_reglist_enum_frameintervals(struct smia_meta_reglist *meta,
 		    && frm->pixel_format != -1)
 			continue;
 
-		if (frm->width != mode->width || frm->height != mode->height)
+		if (frm->width != mode->window_width ||
+		    frm->height != mode->window_height)
 			continue;
 
 		if (frm_index-- != 0)
