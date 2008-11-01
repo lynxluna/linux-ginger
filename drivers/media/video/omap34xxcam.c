@@ -198,6 +198,7 @@ static int omap34xxcam_vbq_setup(struct videobuf_queue *vbq, unsigned int *cnt,
 				 unsigned int *size)
 {
 	struct omap34xxcam_fh *fh = vbq->priv_data;
+	struct omap34xxcam_videodev *vdev = fh->vdev;
 
 	if (*cnt <= 0)
 		*cnt = VIDEO_MAX_FRAME;	/* supply a default number of buffers */
@@ -205,7 +206,7 @@ static int omap34xxcam_vbq_setup(struct videobuf_queue *vbq, unsigned int *cnt,
 	if (*cnt > VIDEO_MAX_FRAME)
 		*cnt = VIDEO_MAX_FRAME;
 
-	*size = fh->pix.sizeimage;
+	*size = vdev->pix.sizeimage;
 
 	while (*size * *cnt > fh->vdev->vdev_sensor_config.capture_mem)
 		(*cnt)--;
@@ -248,6 +249,7 @@ static int omap34xxcam_vbq_prepare(struct videobuf_queue *vbq,
 				   enum v4l2_field field)
 {
 	struct omap34xxcam_fh *fh = vbq->priv_data;
+	struct omap34xxcam_videodev *vdev = fh->vdev;
 	int err = 0;
 
 	/*
@@ -256,12 +258,12 @@ static int omap34xxcam_vbq_prepare(struct videobuf_queue *vbq,
 	 */
 	if (vb->baddr) {
 		/* This is a userspace buffer. */
-		if (fh->pix.sizeimage > vb->bsize)
+		if (vdev->pix.sizeimage > vb->bsize)
 			/* The buffer isn't big enough. */
 			return -EINVAL;
 	} else {
 		if (vb->state != VIDEOBUF_NEEDS_INIT
-		    && fh->pix.sizeimage > vb->bsize)
+		    && vdev->pix.sizeimage > vb->bsize)
 			/*
 			 * We have a kernel bounce buffer that has
 			 * already been allocated.
@@ -269,9 +271,9 @@ static int omap34xxcam_vbq_prepare(struct videobuf_queue *vbq,
 			omap34xxcam_vbq_release(vbq, vb);
 	}
 
-	vb->size = fh->pix.bytesperline * fh->pix.height;
-	vb->width = fh->pix.width;
-	vb->height = fh->pix.height;
+	vb->size = vdev->pix.bytesperline * vdev->pix.height;
+	vb->width = vdev->pix.width;
+	vb->height = vdev->pix.height;
 	vb->field = field;
 
 	if (vb->state == VIDEOBUF_NEEDS_INIT) {
@@ -288,7 +290,6 @@ static int omap34xxcam_vbq_prepare(struct videobuf_queue *vbq,
 		omap34xxcam_vbq_release(vbq, vb);
 
 	return err;
-
 }
 
 /**
@@ -397,7 +398,7 @@ static int vidioc_g_fmt_vid_cap(struct file *file, void *fh,
 	struct omap34xxcam_videodev *vdev = ofh->vdev;
 
 	mutex_lock(&vdev->mutex);
-	f->fmt.pix = ofh->pix;
+	f->fmt.pix = vdev->pix;
 	mutex_unlock(&vdev->mutex);
 
 	return 0;
@@ -602,16 +603,11 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *fh,
 	timeperframe = vdev->want_timeperframe;
 
 	rval = s_pix_parm(vdev, &pix_tmp, &f->fmt.pix, &timeperframe);
-	pix_tmp = f->fmt.pix;
+ 	if (!rval)
+ 		vdev->pix = f->fmt.pix;
 
 out:
 	mutex_unlock(&vdev->mutex);
-
-	if (!rval) {
-		mutex_lock(&ofh->vbq.vb_lock);
-		ofh->pix = pix_tmp;
-		mutex_unlock(&ofh->vbq.vb_lock);
-	}
 
 	return rval;
 }
@@ -667,9 +663,9 @@ static int vidioc_reqbufs(struct file *file, void *fh,
 		return -EBUSY;
 	}
 
-	mutex_unlock(&vdev->mutex);
-
 	rval = videobuf_reqbufs(&ofh->vbq, b);
+
+	mutex_unlock(&vdev->mutex);
 
 	/*
 	 * Either videobuf_reqbufs failed or the buffers are not
@@ -1194,7 +1190,6 @@ static int vidioc_s_crop(struct file *file, void *fh, struct v4l2_crop *a)
 {
 	struct omap34xxcam_fh *ofh = fh;
 	struct omap34xxcam_videodev *vdev = ofh->vdev;
-	struct v4l2_pix_format *pix = &ofh->pix;
 	int rval = 0;
 
 	mutex_lock(&vdev->mutex);
@@ -1202,7 +1197,7 @@ static int vidioc_s_crop(struct file *file, void *fh, struct v4l2_crop *a)
 	if (vdev->vdev_sensor_config.sensor_isp)
 		rval = vidioc_int_s_crop(vdev->vdev_sensor, a);
 	else
-		rval = isp_s_crop(a, pix);
+		rval = isp_s_crop(a, &vdev->pix);
 
 	mutex_unlock(&vdev->mutex);
 
@@ -1505,14 +1500,21 @@ static int omap34xxcam_open(struct inode *inode, struct file *file)
 	} else {
 		struct v4l2_format f;
 
-		vidioc_int_g_fmt_cap(vdev->vdev_sensor, &f);
+		if (vidioc_int_g_fmt_cap(vdev->vdev_sensor, &f)) {
+			dev_err(cam->dev,
+				"can't get current pix from sensor!\n");
+			goto out_slave_power_set_standby;
+		}
 		format = f;
-		isp_s_fmt_cap(&f.fmt.pix, &format.fmt.pix);
+		if (isp_s_fmt_cap(&f.fmt.pix, &format.fmt.pix)) {
+			dev_err(cam->dev,
+				"isp doesn't like the sensor!\n");
+			goto out_slave_power_set_standby;
+		}
 	}
+	vdev->pix = format.fmt.pix;
 
 	mutex_unlock(&vdev->mutex);
-	/* FIXME: how about fh->pix when there are more users? */
-	fh->pix = format.fmt.pix;
 
 	file->private_data = fh;
 
