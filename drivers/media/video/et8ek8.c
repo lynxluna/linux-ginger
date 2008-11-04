@@ -40,13 +40,11 @@
 
 #define ET8EK8_XCLK_HZ		9600000
 
-#define ET8EK8_MAG_MIN		0x18
-#define ET8EK8_MAG_MAX		0xFF
-#define ET8EK8_MES_MIN		1
-#define ET8EK8_MES_MAX		2100
-
-#define DEFAULT_GAIN		0
-#define DEFAULT_EXPOSURE	ET8EK8_MES_MIN
+#define CTRL_GAIN		0
+#define CTRL_EXPOSURE		1
+#define CID_TO_CTRL(id)		((id)==V4L2_CID_GAIN ? CTRL_GAIN : \
+				 (id)==V4L2_CID_EXPOSURE ? CTRL_EXPOSURE : \
+				 -EINVAL)
 
 enum et8ek8_versions {
 	ET8EK8_REV_1 = 0x0001,
@@ -123,7 +121,7 @@ static int et8ek8_apply_gain(struct et8ek8_sensor *sensor)
 {
 	int rval;
 	struct et8ek8_gain new =
-		et8ek8_gain_table[sensor->current_gain];
+		et8ek8_gain_table[sensor->controls[CTRL_GAIN].value];
 
 	/* FIXME: optimise I2C writes! */
 	rval = smia_i2c_write_reg(sensor->i2c_client, SMIA_REG_8BIT,
@@ -147,14 +145,61 @@ static int et8ek8_apply_gain(struct et8ek8_sensor *sensor)
 
 static int et8ek8_apply_exposure(struct et8ek8_sensor *sensor)
 {
-	return smia_i2c_write_reg(sensor->i2c_client, SMIA_REG_16BIT,
-				  0x1243, swab16(sensor->current_exposure));
+	return smia_i2c_write_reg(sensor->i2c_client, SMIA_REG_16BIT, 0x1243,
+				swab16(sensor->controls[CTRL_EXPOSURE].value));
+}
+
+static int et8ek8_set_gain(struct et8ek8_sensor *sensor, s32 gain)
+{
+	int r = 0;
+
+	sensor->controls[CTRL_GAIN].value = clamp(gain,
+		sensor->controls[CTRL_GAIN].minimum,
+		sensor->controls[CTRL_GAIN].maximum);
+
+	if (sensor->power == V4L2_POWER_ON)
+		r = et8ek8_apply_gain(sensor);
+
+	return r;
+}
+
+static int et8ek8_set_exposure(struct et8ek8_sensor *sensor, s32 exptime)
+{
+	int r = 0;
+
+	sensor->controls[CTRL_EXPOSURE].value = clamp(exptime,
+		sensor->controls[CTRL_EXPOSURE].minimum,
+		sensor->controls[CTRL_EXPOSURE].maximum);
+
+	if (sensor->power == V4L2_POWER_ON)
+		r = et8ek8_apply_exposure(sensor);
+
+	return r;
 }
 
 static int et8ek8_configure(struct v4l2_int_device *s)
 {
 	struct et8ek8_sensor *sensor = s->priv;
-	int rval, val;
+	int rval, val, i;
+
+	/* Update V4L2 exposure controls to the current mode */
+	sensor->controls[CTRL_EXPOSURE].minimum = 1;
+	sensor->controls[CTRL_EXPOSURE].maximum =
+		sensor->current_reglist->mode.max_exp;
+	sensor->controls[CTRL_EXPOSURE].step    = 1;
+	sensor->controls[CTRL_EXPOSURE].default_value =
+		sensor->controls[CTRL_EXPOSURE].maximum;
+	if (sensor->controls[CTRL_EXPOSURE].value == 0)
+		sensor->controls[CTRL_EXPOSURE].value =
+			sensor->controls[CTRL_EXPOSURE].maximum;
+
+	/* Adjust V4L2 control values and write them to the sensor */
+	for (i=0; i<ARRAY_SIZE(sensor->controls); i++) {
+		rval = sensor->controls[i].set(sensor,
+			sensor->controls[i].value);
+		if (rval)
+			goto fail;
+	}
 
 #ifdef USE_CRC
 	rval = smia_i2c_read_reg(sensor->i2c_client,
@@ -171,14 +216,6 @@ static int et8ek8_configure(struct v4l2_int_device *s)
 	if (rval)
 		goto fail;
 #endif
-
-	rval = et8ek8_apply_gain(sensor);
-	if (rval)
-		goto fail;
-
-	rval = et8ek8_apply_exposure(sensor);
-	if (rval)
-		goto fail;
 
 	rval = smia_i2c_write_regs(sensor->i2c_client,
 				   sensor->current_reglist->regs);
@@ -301,50 +338,17 @@ static int et8ek8_s_power(struct v4l2_int_device *s, enum v4l2_power state)
 	return rval;
 }
 
-static int et8ek8_set_gain(struct et8ek8_sensor *sensor, int gain)
-{
-	int r = 0;
-
-	sensor->current_gain =
-		clamp(gain, 0, (int)(ARRAY_SIZE(et8ek8_gain_table) - 1));
-	if (sensor->power == V4L2_POWER_ON)
-		r = et8ek8_apply_gain(sensor);
-
-	return r;
-}
-
-static int et8ek8_set_exposure(struct et8ek8_sensor *sensor, int mode,
-			       int exp_time)
-{
-	int r = 0;
-	sensor->current_exposure =
-		clamp(exp_time, ET8EK8_MES_MIN,
-		      (int)sensor->current_reglist->mode.max_exp);
-	if (sensor->power == V4L2_POWER_ON)
-		et8ek8_apply_exposure(sensor);
-
-	return r;
-}
-
 static struct v4l2_queryctrl et8ek8_ctrls[] = {
 	{
 		.id		= V4L2_CID_GAIN,
 		.type		= V4L2_CTRL_TYPE_INTEGER,
 		.name		= "Gain [0.1 EV]",
-		.minimum	= 0,
-		.maximum	= ARRAY_SIZE(et8ek8_gain_table) - 1,
-		.step		= 1,
-		.default_value	= DEFAULT_GAIN,
 		.flags		= V4L2_CTRL_FLAG_SLIDER,
 	},
 	{
 		.id		= V4L2_CID_EXPOSURE,
 		.type		= V4L2_CTRL_TYPE_INTEGER,
 		.name		= "Exposure time [rows]",
-		.minimum	= ET8EK8_MES_MIN,
-		.maximum	= ET8EK8_MES_MAX,
-		.step		= 1,
-		.default_value	= DEFAULT_EXPOSURE,
 		.flags		= V4L2_CTRL_FLAG_SLIDER,
 	},
 };
@@ -353,51 +357,43 @@ static int et8ek8_ioctl_queryctrl(struct v4l2_int_device *s,
 				  struct v4l2_queryctrl *a)
 {
 	struct et8ek8_sensor *sensor = s->priv;
-	int rval;
+	int rval, ctrl;
 
 	rval = smia_ctrl_query(et8ek8_ctrls, ARRAY_SIZE(et8ek8_ctrls), a);
+	if (rval)
+		return rval;
 
-	if (!rval && a->id == V4L2_CID_EXPOSURE)
-		a->maximum = sensor->current_reglist->mode.max_exp;
+	ctrl = CID_TO_CTRL(a->id);
+	if (ctrl < 0)
+		return ctrl;
 
-	return rval;
+	a->minimum       = sensor->controls[ctrl].minimum;
+	a->maximum       = sensor->controls[ctrl].maximum;
+	a->step          = sensor->controls[ctrl].step;
+	a->default_value = sensor->controls[ctrl].default_value;
+
+	return 0;
 }
 
 static int et8ek8_ioctl_g_ctrl(struct v4l2_int_device *s,
 			       struct v4l2_control *vc)
 {
 	struct et8ek8_sensor *sensor = s->priv;
-
-	switch (vc->id) {
-	case V4L2_CID_GAIN:
-		vc->value = sensor->current_gain;
-		break;
-	case V4L2_CID_EXPOSURE:
-		vc->value = sensor->current_exposure;
-		break;
-	default:
-		return -EINVAL;
-	}
+	int ctrl = CID_TO_CTRL(vc->id);
+	if (ctrl < 0)
+		return ctrl;
+	vc->value = sensor->controls[ctrl].value;
 	return 0;
 }
 
 static int et8ek8_ioctl_s_ctrl(struct v4l2_int_device *s,
-			struct v4l2_control *vc)
+			       struct v4l2_control *vc)
 {
 	struct et8ek8_sensor *sensor = s->priv;
-	int r = 0;
-
-	switch (vc->id) {
-	case V4L2_CID_GAIN:
-		r = et8ek8_set_gain(sensor, vc->value);
-		break;
-	case V4L2_CID_EXPOSURE:
-		r = et8ek8_set_exposure(sensor, 0, vc->value);
-		break;
-	default:
-		return -EINVAL;
-	}
-	return r;
+	int ctrl = CID_TO_CTRL(vc->id);
+	if (ctrl < 0)
+		return ctrl;
+	return sensor->controls[ctrl].set(sensor, vc->value);
 }
 
 static int et8ek8_ioctl_s_power(struct v4l2_int_device *s,
@@ -807,9 +803,22 @@ static int et8ek8_probe(struct i2c_client *client,
 	}
 
 	sensor->v4l2_int_device = &et8ek8_int_device;
-	sensor->current_gain = DEFAULT_GAIN;
-	BUG_ON(sensor->current_gain >= ARRAY_SIZE(et8ek8_gain_table));
-	sensor->current_exposure = DEFAULT_EXPOSURE;
+
+	/* Gain is initialized here permanently */
+	sensor->controls[CTRL_GAIN].minimum           = 0;
+	sensor->controls[CTRL_GAIN].maximum = ARRAY_SIZE(et8ek8_gain_table) - 1;
+	sensor->controls[CTRL_GAIN].step              = 1;
+	sensor->controls[CTRL_GAIN].default_value     = 0;
+	sensor->controls[CTRL_GAIN].value             = 0;
+	sensor->controls[CTRL_GAIN].set               = et8ek8_set_gain;
+
+	/* Exposure parameters may change at each mode change, just zero here */
+	sensor->controls[CTRL_EXPOSURE].minimum       = 0;
+	sensor->controls[CTRL_EXPOSURE].maximum       = 0;
+	sensor->controls[CTRL_EXPOSURE].step          = 0;
+	sensor->controls[CTRL_EXPOSURE].default_value = 0;
+	sensor->controls[CTRL_EXPOSURE].value         = 0;
+	sensor->controls[CTRL_EXPOSURE].set           = et8ek8_set_exposure;
 
 	sensor->i2c_client = client;
 	i2c_set_clientdata(client, sensor);

@@ -42,15 +42,25 @@ struct et8ek8_platform_data {
 	int (*power_off)(struct v4l2_int_device *s);
 };
 
+struct et8ek8_sensor;
+
+/* Current values for V4L2 controls */
+struct et8ek8_control {
+	s32 minimum;
+	s32 maximum;
+	s32 step;
+	s32 default_value;
+	s32 value;
+	int (*set)(struct et8ek8_sensor *sensor, s32 value);
+};
+
 struct et8ek8_sensor {
 	struct i2c_client *i2c_client;
 	struct i2c_driver driver;
 
 	u16 version;
 
-	/* Current values for V4L2 controls */
-	u32 current_gain;		/* Index to gain table */
-	u32 current_exposure;		/* Electrical exposure time */
+	struct et8ek8_control controls[2];
 
 	struct smia_reglist *current_reglist;
 	struct v4l2_int_device *v4l2_int_device;
