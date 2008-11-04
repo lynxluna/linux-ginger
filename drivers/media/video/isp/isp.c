@@ -2419,6 +2419,7 @@ static int __init isp_init(void)
 	isp_preview_init();
 	isp_resizer_init();
 	isp_af_init();
+	isp_csi2_init();
 
 	DPRINTK_ISPCTRL("-isp_init for Omap 3430 Camera ISP\n");
 	return 0;
@@ -2430,6 +2431,7 @@ EXPORT_SYMBOL(isp_sgdma_init);
  **/
 static void __exit isp_cleanup(void)
 {
+	isp_csi2_cleanup();
 	isp_af_exit();
 	isp_resizer_cleanup();
 	isp_preview_cleanup();

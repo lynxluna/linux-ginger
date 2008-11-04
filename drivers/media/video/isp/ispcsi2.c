@@ -2073,7 +2073,7 @@ void isp_csi2_regdump(void)
 /**
  * isp_csi2_cleanup - Routine for module driver cleanup
  **/
-static void __exit isp_csi2_cleanup(void)
+void __exit isp_csi2_cleanup(void)
 {
 	return;
 }
@@ -2081,7 +2081,7 @@ static void __exit isp_csi2_cleanup(void)
 /**
  * isp_csi2_init - Routine for module driver init
  **/
-static int __init isp_csi2_init(void)
+int __init isp_csi2_init(void)
 {
 	int i;
 
@@ -2100,9 +2100,6 @@ static int __init isp_csi2_init(void)
 	memset(&current_csi2_cfg_update, 0, sizeof(current_csi2_cfg_update));
 	return 0;
 }
-
-module_init(isp_csi2_init);
-module_exit(isp_csi2_cleanup);
 
 MODULE_AUTHOR("Texas Instruments");
 MODULE_DESCRIPTION("ISP CSI2 Receiver Module");

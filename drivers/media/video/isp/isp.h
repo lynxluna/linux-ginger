@@ -326,6 +326,7 @@ int __init ispmmu_init(void);
 int __init isp_preview_init(void);
 int __init isp_resizer_init(void);
 int __init isp_af_init(void);
+int __init isp_csi2_init(void);
 
 void __exit isp_ccdc_cleanup(void);
 void __exit isp_hist_cleanup(void);
@@ -335,5 +336,6 @@ void __exit isp_preview_cleanup(void);
 void __exit isp_hist_cleanup(void);
 void __exit isp_resizer_cleanup(void);
 void __exit isp_af_exit(void);
+void __exit isp_csi2_cleanup(void);
 
 #endif	/* OMAP_ISP_TOP_H */
