@@ -56,12 +56,6 @@
 #define is_ispresizer_enabled()		0
 #endif
 
-#ifdef OMAP_ISPCTRL_DEBUG
-#define is_ispctrl_debug_enabled()		1
-#else
-#define is_ispctrl_debug_enabled()		0
-#endif
-
 #define ISP_XCLKA_DEFAULT		0x12
 #define ISP_OUTPUT_WIDTH_DEFAULT	176
 #define ISP_OUTPUT_HEIGHT_DEFAULT	144
@@ -83,6 +77,8 @@ enum isp_interface_type {
 };
 
 enum isp_irqevents {
+	CSIA = 0x01,
+	CSIB = 0x10,
 	CCDC_VD0 = 0x100,
 	CCDC_VD1 = 0x200,
 	CCDC_VD2 = 0x400,
@@ -113,6 +109,8 @@ enum isp_callback_type {
 	CBK_LSC_ISR,
 	CBK_H3A_AF_DONE,
 	CBK_CATCHALL,
+	CBK_CSIA,
+	CBK_CSIB,
 	CBK_END,
 };
 
@@ -175,6 +173,9 @@ struct isp_sgdma {
  * @strobe: Strobe related parameter.
  * @prestrobe: PreStrobe related parameter.
  * @shutter: Shutter related parameter.
+ * @hskip: Horizontal Start Pixel performed in Preview module.
+ * @vskip: Vertical Start Line performed in Preview module.
+ * @wenlog: Store the value for the sensor specific wenlog field.
  */
 struct isp_interface_config {
 	enum isp_interface_type ccdc_par_ser;
@@ -185,6 +186,9 @@ struct isp_interface_config {
 	int strobe;
 	int prestrobe;
 	int shutter;
+	u32 prev_sph;
+	u32 prev_slv;
+	u32 wenlog;
 	union {
 		struct par {
 			unsigned par_bridge:2;
@@ -307,6 +311,9 @@ void isp_restore_context(struct isp_reg *);
 void isp_save_ctx(void);
 
 void isp_restore_ctx(void);
+
+/* Configure CCDC interface bridge*/
+int isp_configure_interface_bridge(u32 par_bridge);
 
 void isp_print_status(void);
 

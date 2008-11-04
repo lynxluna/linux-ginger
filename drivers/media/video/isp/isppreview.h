@@ -28,20 +28,13 @@
 #define ISPPRV_BRIGHT_DEF		0x1
 #define ISPPRV_BRIGHT_LOW		0x0
 #define ISPPRV_BRIGHT_HIGH		0xF
-#define ISPPRV_BRIGHT_UNITS		0x1
+#define ISPPRV_BRIGHT_UNITS		0x7
 
-/*
 #define ISPPRV_CONTRAST_STEP		0x1
 #define ISPPRV_CONTRAST_DEF		0x2
 #define ISPPRV_CONTRAST_LOW		0x0
 #define ISPPRV_CONTRAST_HIGH		0xF
 #define ISPPRV_CONTRAST_UNITS		0x5
-*/
-#define ISPPRV_CONTRAST_STEP		0x1
-#define ISPPRV_CONTRAST_DEF		0x1 /* MMS */
-#define ISPPRV_CONTRAST_LOW		0x0
-#define ISPPRV_CONTRAST_HIGH		0xF
-#define ISPPRV_CONTRAST_UNITS		0x16 /* MMS */
 
 #define NO_AVE				0x0
 #define AVE_2_PIX			0x1
@@ -352,5 +345,7 @@ static inline void isppreview_restore_context(void) {}
 int omap34xx_isp_preview_config(void *userspace_add);
 
 int omap34xx_isp_tables_update(struct isptables_update *isptables_struct);
+
+void isppreview_set_skip(u32 h, u32 v);
 
 #endif/* OMAP_ISP_PREVIEW_H */

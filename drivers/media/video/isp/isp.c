@@ -48,6 +48,7 @@
 #include "isp_af.h"
 #include "isppreview.h"
 #include "ispresizer.h"
+#include "ispcsi2.h"
 
 #if ISP_WORKAROUND
 void *buff_addr;
@@ -71,10 +72,6 @@ const static struct v4l2_fmtdesc isp_formats[] = {
 		.description = "Bayer10 (GrR/BGb)",
 		.pixelformat = V4L2_PIX_FMT_SGRBG10,
 	},
-	{
-		.description = "Bayer10 (pattern)",
-		.pixelformat = V4L2_PIX_FMT_PATT,
-	}
 };
 
 /* ISP Crop capabilities */
@@ -171,6 +168,7 @@ static struct isp {
 	int ref_count;
 	struct clk *cam_ick;
 	struct clk *cam_mclk;
+	struct clk *csi2_fck;
 } isp_obj;
 
 struct isp_sgdma ispsg;
@@ -286,8 +284,6 @@ static int find_vctrl(int id)
 
 	return i;
 }
-
-EXPORT_SYMBOL(isp_set_pipeline);
 
 static int find_next_vctrl(int id)
 {
@@ -528,6 +524,14 @@ int isp_unset_callback(enum isp_callback_type type)
 					~(IRQ0ENABLE_CCDC_LSC_DONE_IRQ |
 					IRQ0ENABLE_CCDC_LSC_PREF_COMP_IRQ |
 					IRQ0ENABLE_CCDC_LSC_PREF_ERR_IRQ),
+					ISP_IRQ0ENABLE);
+		break;
+	case CBK_CSIA:
+		isp_csi2_irq_set(0);
+		break;
+	case CBK_CSIB:
+		omap_writel(IRQ0ENABLE_CSIB_IRQ, ISP_IRQ0STATUS);
+		omap_writel(omap_readl(ISP_IRQ0ENABLE)|IRQ0ENABLE_CSIB_IRQ,
 					ISP_IRQ0ENABLE);
 		break;
 	default:
@@ -894,6 +898,29 @@ int isp_configure_interface(struct isp_interface_config *config)
 		ispctrl_val |= (config->u.par.par_bridge
 						<< ISPCTRL_PAR_BRIDGE_SHIFT);
 		break;
+	case ISP_CSIA:
+		ispctrl_val |= ISPCTRL_PAR_SER_CLK_SEL_CSIA;
+		ispctrl_val &= ~ISPCTRL_PAR_BRIDGE_BENDIAN;
+		ispctrl_val |= (0x03 << ISPCTRL_PAR_BRIDGE_SHIFT);
+
+		isp_csi2_ctx_config_format(0, config->u.csi.format);
+		isp_csi2_ctx_update(0, false);
+
+		if (config->u.csi.crc)
+			isp_csi2_ctrl_config_ecc_enable(true);
+
+		isp_csi2_ctrl_config_vp_out_ctrl(config->u.csi.vpclk);
+		isp_csi2_ctrl_config_vp_only_enable(true);
+		isp_csi2_ctrl_config_vp_clk_enable(true);
+		isp_csi2_ctrl_update(false);
+
+		isp_csi2_irq_complexio1_set(1);
+		isp_csi2_irq_status_set(1);
+		isp_csi2_irq_set(1);
+
+		isp_csi2_enable(1);
+		mdelay(3);
+		break;
 	case ISP_CSIB:
 		ispctrl_val |= ISPCTRL_PAR_SER_CLK_SEL_CSIB;
 		r = isp_init_csi(config);
@@ -917,9 +944,30 @@ int isp_configure_interface(struct isp_interface_config *config)
 						ISPCCDC_VDINT_1_SHIFT),
 						ISPCCDC_VDINT);
 
+	/* Set sensor specific fields in CCDC and Previewer module.*/
+	isppreview_set_skip(config->prev_sph, config->prev_slv);
+	ispccdc_set_wenlog(config->wenlog);
+
 	return 0;
 }
 EXPORT_SYMBOL(isp_configure_interface);
+
+/**
+ * isp_configure_interface_bridge - Configure CCDC i/f bridge.
+ *
+ * Sets the bit field that controls the 8 to 16-bit bridge at
+ * the input to CCDC.
+ **/
+int isp_configure_interface_bridge(u32 par_bridge)
+{
+	u32 ispctrl_val = omap_readl(ISP_CTRL);
+
+	ispctrl_val &= ~ISPCTRL_PAR_BRIDGE_BENDIAN;
+	ispctrl_val |= (par_bridge << ISPCTRL_PAR_BRIDGE_SHIFT);
+	omap_writel(ispctrl_val, ISP_CTRL);
+	return 0;
+}
+EXPORT_SYMBOL(isp_configure_interface_bridge);
 
 /**
  * isp_CCDC_VD01_enable - Enables VD0 and VD1 IRQs.
@@ -983,15 +1031,8 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *ispirq_disp)
 				irqdis->isp_callbk_arg1[CBK_MMU_ERR],
 				irqdis->isp_callbk_arg2[CBK_MMU_ERR]);
 		is_irqhandled = 1;
+		printk(KERN_ALERT "%s: MMU error!!! Ouch!\n", __func__);
 		goto out;
-	}
-
-	if ((irqstatus & HS_VS) == HS_VS) {
-		if (irqdis->isp_callbk[CBK_HS_VS])
-			irqdis->isp_callbk[CBK_HS_VS](HS_VS,
-				irqdis->isp_callbk_arg1[CBK_HS_VS],
-				irqdis->isp_callbk_arg2[CBK_HS_VS]);
-		is_irqhandled = 1;
 	}
 
 	if ((irqstatus & CCDC_VD1) == CCDC_VD1) {
@@ -1042,11 +1083,24 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *ispirq_disp)
 		is_irqhandled = 1;
 	}
 
+	if ((irqstatus & HS_VS) == HS_VS) {
+		if (irqdis->isp_callbk[CBK_HS_VS])
+			irqdis->isp_callbk[CBK_HS_VS](HS_VS,
+				irqdis->isp_callbk_arg1[CBK_HS_VS],
+				irqdis->isp_callbk_arg2[CBK_HS_VS]);
+		is_irqhandled = 1;
+	}
+
 	if ((irqstatus & H3A_AF_DONE) == H3A_AF_DONE) {
 		if (irqdis->isp_callbk[CBK_H3A_AF_DONE])
 			irqdis->isp_callbk[CBK_H3A_AF_DONE](H3A_AF_DONE,
 				irqdis->isp_callbk_arg1[CBK_H3A_AF_DONE],
 				irqdis->isp_callbk_arg2[CBK_H3A_AF_DONE]);
+		is_irqhandled = 1;
+	}
+
+	if ((irqstatus & CSIA) == CSIA) {
+		isp_csi2_isr();
 		is_irqhandled = 1;
 	}
 
@@ -1083,23 +1137,6 @@ struct device_driver camera_drv = {
 struct device camera_dev = {
 	.driver = &camera_drv,
 };
-
-/**
- * isp_set_pipeline - Set bit mask for submodules enabled within the ISP.
- * @soc_type: Sensor to use: 1 - Smart sensor, 0 - Raw sensor.
- *
- * Sets Previewer and Resizer in the bit mask only if its a Raw sensor.
- **/
-void isp_set_pipeline(int soc_type)
-{
-	ispmodule_obj.isp_pipeline |= OMAP_ISP_CCDC;
-
-	if (!soc_type)
-		ispmodule_obj.isp_pipeline |= (OMAP_ISP_PREVIEW |
-							OMAP_ISP_RESIZER);
-
-	return;
-}
 
 /**
  * omapisp_unset_callback - Unsets all the callbacks associated with ISP module
@@ -1196,47 +1233,47 @@ void isp_start(void)
 						is_isppreview_enabled())
 		isppreview_enable(1);
 
-	/* clear any pending IRQs */
-	omap_writel(0xFFFFFFFF, ISP_IRQ0STATUS);
-
 	return;
 }
 EXPORT_SYMBOL(isp_start);
 
+#define ISP_STOP_TIMEOUT	1000
 /**
  * isp_stop - Stops isp submodules
  **/
 void isp_stop()
 {
-	int timeout = 0;
+	unsigned long timeout = jiffies + ISP_STOP_TIMEOUT;
 
 	spin_lock(&isp_obj.isp_temp_buf_lock);
 	ispmodule_obj.isp_temp_state = ISP_FREE_RUNNING;
 	spin_unlock(&isp_obj.isp_temp_buf_lock);
 
 	omapisp_unset_callback();
+
 	ispccdc_enable_lsc(0);
 	ispccdc_enable(0);
 	isppreview_enable(0);
-	while (isppreview_busy() && (timeout < 100)) {
-		timeout++;
-		mdelay(10);
-	}
+	while (isppreview_busy() && !time_after(jiffies, timeout))
+		msleep(1);
 
-	timeout = 0;
+	if (isppreview_busy())
+		printk(KERN_ERR "%s: preview doesn't stop\n", __func__);
+
+	timeout = jiffies + ISP_STOP_TIMEOUT;
 	ispresizer_enable(0);
-	while (ispresizer_busy() && (timeout < 100)) {
-		timeout++;
-		mdelay(10);
-	}
+	while (ispresizer_busy() && !time_after(jiffies, timeout))
+		msleep(1);
 
-	timeout = 0;
+	if (ispresizer_busy())
+		printk(KERN_ERR "%s: resizer doesn't stop\n", __func__);
+
+	timeout = jiffies + ISP_STOP_TIMEOUT;
 	isp_save_ctx();
-	omap_writel(omap_readl(ISP_SYSCONFIG) |
-		ISP_SYSCONFIG_SOFTRESET, ISP_SYSCONFIG);
+	omap_writel(omap_readl(ISP_SYSCONFIG) | ISP_SYSCONFIG_SOFTRESET,
+		    ISP_SYSCONFIG);
 	while (!(omap_readl(ISP_SYSSTATUS) & 0x1)) {
-		timeout++;
-		if (timeout >= 10) {
+		if (time_after(jiffies, timeout)) {
 			printk(KERN_ALERT "isp.c: cannot reset ISP\n");
 			return;
 		}
@@ -1278,8 +1315,7 @@ u32 isp_calc_pipeline(struct v4l2_pix_format *pix_input,
 
 	isp_release_resources();
 	if ((pix_input->pixelformat == V4L2_PIX_FMT_SGRBG10) &&
-		((pix_output->pixelformat == V4L2_PIX_FMT_YUYV) ||
-		(pix_output->pixelformat == V4L2_PIX_FMT_UYVY))) {
+		(pix_output->pixelformat != V4L2_PIX_FMT_SGRBG10)) {
 			ispmodule_obj.isp_pipeline = OMAP_ISP_CCDC |
 					OMAP_ISP_PREVIEW | OMAP_ISP_RESIZER;
 			ispccdc_request();
@@ -1298,23 +1334,15 @@ u32 isp_calc_pipeline(struct v4l2_pix_format *pix_input,
 		isppreview_config_datapath(PRV_RAW_CCDC, PREVIEW_RSZ);
 		ispresizer_config_datapath(RSZ_OTFLY_YUV);
 #endif
-	} else if (pix_input->pixelformat == pix_output->pixelformat) {
+	} else {
 		ispmodule_obj.isp_pipeline = OMAP_ISP_CCDC;
 		ispccdc_request();
 		if (pix_input->pixelformat == V4L2_PIX_FMT_SGRBG10)
 			ispccdc_config_datapath(CCDC_RAW, CCDC_OTHERS_MEM);
-		else if (pix_input->pixelformat == V4L2_PIX_FMT_PATT) {
-			/* MMS */
-			ispccdc_config_datapath(CCDC_RAW_PATTERN,
-							CCDC_OTHERS_LSC_MEM);
-		} else if ((pix_input->pixelformat == V4L2_PIX_FMT_YUYV) ||
-				(pix_input->pixelformat == V4L2_PIX_FMT_UYVY)) {
+		else
 			ispccdc_config_datapath(CCDC_YUV_SYNC,
 							CCDC_OTHERS_MEM);
-		} else
-			return -EINVAL;
-	} else
-		return -EINVAL;
+	}
 	return 0;
 }
 
@@ -1897,9 +1925,11 @@ int isp_s_fmt_cap(struct v4l2_pix_format *pix_input,
 	int crop_scaling_w, crop_scaling_h = 0;
 	int rval = 0;
 
-	isp_calc_pipeline(pix_input, pix_output);
-	rval = isp_try_size(pix_input, pix_output);
+	rval = isp_calc_pipeline(pix_input, pix_output);
+	if (rval)
+		goto out;
 
+	rval = isp_try_size(pix_input, pix_output);
 	if (rval)
 		goto out;
 
@@ -2043,14 +2073,15 @@ int isp_try_fmt_cap(struct v4l2_pix_format *pix_input,
 {
 	int rval = 0;
 
-	isp_calc_pipeline(pix_input, pix_output);
-	rval = isp_try_size(pix_input, pix_output);
+	rval = isp_calc_pipeline(pix_input, pix_output);
+	if (rval)
+		goto out;
 
+	rval = isp_try_size(pix_input, pix_output);
 	if (rval)
 		goto out;
 
 	rval = isp_try_fmt(pix_input, pix_output);
-
 	if (rval)
 		goto out;
 
@@ -2251,6 +2282,13 @@ int isp_get(void)
 			ret_err = PTR_ERR(isp_obj.cam_mclk);
 			goto out_clk_get_mclk;
 		}
+		isp_obj.csi2_fck = clk_get(&camera_dev, "csi2_96m_fck");
+		if (IS_ERR(isp_obj.csi2_fck)) {
+			DPRINTK_ISPCTRL("ISP_ERR: clk_get for csi2_fclk"
+								" failed\n");
+			ret_err = PTR_ERR(isp_obj.csi2_fck);
+			goto out_clk_get_csi2_fclk;
+		}
 		ret_err = clk_enable(isp_obj.cam_ick);
 		if (ret_err) {
 			DPRINTK_ISPCTRL("ISP_ERR: clk_en for ick failed\n");
@@ -2260,6 +2298,12 @@ int isp_get(void)
 		if (ret_err) {
 			DPRINTK_ISPCTRL("ISP_ERR: clk_en for mclk failed\n");
 			goto out_clk_enable_mclk;
+		}
+		ret_err = clk_enable(isp_obj.csi2_fck);
+		if (ret_err) {
+			DPRINTK_ISPCTRL("ISP_ERR: clk_en for csi2_fclk"
+								" failed\n");
+			goto out_clk_enable_csi2_fclk;
 		}
 		if (off_mode == 1)
 			isp_restore_ctx();
@@ -2271,9 +2315,13 @@ int isp_get(void)
 	DPRINTK_ISPCTRL("isp_get: new %d\n", isp_obj.ref_count);
 	return isp_obj.ref_count;
 
+out_clk_enable_csi2_fclk:
+	clk_disable(isp_obj.cam_mclk);
 out_clk_enable_mclk:
 	clk_disable(isp_obj.cam_ick);
 out_clk_enable_ick:
+	clk_put(isp_obj.csi2_fck);
+out_clk_get_csi2_fclk:
 	clk_put(isp_obj.cam_mclk);
 out_clk_get_mclk:
 	clk_put(isp_obj.cam_ick);
@@ -2298,17 +2346,19 @@ int isp_put(void)
 		if (--isp_obj.ref_count == 0) {
 			isp_save_ctx();
 			off_mode = 1;
+#if ISP_WORKAROUND
+			isp_buf_free();
+#endif
 			isp_release_resources();
 			ispmodule_obj.isp_pipeline = 0;
 			clk_disable(isp_obj.cam_ick);
 			clk_disable(isp_obj.cam_mclk);
+			clk_disable(isp_obj.csi2_fck);
 			clk_put(isp_obj.cam_ick);
 			clk_put(isp_obj.cam_mclk);
+			clk_put(isp_obj.csi2_fck);
 			memset(&ispcroprect, 0, sizeof(ispcroprect));
 			memset(&cur_rect, 0, sizeof(cur_rect));
-#if ISP_WORKAROUND
-			isp_buf_free();
-#endif
 		}
 	mutex_unlock(&(isp_obj.isp_mutex));
 	DPRINTK_ISPCTRL("isp_put: new %d\n", isp_obj.ref_count);

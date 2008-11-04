@@ -69,8 +69,7 @@ static struct isp_reg ispprev_reg_list[] = {
 	{ISPPRV_CDC_THR1, 0x0000},
 	{ISPPRV_CDC_THR2, 0x0000},
 	{ISPPRV_CDC_THR3, 0x0000},
-/* Removed by MMS */
-/*	{ISPPRV_PCR, 0x0000}, */
+	{ISPPRV_PCR, 0x0000},
 	{ISP_TOK_TERM, 0x0000}
 };
 
@@ -184,6 +183,8 @@ static struct isp_prev {
 	enum preview_color_effect color;
 	enum cfa_fmt cfafmt;
 	struct mutex ispprev_mutex; /* For checking/modifying prev_inuse */
+	u32 sph;
+	u32 slv;
 } ispprev_obj;
 
 /* Saved parameters */
@@ -757,6 +758,18 @@ int isppreview_config_datapath(enum preview_input input,
 	return 0;
 }
 EXPORT_SYMBOL(isppreview_config_datapath);
+
+/**
+ * isppreview_set_skip - Set the number of rows/columns that should be skipped.
+ *  h - Start Pixel Horizontal.
+ *  v - Start Line Vertical.
+ **/
+void isppreview_set_skip(u32 h, u32 v)
+{
+	ispprev_obj.sph = h;
+	ispprev_obj.slv = v;
+}
+EXPORT_SYMBOL(isppreview_set_skip);
 
 /**
  * isppreview_config_ycpos - Configure byte layout of YUV image.
@@ -1487,7 +1500,12 @@ int isppreview_try_size(u32 input_w, u32 input_h, u32 *output_w, u32 *output_h)
 	if ((ispprev_obj.yenh_en) || (ispprev_obj.csup_en))
 		prevout_w -= 2;
 
-	prevout_w -= 4;
+	/* Start at the correct row/column by skipping
+	 * a Sensor specific amount.
+	 */
+	prevout_w -= ispprev_obj.sph;
+	prevout_h -= ispprev_obj.slv;
+
 
 	if (prevout_w % 2)
 		prevout_w -= 1;
@@ -1530,10 +1548,10 @@ int isppreview_config_size(u32 input_w, u32 input_h, u32 output_w,
 		return -EINVAL;
 	}
 
-	omap_writel((4 << ISPPRV_HORZ_INFO_SPH_SHIFT) |
+	omap_writel((ispprev_obj.sph << ISPPRV_HORZ_INFO_SPH_SHIFT) |
 						(ispprev_obj.previn_w - 1),
 						ISPPRV_HORZ_INFO);
-	omap_writel((0 << ISPPRV_VERT_INFO_SLV_SHIFT) |
+	omap_writel((ispprev_obj.slv << ISPPRV_VERT_INFO_SLV_SHIFT) |
 						(ispprev_obj.previn_h - 1),
 						ISPPRV_VERT_INFO);
 
@@ -1817,6 +1835,8 @@ int __init isp_preview_init(void)
 	}
 
 	/* Init values */
+	ispprev_obj.sph = 2;
+	ispprev_obj.slv = 0;
 	ispprev_obj.color = PREV_DEFAULT_COLOR;
 	ispprev_obj.contrast = ISPPRV_CONTRAST_DEF;
 	params->contrast = ISPPRV_CONTRAST_DEF;
