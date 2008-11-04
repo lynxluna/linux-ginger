@@ -117,76 +117,106 @@ static struct et8ek8_gain {
 
 #define USE_CRC			1
 
-static int et8ek8_apply_gain(struct et8ek8_sensor *sensor)
-{
-	int rval;
-	struct et8ek8_gain new =
-		et8ek8_gain_table[sensor->controls[CTRL_GAIN].value];
-
-	/* FIXME: optimise I2C writes! */
-	rval = smia_i2c_write_reg(sensor->i2c_client, SMIA_REG_8BIT,
-				  0x124a, new.analog >> 8);
-	if (rval)
-		return rval;
-	rval = smia_i2c_write_reg(sensor->i2c_client, SMIA_REG_8BIT,
-				  0x1249, new.analog & 0xff);
-	if (rval)
-		return rval;
-
-	rval = smia_i2c_write_reg(sensor->i2c_client, SMIA_REG_8BIT,
-				  0x124d, new.digital >> 8);
-	if (rval)
-		return rval;
-	rval = smia_i2c_write_reg(sensor->i2c_client, SMIA_REG_8BIT,
-				  0x124c, new.digital & 0xff);
-
-	return rval;
-}
-
-static int et8ek8_apply_exposure(struct et8ek8_sensor *sensor)
-{
-	return smia_i2c_write_reg(sensor->i2c_client, SMIA_REG_16BIT, 0x1243,
-				swab16(sensor->controls[CTRL_EXPOSURE].value));
-}
-
+/* Called to change the V4L2 gain control value. This function
+ * rounds and clamps the given value and updates the V4L2 control value.
+ * If power is on, also updates the sensor analog and digital gains.
+ * gain is in 0.1 EV (exposure value) units.
+ */
 static int et8ek8_set_gain(struct et8ek8_sensor *sensor, s32 gain)
 {
-	int r = 0;
+	struct et8ek8_gain new;
+	int r;
 
 	sensor->controls[CTRL_GAIN].value = clamp(gain,
 		sensor->controls[CTRL_GAIN].minimum,
 		sensor->controls[CTRL_GAIN].maximum);
 
-	if (sensor->power == V4L2_POWER_ON)
-		r = et8ek8_apply_gain(sensor);
+	if (sensor->power != V4L2_POWER_ON)
+		return 0;
+
+	new = et8ek8_gain_table[sensor->controls[CTRL_GAIN].value];
+
+	/* FIXME: optimise I2C writes! */
+	r = smia_i2c_write_reg(sensor->i2c_client, SMIA_REG_8BIT,
+				  0x124a, new.analog >> 8);
+	if (r)
+		return r;
+	r = smia_i2c_write_reg(sensor->i2c_client, SMIA_REG_8BIT,
+				  0x1249, new.analog & 0xff);
+	if (r)
+		return r;
+
+	r = smia_i2c_write_reg(sensor->i2c_client, SMIA_REG_8BIT,
+				  0x124d, new.digital >> 8);
+	if (r)
+		return r;
+	r = smia_i2c_write_reg(sensor->i2c_client, SMIA_REG_8BIT,
+				  0x124c, new.digital & 0xff);
 
 	return r;
 }
 
+/* Called to change the V4L2 exposure control value. This function
+ * rounds and clamps the given value and updates the V4L2 control value.
+ * If power is on, also update the sensor exposure time.
+ * exptime is in microseconds.
+ */
 static int et8ek8_set_exposure(struct et8ek8_sensor *sensor, s32 exptime)
 {
-	int r = 0;
+	unsigned int clock;	/* Pixel clock in Hz>>10 fixed point */
+	unsigned int rt;	/* Row time in .8 fixed point */
+	unsigned int rows;	/* Exposure value as written to HW (ie. rows) */
 
-	sensor->controls[CTRL_EXPOSURE].value = clamp(exptime,
-		sensor->controls[CTRL_EXPOSURE].minimum,
-		sensor->controls[CTRL_EXPOSURE].maximum);
+	exptime = clamp(exptime, sensor->controls[CTRL_EXPOSURE].minimum,
+				 sensor->controls[CTRL_EXPOSURE].maximum);
 
-	if (sensor->power == V4L2_POWER_ON)
-		r = et8ek8_apply_exposure(sensor);
+	/* Assume that the maximum exposure time is at most ~8 s,
+	 * and the maximum width (with blanking) ~8000 pixels.
+	 * The formula here is in principle as simple as
+	 *    rows = exptime / 1e6 / width * pixel_clock
+	 * but to get accurate results while coping with value ranges,
+	 * have to do some fixed point math.
+	 */
+	clock = sensor->current_reglist->mode.pixel_clock;
+	clock = (clock + (1 << 9)) >> 10;
+	rt = sensor->current_reglist->mode.width * (1000000 >> 2);
+	rt = (rt + (clock >> 1)) / clock;
+	rows = ((exptime << 8) + (rt >> 1)) / rt;
 
-	return r;
+	/* Set the V4L2 control for exposure time to the rounded value */
+	sensor->controls[CTRL_EXPOSURE].value = (rt * rows + (1 << 7)) >> 8;
+
+	if (sensor->power != V4L2_POWER_ON)
+		return 0;
+
+	return smia_i2c_write_reg(sensor->i2c_client, SMIA_REG_16BIT, 0x1243,
+				  swab16(rows));
 }
 
 static int et8ek8_configure(struct v4l2_int_device *s)
 {
 	struct et8ek8_sensor *sensor = s->priv;
 	int rval, val, i;
+	unsigned int rt;	/* Row time in us */
+	unsigned int clock;	/* Pixel clock in Hz>>2 fixed point */
 
 	/* Update V4L2 exposure controls to the current mode */
-	sensor->controls[CTRL_EXPOSURE].minimum = 1;
+
+	if (sensor->current_reglist->mode.pixel_clock <= 0 ||
+	    sensor->current_reglist->mode.width <= 0) {
+		dev_err(&sensor->i2c_client->dev, "bad firmware\n");
+		return -EIO;
+	}
+
+	clock = sensor->current_reglist->mode.pixel_clock;
+	clock = (clock + (1 << 1)) >> 2;
+	rt = sensor->current_reglist->mode.width * (1000000 >> 2);
+	rt = (rt + (clock >> 1)) / clock;
+
+	sensor->controls[CTRL_EXPOSURE].minimum = rt;
 	sensor->controls[CTRL_EXPOSURE].maximum =
-		sensor->current_reglist->mode.max_exp;
-	sensor->controls[CTRL_EXPOSURE].step    = 1;
+		sensor->current_reglist->mode.max_exp * rt;
+	sensor->controls[CTRL_EXPOSURE].step = rt;
 	sensor->controls[CTRL_EXPOSURE].default_value =
 		sensor->controls[CTRL_EXPOSURE].maximum;
 	if (sensor->controls[CTRL_EXPOSURE].value == 0)
@@ -194,6 +224,7 @@ static int et8ek8_configure(struct v4l2_int_device *s)
 			sensor->controls[CTRL_EXPOSURE].maximum;
 
 	/* Adjust V4L2 control values and write them to the sensor */
+
 	for (i=0; i<ARRAY_SIZE(sensor->controls); i++) {
 		rval = sensor->controls[i].set(sensor,
 			sensor->controls[i].value);
@@ -348,7 +379,7 @@ static struct v4l2_queryctrl et8ek8_ctrls[] = {
 	{
 		.id		= V4L2_CID_EXPOSURE,
 		.type		= V4L2_CTRL_TYPE_INTEGER,
-		.name		= "Exposure time [rows]",
+		.name		= "Exposure time [us]",
 		.flags		= V4L2_CTRL_FLAG_SLIDER,
 	},
 };
