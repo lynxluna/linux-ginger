@@ -179,9 +179,6 @@ struct omap34xxcam_videodev {
  */
 struct omap34xxcam_device {
 	struct mutex mutex;
-	int sgdma_in_queue;
-	struct isp_sgdma sgdma;
-	int dma_notify;
 
 	/*** platform HW resource ***/
 	unsigned int irq;
