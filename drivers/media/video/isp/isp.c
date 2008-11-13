@@ -431,7 +431,13 @@ static void isp_enable_interrupts(int is_raw)
 static void isp_disable_interrupts(void)
 {
 	printk(KERN_ALERT "%s\n", __func__);
-	omap_writel(0, ISP_IRQ0ENABLE);
+	omap_writel(omap_readl(ISP_IRQ0ENABLE)
+		    & ~(IRQ0ENABLE_CCDC_LSC_PREF_ERR_IRQ
+			| IRQ0ENABLE_CCDC_VD0_IRQ
+			| IRQ0ENABLE_CCDC_VD1_IRQ
+			| IRQ0ENABLE_PRV_DONE_IRQ
+			| IRQ0ENABLE_RSZ_DONE_IRQ),
+		    ISP_IRQ0ENABLE);
 }
 
 /**
