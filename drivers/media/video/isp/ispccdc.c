@@ -1278,7 +1278,7 @@ int ispccdc_config_outlineoffset(u32 offset, u8 oddeven, u8 numlines)
 	omap_writel((omap_readl(ISPCCDC_SDOFST) & (~ISPCCDC_SDOFST_FINV)),
 							ISPCCDC_SDOFST);
 
-	omap_writel(omap_readl(ISPCCDC_SDOFST) & ISPCCDC_SDOFST_FOFST_1L,
+	omap_writel(omap_readl(ISPCCDC_SDOFST) & ~ISPCCDC_SDOFST_FOFST_4L,
 							ISPCCDC_SDOFST);
 
 	switch (oddeven) {
