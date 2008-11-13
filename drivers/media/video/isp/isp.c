@@ -39,6 +39,9 @@
 #include <linux/videodev2.h>
 #include <linux/vmalloc.h>
 
+#include <mach/iommu.h>
+#include <mach/iovmm.h>
+
 #include "isp.h"
 #include "ispmmu.h"
 #include "ispreg.h"
@@ -177,6 +180,7 @@ static struct isp {
 } isp_obj;
 
 struct isp_bufs ispbufs;
+static struct iommu *isp_iommu;
 
 /**
  * struct ispmodule - Structure for storing ISP sub-module information.
@@ -931,7 +935,6 @@ int isp_configure_interface(struct isp_interface_config *config)
 
 	omap_writel(ispctrl_val, ISP_CTRL);
 
-	printk(KERN_WARNING "vdint %x\n",omap_readl(ISPCCDC_VDINT));
 /* 	ispccdc_vdint_val = omap_readl(ISPCCDC_VDINT); */
 /* 	ispccdc_vdint_val &= ~(ISPCCDC_VDINT_0_MASK << ISPCCDC_VDINT_0_SHIFT); */
 /* 	ispccdc_vdint_val &= ~(ISPCCDC_VDINT_1_MASK << ISPCCDC_VDINT_1_SHIFT); */
@@ -1209,6 +1212,9 @@ struct device camera_dev = {
  **/
 u32 isp_buf_allocation(void)
 {
+	void *p;
+	struct sg_table sgt;
+
 	buff_addr = (void *) vmalloc(buffer_size);
 
 	if (!buff_addr) {
@@ -1222,11 +1228,13 @@ u32 isp_buf_allocation(void)
 		return -ENOMEM;
 	}
 	num_sc = dma_map_sg(NULL, sglist_alloc, no_of_pages, 1);
-	buff_addr_mapped = ispmmu_map_sg(sglist_alloc, no_of_pages);
-	if (!buff_addr_mapped) {
-		printk(KERN_ERR "ispmmu_map_sg mapping failed ");
-		return -ENOMEM;
-	}
+
+	sgt.sgl = sglist_alloc;
+	sgt.nents = no_of_pages;
+	p = iommu_vmap(isp_iommu, NULL, &sgt,
+		       IOVMF_ENDIAN_LITTLE | IOVMF_ELSZ_8);
+	BUG_ON(IS_ERR(p));
+	buff_addr_mapped = p; 
 	isppreview_set_outaddr(buff_addr_mapped);
 	alloc_done = 1;
 	return 0;
@@ -1253,7 +1261,7 @@ dma_addr_t isp_buf_get(void)
 void isp_buf_free(void)
 {
 	if (alloc_done == 1) {
-		ispmmu_unmap_sg(buff_addr_mapped);
+		iommu_vunmap(isp_iommu, (void *)buff_addr_mapped);
 		dma_unmap_sg(NULL, sglist_alloc, no_of_pages, 1);
 		kfree(sglist_alloc);
 		vfree(buff_addr);
@@ -1655,20 +1663,20 @@ EXPORT_SYMBOL(isp_buf_queue);
 int isp_vbq_prepare(struct videobuf_queue *vbq, struct videobuf_buffer *vb,
 							enum v4l2_field field)
 {
-	unsigned int isp_addr;
 	struct videobuf_dmabuf	*vdma;
 	struct isp_bufs *bufs = &ispbufs;
+	void *p;
+	struct sg_table sgt;
 
 	int err = 0;
 
 	vdma = videobuf_to_dma(vb);
 
-	isp_addr = ispmmu_map_sg(vdma->sglist, vdma->sglen);
-
-	if (!isp_addr)
-		err = -EIO;
-	else
-		bufs->isp_addr_capture[vb->i] = isp_addr;
+	sgt.sgl = vdma->sglist;
+	sgt.nents = vdma->sglen;
+	p = iommu_vmap(isp_iommu, NULL, &sgt, IOVMF_ENDIAN_LITTLE | IOVMF_ELSZ_8);
+	BUG_ON(IS_ERR(p));
+	bufs->isp_addr_capture[vb->i] = p;
 
 	return err;
 }
@@ -1683,7 +1691,7 @@ void isp_vbq_release(struct videobuf_queue *vbq, struct videobuf_buffer *vb)
 {
 	struct isp_bufs *bufs = &ispbufs;
 
-	ispmmu_unmap_sg(bufs->isp_addr_capture[vb->i]);
+	iommu_vunmap(isp_iommu, (void *)bufs->isp_addr_capture[vb->i]);
 	bufs->isp_addr_capture[vb->i] = (dma_addr_t) NULL;
 	return;
 }
@@ -2414,6 +2422,12 @@ static int __init isp_init(void)
 	isp_ccdc_init();
 	isp_hist_init();
 	isph3a_aewb_init();
+	isp_get();
+
+	isp_iommu = iommu_get("isp");
+	BUG_ON(IS_ERR(isp_iommu));
+
+	isp_put();
 	ispmmu_init();
 	isp_preview_init();
 	isp_resizer_init();
@@ -2434,7 +2448,7 @@ static void __exit isp_cleanup(void)
 	isp_af_exit();
 	isp_resizer_cleanup();
 	isp_preview_cleanup();
-	ispmmu_cleanup();
+	iommu_put(isp_iommu);
 	isph3a_aewb_cleanup();
 	isp_hist_cleanup();
 	isp_ccdc_cleanup();
