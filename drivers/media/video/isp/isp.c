@@ -157,7 +157,6 @@ static struct ispirq {
 /**
  * struct isp - Structure for storing ISP Control module information
  * @lock: Spinlock to sync between isr and processes.
- * @isp_temp_buf_lock: Temporary spinlock for buffer control.
  * @isp_mutex: Semaphore used to get access to the ISP.
  * @if_status: Type of interface used in ISP.
  * @interfacetype: (Not used).
@@ -169,7 +168,6 @@ static struct ispirq {
  */
 static struct isp {
 	spinlock_t lock;	/* For handling registered ISP callbacks */
-	spinlock_t isp_temp_buf_lock;	/* For handling isp buffers state */
 	struct mutex isp_mutex;	/* For handling ref_count field */
 	u8 if_status;
 	u8 interfacetype;
@@ -185,7 +183,6 @@ static struct iommu *isp_iommu;
 /**
  * struct ispmodule - Structure for storing ISP sub-module information.
  * @isp_pipeline: Bit mask for submodules enabled within the ISP.
- * @isp_temp_state: State of current buffers.
  * @applyCrop: Flag to do a crop operation when video buffer queue ISR is done
  * @pix: Structure containing the format and layout of the output image.
  * @ccdc_input_width: ISP CCDC module input image width.
@@ -203,7 +200,6 @@ static struct iommu *isp_iommu;
  */
 struct ispmodule {
 	unsigned int isp_pipeline;
-	int isp_temp_state;
 	int applyCrop;
 	struct v4l2_pix_format pix;
 	unsigned int ccdc_input_width;
@@ -222,7 +218,6 @@ struct ispmodule {
 
 static struct ispmodule ispmodule_obj = {
 	.isp_pipeline = OMAP_ISP_CCDC,
-	.isp_temp_state = ISP_BUF_INIT,
 	.applyCrop = 0,
 	.pix = {
 		.width = ISP_OUTPUT_WIDTH_DEFAULT,
@@ -1092,21 +1087,18 @@ printk("\n");
 /* 			printk(KERN_ALERT */
 /* 			       "%s: ccdc busy, shadow registers not written\n", */
 /* 			       __func__); */
-		if (bufs->is_raw) {
+		if (bufs->is_raw)
 			isp_buf_process(bufs);
-			spin_lock_irqsave(&isp_obj.isp_temp_buf_lock, flags);
-			ispmodule_obj.isp_temp_state = ISP_BUF_INIT;
-			spin_unlock_irqrestore(
-				&isp_obj.isp_temp_buf_lock, flags);
-		}
 	}
 
 	if ((irqstatus & PREV_DONE) == PREV_DONE) {
-		if (!bufs->is_raw) {
-			spin_lock_irqsave(&isp_obj.isp_temp_buf_lock, flags);
-			if (!ispmodule_obj.applyCrop &&
-			    (ispmodule_obj.isp_temp_state == ISP_BUF_INIT) &&
-			    !isppreview_busy()) {
+		if (!bufs->is_raw && !ispresizer_busy()) {
+/* 			if (ispmodule_obj.applyCrop) { */
+/* 				ispresizer_applycrop(); */
+/* 				if (!ispresizer_busy()) */
+/* 					ispmodule_obj.applyCrop = 0; */
+/* 			} */
+			if (!isppreview_busy()) {
 				ispresizer_enable(1);
 				if (isppreview_busy()) {
 					/* FIXME: locking! */
@@ -1115,16 +1107,6 @@ printk("\n");
 					printk(KERN_ALERT "%s: preview busy, "
 					       "ouch!!!\n", __func__);
 				}
-			}
-			spin_unlock_irqrestore(&isp_obj.isp_temp_buf_lock,
-					       flags);
-			spin_lock_irqsave(&bufs->lock, flags);
-			spin_unlock_irqrestore(&bufs->lock, flags);
-			if (ispmodule_obj.applyCrop &&
-			    !ispresizer_busy()) {
-				ispresizer_enable(0);
-				ispresizer_applycrop();
-				ispmodule_obj.applyCrop = 0;
 			}
 			if (!isppreview_busy())
 				isppreview_config_shadow_registers();
@@ -1143,14 +1125,7 @@ printk("\n");
 				printk(KERN_ALERT
 				       "%s: resizer bysy, shadow registers "
 				       "not written\n", __func__);
-			spin_lock_irqsave(&isp_obj.isp_temp_buf_lock, flags);
-			if (ispmodule_obj.isp_temp_state == ISP_BUF_INIT) {
-				spin_unlock_irqrestore(
-					&isp_obj.isp_temp_buf_lock, flags);
-				isp_buf_process(bufs);
-			} else
-				spin_unlock_irqrestore(
-					&isp_obj.isp_temp_buf_lock, flags);
+			isp_buf_process(bufs);
 		}
 	}
 
@@ -1294,10 +1269,6 @@ void isp_stop()
 {
 	unsigned long timeout = jiffies + ISP_STOP_TIMEOUT;
 	unsigned long flags;
-
-	spin_lock_irqsave(&isp_obj.isp_temp_buf_lock, flags);
-	ispmodule_obj.isp_temp_state = ISP_FREE_RUNNING;
-	spin_unlock_irqrestore(&isp_obj.isp_temp_buf_lock, flags);
 
 	isp_disable_interrupts();
 
@@ -1512,17 +1483,6 @@ static void isp_transfer_init(struct isp_bufs *bufs)
 	isp_set_buf(buf);
 	ispccdc_enable(1);
 	isp_start();
-	spin_lock_irqsave(&isp_obj.isp_temp_buf_lock,
-			  flags);
-	if (ispmodule_obj.isp_pipeline
-	    & OMAP_ISP_RESIZER) {
-		ispmodule_obj.isp_temp_state =
-			ISP_BUF_INIT;
-	} else
-		ispmodule_obj.isp_temp_state =
-			ISP_BUF_TRAN;
-	spin_unlock_irqrestore(
-		&isp_obj.isp_temp_buf_lock, flags);
 }
 
 int isp_buf_process(struct isp_bufs *bufs)
@@ -2405,7 +2365,6 @@ static int __init isp_init(void)
 	isp_obj.ref_count = 0;
 
 	mutex_init(&(isp_obj.isp_mutex));
-	spin_lock_init(&isp_obj.isp_temp_buf_lock);
 	spin_lock_init(&isp_obj.lock);
 
 	if (request_irq(INT_34XX_CAM_IRQ, omap34xx_isp_isr, IRQF_SHARED,
