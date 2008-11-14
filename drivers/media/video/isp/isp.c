@@ -1516,7 +1516,7 @@ int isp_buf_process(struct isp_bufs *bufs)
 				/* Mark this buffer faulty. */
 				buf->vb_state = VIDEOBUF_ERROR;
 				/* Mark next faulty, too. */
-				ISP_BUF_NEXT_DONE(bufs)->vb_state =
+				ISP_BUF_DONE(bufs)->vb_state =
 					VIDEOBUF_ERROR;
 				printk(KERN_ALERT "OUCH!!!\n");
 			}
