@@ -353,7 +353,6 @@ int isp_wait(int ccdc, int preview, int resizer, int wait_for_busy, int max_wait
 			return -EBUSY;
 		}
 	}
-	printk(KERN_ALERT "%s: wait %d us\n", __func__, wait);
 
 	return 0;
 }
@@ -408,7 +407,6 @@ int isp_wait_idle(int max_wait)
 
 static void isp_enable_interrupts(int is_raw)
 {
-	printk(KERN_ALERT "%s\n", __func__);
 	omap_writel(-1, ISP_IRQ0STATUS);
 	omap_writel(omap_readl(ISP_IRQ0ENABLE)
 		    | IRQ0ENABLE_CCDC_LSC_PREF_ERR_IRQ
@@ -429,7 +427,6 @@ static void isp_enable_interrupts(int is_raw)
 
 static void isp_disable_interrupts(void)
 {
-	printk(KERN_ALERT "%s\n", __func__);
 	omap_writel(omap_readl(ISP_IRQ0ENABLE)
 		    & ~(IRQ0ENABLE_CCDC_LSC_PREF_ERR_IRQ
 			| IRQ0ENABLE_CCDC_VD0_IRQ
@@ -1055,17 +1052,12 @@ static const struct {
        {  0, "CSIA_IRQ" },
 };
 int i;
-for (i=0; i<ARRAY_SIZE(bits); i++) {
-       if ((1<<bits[i].num) & irqstatus) printk("%s ", bits[i].name);
-}
-printk("\n");
 }
 #endif
 	spin_lock_irqsave(&isp_obj.lock, irqflags);
 
 	if (irqstatus & LSC_PRE_ERR) {
 		struct isp_buf *buf = ISP_BUF_DONE(bufs);
-		printk(KERN_ERR "isp_sr: LSC_PRE_ERR \n");
 		ispccdc_enable_lsc(0);
 		ispccdc_enable_lsc(1);
 		/* Mark buffer faulty. */
@@ -1103,15 +1095,10 @@ printk("\n");
 					/* FIXME: locking! */
 					ISP_BUF_DONE(bufs)->vb_state =
 						VIDEOBUF_ERROR;
-					printk(KERN_ALERT "%s: preview busy, "
-					       "ouch!!!\n", __func__);
 				}
 			}
 			if (!isppreview_busy())
 				isppreview_config_shadow_registers();
-			else
-				printk(KERN_ALERT "%s: preview bysy, shadow "
-				       "registers not written\n", __func__);
 			isph3a_update_wb();
 		}
 	}
@@ -1120,10 +1107,6 @@ printk("\n");
 		if (!bufs->is_raw) {
 			if (!ispresizer_busy())
 				ispresizer_config_shadow_registers();
-			else
-				printk(KERN_ALERT
-				       "%s: resizer bysy, shadow registers "
-				       "not written\n", __func__);
 			isp_buf_process(bufs);
 		}
 	}
@@ -1281,10 +1264,6 @@ void isp_stop()
 		while (ispccdc_busy() && !time_after(jiffies, timeout))
 			msleep(1);
 
-		printk(KERN_ERR "ccdc %d\n", jiffies - timeout + ISP_STOP_TIMEOUT);
-		if (ispccdc_busy())
-			printk(KERN_ERR "%s: ccdc doesn't stop\n", __func__);
-		
 	} else {
 		/*
 		 * YUV capture. Only resizer must stop since we are
@@ -1305,10 +1284,6 @@ void isp_stop()
 		while (ispresizer_busy() && !time_after(jiffies, timeout))
 			msleep(1);
 
-		printk(KERN_ERR "rsz %d\n", jiffies - timeout + ISP_STOP_TIMEOUT);
-		if (ispresizer_busy())
-			printk(KERN_ERR "%s: resizer doesn't stop\n", __func__);
-
 		ispccdc_enable_lsc(0);
 		ispccdc_enable(0);
 	}
@@ -1324,7 +1299,6 @@ void isp_stop()
 		}
 		udelay(1);
 	}
-	printk(KERN_ERR "reset %d\n", timeout );
 	isp_restore_ctx();
 }
 

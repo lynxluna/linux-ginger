@@ -723,7 +723,6 @@ void __exit ispmmu_cleanup(void)
  **/
 void ispmmu_save_context(void)
 {
-	printk(" Saving context\n");
 	isp_save_context(ispmmu_reg_list);
 }
 EXPORT_SYMBOL_GPL(ispmmu_save_context);
@@ -733,7 +732,6 @@ EXPORT_SYMBOL_GPL(ispmmu_save_context);
  **/
 void ispmmu_restore_context(void)
 {
-	printk(" Restoring context\n");
 	isp_restore_context(ispmmu_reg_list);
 }
 EXPORT_SYMBOL_GPL(ispmmu_restore_context);
