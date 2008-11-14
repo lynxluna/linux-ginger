@@ -1495,7 +1495,7 @@ int isp_buf_process(struct isp_bufs *bufs)
 	if (ISP_BUFS_EMPTY(bufs))
 		goto out;
 
-	if (bufs->is_raw && ispccdc_wait_idle(100)) {
+	if (bufs->is_raw && ispccdc_wait_idle(1000)) {
 		printk(KERN_ERR "ccdc %d won't become idle!\n",
 		       bufs->is_raw);
 		goto out;
@@ -1545,7 +1545,8 @@ int isp_buf_process(struct isp_bufs *bufs)
 		 * If we fail to stop the ISP the buffer is probably
 		 * going to be bad.
 		 */
-		if (isp_wait_idle(100)) {
+		if ((bufs->is_raw && ispccdc_busy())
+		    || (!bufs->is_raw && ispresizer_busy())) {
 			printk(KERN_ALERT "Ouch!\n");
 			buf->vb_state = VIDEOBUF_ERROR;
 		}
