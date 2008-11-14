@@ -1109,11 +1109,11 @@ printk("\n");
 			    !isppreview_busy()) {
 				ispresizer_enable(1);
 				if (isppreview_busy()) {
-					struct isp_buf *buf =
-						ISP_BUF_DONE(bufs);
-					buf->vb_state = VIDEOBUF_ERROR;
+					/* FIXME: locking! */
+					ISP_BUF_DONE(bufs)->vb_state =
+						VIDEOBUF_ERROR;
 					printk(KERN_ALERT "%s: preview busy, "
-					       "skipping buffer\n", __func__);
+					       "ouch!!!\n", __func__);
 				}
 			}
 			spin_unlock_irqrestore(&isp_obj.isp_temp_buf_lock,
@@ -1467,7 +1467,6 @@ void isp_buf_init()
 	bufs->queue = 0;
 	bufs->done = 0;
 	bufs->is_raw = 1;
-	bufs->skip = 0;
 	if ((ispmodule_obj.isp_pipeline & OMAP_ISP_RESIZER) ||
 	    (ispmodule_obj.isp_pipeline & OMAP_ISP_PREVIEW))
 		bufs->is_raw = 0;
@@ -1533,11 +1532,6 @@ int isp_buf_process(struct isp_bufs *bufs)
 
 	spin_lock_irqsave(&bufs->lock, flags);
 
-	if (bufs->skip) {
-		bufs->skip = 0;
-		goto out;
-	}
-
 	if (!ISP_BUFS_EMPTY(bufs)) {
 		/*
 		 * We had at least one buffer in queue. We mark that
@@ -1561,8 +1555,9 @@ int isp_buf_process(struct isp_bufs *bufs)
 			    || (!bufs->is_raw && ispresizer_busy())) {
 				/* Mark this buffer faulty. */
 				buf->vb_state = VIDEOBUF_ERROR;
-				/* Skip next transfer. */
-				bufs->skip = 1;
+				/* Mark next faulty, too. */
+				ISP_BUF_NEXT_DONE(bufs)->vb_state =
+					VIDEOBUF_ERROR;
 				printk(KERN_ALERT "OUCH!!!\n");
 			}
 			PRINTK(KERN_ALERT "%s: write next %d mmu %p\n", __func__,
