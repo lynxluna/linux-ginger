@@ -133,9 +133,11 @@ struct isp_buf {
 };
 
 
-#define ISP_BUFS_FULL(bufs) \
+#define ISP_BUFS_IS_FULL(bufs) \
 	(((bufs)->queue + 1) % NUM_BUFS == (bufs)->done)
-#define ISP_BUFS_EMPTY(bufs)		((bufs)->queue == (bufs)->done)
+#define ISP_BUFS_IS_EMPTY(bufs)		((bufs)->queue == (bufs)->done)
+#define ISP_BUFS_IS_LAST(bufs) \
+	((bufs)->queue == ((bufs)->done + 1) % NUM_BUFS)
 #define ISP_BUFS_QUEUED(bufs) \
 	((((bufs)->done - (bufs)->queue + NUM_BUFS)) % NUM_BUFS)
 #define ISP_BUF_DONE(bufs)		((bufs)->buf + (bufs)->done)

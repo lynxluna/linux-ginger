@@ -1472,27 +1472,15 @@ int isp_vbq_sync(struct videobuf_buffer *vb)
 	return 0;
 }
 
-static void isp_transfer_init(struct isp_bufs *bufs)
-{
-	unsigned long flags;
-	struct isp_buf *buf = ISP_BUF_DONE(bufs);
-
-	if (ISP_BUFS_EMPTY(bufs))
-		isp_enable_interrupts(bufs->is_raw);
-
-	isp_set_buf(buf);
-	ispccdc_enable(1);
-	isp_start();
-}
-
 int isp_buf_process(struct isp_bufs *bufs)
 {
 	struct isp_buf *buf = NULL;
 	unsigned long flags;
+	int last;
 
 	spin_lock_irqsave(&bufs->lock, flags);
 
-	if (ISP_BUFS_EMPTY(bufs))
+	if (ISP_BUFS_IS_EMPTY(bufs))
 		goto out;
 
 	if (bufs->is_raw && ispccdc_wait_idle(1000)) {
@@ -1508,29 +1496,11 @@ int isp_buf_process(struct isp_bufs *bufs)
 	 * videobuf_buffers.
 	 */
 	buf = ISP_BUF_DONE(bufs);
-	ISP_BUF_MARK_DONE(bufs);
+	last = ISP_BUFS_IS_LAST(bufs);
 
-	if (!ISP_BUFS_EMPTY(bufs)) {
+	if (!last) {
 		/* Queue the next buffer. */
-		isp_transfer_init(bufs);
-		/*
-		 * For the transfer to succeed, the CCDC (RAW capture)
-		 * or resizer (YUV capture) must be idle for the
-		 * duration of transfer setup. Bad things happen
-		 * otherwise!
-		 */
-		if ((bufs->is_raw && ispccdc_busy())
-		    || (!bufs->is_raw && ispresizer_busy())) {
-			/* Mark this buffer faulty. */
-			buf->vb_state = VIDEOBUF_ERROR;
-			/* Mark next faulty, too. */
-			ISP_BUF_DONE(bufs)->vb_state =
-				VIDEOBUF_ERROR;
-			printk(KERN_ALERT "OUCH!!!\n");
-		}
-		PRINTK(KERN_ALERT "%s: write next %d mmu %p\n", __func__,
-		       bufs->done,
-		       (bufs->buf + bufs->done)->isp_addr);
+		isp_set_buf(ISP_BUF_NEXT_DONE(bufs));
 	} else {
 		/*
 		 * No more buffers to queue --- this was the last one. 
@@ -1541,18 +1511,31 @@ int isp_buf_process(struct isp_bufs *bufs)
 			ispccdc_enable(0);
 		else
 			ispresizer_enable(0);
-		/*
-		 * If we fail to stop the ISP the buffer is probably
-		 * going to be bad.
-		 */
-		if ((bufs->is_raw && ispccdc_busy())
-		    || (!bufs->is_raw && ispresizer_busy())) {
-			printk(KERN_ALERT "Ouch!\n");
-			buf->vb_state = VIDEOBUF_ERROR;
-		}
-		PRINTK(KERN_ALERT "%s: deactivate, queue == done == %d\n", __func__,
-		       bufs->done);
 	}
+	/*
+	 * Next buffer available: for the transfer to succeed, the
+	 * CCDC (RAW capture) or resizer (YUV capture) must be idle
+	 * for the duration of transfer setup. Bad things happen
+	 * otherwise!
+	 *
+	 * Next buffer not available: if we fail to stop the ISP the
+	 * buffer is probably going to be bad.
+	 */
+	if ((bufs->is_raw && ispccdc_busy())
+	    || (!bufs->is_raw && ispresizer_busy())) {
+		/* Mark this buffer faulty. */
+		buf->vb_state = VIDEOBUF_ERROR;
+		/* Mark next faulty, too. */
+		if (!last) {
+			ISP_BUF_NEXT_DONE(bufs)->vb_state =
+				VIDEOBUF_ERROR;
+			printk(KERN_ALERT "OUCH!!!\n");
+		} else {
+			printk(KERN_ALERT "Ouch!\n");
+		}
+	}
+
+	ISP_BUF_MARK_DONE(bufs);
 
 	PRINTK(KERN_ALERT "%s: finish %d mmu %p\n", __func__,
 	       (bufs->done - 1 + NUM_BUFS) % NUM_BUFS,
@@ -1589,7 +1572,7 @@ int isp_buf_queue(struct videobuf_buffer *vb,
 
 	spin_lock_irqsave(&bufs->lock, flags);
 
-	BUG_ON(ISP_BUFS_FULL(bufs));
+	BUG_ON(ISP_BUFS_IS_FULL(bufs));
 
 	buf = ISP_BUF_QUEUE(bufs);
 
@@ -1599,8 +1582,12 @@ int isp_buf_queue(struct videobuf_buffer *vb,
 	buf->priv = priv;
 	buf->vb_state = VIDEOBUF_DONE;
 
-	if (ISP_BUFS_EMPTY(bufs))
-		isp_transfer_init(bufs);
+	if (ISP_BUFS_IS_EMPTY(bufs)) {
+		isp_enable_interrupts(bufs->is_raw);
+		isp_set_buf(buf);
+		ispccdc_enable(1);
+		isp_start();
+	}
 
 	ISP_BUF_MARK_QUEUED(bufs);
 
