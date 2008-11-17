@@ -729,6 +729,7 @@ config VIDEO_OMAP3
 
 config VIDEO_SMIAREGS
 	tristate "Generic SMIA I2C register access and register list helper"
+	depends on I2C
 	---help---
 	  This allows writing and reading SMIA image sensors' I2C registers
 	  easily.
