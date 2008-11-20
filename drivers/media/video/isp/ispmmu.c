@@ -41,6 +41,11 @@
 #include "ispreg.h"
 #include "ispmmu.h"
 
+#include <mach/iommu.h>
+#include <mach/iovmm.h>
+
+static struct iommu *isp_iommu;
+
 /**
  * struct ispmmu_mapattr - Struct for Mapping Attributes in L1, L2 descriptor
  * endianism: Endianism.
@@ -300,6 +305,7 @@ static int free_l2_page_table(u32 l2_table)
  **/
 dma_addr_t ispmmu_map(u32 p_addr, int size)
 {
+#if 0
 	int i, j, idx, num;
 	u32 sz, first_padding;
 	u32 p_addr_align, p_addr_align_end;
@@ -372,6 +378,11 @@ release_mem:
 		l2p_table_addr[idx + i] = 0;
 	}
 	return 0;
+#else
+	void *p = iommu_kmap(isp_iommu, 0, p_addr, size, IOVMF_ENDIAN_LITTLE | IOVMF_ELSZ_8);
+	BUG_ON(IS_ERR(p));
+	return (dma_addr_t)p;
+#endif
 }
 EXPORT_SYMBOL_GPL(ispmmu_map);
 
@@ -388,6 +399,7 @@ EXPORT_SYMBOL_GPL(ispmmu_map);
  **/
 dma_addr_t ispmmu_map_sg(const struct scatterlist *sglist, int sglen)
 {
+#if 0
 	int i, j, idx, num, sg_num = 0;
 	u32 pd, sg_element_addr;
 	u32 *l2_table;
@@ -457,6 +469,17 @@ release_mem:
 		l2p_table_addr[idx + i] = 0;
 	}
 	return 0;
+#else
+	void *p;
+	struct sg_table sgt;
+
+	sgt.sgl = sglist;
+	sgt.nents = sglen;
+
+	p = iommu_vmap(isp_iommu, NULL, &sgt, IOVMF_ENDIAN_LITTLE | IOVMF_ELSZ_8);
+	BUG_ON(IS_ERR(p));
+	return (dma_addr_t)p;
+#endif
 }
 EXPORT_SYMBOL_GPL(ispmmu_map_sg);
 
@@ -470,6 +493,7 @@ EXPORT_SYMBOL_GPL(ispmmu_map_sg);
  **/
 int ispmmu_unmap(dma_addr_t v_addr)
 {
+#if 0
 	u32 v_addr_align;
 	int idx;
 
@@ -512,8 +536,17 @@ int ispmmu_unmap(dma_addr_t v_addr)
 
 	DPRINTK_ISPMMU("-ispmmu_unmap()\n");
 	return 0;
+#else
+	iommu_kunmap(isp_iommu, (void *)v_addr);
+#endif
 }
 EXPORT_SYMBOL_GPL(ispmmu_unmap);
+
+int ispmmu_unmap_sg(dma_addr_t v_addr)
+{
+	iommu_vunmap(isp_iommu, (void *)v_addr);
+}
+EXPORT_SYMBOL_GPL(ispmmu_unmap_sg);
 
 /**
  * ispmmu_isr - Callback from ISP driver for MMU interrupt.
@@ -562,6 +595,7 @@ static void ispmmu_isr(unsigned long status, isp_vbq_callback_ptr arg1,
  **/
 int __init ispmmu_init(void)
 {
+#if 0
 	int i, val = 0;
 	struct isp_sysc isp_sysconfig;
 
@@ -653,7 +687,17 @@ int __init ispmmu_init(void)
 			(val & ISPMMU_REVISION_REV_MINOR_MASK) + '0');
 	isp_put();
 	return 0;
+#else
+	int err = 0;
 
+	isp_get();
+
+	isp_iommu = iommu_get("isp");
+	BUG_ON(IS_ERR(isp_iommu));
+
+	isp_put();
+	return err;
+#endif
 }
 
 /**
@@ -661,13 +705,16 @@ int __init ispmmu_init(void)
  **/
 void __exit ispmmu_cleanup(void)
 {
+#if 0
 	ttb = page_address(ttb_page);
 	ttb_p = __pa(ttb);
 	ioremap_cached(ttb_p, ttb_aligned_size);
 	__free_pages(ttb_page, get_order(ttb_aligned_size));
 	isp_unset_callback(CBK_MMU_ERR);
 	cleanup_l2_page_cache();
-
+#else
+	iommu_put(isp_iommu);
+#endif
 	return;
 }
 

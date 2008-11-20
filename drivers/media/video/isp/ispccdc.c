@@ -605,7 +605,7 @@ int ispccdc_config_datapath(enum ccdc_input input, enum ccdc_output output)
 		syncif.fldstat = 0;
 		syncif.hdpol = 0;
 		syncif.ipmod = RAW;
-		syncif.vdpol = 0;
+		syncif.vdpol = 1;
 		ispccdc_config_sync_if(syncif);
 		ispccdc_config_imgattr(colptn);
 		blkcfg.dcsubval = 42;
@@ -626,7 +626,7 @@ int ispccdc_config_datapath(enum ccdc_input input, enum ccdc_output output)
 		syncif.fldstat = 0;
 		syncif.hdpol = 0;
 		syncif.ipmod = YUV16;
-		syncif.vdpol = 0;
+		syncif.vdpol = 1;
 		ispccdc_config_imgattr(0);
 		ispccdc_config_sync_if(syncif);
 		blkcfg.dcsubval = 0;
@@ -1197,7 +1197,7 @@ int ispccdc_config_size(u32 input_w, u32 input_h, u32 output_w, u32 output_h)
 		}
 		omap_writel(0 << ISPCCDC_VERT_START_SLV0_SHIFT,
 							ISPCCDC_VERT_START);
-		omap_writel((ispccdc_obj.ccdcout_h - 1) <<
+		omap_writel((ispccdc_obj.ccdcout_h - 2) <<
 						ISPCCDC_VERT_LINES_NLV_SHIFT,
 						ISPCCDC_VERT_LINES);
 
@@ -1205,7 +1205,7 @@ int ispccdc_config_size(u32 input_w, u32 input_h, u32 output_w, u32 output_h)
 		omap_writel((((ispccdc_obj.ccdcout_h - 2) &
 					ISPCCDC_VDINT_0_MASK) <<
 					ISPCCDC_VDINT_0_SHIFT) |
-					((50 & ISPCCDC_VDINT_1_MASK) <<
+					((100 & ISPCCDC_VDINT_1_MASK) <<
 					ISPCCDC_VDINT_1_SHIFT), ISPCCDC_VDINT);
 	} else if (ispccdc_obj.ccdc_outfmt == CCDC_OTHERS_VP_MEM) {
 		omap_writel((1 << ISPCCDC_FMT_HORZ_FMTSPH_SHIFT) |

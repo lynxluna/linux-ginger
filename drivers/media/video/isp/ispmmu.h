@@ -107,6 +107,7 @@ dma_addr_t ispmmu_map(unsigned int p_addr, int size);
 dma_addr_t ispmmu_map_sg(const struct scatterlist *sglist, int sglen);
 
 int ispmmu_unmap(dma_addr_t isp_addr);
+int ispmmu_unmap_sg(dma_addr_t isp_addr);
 
 void ispmmu_print_status(void);
 

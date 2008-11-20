@@ -50,6 +50,11 @@
 #include "ispresizer.h"
 #include "ispcsi2.h"
 
+#define MAGIC 0x8d00d138
+
+//#define PRINTK(...) printk(__VA_ARGS__)
+#define PRINTK(...) do { } while (0)
+
 #if ISP_WORKAROUND
 void *buff_addr;
 dma_addr_t buff_addr_mapped;
@@ -171,7 +176,7 @@ static struct isp {
 	struct clk *csi2_fck;
 } isp_obj;
 
-struct isp_sgdma ispsg;
+struct isp_bufs ispbufs;
 
 /**
  * struct ispmodule - Structure for storing ISP sub-module information.
@@ -320,42 +325,113 @@ void isp_release_resources(void)
 		ispresizer_free();
 	return;
 }
-EXPORT_SYMBOL(omapisp_unset_callback);
 
 /* Flag to check first time of isp_get */
 static int off_mode;
 
-/**
- * isp_set_sgdma_callback - Set Scatter-Gather DMA Callback.
- * @sgdma_state: Pointer to structure with the SGDMA state for each videobuffer
- * @func_ptr: Callback function pointer for SG-DMA management
- **/
-static int isp_set_sgdma_callback(struct isp_sgdma_state *sgdma_state,
-						isp_vbq_callback_ptr func_ptr)
+int isp_wait(int ccdc, int preview, int resizer, int wait_for_busy, int max_wait)
 {
-	if ((ispmodule_obj.isp_pipeline & OMAP_ISP_RESIZER) &&
-						is_ispresizer_enabled()) {
-		isp_set_callback(CBK_RESZ_DONE, sgdma_state->callback,
-						func_ptr, sgdma_state->arg);
-	}
+	int wait = 0;
+	int (*busy)(void) = NULL;
 
-	if ((ispmodule_obj.isp_pipeline & OMAP_ISP_PREVIEW) &&
-						is_isppreview_enabled()) {
-			isp_set_callback(CBK_PREV_DONE, sgdma_state->callback,
-						func_ptr, sgdma_state->arg);
-	}
+	if (max_wait == 0)
+		max_wait = 10000; /* 10 ms */
 
-	if (ispmodule_obj.isp_pipeline & OMAP_ISP_CCDC) {
-		isp_set_callback(CBK_CCDC_VD0, sgdma_state->callback, func_ptr,
-							sgdma_state->arg);
-		isp_set_callback(CBK_CCDC_VD1, sgdma_state->callback, func_ptr,
-							sgdma_state->arg);
-		isp_set_callback(CBK_LSC_ISR, NULL, NULL, NULL);
-	}
+	if (ccdc)
+		busy = ispccdc_busy;
+	else if (preview)
+		busy = isppreview_busy;
+	else if (resizer)
+		busy = ispresizer_busy;
 
-	isp_set_callback(CBK_HS_VS, sgdma_state->callback, func_ptr,
-							sgdma_state->arg);
+	while ((wait_for_busy && !busy())
+	       || (!wait_for_busy && busy())) {
+		rmb();
+		udelay(1);
+		wait++;
+		if (wait > max_wait) {
+			printk(KERN_ALERT "%s: wait is too much\n", __func__);
+			return -EBUSY;
+		}
+	}
+	printk(KERN_ALERT "%s: wait %d us\n", __func__, wait);
+
 	return 0;
+}
+
+int ispccdc_wait_busy(int max_wait)
+{
+	PRINTK(KERN_ALERT "%s: ccdc wait for busy\n", __func__);
+	return isp_wait(1, 0, 0, 1, max_wait);
+}
+
+int ispccdc_wait_idle(int max_wait)
+{
+	PRINTK(KERN_ALERT "%s: ccdc wait for idle\n", __func__);
+	return isp_wait(1, 0, 0, 0, max_wait);
+}
+
+int isppreview_wait_busy(int max_wait)
+{
+	PRINTK(KERN_ALERT "%s: prv wait for busy\n", __func__);
+	return isp_wait(0, 1, 0, 1, max_wait);
+}
+
+int isppreview_wait_idle(int max_wait)
+{
+	PRINTK(KERN_ALERT "%s: prv wait for idle\n", __func__);
+	return isp_wait(0, 1, 0, 0, max_wait);
+}
+
+int ispresizer_wait_busy(int max_wait)
+{
+	PRINTK(KERN_ALERT "%s: rsz wait for busy\n", __func__);
+	return isp_wait(0, 0, 1, 1, max_wait);
+}
+
+int ispresizer_wait_idle(int max_wait)
+{
+	PRINTK(KERN_ALERT "%s: rsz wait for idle\n", __func__);
+	return isp_wait(0, 0, 1, 0, max_wait);
+}
+
+int isp_wait_busy(int max_wait)
+{
+	PRINTK(KERN_ALERT "%s: raw %d wait for busy\n", __func__, ispbufs.is_raw);
+	return isp_wait(ispbufs.is_raw, 0, !ispbufs.is_raw, 1, max_wait);
+}
+
+int isp_wait_idle(int max_wait)
+{
+	PRINTK(KERN_ALERT "%s: raw %d wait for idle\n", __func__, ispbufs.is_raw);
+	return isp_wait(ispbufs.is_raw, 0, !ispbufs.is_raw, 0, max_wait);
+}
+
+static void isp_enable_interrupts(int is_raw)
+{
+	printk(KERN_ALERT "%s\n", __func__);
+	omap_writel(-1, ISP_IRQ0STATUS);
+	omap_writel(omap_readl(ISP_IRQ0ENABLE)
+		    | IRQ0ENABLE_CCDC_LSC_PREF_ERR_IRQ
+		    | IRQ0ENABLE_CCDC_VD0_IRQ
+		    | IRQ0ENABLE_CCDC_VD1_IRQ,
+		    ISP_IRQ0ENABLE);
+
+	if (is_raw)
+		return;
+	
+	omap_writel(omap_readl(ISP_IRQ0ENABLE)
+		    | IRQ0ENABLE_PRV_DONE_IRQ
+		    | IRQ0ENABLE_RSZ_DONE_IRQ,
+		    ISP_IRQ0ENABLE);
+
+	return;
+}
+
+static void isp_disable_interrupts(void)
+{
+	printk(KERN_ALERT "%s\n", __func__);
+	omap_writel(0, ISP_IRQ0ENABLE);
 }
 
 /**
@@ -386,36 +462,6 @@ int isp_set_callback(enum isp_callback_type type, isp_callback_t callback,
 	spin_unlock_irqrestore(&isp_obj.lock, irqflags);
 
 	switch (type) {
-	case CBK_HS_VS:
-		omap_writel(IRQ0ENABLE_HS_VS_IRQ, ISP_IRQ0STATUS);
-		omap_writel(omap_readl(ISP_IRQ0ENABLE) | IRQ0ENABLE_HS_VS_IRQ,
-							ISP_IRQ0ENABLE);
-		break;
-	case CBK_PREV_DONE:
-		omap_writel(IRQ0ENABLE_PRV_DONE_IRQ, ISP_IRQ0STATUS);
-		omap_writel(omap_readl(ISP_IRQ0ENABLE) |
-					IRQ0ENABLE_PRV_DONE_IRQ,
-					ISP_IRQ0ENABLE);
-		break;
-	case CBK_RESZ_DONE:
-		omap_writel(IRQ0ENABLE_RSZ_DONE_IRQ, ISP_IRQ0STATUS);
-		omap_writel(omap_readl(ISP_IRQ0ENABLE) |
-					IRQ0ENABLE_RSZ_DONE_IRQ,
-					ISP_IRQ0ENABLE);
-		break;
-	case CBK_MMU_ERR:
-		omap_writel(omap_readl(ISP_IRQ0ENABLE) |
-					IRQ0ENABLE_MMU_ERR_IRQ,
-					ISP_IRQ0ENABLE);
-
-		omap_writel(omap_readl(ISPMMU_IRQENABLE) |
-					IRQENABLE_MULTIHITFAULT |
-					IRQENABLE_TWFAULT |
-					IRQENABLE_EMUMISS |
-					IRQENABLE_TRANSLNFAULT |
-					IRQENABLE_TLBMISS,
-					ISPMMU_IRQENABLE);
-		break;
 	case CBK_H3A_AWB_DONE:
 		omap_writel(IRQ0ENABLE_H3A_AWB_DONE_IRQ, ISP_IRQ0STATUS);
 		omap_writel(omap_readl(ISP_IRQ0ENABLE) |
@@ -432,17 +478,6 @@ int isp_set_callback(enum isp_callback_type type, isp_callback_t callback,
 		omap_writel(IRQ0ENABLE_HIST_DONE_IRQ, ISP_IRQ0STATUS);
 		omap_writel(omap_readl(ISP_IRQ0ENABLE) |
 					IRQ0ENABLE_HIST_DONE_IRQ,
-					ISP_IRQ0ENABLE);
-		break;
-	case CBK_LSC_ISR:
-		omap_writel(IRQ0ENABLE_CCDC_LSC_DONE_IRQ |
-					IRQ0ENABLE_CCDC_LSC_PREF_COMP_IRQ |
-					IRQ0ENABLE_CCDC_LSC_PREF_ERR_IRQ,
-					ISP_IRQ0STATUS);
-		omap_writel(omap_readl(ISP_IRQ0ENABLE) |
-					IRQ0ENABLE_CCDC_LSC_DONE_IRQ |
-					IRQ0ENABLE_CCDC_LSC_PREF_COMP_IRQ |
-					IRQ0ENABLE_CCDC_LSC_PREF_ERR_IRQ,
 					ISP_IRQ0ENABLE);
 		break;
 	default:
@@ -471,34 +506,6 @@ int isp_unset_callback(enum isp_callback_type type)
 	spin_unlock_irqrestore(&isp_obj.lock, irqflags);
 
 	switch (type) {
-	case CBK_CCDC_VD0:
-		omap_writel((omap_readl(ISP_IRQ0ENABLE)) &
-						~IRQ0ENABLE_CCDC_VD0_IRQ,
-						ISP_IRQ0ENABLE);
-		break;
-	case CBK_CCDC_VD1:
-		omap_writel((omap_readl(ISP_IRQ0ENABLE)) &
-						~IRQ0ENABLE_CCDC_VD1_IRQ,
-						ISP_IRQ0ENABLE);
-		break;
-	case CBK_PREV_DONE:
-		omap_writel((omap_readl(ISP_IRQ0ENABLE)) &
-						~IRQ0ENABLE_PRV_DONE_IRQ,
-						ISP_IRQ0ENABLE);
-		break;
-	case CBK_RESZ_DONE:
-		omap_writel((omap_readl(ISP_IRQ0ENABLE)) &
-						~IRQ0ENABLE_RSZ_DONE_IRQ,
-						ISP_IRQ0ENABLE);
-		break;
-	case CBK_MMU_ERR:
-		omap_writel(omap_readl(ISPMMU_IRQENABLE) &
-						~(IRQENABLE_MULTIHITFAULT |
-						IRQENABLE_TWFAULT |
-						IRQENABLE_EMUMISS |
-						IRQENABLE_TRANSLNFAULT |
-						IRQENABLE_TLBMISS),
-						ISPMMU_IRQENABLE);
 		break;
 	case CBK_H3A_AWB_DONE:
 		omap_writel((omap_readl(ISP_IRQ0ENABLE)) &
@@ -513,18 +520,6 @@ int isp_unset_callback(enum isp_callback_type type)
 		omap_writel((omap_readl(ISP_IRQ0ENABLE)) &
 						~IRQ0ENABLE_HIST_DONE_IRQ,
 						ISP_IRQ0ENABLE);
-		break;
-	case CBK_HS_VS:
-		omap_writel((omap_readl(ISP_IRQ0ENABLE)) &
-						~IRQ0ENABLE_HS_VS_IRQ,
-						ISP_IRQ0ENABLE);
-		break;
-	case CBK_LSC_ISR:
-		omap_writel(omap_readl(ISP_IRQ0ENABLE) &
-					~(IRQ0ENABLE_CCDC_LSC_DONE_IRQ |
-					IRQ0ENABLE_CCDC_LSC_PREF_COMP_IRQ |
-					IRQ0ENABLE_CCDC_LSC_PREF_ERR_IRQ),
-					ISP_IRQ0ENABLE);
 		break;
 	case CBK_CSIA:
 		isp_csi2_irq_set(0);
@@ -712,9 +707,6 @@ void isp_power_settings(struct isp_sysc isp_sysconfig)
 				ISP_SYSCONFIG_MIDLEMODE_SHIFT),
 				ISP_SYSCONFIG);
 
-		omap_writel(ISPMMU_AUTOIDLE | (ISPMMU_SIDLEMODE_SMARTIDLE <<
-						ISPMMU_SIDLEMODE_SHIFT),
-						ISPMMU_SYSCONFIG);
 		if (system_rev == OMAP3430_REV_ES1_0) {
 			omap_writel(ISPCSI1_AUTOIDLE |
 					(ISPCSI1_MIDLEMODE_SMARTSTANDBY <<
@@ -733,9 +725,6 @@ void isp_power_settings(struct isp_sysc isp_sysconfig)
 				ISP_SYSCONFIG_MIDLEMODE_SHIFT),
 				ISP_SYSCONFIG);
 
-		omap_writel(ISPMMU_AUTOIDLE |
-			(ISPMMU_SIDLEMODE_NOIDLE << ISPMMU_SIDLEMODE_SHIFT),
-							ISPMMU_SYSCONFIG);
 		if (system_rev == OMAP3430_REV_ES1_0) {
 			omap_writel(ISPCSI1_AUTOIDLE |
 					(ISPCSI1_MIDLEMODE_FORCESTANDBY <<
@@ -936,13 +925,14 @@ int isp_configure_interface(struct isp_interface_config *config)
 
 	omap_writel(ispctrl_val, ISP_CTRL);
 
-	ispccdc_vdint_val = omap_readl(ISPCCDC_VDINT);
-	ispccdc_vdint_val &= ~(ISPCCDC_VDINT_0_MASK << ISPCCDC_VDINT_0_SHIFT);
-	ispccdc_vdint_val &= ~(ISPCCDC_VDINT_1_MASK << ISPCCDC_VDINT_1_SHIFT);
-	omap_writel((config->vdint0_timing << ISPCCDC_VDINT_0_SHIFT) |
-						(config->vdint1_timing <<
-						ISPCCDC_VDINT_1_SHIFT),
-						ISPCCDC_VDINT);
+	printk(KERN_WARNING "vdint %x\n",omap_readl(ISPCCDC_VDINT));
+/* 	ispccdc_vdint_val = omap_readl(ISPCCDC_VDINT); */
+/* 	ispccdc_vdint_val &= ~(ISPCCDC_VDINT_0_MASK << ISPCCDC_VDINT_0_SHIFT); */
+/* 	ispccdc_vdint_val &= ~(ISPCCDC_VDINT_1_MASK << ISPCCDC_VDINT_1_SHIFT); */
+/* 	omap_writel((config->vdint0_timing << ISPCCDC_VDINT_0_SHIFT) | */
+/* 						(config->vdint1_timing << */
+/* 						ISPCCDC_VDINT_1_SHIFT), */
+/* 						ISPCCDC_VDINT); */
 
 	/* Set sensor specific fields in CCDC and Previewer module.*/
 	isppreview_set_skip(config->prev_sph, config->prev_slv);
@@ -996,6 +986,9 @@ void isp_CCDC_VD01_disable(void)
 						ISP_IRQ0ENABLE);
 }
 
+int isp_buf_process(struct isp_bufs *bufs);
+int isp_vbq_sync(struct videobuf_buffer *vb);
+
 /**
  * omap34xx_isp_isr - Interrupt Service Routine for Camera ISP module.
  * @irq: Not used currently.
@@ -1011,60 +1004,145 @@ void isp_CCDC_VD01_disable(void)
 static irqreturn_t omap34xx_isp_isr(int irq, void *ispirq_disp)
 {
 	struct ispirq *irqdis = (struct ispirq *)ispirq_disp;
+	struct isp_bufs *bufs = &ispbufs;
+	unsigned long flags;
 	u32 irqstatus = 0;
 	unsigned long irqflags = 0;
-	u8 is_irqhandled = 0;
 
 	irqstatus = omap_readl(ISP_IRQ0STATUS);
+	omap_writel(irqstatus, ISP_IRQ0STATUS);
 
+#if 1
+{    
+static const struct {
+       int num;
+       char *name;
+} bits[] = {
+       { 31, "HS_VS_IRQ" },
+       { 30, "SEC_ERR_IRQ" },
+       { 29, "OCP_ERR_IRQ" },
+       { 28, "MMU_ERR_IRQ" },
+       { 27, "res27" },
+       { 26, "res26" },
+       { 25, "OVF_IRQ" },
+       { 24, "RSZ_DONE_IRQ" },
+       { 23, "res23" },
+       { 22, "res22" },
+       { 21, "CBUFF_IRQ" },
+       { 20, "PRV_DONE_IRQ" },
+       { 19, "CCDC_LSC_PREFETCH_ERROR" },
+       { 18, "CCDC_LSC_PREFETCH_COMPLETED" },
+       { 17, "CCDC_LSC_DONE" },
+       { 16, "HIST_DONE_IRQ" },
+       { 15, "res15" },
+       { 14, "res14" },
+       { 13, "H3A_AWB_DONE_IRQ" },
+       { 12, "H3A_AF_DONE_IRQ" },
+       { 11, "CCDC_ERR_IRQ" },
+       { 10, "CCDC_VD2_IRQ" },
+       {  9, "CCDC_VD1_IRQ" },
+       {  8, "CCDC_VD0_IRQ" },
+       {  7, "res7" },
+       {  6, "res6" },
+       {  5, "res5" },
+       {  4, "CSIB_IRQ" },
+       {  3, "CSIB_LCM_IRQ" },
+       {  2, "res2" },
+       {  1, "res1" },
+       {  0, "CSIA_IRQ" },
+};
+int i;
+for (i=0; i<ARRAY_SIZE(bits); i++) {
+       if ((1<<bits[i].num) & irqstatus) printk("%s ", bits[i].name);
+}
+printk("\n");
+}
+#endif
 	spin_lock_irqsave(&isp_obj.lock, irqflags);
 
-	if (irqdis->isp_callbk[CBK_CATCHALL])
-		irqdis->isp_callbk[CBK_CATCHALL](
-			irqstatus,
-			irqdis->isp_callbk_arg1[CBK_CATCHALL],
-			irqdis->isp_callbk_arg2[CBK_CATCHALL]);
+	if (irqstatus & LSC_PRE_ERR) {
+		struct isp_buf *buf = ISP_BUF_DONE(bufs);
+		printk(KERN_ERR "isp_sr: LSC_PRE_ERR \n");
+		ispccdc_enable_lsc(0);
+		ispccdc_enable_lsc(1);
+		/* Mark buffer faulty. */
+		buf->vb_state = VIDEOBUF_ERROR;
+	}
 
-	if ((irqstatus & MMU_ERR) == MMU_ERR) {
-		if (irqdis->isp_callbk[CBK_MMU_ERR])
-			irqdis->isp_callbk[CBK_MMU_ERR](irqstatus,
-				irqdis->isp_callbk_arg1[CBK_MMU_ERR],
-				irqdis->isp_callbk_arg2[CBK_MMU_ERR]);
-		is_irqhandled = 1;
-		printk(KERN_ALERT "%s: MMU error!!! Ouch!\n", __func__);
-		goto out;
+	if ((irqstatus & HS_VS) == HS_VS) {
 	}
 
 	if ((irqstatus & CCDC_VD1) == CCDC_VD1) {
-		if (irqdis->isp_callbk[CBK_CCDC_VD1])
-				irqdis->isp_callbk[CBK_CCDC_VD1](CCDC_VD1,
-				irqdis->isp_callbk_arg1[CBK_CCDC_VD1],
-				irqdis->isp_callbk_arg2[CBK_CCDC_VD1]);
-		is_irqhandled = 1;
 	}
 
 	if ((irqstatus & CCDC_VD0) == CCDC_VD0) {
-		if (irqdis->isp_callbk[CBK_CCDC_VD0])
-			irqdis->isp_callbk[CBK_CCDC_VD0](CCDC_VD0,
-				irqdis->isp_callbk_arg1[CBK_CCDC_VD0],
-				irqdis->isp_callbk_arg2[CBK_CCDC_VD0]);
-		is_irqhandled = 1;
+/* 		ispccdc_wait_idle(10); */
+/* 		if (!ispccdc_busy()) */
+/* 			ispccdc_config_shadow_registers(); */
+/* 		else */
+/* 			printk(KERN_ALERT */
+/* 			       "%s: ccdc busy, shadow registers not written\n", */
+/* 			       __func__); */
+		if (bufs->is_raw) {
+			isp_buf_process(bufs);
+			spin_lock_irqsave(&isp_obj.isp_temp_buf_lock, flags);
+			ispmodule_obj.isp_temp_state = ISP_BUF_INIT;
+			spin_unlock_irqrestore(
+				&isp_obj.isp_temp_buf_lock, flags);
+		}
 	}
 
 	if ((irqstatus & PREV_DONE) == PREV_DONE) {
-		if (irqdis->isp_callbk[CBK_PREV_DONE])
-			irqdis->isp_callbk[CBK_PREV_DONE](PREV_DONE,
-				irqdis->isp_callbk_arg1[CBK_PREV_DONE],
-				irqdis->isp_callbk_arg2[CBK_PREV_DONE]);
-		is_irqhandled = 1;
+		if (!bufs->is_raw) {
+			spin_lock_irqsave(&isp_obj.isp_temp_buf_lock, flags);
+			if (!ispmodule_obj.applyCrop &&
+			    (ispmodule_obj.isp_temp_state == ISP_BUF_INIT) &&
+			    !isppreview_busy()) {
+				ispresizer_enable(1);
+				if (isppreview_busy()) {
+					struct isp_buf *buf =
+						ISP_BUF_DONE(bufs);
+					buf->vb_state = VIDEOBUF_ERROR;
+					printk(KERN_ALERT "%s: preview busy, "
+					       "skipping buffer\n", __func__);
+				}
+			}
+			spin_unlock_irqrestore(&isp_obj.isp_temp_buf_lock,
+					       flags);
+			spin_lock_irqsave(&bufs->lock, flags);
+			spin_unlock_irqrestore(&bufs->lock, flags);
+			if (ispmodule_obj.applyCrop &&
+			    !ispresizer_busy()) {
+				ispresizer_enable(0);
+				ispresizer_applycrop();
+				ispmodule_obj.applyCrop = 0;
+			}
+			if (!isppreview_busy())
+				isppreview_config_shadow_registers();
+			else
+				printk(KERN_ALERT "%s: preview bysy, shadow "
+				       "registers not written\n", __func__);
+			isph3a_update_wb();
+		}
 	}
 
 	if ((irqstatus & RESZ_DONE) == RESZ_DONE) {
-		if (irqdis->isp_callbk[CBK_RESZ_DONE])
-			irqdis->isp_callbk[CBK_RESZ_DONE](RESZ_DONE,
-				irqdis->isp_callbk_arg1[CBK_RESZ_DONE],
-				irqdis->isp_callbk_arg2[CBK_RESZ_DONE]);
-		is_irqhandled = 1;
+		if (!bufs->is_raw) {
+			if (!ispresizer_busy())
+				ispresizer_config_shadow_registers();
+			else
+				printk(KERN_ALERT
+				       "%s: resizer bysy, shadow registers "
+				       "not written\n", __func__);
+			spin_lock_irqsave(&isp_obj.isp_temp_buf_lock, flags);
+			if (ispmodule_obj.isp_temp_state == ISP_BUF_INIT) {
+				spin_unlock_irqrestore(
+					&isp_obj.isp_temp_buf_lock, flags);
+				isp_buf_process(bufs);
+			} else
+				spin_unlock_irqrestore(
+					&isp_obj.isp_temp_buf_lock, flags);
+		}
 	}
 
 	if ((irqstatus & H3A_AWB_DONE) == H3A_AWB_DONE) {
@@ -1072,7 +1150,6 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *ispirq_disp)
 			irqdis->isp_callbk[CBK_H3A_AWB_DONE](H3A_AWB_DONE,
 				irqdis->isp_callbk_arg1[CBK_H3A_AWB_DONE],
 				irqdis->isp_callbk_arg2[CBK_H3A_AWB_DONE]);
-		is_irqhandled = 1;
 	}
 
 	if ((irqstatus & HIST_DONE) == HIST_DONE) {
@@ -1080,15 +1157,6 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *ispirq_disp)
 			irqdis->isp_callbk[CBK_HIST_DONE](HIST_DONE,
 				irqdis->isp_callbk_arg1[CBK_HIST_DONE],
 				irqdis->isp_callbk_arg2[CBK_HIST_DONE]);
-		is_irqhandled = 1;
-	}
-
-	if ((irqstatus & HS_VS) == HS_VS) {
-		if (irqdis->isp_callbk[CBK_HS_VS])
-			irqdis->isp_callbk[CBK_HS_VS](HS_VS,
-				irqdis->isp_callbk_arg1[CBK_HS_VS],
-				irqdis->isp_callbk_arg2[CBK_HS_VS]);
-		is_irqhandled = 1;
 	}
 
 	if ((irqstatus & H3A_AF_DONE) == H3A_AF_DONE) {
@@ -1096,21 +1164,10 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *ispirq_disp)
 			irqdis->isp_callbk[CBK_H3A_AF_DONE](H3A_AF_DONE,
 				irqdis->isp_callbk_arg1[CBK_H3A_AF_DONE],
 				irqdis->isp_callbk_arg2[CBK_H3A_AF_DONE]);
-		is_irqhandled = 1;
 	}
 
 	if ((irqstatus & CSIA) == CSIA) {
 		isp_csi2_isr();
-		is_irqhandled = 1;
-	}
-
-	if (irqstatus & LSC_PRE_ERR) {
-		printk(KERN_ERR "isp_sr: LSC_PRE_ERR \n");
-		omap_writel(irqstatus, ISP_IRQ0STATUS);
-		ispccdc_enable_lsc(0);
-		ispccdc_enable_lsc(1);
-		spin_unlock_irqrestore(&isp_obj.lock, irqflags);
-		return IRQ_HANDLED;
 	}
 
 	if (irqstatus & IRQ0STATUS_CSIB_IRQ) {
@@ -1120,14 +1177,15 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *ispirq_disp)
 		DPRINTK_ISPCTRL("%x\n", ispcsi1_irqstatus);
 	}
 
-out:
-	omap_writel(irqstatus, ISP_IRQ0STATUS);
+	if (irqdis->isp_callbk[CBK_CATCHALL])
+		irqdis->isp_callbk[CBK_CATCHALL](
+			irqstatus,
+			irqdis->isp_callbk_arg1[CBK_CATCHALL],
+			irqdis->isp_callbk_arg2[CBK_CATCHALL]);
+
 	spin_unlock_irqrestore(&isp_obj.lock, irqflags);
 
-	if (is_irqhandled)
-		return IRQ_HANDLED;
-	else
-		return IRQ_NONE;
+	return IRQ_HANDLED;
 }
 /* Device name, needed for resource tracking layer */
 struct device_driver camera_drv = {
@@ -1137,29 +1195,6 @@ struct device_driver camera_drv = {
 struct device camera_dev = {
 	.driver = &camera_drv,
 };
-
-/**
- * omapisp_unset_callback - Unsets all the callbacks associated with ISP module
- **/
-void omapisp_unset_callback()
-{
-	isp_unset_callback(CBK_HS_VS);
-
-	if ((ispmodule_obj.isp_pipeline & OMAP_ISP_RESIZER) &&
-						is_ispresizer_enabled())
-		isp_unset_callback(CBK_RESZ_DONE);
-
-	if ((ispmodule_obj.isp_pipeline & OMAP_ISP_PREVIEW) &&
-						is_isppreview_enabled())
-		isp_unset_callback(CBK_PREV_DONE);
-
-	if (ispmodule_obj.isp_pipeline & OMAP_ISP_CCDC) {
-		isp_unset_callback(CBK_CCDC_VD0);
-		isp_unset_callback(CBK_CCDC_VD1);
-		isp_unset_callback(CBK_LSC_ISR);
-	}
-	omap_writel(omap_readl(ISP_IRQ0STATUS) | ISP_INT_CLR, ISP_IRQ0STATUS);
-}
 
 #if ISP_WORKAROUND
 /**
@@ -1212,7 +1247,7 @@ dma_addr_t isp_buf_get(void)
 void isp_buf_free(void)
 {
 	if (alloc_done == 1) {
-		ispmmu_unmap(buff_addr_mapped);
+		ispmmu_unmap_sg(buff_addr_mapped);
 		dma_unmap_sg(NULL, sglist_alloc, no_of_pages, 1);
 		kfree(sglist_alloc);
 		vfree(buff_addr);
@@ -1237,7 +1272,7 @@ void isp_start(void)
 }
 EXPORT_SYMBOL(isp_start);
 
-#define ISP_STOP_TIMEOUT	1000
+#define ISP_STOP_TIMEOUT	msecs_to_jiffies(1000)
 /**
  * isp_stop - Stops isp submodules
  **/
@@ -1250,55 +1285,77 @@ void isp_stop()
 	ispmodule_obj.isp_temp_state = ISP_FREE_RUNNING;
 	spin_unlock_irqrestore(&isp_obj.isp_temp_buf_lock, flags);
 
-	omapisp_unset_callback();
+	isp_disable_interrupts();
 
-	ispccdc_enable_lsc(0);
-	ispccdc_enable(0);
-	isppreview_enable(0);
-	while (isppreview_busy() && !time_after(jiffies, timeout))
-		msleep(1);
+	if (ispbufs.is_raw) {
+		/* RAW capture. Only CCDC needs to be stopped. */
 
-	if (isppreview_busy())
-		printk(KERN_ERR "%s: preview doesn't stop\n", __func__);
+		ispccdc_enable_lsc(0);
+		ispccdc_enable(0);
 
-	timeout = jiffies + ISP_STOP_TIMEOUT;
-	ispresizer_enable(0);
-	while (ispresizer_busy() && !time_after(jiffies, timeout))
-		msleep(1);
+		timeout = jiffies + ISP_STOP_TIMEOUT;
+		while (ispccdc_busy() && !time_after(jiffies, timeout))
+			msleep(1);
 
-	if (ispresizer_busy())
-		printk(KERN_ERR "%s: resizer doesn't stop\n", __func__);
+		printk(KERN_ERR "ccdc %d\n", jiffies - timeout + ISP_STOP_TIMEOUT);
+		if (ispccdc_busy())
+			printk(KERN_ERR "%s: ccdc doesn't stop\n", __func__);
+		
+	} else {
+		/*
+		 * YUV capture. Only resizer must stop since we are
+		 * writing to the temporary buffer. We still need to
+		 * flush that buffer, though.
+		 */
+		ispresizer_enable(0);
+		isppreview_enable(0);
+/* 		while (isppreview_busy() && !time_after(jiffies, timeout)) */
+/* 			msleep(1); */
 
-	timeout = jiffies + ISP_STOP_TIMEOUT;
+/* 		if (isppreview_busy()) */
+/* 			printk(KERN_ERR "%s: preview doesn't stop\n", __func__); */
+
+/* 		printk(KERN_ERR "prv %d\n",  jiffies - timeout + ISP_STOP_TIMEOUT); */
+
+		timeout = jiffies + ISP_STOP_TIMEOUT;
+		while (ispresizer_busy() && !time_after(jiffies, timeout))
+			msleep(1);
+
+		printk(KERN_ERR "rsz %d\n", jiffies - timeout + ISP_STOP_TIMEOUT);
+		if (ispresizer_busy())
+			printk(KERN_ERR "%s: resizer doesn't stop\n", __func__);
+
+		ispccdc_enable_lsc(0);
+		ispccdc_enable(0);
+	}
+
 	isp_save_ctx();
 	omap_writel(omap_readl(ISP_SYSCONFIG) | ISP_SYSCONFIG_SOFTRESET,
 		    ISP_SYSCONFIG);
+	timeout = 0;
 	while (!(omap_readl(ISP_SYSSTATUS) & 0x1)) {
-		if (time_after(jiffies, timeout)) {
+		if (timeout++ > 10000) {
 			printk(KERN_ALERT "isp.c: cannot reset ISP\n");
-			return;
+			break;
 		}
-		msleep(1);
+		udelay(1);
 	}
+	printk(KERN_ERR "reset %d\n", timeout );
 	isp_restore_ctx();
 }
 
-/**
- * isp_set_buf - Sets output address for submodules.
- * @sgdma_state: Pointer to structure with the SGDMA state for each videobuffer
- **/
-void isp_set_buf(struct isp_sgdma_state *sgdma_state)
+void isp_set_buf(struct isp_buf *buf)
 {
 	if ((ispmodule_obj.isp_pipeline & OMAP_ISP_RESIZER) &&
 						is_ispresizer_enabled())
-		ispresizer_set_outaddr(sgdma_state->isp_addr);
+		ispresizer_set_outaddr(buf->isp_addr);
 #if (ISP_WORKAROUND == 0)
 	else if ((ispmodule_obj.isp_pipeline & OMAP_ISP_PREVIEW) &&
 						is_isppreview_enabled())
-		isppreview_set_outaddr(sgdma_state->isp_addr);
+		isppreview_set_outaddr(buf->isp_addr);
 #endif
 	else if (ispmodule_obj.isp_pipeline & OMAP_ISP_CCDC)
-		ispccdc_set_outaddr(sgdma_state->isp_addr);
+		ispccdc_set_outaddr(buf->isp_addr);
 
 }
 
@@ -1388,129 +1445,22 @@ void isp_config_pipeline(struct v4l2_pix_format *pix_input,
 	return;
 }
 
-/**
- * isp_vbq_done - Callback for interrupt completion
- * @status: IRQ0STATUS register value. Passed by the ISR, or the caller.
- * @arg1: Pointer to callback function for SG-DMA management.
- * @arg2: Pointer to videobuffer structure managed by ISP.
- **/
-void isp_vbq_done(unsigned long status, isp_vbq_callback_ptr arg1, void *arg2)
+void isp_buf_init()
 {
-	struct videobuf_buffer *vb = (struct videobuf_buffer *) arg2;
-	int notify = 0;
-	int rval = 0;
-	unsigned long flags;
-
-	switch (status) {
-	case CCDC_VD0:
-		ispccdc_config_shadow_registers();
-		if ((ispmodule_obj.isp_pipeline & OMAP_ISP_RESIZER) ||
-			(ispmodule_obj.isp_pipeline & OMAP_ISP_PREVIEW))
-			return;
-		else {
-
-			spin_lock_irqsave(&isp_obj.isp_temp_buf_lock, flags);
-			if (ispmodule_obj.isp_temp_state != ISP_BUF_INIT) {
-				spin_unlock_irqrestore(
-					&isp_obj.isp_temp_buf_lock, flags);
-				return;
-
-			} else {
-				spin_unlock_irqrestore(
-					&isp_obj.isp_temp_buf_lock, flags);
-				break;
-			}
-		}
-		break;
-	case CCDC_VD1:
-		if ((ispmodule_obj.isp_pipeline & OMAP_ISP_RESIZER) ||
-			(ispmodule_obj.isp_pipeline & OMAP_ISP_PREVIEW))
-			return;
-		spin_lock_irqsave(&isp_obj.isp_temp_buf_lock, flags);
-		if (ispmodule_obj.isp_temp_state == ISP_BUF_INIT) {
-			spin_unlock_irqrestore(&isp_obj.isp_temp_buf_lock,
-					       flags);
-			ispccdc_enable(0);
-			return;
-		}
-		spin_unlock_irqrestore(&isp_obj.isp_temp_buf_lock, flags);
-		return;
-		break;
-	case PREV_DONE:
-		if (is_isppreview_enabled()) {
-		if (ispmodule_obj.isp_pipeline & OMAP_ISP_RESIZER) {
-			spin_lock_irqsave(&isp_obj.isp_temp_buf_lock, flags);
-			if (!ispmodule_obj.applyCrop &&
-					(ispmodule_obj.isp_temp_state ==
-					ISP_BUF_INIT))
-				ispresizer_enable(1);
-			spin_unlock_irqrestore(&isp_obj.isp_temp_buf_lock,
-					       flags);
-			if (ispmodule_obj.applyCrop &&
-				!ispresizer_busy()) {
-				ispresizer_enable(0);
-				ispresizer_applycrop();
-				ispmodule_obj.applyCrop = 0;
-			}
-			isppreview_config_shadow_registers();
-			isph3a_update_wb();
-		}
-		if (ispmodule_obj.isp_pipeline & OMAP_ISP_RESIZER)
-			return;
-		}
-		break;
-	case RESZ_DONE:
-		if (is_ispresizer_enabled()) {
-			ispresizer_config_shadow_registers();
-			spin_lock_irqsave(&isp_obj.isp_temp_buf_lock, flags);
-			if (ispmodule_obj.isp_temp_state != ISP_BUF_INIT) {
-				spin_unlock_irqrestore(
-					&isp_obj.isp_temp_buf_lock, flags);
-				return;
-			}
-			spin_unlock_irqrestore(&isp_obj.isp_temp_buf_lock,
-					       flags);
-		}
-		break;
-	case HS_VS:
-		spin_lock_irqsave(&isp_obj.isp_temp_buf_lock, flags);
-		if (ispmodule_obj.isp_temp_state == ISP_BUF_TRAN) {
-			isp_CCDC_VD01_enable();
-			ispmodule_obj.isp_temp_state = ISP_BUF_INIT;
-		}
-		spin_unlock_irqrestore(&isp_obj.isp_temp_buf_lock, flags);
-		return;
-	default:
-		return;
-	}
-
-	spin_lock_irqsave(&ispsg.lock, flags);
-	ispsg.free_sgdma++;
-	if (ispsg.free_sgdma > NUM_SG_DMA)
-		ispsg.free_sgdma = NUM_SG_DMA;
-	spin_unlock_irqrestore(&ispsg.lock, flags);
-
-	rval = arg1(vb);
-
-	if (rval)
-		isp_sgdma_process(&ispsg, 1, &notify, arg1);
-
-	return;
-}
-
-/**
- * isp_sgdma_init - Initializes Scatter Gather DMA status and operations.
- **/
-void isp_sgdma_init()
-{
+	struct isp_bufs *bufs = &ispbufs;
 	int sg;
 
-	ispsg.free_sgdma = NUM_SG_DMA;
-	ispsg.next_sgdma = 0;
-	for (sg = 0; sg < NUM_SG_DMA; sg++) {
-		ispsg.sg_state[sg].status = 0;
-		ispsg.sg_state[sg].callback = NULL;
-		ispsg.sg_state[sg].arg = NULL;
+	bufs->queue = 0;
+	bufs->done = 0;
+	bufs->is_raw = 1;
+	bufs->skip = 0;
+	if ((ispmodule_obj.isp_pipeline & OMAP_ISP_RESIZER) ||
+	    (ispmodule_obj.isp_pipeline & OMAP_ISP_PREVIEW))
+		bufs->is_raw = 0;
+	for (sg = 0; sg < NUM_BUFS; sg++) {
+		bufs->buf[sg].complete = NULL;
+		bufs->buf[sg].vb = NULL;
+		bufs->buf[sg].priv = NULL;
 	}
 }
 EXPORT_SYMBOL(isp_stop);
@@ -1538,139 +1488,154 @@ int isp_vbq_sync(struct videobuf_buffer *vb)
 	return 0;
 }
 
-/**
- * isp_sgdma_process - Sets operations and config for specified SG DMA
- * @sgdma: SG-DMA function to work on.
- * @irq: Flag to specify if an IRQ is associated with the DMA completion.
- * @dma_notify: Pointer to flag that says when the ISP has to be started.
- * @func_ptr: Callback function pointer for SG-DMA setup.
- **/
-void isp_sgdma_process(struct isp_sgdma *sgdma, int irq, int *dma_notify,
-						isp_vbq_callback_ptr func_ptr)
+static void isp_transfer_init(struct isp_bufs *bufs)
 {
-	struct isp_sgdma_state *sgdma_state;
 	unsigned long flags;
-	spin_lock_irqsave(&sgdma->lock, flags);
+	struct isp_buf *buf = ISP_BUF_DONE(bufs);
 
-	if (NUM_SG_DMA > sgdma->free_sgdma) {
-		unsigned long flags;
+	if (ISP_BUFS_EMPTY(bufs))
+		isp_enable_interrupts(bufs->is_raw);
 
-		sgdma_state = sgdma->sg_state +
-			(sgdma->next_sgdma + sgdma->free_sgdma) % NUM_SG_DMA;
-		if (!irq) {
-			if (*dma_notify) {
-				isp_set_sgdma_callback(sgdma_state, func_ptr);
-				isp_set_buf(sgdma_state);
-				ispccdc_enable(1);
-				isp_start();
-				*dma_notify = 0;
-				spin_lock_irqsave(&isp_obj.isp_temp_buf_lock,
-						  flags);
-				if (ispmodule_obj.isp_pipeline
-					& OMAP_ISP_RESIZER) {
-					ispmodule_obj.isp_temp_state =
-						ISP_BUF_INIT;
-				} else
-					ispmodule_obj.isp_temp_state =
-						ISP_BUF_TRAN;
-				spin_unlock_irqrestore(
-					&isp_obj.isp_temp_buf_lock, flags);
-			} else {
-				spin_lock_irqsave(&isp_obj.isp_temp_buf_lock,
-						  flags);
-				if (ispmodule_obj.isp_temp_state ==
-							ISP_FREE_RUNNING) {
-					isp_set_sgdma_callback(sgdma_state,
-								func_ptr);
-					isp_set_buf(sgdma_state);
-					/* Non startup case */
-					if (ispmodule_obj.isp_pipeline
-					& OMAP_ISP_RESIZER) {
-						ispmodule_obj.isp_temp_state =
-							ISP_BUF_INIT;
-					} else {
-						ispmodule_obj.isp_temp_state =
-							ISP_BUF_TRAN;
-						ispccdc_enable(1);
-					}
-				}
-				spin_unlock_irqrestore(
-					&isp_obj.isp_temp_buf_lock, flags);
-			}
-		} else {
-			isp_set_sgdma_callback(sgdma_state, func_ptr);
-			isp_set_buf(sgdma_state);
-			/* Non startup case */
-			if (!(ispmodule_obj.isp_pipeline
-				& OMAP_ISP_RESIZER))
-				ispccdc_enable(1);
-
-			if (*dma_notify) {
-				isp_start();
-				*dma_notify = 0;
-			}
-		}
-	} else {
-		unsigned long flags;
-
-		spin_lock_irqsave(&isp_obj.isp_temp_buf_lock, flags);
-		isp_CCDC_VD01_disable();
-		ispresizer_enable(0);
-		ispmodule_obj.isp_temp_state = ISP_FREE_RUNNING;
-		spin_unlock_irqrestore(&isp_obj.isp_temp_buf_lock, flags);
-	}
-	spin_unlock_irqrestore(&sgdma->lock, flags);
-	return;
+	isp_set_buf(buf);
+	ispccdc_enable(1);
+	isp_start();
+	spin_lock_irqsave(&isp_obj.isp_temp_buf_lock,
+			  flags);
+	if (ispmodule_obj.isp_pipeline
+	    & OMAP_ISP_RESIZER) {
+		ispmodule_obj.isp_temp_state =
+			ISP_BUF_INIT;
+	} else
+		ispmodule_obj.isp_temp_state =
+			ISP_BUF_TRAN;
+	spin_unlock_irqrestore(
+		&isp_obj.isp_temp_buf_lock, flags);
 }
 
-/**
- * isp_sgdma_queue - Queues a Scatter-Gather DMA videobuffer.
- * @vdma: Pointer to structure containing the desired DMA video buffer
- *        transfer parameters.
- * @vb: Pointer to structure containing the target videobuffer.
- * @irq: Flag to specify if an IRQ is associated with the DMA completion.
- * @dma_notify: Pointer to flag that says when the ISP has to be started.
- * @func_ptr: Callback function pointer for SG-DMA setup.
- *
- * Returns 0 if successful, -EINVAL if invalid SG linked list setup, or -EBUSY
- * if the ISP SG-DMA is not free.
- **/
-int isp_sgdma_queue(struct videobuf_dmabuf *vdma, struct videobuf_buffer *vb,
-						int irq, int *dma_notify,
-						isp_vbq_callback_ptr func_ptr)
+int isp_buf_process(struct isp_bufs *bufs)
 {
+	struct isp_buf *buf = NULL;
 	unsigned long flags;
-	struct isp_sgdma_state *sg_state;
-	const struct scatterlist *sglist = vdma->sglist;
-	int sglen = vdma->sglen;
 
-	if ((sglen < 0) || ((sglen > 0) & !sglist))
-		return -EINVAL;
-	isp_vbq_sync(vb);
+	spin_lock_irqsave(&bufs->lock, flags);
 
-	spin_lock_irqsave(&ispsg.lock, flags);
-
-	if (!ispsg.free_sgdma) {
-		spin_unlock_irqrestore(&ispsg.lock, flags);
-		return -EBUSY;
+	if (bufs->skip) {
+		bufs->skip = 0;
+		goto out;
 	}
 
-	sg_state = ispsg.sg_state + ispsg.next_sgdma;
-	sg_state->isp_addr = ispsg.isp_addr_capture[vb->i];
-	sg_state->status = 0;
-	sg_state->callback = isp_vbq_done;
-	sg_state->arg = vb;
+	if (!ISP_BUFS_EMPTY(bufs)) {
+		/*
+		 * We had at least one buffer in queue. We mark that
+		 * buffer done as well, although we're still handling
+		 * it. It's safe, though, as we have at least as many
+		 * isp_bufs as videobuf_buffers.
+		 */
+		buf = ISP_BUF_DONE(bufs);
+		ISP_BUF_MARK_DONE(bufs);
 
-	ispsg.next_sgdma = (ispsg.next_sgdma + 1) % NUM_SG_DMA;
-	ispsg.free_sgdma--;
+		if (!ISP_BUFS_EMPTY(bufs)) {
+			/* Queue the next buffer. */
+			isp_transfer_init(bufs);
+			/*
+			 * For the transfer to succeed, the CCDC (RAW
+			 * capture) or resizer (YUV capture) must be
+			 * idle for the duration of transfer setup.
+			 * Bad things happen otherwise!
+			 */
+			if ((bufs->is_raw && ispccdc_busy())
+			    || (!bufs->is_raw && ispresizer_busy())) {
+				/* Mark this buffer faulty. */
+				buf->vb_state = VIDEOBUF_ERROR;
+				/* Skip next transfer. */
+				bufs->skip = 1;
+				printk(KERN_ALERT "OUCH!!!\n");
+			}
+			PRINTK(KERN_ALERT "%s: write next %d mmu %p\n", __func__,
+			       bufs->done,
+			       (bufs->buf + bufs->done)->isp_addr);
+		} else {
+			/*
+			 * No more buffers to queue --- this was the
+			 * last one. Stop the ISP after the transfer.
+			 */
+			isp_disable_interrupts();
+			if (bufs->is_raw)
+				ispccdc_enable(0);
+			else
+				ispresizer_enable(0);
+			/*
+			 * If we fail to stop the ISP the buffer is
+			 * probably going to be bad.
+			 */
+			if (isp_wait_idle(100)) {
+				printk(KERN_ALERT "Ouch!\n");
+				buf->vb_state = VIDEOBUF_ERROR;
+			}
+			PRINTK(KERN_ALERT "%s: deactivate, queue == done == %d\n", __func__,
+			       bufs->done);
+		}
 
-	spin_unlock_irqrestore(&ispsg.lock, flags);
+		PRINTK(KERN_ALERT "%s: finish %d mmu %p\n", __func__,
+		       (bufs->done - 1 + NUM_BUFS) % NUM_BUFS,
+		       (bufs->buf+((bufs->done - 1 + NUM_BUFS) % NUM_BUFS))->isp_addr);
+	}
 
-	isp_sgdma_process(&ispsg, irq, dma_notify, func_ptr);
+out:
+	spin_unlock_irqrestore(&bufs->lock, flags);
+
+	if (buf != NULL) {
+		/*
+		 * We want to dequeue a buffer from the video buffer
+		 * queue. Let's do it!
+		 */
+		isp_vbq_sync(buf->vb);
+		buf->vb->state = buf->vb_state;
+		buf->complete(buf->vb, buf->priv);
+	}
 
 	return 0;
 }
-EXPORT_SYMBOL(isp_sgdma_queue);
+
+int isp_buf_queue(struct videobuf_buffer *vb,
+		  void (*complete)(struct videobuf_buffer *vb, void *priv),
+		  void *priv)
+{
+	unsigned long flags;
+	struct isp_buf *buf;
+	struct videobuf_dmabuf *dma = videobuf_to_dma(vb);
+	const struct scatterlist *sglist = dma->sglist;
+	struct isp_bufs *bufs = &ispbufs;
+	int sglen = dma->sglen;
+
+	BUG_ON(sglen < 0 || !sglist);
+
+	spin_lock_irqsave(&bufs->lock, flags);
+
+	BUG_ON(ISP_BUFS_FULL(bufs));
+
+	buf = ISP_BUF_QUEUE(bufs);
+
+	buf->isp_addr = bufs->isp_addr_capture[vb->i];
+	buf->complete = complete;
+	buf->vb = vb;
+	buf->priv = priv;
+	buf->vb_state = VIDEOBUF_DONE;
+
+	if (ISP_BUFS_EMPTY(bufs))
+		isp_transfer_init(bufs);
+
+	ISP_BUF_MARK_QUEUED(bufs);
+
+	spin_unlock_irqrestore(&bufs->lock, flags);
+
+	PRINTK(KERN_ALERT "%s: queue %d vb %d, mmu %p\n", __func__,
+	       (bufs->queue - 1 + NUM_BUFS) % NUM_BUFS, vb->i,
+	       buf->isp_addr);
+
+	return 0;
+}
+EXPORT_SYMBOL(isp_buf_queue);
 
 /**
  * isp_vbq_prepare - Videobuffer queue prepare.
@@ -1686,6 +1651,7 @@ int isp_vbq_prepare(struct videobuf_queue *vbq, struct videobuf_buffer *vb,
 {
 	unsigned int isp_addr;
 	struct videobuf_dmabuf	*vdma;
+	struct isp_bufs *bufs = &ispbufs;
 
 	int err = 0;
 
@@ -1696,7 +1662,7 @@ int isp_vbq_prepare(struct videobuf_queue *vbq, struct videobuf_buffer *vb,
 	if (!isp_addr)
 		err = -EIO;
 	else
-		ispsg.isp_addr_capture[vb->i] = isp_addr;
+		bufs->isp_addr_capture[vb->i] = isp_addr;
 
 	return err;
 }
@@ -1709,8 +1675,10 @@ EXPORT_SYMBOL(isp_vbq_prepare);
  **/
 void isp_vbq_release(struct videobuf_queue *vbq, struct videobuf_buffer *vb)
 {
-	ispmmu_unmap(ispsg.isp_addr_capture[vb->i]);
-	ispsg.isp_addr_capture[vb->i] = (dma_addr_t) NULL;
+	struct isp_bufs *bufs = &ispbufs;
+
+	ispmmu_unmap_sg(bufs->isp_addr_capture[vb->i]);
+	bufs->isp_addr_capture[vb->i] = (dma_addr_t) NULL;
 	return;
 }
 EXPORT_SYMBOL(isp_vbq_release);
@@ -2449,7 +2417,7 @@ static int __init isp_init(void)
 	DPRINTK_ISPCTRL("-isp_init for Omap 3430 Camera ISP\n");
 	return 0;
 }
-EXPORT_SYMBOL(isp_sgdma_init);
+EXPORT_SYMBOL(isp_buf_init);
 
 /**
  * isp_cleanup - ISP module cleanup.

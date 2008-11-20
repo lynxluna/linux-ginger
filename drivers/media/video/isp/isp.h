@@ -40,7 +40,7 @@
 						 * terminating token for ISP
 						 * modules reg list
 						 */
-#define NUM_SG_DMA		(VIDEO_MAX_FRAME + 2)
+#define NUM_BUFS		VIDEO_MAX_FRAME
 
 #define ISP_BUF_INIT		0
 #define ISP_FREE_RUNNING	1
@@ -124,33 +124,39 @@ struct isp_reg {
 	u32 val;
 };
 
-/**
- * struct isp_sgdma_state - SG-DMA state for each videobuffer + 2 overlays
- * @isp_addr: ISP space address mapped by ISP MMU.
- * @status: DMA return code mapped by ISP MMU.
- * @callback: Pointer to ISP callback function.
- * @arg: Pointer to argument passed to the specified callback function.
- */
-struct isp_sgdma_state {
+struct isp_buf {
 	dma_addr_t isp_addr;
-	u32 status;
-	isp_callback_t callback;
-	void *arg;
+	void (*complete)(struct videobuf_buffer *vb, void *priv);
+	struct videobuf_buffer *vb;
+	void *priv;
+	u32 vb_state;
 };
 
-/**
- * struct isp_sgdma - ISP Scatter Gather DMA status.
- * @isp_addr_capture: Array of ISP space addresses mapped by the ISP MMU.
- * @lock: Spinlock used to check free_sgdma field.
- * @free_sgdma: Number of free SG-DMA slots.
- * @next_sgdma: Index of next SG-DMA slot to use.
- */
-struct isp_sgdma {
+
+#define ISP_BUFS_FULL(bufs) \
+	(((bufs)->queue + 1) % NUM_BUFS == (bufs)->done)
+#define ISP_BUFS_EMPTY(bufs)		((bufs)->queue == (bufs)->done)
+#define ISP_BUF_DONE(bufs)		((bufs)->buf + (bufs)->done)
+#define ISP_BUF_QUEUE(bufs)		((bufs)->buf + (bufs)->queue)
+#define ISP_BUF_MARK_DONE(bufs) \
+	(bufs)->done = ((bufs)->done + 1) % NUM_BUFS;
+#define ISP_BUF_MARK_QUEUED(bufs) \
+	(bufs)->queue = ((bufs)->queue + 1) % NUM_BUFS;
+
+struct isp_bufs {
 	dma_addr_t isp_addr_capture[VIDEO_MAX_FRAME];
 	spinlock_t lock;	/* For handling current buffer */
-	int free_sgdma;
-	int next_sgdma;
-	struct isp_sgdma_state sg_state[NUM_SG_DMA];
+	/* queue full: (ispsg.queue + 1) % NUM_BUFS == ispsg.done
+	   queue empty: ispsg.queue == ispsg.done */
+	struct isp_buf buf[NUM_BUFS];
+	/* Next slot to queue a buffer. */
+	int queue;
+	/* Buffer that is being processed. */
+	int done;
+	/* raw capture? */
+	int is_raw;
+	/* configuring ISP in time failed, don't dequeue at next interrupt */
+	int skip;
 };
 
 /**
@@ -226,16 +232,13 @@ void isp_start(void);
 
 void isp_stop(void);
 
-void isp_sgdma_init(void);
+void isp_buf_init(void);
 
 void isp_vbq_done(unsigned long status, isp_vbq_callback_ptr arg1, void *arg2);
 
-void isp_sgdma_process(struct isp_sgdma *sgdma, int irq, int *dma_notify,
-						isp_vbq_callback_ptr func_ptr);
-
-int isp_sgdma_queue(struct videobuf_dmabuf *vdma, struct videobuf_buffer *vb,
-						int irq, int *dma_notify,
-						isp_vbq_callback_ptr func_ptr);
+int isp_buf_queue(struct videobuf_buffer *vb,
+		  void (*complete)(struct videobuf_buffer *vb, void *priv),
+		  void *priv);
 
 int isp_vbq_prepare(struct videobuf_queue *vbq, struct videobuf_buffer *vb,
 							enum v4l2_field field);
