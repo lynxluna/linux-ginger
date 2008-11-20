@@ -991,7 +991,6 @@ void isp_CCDC_VD01_disable(void)
 }
 
 int isp_buf_process(struct isp_bufs *bufs);
-int isp_vbq_sync(struct videobuf_buffer *vb);
 
 /**
  * omap34xx_isp_isr - Interrupt Service Routine for Camera ISP module.
@@ -1453,7 +1452,7 @@ EXPORT_SYMBOL(isp_stop);
  * isp_vbq_sync - Walks the pages table and flushes the cache for
  *                each page.
  **/
-int isp_vbq_sync(struct videobuf_buffer *vb)
+int isp_vbq_sync(struct videobuf_buffer *vb, int when)
 {
 	struct videobuf_dmabuf *vdma;
 	u32 sg_element_addr;
@@ -1467,7 +1466,7 @@ int isp_vbq_sync(struct videobuf_buffer *vb)
 		sg_element_addr &= ~(PAGE_SIZE-1);
 
 		dma_sync_single_for_cpu(NULL, sg_element_addr,
-				PAGE_SIZE, DMA_FROM_DEVICE);
+				PAGE_SIZE, when);
 	}
 	return 0;
 }
@@ -1542,7 +1541,7 @@ out:
 		 * We want to dequeue a buffer from the video buffer
 		 * queue. Let's do it!
 		 */
-		isp_vbq_sync(buf->vb);
+		isp_vbq_sync(buf->vb, DMA_FROM_DEVICE);
 		buf->vb->state = buf->vb_state;
 		buf->complete(buf->vb, buf->priv);
 	}
@@ -1562,6 +1561,8 @@ int isp_buf_queue(struct videobuf_buffer *vb,
 	int sglen = dma->sglen;
 
 	BUG_ON(sglen < 0 || !sglist);
+
+	isp_vbq_sync(vb, DMA_TO_DEVICE);
 
 	spin_lock_irqsave(&bufs->lock, flags);
 
