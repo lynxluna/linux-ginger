@@ -1197,7 +1197,7 @@ int ispccdc_config_size(u32 input_w, u32 input_h, u32 output_w, u32 output_h)
 		}
 		omap_writel(0 << ISPCCDC_VERT_START_SLV0_SHIFT,
 							ISPCCDC_VERT_START);
-		omap_writel((ispccdc_obj.ccdcout_h - 2) <<
+		omap_writel((ispccdc_obj.ccdcout_h - 1) <<
 						ISPCCDC_VERT_LINES_NLV_SHIFT,
 						ISPCCDC_VERT_LINES);
 
