@@ -605,7 +605,7 @@ int ispccdc_config_datapath(enum ccdc_input input, enum ccdc_output output)
 		syncif.fldstat = 0;
 		syncif.hdpol = 0;
 		syncif.ipmod = RAW;
-		syncif.vdpol = 1;
+		syncif.vdpol = 0;
 		ispccdc_config_sync_if(syncif);
 		ispccdc_config_imgattr(colptn);
 		blkcfg.dcsubval = 42;
