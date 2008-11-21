@@ -1014,48 +1014,6 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *ispirq_disp)
 	irqstatus = omap_readl(ISP_IRQ0STATUS);
 	omap_writel(irqstatus, ISP_IRQ0STATUS);
 
-#if 1
-{    
-static const struct {
-       int num;
-       char *name;
-} bits[] = {
-       { 31, "HS_VS_IRQ" },
-       { 30, "SEC_ERR_IRQ" },
-       { 29, "OCP_ERR_IRQ" },
-       { 28, "MMU_ERR_IRQ" },
-       { 27, "res27" },
-       { 26, "res26" },
-       { 25, "OVF_IRQ" },
-       { 24, "RSZ_DONE_IRQ" },
-       { 23, "res23" },
-       { 22, "res22" },
-       { 21, "CBUFF_IRQ" },
-       { 20, "PRV_DONE_IRQ" },
-       { 19, "CCDC_LSC_PREFETCH_ERROR" },
-       { 18, "CCDC_LSC_PREFETCH_COMPLETED" },
-       { 17, "CCDC_LSC_DONE" },
-       { 16, "HIST_DONE_IRQ" },
-       { 15, "res15" },
-       { 14, "res14" },
-       { 13, "H3A_AWB_DONE_IRQ" },
-       { 12, "H3A_AF_DONE_IRQ" },
-       { 11, "CCDC_ERR_IRQ" },
-       { 10, "CCDC_VD2_IRQ" },
-       {  9, "CCDC_VD1_IRQ" },
-       {  8, "CCDC_VD0_IRQ" },
-       {  7, "res7" },
-       {  6, "res6" },
-       {  5, "res5" },
-       {  4, "CSIB_IRQ" },
-       {  3, "CSIB_LCM_IRQ" },
-       {  2, "res2" },
-       {  1, "res1" },
-       {  0, "CSIA_IRQ" },
-};
-int i;
-}
-#endif
 	spin_lock_irqsave(&isp_obj.lock, irqflags);
 
 	if (irqstatus & LSC_PRE_ERR) {
@@ -1154,6 +1112,53 @@ int i;
 			irqdis->isp_callbk_arg1[CBK_CATCHALL],
 			irqdis->isp_callbk_arg2[CBK_CATCHALL]);
 
+#if 1
+	{    
+		static const struct {
+			int num;
+			char *name;
+		} bits[] = {
+			{ 31, "HS_VS_IRQ" },
+			{ 30, "SEC_ERR_IRQ" },
+			{ 29, "OCP_ERR_IRQ" },
+			{ 28, "MMU_ERR_IRQ" },
+			{ 27, "res27" },
+			{ 26, "res26" },
+			{ 25, "OVF_IRQ" },
+			{ 24, "RSZ_DONE_IRQ" },
+			{ 23, "res23" },
+			{ 22, "res22" },
+			{ 21, "CBUFF_IRQ" },
+			{ 20, "PRV_DONE_IRQ" },
+			{ 19, "CCDC_LSC_PREFETCH_ERROR" },
+			{ 18, "CCDC_LSC_PREFETCH_COMPLETED" },
+			{ 17, "CCDC_LSC_DONE" },
+			{ 16, "HIST_DONE_IRQ" },
+			{ 15, "res15" },
+			{ 14, "res14" },
+			{ 13, "H3A_AWB_DONE_IRQ" },
+			{ 12, "H3A_AF_DONE_IRQ" },
+			{ 11, "CCDC_ERR_IRQ" },
+			{ 10, "CCDC_VD2_IRQ" },
+			{  9, "CCDC_VD1_IRQ" },
+			{  8, "CCDC_VD0_IRQ" },
+			{  7, "res7" },
+			{  6, "res6" },
+			{  5, "res5" },
+			{  4, "CSIB_IRQ" },
+			{  3, "CSIB_LCM_IRQ" },
+			{  2, "res2" },
+			{  1, "res1" },
+			{  0, "CSIA_IRQ" },
+		};
+		int i;
+		for (i=0; i<ARRAY_SIZE(bits); i++) {
+			if ((1<<bits[i].num) & irqstatus)
+				PRINTK("%s ", bits[i].name);
+		}
+		PRINTK("\n");
+	}
+#endif
 	spin_unlock_irqrestore(&isp_obj.lock, irqflags);
 
 	return IRQ_HANDLED;
