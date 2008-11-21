@@ -157,6 +157,8 @@ struct isp_bufs {
 	struct isp_buf buf[NUM_BUFS];
 	/* Next slot to queue a buffer. */
 	int queue;
+	/* Received hs_vs interrupt after starting ccdc? */
+	int hs_vs;
 	/* Buffer that is being processed. */
 	int done;
 	/* raw capture? */

@@ -410,6 +410,7 @@ static void isp_enable_interrupts(int is_raw)
 	omap_writel(-1, ISP_IRQ0STATUS);
 	omap_writel(omap_readl(ISP_IRQ0ENABLE)
 		    | IRQ0ENABLE_CCDC_LSC_PREF_ERR_IRQ
+		    | IRQ0ENABLE_HS_VS_IRQ
 		    | IRQ0ENABLE_CCDC_VD0_IRQ
 		    | IRQ0ENABLE_CCDC_VD1_IRQ,
 		    ISP_IRQ0ENABLE);
@@ -429,6 +430,7 @@ static void isp_disable_interrupts(void)
 {
 	omap_writel(omap_readl(ISP_IRQ0ENABLE)
 		    & ~(IRQ0ENABLE_CCDC_LSC_PREF_ERR_IRQ
+			| IRQ0ENABLE_HS_VS_IRQ
 			| IRQ0ENABLE_CCDC_VD0_IRQ
 			| IRQ0ENABLE_CCDC_VD1_IRQ
 			| IRQ0ENABLE_PRV_DONE_IRQ
@@ -1065,6 +1067,9 @@ int i;
 	}
 
 	if ((irqstatus & HS_VS) == HS_VS) {
+		spin_lock_irqsave(&bufs->lock, flags);
+		bufs->hs_vs = 1;
+		spin_unlock_irqrestore(&bufs->lock, flags);
 	}
 
 	if ((irqstatus & CCDC_VD1) == CCDC_VD1) {
@@ -1456,6 +1461,13 @@ int isp_buf_process(struct isp_bufs *bufs)
 	if (ISP_BUFS_IS_EMPTY(bufs))
 		goto out;
 
+	/*
+	 * We need to wait for the first HS_VS interrupt from CCDC.
+	 * Otherwise our frame might be bad.
+	 */
+	if (!bufs->hs_vs)
+		goto out;
+
 	if (bufs->is_raw && ispccdc_wait_idle(1000)) {
 		printk(KERN_ERR "ccdc %d won't become idle!\n",
 		       bufs->is_raw);
@@ -1476,6 +1488,7 @@ int isp_buf_process(struct isp_bufs *bufs)
 			ispccdc_enable(0);
 		else
 			ispresizer_enable(0);
+		bufs->hs_vs = 0;
 	}
 	if ((bufs->is_raw && ispccdc_busy())
 	    || (!bufs->is_raw && ispresizer_busy())) {
