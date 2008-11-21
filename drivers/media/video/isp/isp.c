@@ -1046,7 +1046,11 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *ispirq_disp)
 	}
 
 	if ((irqstatus & PREV_DONE) == PREV_DONE) {
-		if (!bufs->is_raw && !ispresizer_busy()) {
+		if (irqdis->isp_callbk[CBK_PREV_DONE])
+			irqdis->isp_callbk[CBK_PREV_DONE](PREV_DONE,
+				irqdis->isp_callbk_arg1[CBK_PREV_DONE],
+				irqdis->isp_callbk_arg2[CBK_PREV_DONE]);
+		else if (!bufs->is_raw && !ispresizer_busy()) {
 /* 			if (ispmodule_obj.applyCrop) { */
 /* 				ispresizer_applycrop(); */
 /* 				if (!ispresizer_busy()) */
