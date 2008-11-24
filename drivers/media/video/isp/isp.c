@@ -1059,11 +1059,11 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *ispirq_disp)
 				irqdis->isp_callbk_arg1[CBK_PREV_DONE],
 				irqdis->isp_callbk_arg2[CBK_PREV_DONE]);
 		else if (!bufs->is_raw && !ispresizer_busy()) {
-/* 			if (ispmodule_obj.applyCrop) { */
-/* 				ispresizer_applycrop(); */
-/* 				if (!ispresizer_busy()) */
-/* 					ispmodule_obj.applyCrop = 0; */
-/* 			} */
+			if (ispmodule_obj.applyCrop) {
+				ispresizer_applycrop();
+				if (!ispresizer_busy())
+					ispmodule_obj.applyCrop = 0;
+			}
 			if (!isppreview_busy()) {
 				ispresizer_enable(1);
 				if (isppreview_busy()) {
@@ -1074,7 +1074,8 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *ispirq_disp)
 			}
 			if (!isppreview_busy())
 				isppreview_config_shadow_registers();
-			isph3a_update_wb();
+			if (!isppreview_busy())
+				isph3a_update_wb();
 		}
 	}
 
