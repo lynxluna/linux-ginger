@@ -1010,9 +1010,23 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *ispirq_disp)
 	unsigned long flags;
 	u32 irqstatus = 0;
 	unsigned long irqflags = 0;
+	int hs_vs;
 
 	irqstatus = omap_readl(ISP_IRQ0STATUS);
 	omap_writel(irqstatus, ISP_IRQ0STATUS);
+
+	spin_lock_irqsave(&bufs->lock, flags);
+	hs_vs = bufs->hs_vs;
+	if ((irqstatus & HS_VS) == HS_VS) {
+		bufs->hs_vs = 1;
+	}
+	spin_unlock_irqrestore(&bufs->lock, flags);
+	/*
+	 * We need to wait for the first HS_VS interrupt from CCDC. 
+	 * Otherwise our frame (and everything else) might be bad.
+	 */
+	if (!hs_vs)
+		goto out_no_unlock;
 
 	spin_lock_irqsave(&isp_obj.lock, irqflags);
 
@@ -1022,12 +1036,6 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *ispirq_disp)
 		ispccdc_enable_lsc(1);
 		/* Mark buffer faulty. */
 		buf->vb_state = VIDEOBUF_ERROR;
-	}
-
-	if ((irqstatus & HS_VS) == HS_VS) {
-		spin_lock_irqsave(&bufs->lock, flags);
-		bufs->hs_vs = 1;
-		spin_unlock_irqrestore(&bufs->lock, flags);
 	}
 
 	if ((irqstatus & CCDC_VD1) == CCDC_VD1) {
@@ -1116,6 +1124,9 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *ispirq_disp)
 			irqdis->isp_callbk_arg1[CBK_CATCHALL],
 			irqdis->isp_callbk_arg2[CBK_CATCHALL]);
 
+	spin_unlock_irqrestore(&isp_obj.lock, irqflags);
+
+out_no_unlock:
 #if 1
 	{    
 		static const struct {
@@ -1163,7 +1174,6 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *ispirq_disp)
 		PRINTK("\n");
 	}
 #endif
-	spin_unlock_irqrestore(&isp_obj.lock, irqflags);
 
 	return IRQ_HANDLED;
 }
@@ -1468,13 +1478,6 @@ int isp_buf_process(struct isp_bufs *bufs)
 	spin_lock_irqsave(&bufs->lock, flags);
 
 	if (ISP_BUFS_IS_EMPTY(bufs))
-		goto out;
-
-	/*
-	 * We need to wait for the first HS_VS interrupt from CCDC.
-	 * Otherwise our frame might be bad.
-	 */
-	if (!bufs->hs_vs)
 		goto out;
 
 	if (bufs->is_raw && ispccdc_wait_idle(1000)) {
