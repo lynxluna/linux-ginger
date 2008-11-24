@@ -1185,12 +1185,12 @@ int ispccdc_config_size(u32 input_w, u32 input_h, u32 output_w, u32 output_h)
 		} else {
 			if (ispccdc_obj.ccdc_inpfmt == CCDC_RAW) {
 				omap_writel(0 << ISPCCDC_HORZ_INFO_SPH_SHIFT
-						| (ispccdc_obj.ccdcout_w
+						| ((ispccdc_obj.ccdcout_w - 1)
 						<< ISPCCDC_HORZ_INFO_NPH_SHIFT),
 						ISPCCDC_HORZ_INFO);
 			} else {
 				omap_writel(0 << ISPCCDC_HORZ_INFO_SPH_SHIFT
-						| (ispccdc_obj.ccdcout_w
+						| ((ispccdc_obj.ccdcout_w - 1)
 						<< ISPCCDC_HORZ_INFO_NPH_SHIFT),
 						ISPCCDC_HORZ_INFO);
 			}
@@ -1222,7 +1222,7 @@ int ispccdc_config_size(u32 input_w, u32 input_h, u32 output_w, u32 output_h)
 					ISPCCDC_VP_OUT_VERT_NUM_SHIFT),
 					ISPCCDC_VP_OUT);
 		omap_writel(0 << ISPCCDC_HORZ_INFO_SPH_SHIFT |
-					(ispccdc_obj.ccdcout_w <<
+					((ispccdc_obj.ccdcout_w - 1) <<
 					ISPCCDC_HORZ_INFO_NPH_SHIFT),
 					ISPCCDC_HORZ_INFO);
 		omap_writel(0 << ISPCCDC_VERT_START_SLV0_SHIFT,
