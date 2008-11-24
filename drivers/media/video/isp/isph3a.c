@@ -604,7 +604,7 @@ int isph3a_aewb_configure(struct isph3a_aewb_config *aewbcfg)
 			"Freeing/unmapping current stat busffs\n");
 		isph3a_aewb_enable(0);
 		for (i = 0; i < H3A_MAX_BUFF; i++) {
-			ispmmu_unmap(aewbstat.h3a_buff[i].ispmmu_addr);
+			ispmmu_kunmap(aewbstat.h3a_buff[i].ispmmu_addr);
 			dma_free_coherent(NULL,
 				aewbstat.min_buf_size,
 				(void *)aewbstat.h3a_buff[i].virt_addr,
@@ -640,7 +640,7 @@ int isph3a_aewb_configure(struct isph3a_aewb_config *aewbcfg)
 							addr_align)
 				aewbstat.h3a_buff[i].addr_align++;
 			aewbstat.h3a_buff[i].ispmmu_addr =
-							ispmmu_map(aewbstat.
+							ispmmu_kmap(aewbstat.
 							h3a_buff[i].phy_addr,
 							aewbstat.min_buf_size);
 		}
@@ -827,7 +827,7 @@ void __exit isph3a_aewb_cleanup(void)
 
 	if (aewbstat.h3a_buff) {
 		for (i = 0; i < H3A_MAX_BUFF; i++) {
-			ispmmu_unmap(aewbstat.h3a_buff[i].ispmmu_addr);
+			ispmmu_kunmap(aewbstat.h3a_buff[i].ispmmu_addr);
 			dma_free_coherent(NULL,
 				aewbstat.min_buf_size,
 				(void *)aewbstat.h3a_buff[i].virt_addr,

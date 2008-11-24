@@ -222,7 +222,7 @@ int omap34xx_isp_ccdc_config(void *userspace_add)
 							(int)fpc_table_add)
 				fpc_table_add++;
 
-			fpc_table_add_m = ispmmu_map(virt_to_phys
+			fpc_table_add_m = ispmmu_kmap(virt_to_phys
 							(fpc_table_add),
 							(fpc_t.fpnum) * 4);
 
@@ -274,7 +274,7 @@ int omap34xx_isp_ccdc_config(void *userspace_add)
 		if ((ISP_ABS_TBL_LSC & ccdc_struct->update)
 			== ISP_ABS_TBL_LSC) {
 			if (size_mismatch) {
-				ispmmu_unmap(lsc_ispmmu_addr);
+				ispmmu_kunmap(lsc_ispmmu_addr);
 				kfree(lsc_gain_table);
 				lsc_gain_table = kmalloc(
 					lsc_config.size,
@@ -286,7 +286,7 @@ int omap34xx_isp_ccdc_config(void *userspace_add)
 						gain tables \n");
 					return -ENOMEM;
 				}
-				lsc_ispmmu_addr = ispmmu_map(
+				lsc_ispmmu_addr = ispmmu_kmap(
 					virt_to_phys(lsc_gain_table),
 					lsc_config.size);
 				omap_writel(lsc_ispmmu_addr,
@@ -400,7 +400,7 @@ int ispccdc_load_lsc(u32 table_size)
 	}
 
 	memcpy(lsc_gain_table, ispccdc_lsc_tbl, table_size);
-	lsc_ispmmu_addr = ispmmu_map(virt_to_phys(lsc_gain_table), table_size);
+	lsc_ispmmu_addr = ispmmu_kmap(virt_to_phys(lsc_gain_table), table_size);
 	omap_writel(lsc_ispmmu_addr, ISPCCDC_LSC_TABLE_BASE);
 	lsc_initialized = 1;
 	return 0;
@@ -1502,14 +1502,14 @@ void isp_ccdc_cleanup(void)
 {
 	if (is_isplsc_activated()) {
 		if (lsc_initialized) {
-			ispmmu_unmap(lsc_ispmmu_addr);
+			ispmmu_kunmap(lsc_ispmmu_addr);
 			kfree(lsc_gain_table);
 			lsc_initialized = 0;
 		}
 	}
 
 	if (fpc_table_add_m != 0) {
-		ispmmu_unmap(fpc_table_add_m);
+		ispmmu_kunmap(fpc_table_add_m);
 		kfree(fpc_table_add);
 	}
 }

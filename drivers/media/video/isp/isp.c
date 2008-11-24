@@ -63,6 +63,9 @@ static int alloc_done, num_sc;
 unsigned long offset_value;
 #endif
 
+struct iommu *isp_iommu;
+EXPORT_SYMBOL_GPL(isp_iommu);
+
 /* List of image formats supported via OMAP ISP */
 const static struct v4l2_fmtdesc isp_formats[] = {
 	{
@@ -1204,9 +1207,9 @@ u32 isp_buf_allocation(void)
 		return -ENOMEM;
 	}
 	num_sc = dma_map_sg(NULL, sglist_alloc, no_of_pages, 1);
-	buff_addr_mapped = ispmmu_map_sg(sglist_alloc, no_of_pages);
+	buff_addr_mapped = ispmmu_vmap(sglist_alloc, no_of_pages);
 	if (!buff_addr_mapped) {
-		printk(KERN_ERR "ispmmu_map_sg mapping failed ");
+		printk(KERN_ERR "ispmmu_vmap mapping failed ");
 		return -ENOMEM;
 	}
 	isppreview_set_outaddr(buff_addr_mapped);
@@ -1235,7 +1238,7 @@ dma_addr_t isp_buf_get(void)
 void isp_buf_free(void)
 {
 	if (alloc_done == 1) {
-		ispmmu_unmap_sg(buff_addr_mapped);
+		ispmmu_vunmap(buff_addr_mapped);
 		dma_unmap_sg(NULL, sglist_alloc, no_of_pages, 1);
 		kfree(sglist_alloc);
 		vfree(buff_addr);
@@ -1607,7 +1610,7 @@ int isp_vbq_prepare(struct videobuf_queue *vbq, struct videobuf_buffer *vb,
 
 	vdma = videobuf_to_dma(vb);
 
-	isp_addr = ispmmu_map_sg(vdma->sglist, vdma->sglen);
+	isp_addr = ispmmu_vmap(vdma->sglist, vdma->sglen);
 
 	if (!isp_addr)
 		err = -EIO;
@@ -1627,7 +1630,7 @@ void isp_vbq_release(struct videobuf_queue *vbq, struct videobuf_buffer *vb)
 {
 	struct isp_bufs *bufs = &ispbufs;
 
-	ispmmu_unmap_sg(bufs->isp_addr_capture[vb->i]);
+	ispmmu_vunmap(bufs->isp_addr_capture[vb->i]);
 	bufs->isp_addr_capture[vb->i] = (dma_addr_t) NULL;
 	return;
 }
@@ -2337,6 +2340,23 @@ void isp_restore_context(struct isp_reg *reg_list)
 		omap_writel(next->val, next->reg);
 }
 EXPORT_SYMBOL(isp_restore_context);
+
+static int __init ispmmu_init(void)
+{
+	isp_get();
+	isp_iommu = iommu_get("isp");
+	isp_put();
+
+	if (IS_ERR(isp_iommu))
+		return PTR_ERR(isp_iommu);
+
+	return 0;
+}
+
+static void __exit ispmmu_cleanup(void)
+{
+	iommu_put(isp_iommu);
+}
 
 /**
  * isp_init - ISP module initialization.

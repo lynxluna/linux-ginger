@@ -347,7 +347,7 @@ int isp_af_configure(struct af_configuration *afconfig)
 	if (afstat.stats_buf_size && (buff_size	> afstat.stats_buf_size)) {
 		isp_af_enable(0);
 		for (i = 0; i < H3A_MAX_BUFF; i++) {
-			ispmmu_unmap(afstat.af_buff[i].ispmmu_addr);
+			ispmmu_kunmap(afstat.af_buff[i].ispmmu_addr);
 			dma_free_coherent(NULL,
 				  afstat.min_buf_size,
 				  (void *)afstat.af_buff[i].virt_addr,
@@ -379,7 +379,7 @@ int isp_af_configure(struct af_configuration *afconfig)
 				       afstat.af_buff[i].addr_align)
 				afstat.af_buff[i].addr_align++;
 			afstat.af_buff[i].ispmmu_addr =
-				ispmmu_map(afstat.af_buff[i].phy_addr,
+				ispmmu_kmap(afstat.af_buff[i].phy_addr,
 					   afstat.min_buf_size);
 		}
 		isp_af_unlock_buffers();
@@ -765,7 +765,7 @@ void __exit isp_af_exit(void)
 	if (afstat.af_buff) {
 		/* Free buffers */
 		for (i = 0; i < H3A_MAX_BUFF; i++) {
-			ispmmu_unmap(afstat.af_buff[i].ispmmu_addr);
+			ispmmu_kunmap(afstat.af_buff[i].ispmmu_addr);
 			dma_free_coherent(NULL,
 				afstat.min_buf_size,
 				(void *)afstat.af_buff[i].virt_addr,

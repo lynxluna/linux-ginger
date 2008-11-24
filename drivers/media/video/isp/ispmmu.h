@@ -1,8 +1,7 @@
 /*
- * drivers/media/video/isp/ispmmu.h
+ * omap iommu wrapper for TI's OMAP3430 Camera ISP
  *
- * OMAP3430 Camera ISP MMU API
- *
+ * Copyright (C) 2008 Nokia.
  * Copyright (C) 2008 Texas Instruments.
  *
  * Contributors:
@@ -21,98 +20,60 @@
 #ifndef OMAP_ISP_MMU_H
 #define OMAP_ISP_MMU_H
 
-#define ISPMMU_L1D_TYPE_SHIFT		0
-#define ISPMMU_L1D_TYPE_MASK		0x3
-#define ISPMMU_L1D_TYPE_FAULT		0
-#define ISPMMU_L1D_TYPE_FAULT1		3
-#define ISPMMU_L1D_TYPE_PAGE		1
-#define ISPMMU_L1D_TYPE_SECTION		2
-#define ISPMMU_L1D_PAGE_ADDR_SHIFT	10
+#include <linux/err.h>
 
-#define ISPMMU_L2D_TYPE_SHIFT		0
-#define ISPMMU_L2D_TYPE_MASK		0x3
-#define ISPMMU_L2D_TYPE_FAULT		0
-#define ISPMMU_L2D_TYPE_LARGE_PAGE	1
-#define ISPMMU_L2D_TYPE_SMALL_PAGE	2
-#define ISPMMU_L2D_SMALL_ADDR_SHIFT	12
-#define ISPMMU_L2D_SMALL_ADDR_MASK	0xFFFFF000
-#define ISPMMU_L2D_M_ACCESSBASED	(1 << 11)
-#define ISPMMU_L2D_E_BIGENDIAN		(1 << 9)
-#define ISPMMU_L2D_ES_SHIFT		4
-#define ISPMMU_L2D_ES_MASK		(~(3 << 4))
-#define ISPMMU_L2D_ES_8BIT		0
-#define ISPMMU_L2D_ES_16BIT		1
-#define ISPMMU_L2D_ES_32BIT		2
-#define ISPMMU_L2D_ES_NOENCONV		3
+#include <mach/iommu.h>
+#include <mach/iovmm.h>
 
-#define ISPMMU_TTB_ENTRIES_NR		4096
+#define IOMMU_FLAG (IOVMF_ENDIAN_LITTLE | IOVMF_ELSZ_8)
 
-/* Number 1MB entries in TTB in one 32MB region */
-#define ISPMMU_REGION_ENTRIES_NR	32
+extern struct iommu *isp_iommu;
 
-/* 128 region entries */
-#define ISPMMU_REGION_NR (ISPMMU_TTB_ENTRIES_NR / ISPMMU_REGION_ENTRIES_NR)
+static inline dma_addr_t ispmmu_kmap(u32 pa, int size)
+{
+	void *da;
 
-/* Each region is 32MB */
-#define ISPMMU_REGION_SIZE		(ISPMMU_REGION_ENTRIES_NR * (1 << 20))
+	da = iommu_kmap(isp_iommu, NULL, (void *)pa, size, IOMMU_FLAG);
+	if (IS_ERR(da))
+		return PTR_ERR(da);
 
-/* Number of entries per L2 Page table */
-#define ISPMMU_L2D_ENTRIES_NR		256
+	return (dma_addr_t)da;
+}
 
-/*
- * Statically allocate 16KB for L2 page tables. 16KB can be used for
- * up to 16 L2 page tables which cover up to 16MB space. We use an array of 16
- * to keep track of these 16 L2 page table's status.
- */
-#define L2P_TABLE_SIZE			1024
-#define L2P_TABLE_NR 			41 /* Currently supports 4*5MP shots */
-#define L2P_TABLES_SIZE 		(L2P_TABLE_SIZE * L2P_TABLE_NR)
+static inline void ispmmu_kunmap(dma_addr_t da)
+{
+	iommu_kunmap(isp_iommu, (void *)da);
+}
 
-/* Extra memory allocated to get ttb aligned on 16KB */
-#define ISPMMU_TTB_MISALIGN_SIZE	0x3000
+static inline dma_addr_t ispmmu_vmap(const struct scatterlist *sglist,
+				     int sglen)
+{
+	void *da;
+	struct sg_table sgt;
 
-#ifdef CONFIG_ARCH_OMAP3410
-#include <linux/scatterlist.h>
-#endif
+	sgt.sgl = (struct scatterlist *)sglist;
+	sgt.nents = sglen;
 
-enum ISPMMU_MAP_ENDIAN {
-	L_ENDIAN,
-	B_ENDIAN
-};
+	da = iommu_vmap(isp_iommu, NULL, &sgt, IOMMU_FLAG);
+	if (IS_ERR(da))
+		return PTR_ERR(da);
 
-enum ISPMMU_MAP_ELEMENTSIZE {
-	ES_8BIT,
-	ES_16BIT,
-	ES_32BIT,
-	ES_NOENCONV
-};
+	return (dma_addr_t)da;
+}
 
-enum ISPMMU_MAP_MIXEDREGION {
-	ACCESS_BASED,
-	PAGE_BASED
-};
+static inline void ispmmu_vunmap(dma_addr_t da)
+{
+	iommu_vunmap(isp_iommu, (void *)da);
+}
 
-enum ISPMMU_MAP_SIZE {
-	L1DFAULT,
-	PAGE,
-	SECTION,
-	SUPERSECTION,
-	L2DFAULT,
-	LARGEPAGE,
-	SMALLPAGE
-};
+static inline void ispmmu_save_context(void)
+{
+	iommu_save_ctx(isp_iommu);
+}
 
-dma_addr_t ispmmu_map(unsigned int p_addr, int size);
-
-dma_addr_t ispmmu_map_sg(const struct scatterlist *sglist, int sglen);
-
-int ispmmu_unmap(dma_addr_t isp_addr);
-int ispmmu_unmap_sg(dma_addr_t isp_addr);
-
-void ispmmu_print_status(void);
-
-void ispmmu_save_context(void);
-
-void ispmmu_restore_context(void);
+static inline void ispmmu_restore_context(void)
+{
+	iommu_restore_ctx(isp_iommu);
+}
 
 #endif /* OMAP_ISP_MMU_H */
