@@ -928,7 +928,6 @@ int isp_configure_interface(struct isp_interface_config *config)
 
 	omap_writel(ispctrl_val, ISP_CTRL);
 
-	printk(KERN_WARNING "vdint %x\n",omap_readl(ISPCCDC_VDINT));
 /* 	ispccdc_vdint_val = omap_readl(ISPCCDC_VDINT); */
 /* 	ispccdc_vdint_val &= ~(ISPCCDC_VDINT_0_MASK << ISPCCDC_VDINT_0_SHIFT); */
 /* 	ispccdc_vdint_val &= ~(ISPCCDC_VDINT_1_MASK << ISPCCDC_VDINT_1_SHIFT); */
