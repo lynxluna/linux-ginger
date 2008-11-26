@@ -327,7 +327,8 @@ void isp_release_resources(void)
 /* Flag to check first time of isp_get */
 static int off_mode;
 
-int isp_wait(int ccdc, int preview, int resizer, int wait_for_busy, int max_wait)
+int isp_wait(int ccdc, int ccdc_sbl, int preview, int resizer,
+	     int wait_for_busy, int max_wait)
 {
 	int wait = 0;
 	int (*busy)(void) = NULL;
@@ -337,6 +338,8 @@ int isp_wait(int ccdc, int preview, int resizer, int wait_for_busy, int max_wait
 
 	if (ccdc)
 		busy = ispccdc_busy;
+	else if (ccdc_sbl)
+		busy = ispccdc_sbl_busy;
 	else if (preview)
 		busy = isppreview_busy;
 	else if (resizer)
@@ -352,6 +355,7 @@ int isp_wait(int ccdc, int preview, int resizer, int wait_for_busy, int max_wait
 			return -EBUSY;
 		}
 	}
+	PRINTK(KERN_ALERT "%s: wait %d\n", __func__, wait);
 
 	return 0;
 }
@@ -359,49 +363,55 @@ int isp_wait(int ccdc, int preview, int resizer, int wait_for_busy, int max_wait
 int ispccdc_wait_busy(int max_wait)
 {
 	PRINTK(KERN_ALERT "%s: ccdc wait for busy\n", __func__);
-	return isp_wait(1, 0, 0, 1, max_wait);
+	return isp_wait(1, 0, 0, 0, 1, max_wait);
 }
 
 int ispccdc_wait_idle(int max_wait)
 {
 	PRINTK(KERN_ALERT "%s: ccdc wait for idle\n", __func__);
-	return isp_wait(1, 0, 0, 0, max_wait);
+	return isp_wait(1, 0, 0, 0, 0, max_wait);
+}
+
+int ispccdc_sbl_wait_idle(int max_wait)
+{
+	PRINTK(KERN_ALERT "%s: prv wait for busy\n", __func__);
+	return isp_wait(0, 1, 0, 0, 0, max_wait);
 }
 
 int isppreview_wait_busy(int max_wait)
 {
 	PRINTK(KERN_ALERT "%s: prv wait for busy\n", __func__);
-	return isp_wait(0, 1, 0, 1, max_wait);
+	return isp_wait(0, 0, 1, 0, 1, max_wait);
 }
 
 int isppreview_wait_idle(int max_wait)
 {
 	PRINTK(KERN_ALERT "%s: prv wait for idle\n", __func__);
-	return isp_wait(0, 1, 0, 0, max_wait);
+	return isp_wait(0, 0, 1, 0, 0, max_wait);
 }
 
 int ispresizer_wait_busy(int max_wait)
 {
 	PRINTK(KERN_ALERT "%s: rsz wait for busy\n", __func__);
-	return isp_wait(0, 0, 1, 1, max_wait);
+	return isp_wait(0, 0, 0, 1, 1, max_wait);
 }
 
 int ispresizer_wait_idle(int max_wait)
 {
 	PRINTK(KERN_ALERT "%s: rsz wait for idle\n", __func__);
-	return isp_wait(0, 0, 1, 0, max_wait);
+	return isp_wait(0, 0, 0, 1, 0, max_wait);
 }
 
 int isp_wait_busy(int max_wait)
 {
 	PRINTK(KERN_ALERT "%s: raw %d wait for busy\n", __func__, ispbufs.is_raw);
-	return isp_wait(ispbufs.is_raw, 0, !ispbufs.is_raw, 1, max_wait);
+	return isp_wait(ispbufs.is_raw, 0, 0, !ispbufs.is_raw, 1, max_wait);
 }
 
 int isp_wait_idle(int max_wait)
 {
 	PRINTK(KERN_ALERT "%s: raw %d wait for idle\n", __func__, ispbufs.is_raw);
-	return isp_wait(ispbufs.is_raw, 0, !ispbufs.is_raw, 0, max_wait);
+	return isp_wait(ispbufs.is_raw, 0, 0, !ispbufs.is_raw, 0, max_wait);
 }
 
 static void isp_enable_interrupts(int is_raw)
@@ -1475,7 +1485,7 @@ int isp_buf_process(struct isp_bufs *bufs)
 	if (ISP_BUFS_IS_EMPTY(bufs))
 		goto out;
 
-	if (bufs->is_raw && ispccdc_wait_idle(1000)) {
+	if (bufs->is_raw && ispccdc_sbl_wait_idle(1000)) {
 		printk(KERN_ERR "ccdc %d won't become idle!\n",
 		       bufs->is_raw);
 		goto out;
