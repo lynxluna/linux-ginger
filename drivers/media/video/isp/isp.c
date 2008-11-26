@@ -493,6 +493,12 @@ int isp_set_callback(enum isp_callback_type type, isp_callback_t callback,
 					IRQ0ENABLE_HIST_DONE_IRQ,
 					ISP_IRQ0ENABLE);
 		break;
+	case CBK_PREV_DONE:
+		omap_writel(IRQ0ENABLE_PRV_DONE_IRQ, ISP_IRQ0STATUS);
+		omap_writel(omap_readl(ISP_IRQ0ENABLE) |
+					IRQ0ENABLE_PRV_DONE_IRQ,
+					ISP_IRQ0ENABLE);
+		break;
 	default:
 		break;
 	}
@@ -541,6 +547,11 @@ int isp_unset_callback(enum isp_callback_type type)
 		omap_writel(IRQ0ENABLE_CSIB_IRQ, ISP_IRQ0STATUS);
 		omap_writel(omap_readl(ISP_IRQ0ENABLE)|IRQ0ENABLE_CSIB_IRQ,
 					ISP_IRQ0ENABLE);
+		break;
+	case CBK_PREV_DONE:
+		omap_writel((omap_readl(ISP_IRQ0ENABLE)) &
+						~IRQ0ENABLE_PRV_DONE_IRQ,
+						ISP_IRQ0ENABLE);
 		break;
 	default:
 		break;
@@ -1383,7 +1394,7 @@ u32 isp_calc_pipeline(struct v4l2_pix_format *pix_input,
 		ispmodule_obj.isp_pipeline = OMAP_ISP_CCDC;
 		ispccdc_request();
 		if (pix_input->pixelformat == V4L2_PIX_FMT_SGRBG10)
-			ispccdc_config_datapath(CCDC_RAW, CCDC_OTHERS_MEM);
+			ispccdc_config_datapath(CCDC_RAW, CCDC_OTHERS_VP_MEM);
 		else
 			ispccdc_config_datapath(CCDC_YUV_SYNC,
 							CCDC_OTHERS_MEM);
