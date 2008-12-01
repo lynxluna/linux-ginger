@@ -41,7 +41,7 @@
 #include <linux/i2c.h>
 #include <linux/version.h>
 
-#include "adp1653.h"
+#include <linux/adp1653.h>
 
 #define TIMEOUT_US_TO_CODE(t)	((820000 + 27300 - (t))/54600)
 #define TIMEOUT_CODE_TO_US(c)	(820000 - (c) * 54600)
