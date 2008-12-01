@@ -1056,6 +1056,7 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *ispirq_disp)
 		ispccdc_enable_lsc(1);
 		/* Mark buffer faulty. */
 		buf->vb_state = VIDEOBUF_ERROR;
+		printk(KERN_ERR "%s: lsc prefetch error\n", __func__);
 	}
 
 	if ((irqstatus & CCDC_VD1) == CCDC_VD1) {
@@ -1090,6 +1091,8 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *ispirq_disp)
 					/* FIXME: locking! */
 					ISP_BUF_DONE(bufs)->vb_state =
 						VIDEOBUF_ERROR;
+					printk(KERN_ERR "%s: can't stop"
+					       " preview\n", __func__);
 				}
 			}
 			if (!isppreview_busy())
