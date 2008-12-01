@@ -32,6 +32,7 @@
 #include <linux/clk.h>
 #include <linux/dma-mapping.h>
 #include <asm/irq.h>
+#include <asm/cacheflush.h>
 #include <linux/bitops.h>
 #include <linux/scatterlist.h>
 #include <asm/mach-types.h>
@@ -1471,20 +1472,8 @@ EXPORT_SYMBOL(isp_stop);
  **/
 int isp_vbq_sync(struct videobuf_buffer *vb, int when)
 {
-	struct videobuf_dmabuf *vdma;
-	u32 sg_element_addr;
-	int i;
+	flush_cache_all();
 
-	vdma = videobuf_to_dma(vb);
-
-	for (i = 0; i < vdma->sglen; i++) {
-		sg_element_addr = sg_dma_address(vdma->sglist + i);
-		/* Page align address */
-		sg_element_addr &= ~(PAGE_SIZE-1);
-
-		dma_sync_single_for_cpu(NULL, sg_element_addr,
-				PAGE_SIZE, when);
-	}
 	return 0;
 }
 
