@@ -328,23 +328,12 @@ void isp_release_resources(void)
 /* Flag to check first time of isp_get */
 static int off_mode;
 
-int isp_wait(int ccdc, int ccdc_sbl, int preview, int resizer,
-	     int wait_for_busy, int max_wait)
+int isp_wait(int (*busy)(void), int wait_for_busy, int max_wait)
 {
 	int wait = 0;
-	int (*busy)(void) = NULL;
 
 	if (max_wait == 0)
 		max_wait = 10000; /* 10 ms */
-
-	if (ccdc)
-		busy = ispccdc_busy;
-	else if (ccdc_sbl)
-		busy = ispccdc_sbl_busy;
-	else if (preview)
-		busy = isppreview_busy;
-	else if (resizer)
-		busy = ispresizer_busy;
 
 	while ((wait_for_busy && !busy())
 	       || (!wait_for_busy && busy())) {
@@ -361,58 +350,9 @@ int isp_wait(int ccdc, int ccdc_sbl, int preview, int resizer,
 	return 0;
 }
 
-int ispccdc_wait_busy(int max_wait)
-{
-	PRINTK(KERN_ALERT "%s: ccdc wait for busy\n", __func__);
-	return isp_wait(1, 0, 0, 0, 1, max_wait);
-}
-
-int ispccdc_wait_idle(int max_wait)
-{
-	PRINTK(KERN_ALERT "%s: ccdc wait for idle\n", __func__);
-	return isp_wait(1, 0, 0, 0, 0, max_wait);
-}
-
 int ispccdc_sbl_wait_idle(int max_wait)
 {
-	PRINTK(KERN_ALERT "%s: prv wait for busy\n", __func__);
-	return isp_wait(0, 1, 0, 0, 0, max_wait);
-}
-
-int isppreview_wait_busy(int max_wait)
-{
-	PRINTK(KERN_ALERT "%s: prv wait for busy\n", __func__);
-	return isp_wait(0, 0, 1, 0, 1, max_wait);
-}
-
-int isppreview_wait_idle(int max_wait)
-{
-	PRINTK(KERN_ALERT "%s: prv wait for idle\n", __func__);
-	return isp_wait(0, 0, 1, 0, 0, max_wait);
-}
-
-int ispresizer_wait_busy(int max_wait)
-{
-	PRINTK(KERN_ALERT "%s: rsz wait for busy\n", __func__);
-	return isp_wait(0, 0, 0, 1, 1, max_wait);
-}
-
-int ispresizer_wait_idle(int max_wait)
-{
-	PRINTK(KERN_ALERT "%s: rsz wait for idle\n", __func__);
-	return isp_wait(0, 0, 0, 1, 0, max_wait);
-}
-
-int isp_wait_busy(int max_wait)
-{
-	PRINTK(KERN_ALERT "%s: raw %d wait for busy\n", __func__, ispbufs.is_raw);
-	return isp_wait(ispbufs.is_raw, 0, 0, !ispbufs.is_raw, 1, max_wait);
-}
-
-int isp_wait_idle(int max_wait)
-{
-	PRINTK(KERN_ALERT "%s: raw %d wait for idle\n", __func__, ispbufs.is_raw);
-	return isp_wait(ispbufs.is_raw, 0, 0, !ispbufs.is_raw, 0, max_wait);
+	return isp_wait(ispccdc_sbl_busy, 0, max_wait);
 }
 
 static void isp_enable_interrupts(int is_raw)
@@ -895,7 +835,6 @@ static int isp_init_csi(struct isp_interface_config *config)
 int isp_configure_interface(struct isp_interface_config *config)
 {
 	u32 ispctrl_val = omap_readl(ISP_CTRL);
-	u32 ispccdc_vdint_val;
 	int r;
 
 	ispctrl_val &= ISPCTRL_SHIFT_MASK;
@@ -949,14 +888,6 @@ int isp_configure_interface(struct isp_interface_config *config)
 	ispctrl_val |= (config->hsvs_syncdetect);
 
 	omap_writel(ispctrl_val, ISP_CTRL);
-
-/* 	ispccdc_vdint_val = omap_readl(ISPCCDC_VDINT); */
-/* 	ispccdc_vdint_val &= ~(ISPCCDC_VDINT_0_MASK << ISPCCDC_VDINT_0_SHIFT); */
-/* 	ispccdc_vdint_val &= ~(ISPCCDC_VDINT_1_MASK << ISPCCDC_VDINT_1_SHIFT); */
-/* 	omap_writel((config->vdint0_timing << ISPCCDC_VDINT_0_SHIFT) | */
-/* 						(config->vdint1_timing << */
-/* 						ISPCCDC_VDINT_1_SHIFT), */
-/* 						ISPCCDC_VDINT); */
 
 	/* Set sensor specific fields in CCDC and Previewer module.*/
 	isppreview_set_skip(config->prev_sph, config->prev_slv);
@@ -1294,7 +1225,6 @@ EXPORT_SYMBOL(isp_start);
 void isp_stop()
 {
 	unsigned long timeout = jiffies + ISP_STOP_TIMEOUT;
-	unsigned long flags;
 
 	isp_disable_interrupts();
 
