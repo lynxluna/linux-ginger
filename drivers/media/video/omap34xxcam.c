@@ -1923,7 +1923,6 @@ static int omap34xxcam_probe(struct platform_device *pdev)
 {
 	struct omap34xxcam_device *cam;
 	struct resource *mem;
-	struct isp_sysc isp_sysconfig;
 	int irq;
 	int i;
 
@@ -1967,12 +1966,6 @@ static int omap34xxcam_probe(struct platform_device *pdev)
 		dev_err(cam->dev, "no irq for camera?\n");
 		goto err;
 	}
-
-	isp_get();
-	isp_sysconfig.reset = 0;
-	isp_sysconfig.idle_mode = 1;
-	isp_power_settings(isp_sysconfig);
-	isp_put();
 
 	omap34xxcam = cam;
 
