@@ -197,11 +197,11 @@ EXPORT_SYMBOL(ispresizer_trycrop);
 /**
  * ispresizer_applycrop - Apply crop to input image.
  **/
-void ispresizer_applycrop(dma_addr_t tmp_buf)
+void ispresizer_applycrop(void)
 {
 	ispresizer_config_size(ispres_obj.cropwidth, ispres_obj.cropheight,
 			       ispres_obj.outputwidth,
-			       ispres_obj.outputheight, tmp_buf);
+			       ispres_obj.outputheight);
 	return;
 }
 EXPORT_SYMBOL(ispresizer_applycrop);
@@ -475,7 +475,7 @@ EXPORT_SYMBOL(ispresizer_try_size);
  * with ispresizer_try_size() previously.
  **/
 int ispresizer_config_size(u32 input_w, u32 input_h, u32 output_w,
-			   u32 output_h, dma_addr_t tmp_buf)
+			   u32 output_h)
 {
 	int i, j;
 	u32 res;
@@ -503,13 +503,8 @@ int ispresizer_config_size(u32 input_w, u32 input_h, u32 output_w,
 		return -EINVAL;
 	}
 
-#if ISP_WORKAROUND
-	if (tmp_buf) {
-		/* Set Resizer input address and offset adderss */
-		ispresizer_set_inaddr(tmp_buf);
-		ispresizer_config_inlineoffset(omap_readl(ISPPRV_WADD_OFFSET));
-	}
-#endif
+	/* Set Resizer input address and offset adderss */
+	ispresizer_config_inlineoffset(omap_readl(ISPPRV_WADD_OFFSET));
 
 	res = omap_readl(ISPRSZ_CNT) & (~(ISPRSZ_CNT_HSTPH_MASK |
 					ISPRSZ_CNT_VSTPH_MASK));

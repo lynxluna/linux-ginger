@@ -56,6 +56,7 @@
 
 #if ISP_WORKAROUND
 dma_addr_t isp_tmp_buf;
+size_t isp_tmp_buf_size;
 unsigned long isp_tmp_buf_offset;
 #endif
 
@@ -1005,8 +1006,7 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *ispirq_disp)
 				irqdis->isp_callbk_arg2[CBK_PREV_DONE]);
 		else if (!bufs->is_raw && !ispresizer_busy()) {
 			if (ispmodule_obj.applyCrop) {
-				ispresizer_applycrop(isp_tmp_buf
-						     + isp_tmp_buf_offset);
+				ispresizer_applycrop();
 				if (!ispresizer_busy())
 					ispmodule_obj.applyCrop = 0;
 			}
@@ -1137,23 +1137,6 @@ struct device camera_dev = {
 
 #if ISP_WORKAROUND
 /**
- *  isp_tmp_buf_alloc - To allocate a 10MB memory
- *
- **/
-u32 isp_tmp_buf_alloc(void)
-{
-	isp_tmp_buf = ispmmu_vmalloc(ISP_TMP_BUFFER_SIZE);
-	if (IS_ERR((void *)isp_tmp_buf)) {
-		printk(KERN_ERR "ispmmu_vmap mapping failed ");
-		return -ENOMEM;
-	}
-
-	isppreview_set_outaddr(isp_tmp_buf);
-
-	return 0;
-}
-
-/**
  *  isp_tmp_buf_free - To free allocated 10MB memory
  *
  **/
@@ -1162,7 +1145,31 @@ void isp_tmp_buf_free(void)
 	if (isp_tmp_buf) {
 		ispmmu_vfree(isp_tmp_buf);
 		isp_tmp_buf = 0;
+		isp_tmp_buf_size = 0;
 	}
+}
+
+/**
+ *  isp_tmp_buf_alloc - To allocate a 10MB memory
+ *
+ **/
+u32 isp_tmp_buf_alloc(size_t size)
+{
+	isp_tmp_buf_free();
+
+	printk(KERN_INFO "%s: allocating %d bytes\n", __func__, size);
+
+	isp_tmp_buf = ispmmu_vmalloc(size);
+	if (IS_ERR((void *)isp_tmp_buf)) {
+		printk(KERN_ERR "ispmmu_vmap mapping failed ");
+		return -ENOMEM;
+	}
+	isp_tmp_buf_size = size;
+
+	isppreview_set_outaddr(isp_tmp_buf);
+	ispresizer_set_inaddr(isp_tmp_buf);
+
+	return 0;
 }
 #endif
 
@@ -1263,10 +1270,6 @@ void isp_set_buf(struct isp_buf *buf)
 u32 isp_calc_pipeline(struct v4l2_pix_format *pix_input,
 					struct v4l2_pix_format *pix_output)
 {
-#if ISP_WORKAROUND
-	int rval;
-#endif
-
 	isp_release_resources();
 	if ((pix_input->pixelformat == V4L2_PIX_FMT_SGRBG10) &&
 		(pix_output->pixelformat != V4L2_PIX_FMT_SGRBG10)) {
@@ -1279,11 +1282,6 @@ u32 isp_calc_pipeline(struct v4l2_pix_format *pix_input,
 #if ISP_WORKAROUND
 		isppreview_config_datapath(PRV_RAW_CCDC, PREVIEW_MEM);
 		ispresizer_config_datapath(RSZ_MEM_YUV);
-		if (!isp_tmp_buf) {
-			rval = isp_tmp_buf_alloc();
-			if (rval)
-				return -EINVAL;
-		}
 #else
 		isppreview_config_datapath(PRV_RAW_CCDC, PREVIEW_RSZ);
 		ispresizer_config_datapath(RSZ_OTFLY_YUV);
@@ -1326,8 +1324,7 @@ void isp_config_pipeline(struct v4l2_pix_format *pix_input,
 		ispresizer_config_size(ispmodule_obj.resizer_input_width,
 				       ispmodule_obj.resizer_input_height,
 				       ispmodule_obj.resizer_output_width,
-				       ispmodule_obj.resizer_output_height,
-				       isp_tmp_buf + isp_tmp_buf_offset);
+				       ispmodule_obj.resizer_output_height);
 
 	if (pix_output->pixelformat == V4L2_PIX_FMT_UYVY) {
 		isppreview_config_ycpos(YCPOS_YCrYCb);
@@ -1496,6 +1493,18 @@ int isp_buf_queue(struct videobuf_buffer *vb,
 	return 0;
 }
 EXPORT_SYMBOL(isp_buf_queue);
+
+int isp_vbq_setup(struct videobuf_queue *vbq, unsigned int *cnt,
+		  unsigned int *size)
+{
+	int rval = 0;
+
+	if (!isp_tmp_buf || isp_tmp_buf_size < PAGE_ALIGN(*size))
+		rval = isp_tmp_buf_alloc(PAGE_ALIGN(*size));
+
+	return rval;
+}
+EXPORT_SYMBOL(isp_vbq_setup);
 
 /**
  * isp_vbq_prepare - Videobuffer queue prepare.

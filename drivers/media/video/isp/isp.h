@@ -63,7 +63,6 @@
 #define NUM_ISP_CAPTURE_FORMATS 	(sizeof(isp_formats) /\
 							sizeof(isp_formats[0]))
 #define ISP_WORKAROUND 1
-#define ISP_TMP_BUFFER_SIZE		(1024 * 1024 * 10)
 
 typedef int (*isp_vbq_callback_ptr) (struct videobuf_buffer *vb);
 typedef void (*isp_callback_t) (unsigned long status,
@@ -244,6 +243,9 @@ void isp_vbq_done(unsigned long status, isp_vbq_callback_ptr arg1, void *arg2);
 int isp_buf_queue(struct videobuf_buffer *vb,
 		  void (*complete)(struct videobuf_buffer *vb, void *priv),
 		  void *priv);
+
+int isp_vbq_setup(struct videobuf_queue *vbq, unsigned int *cnt,
+		  unsigned int *size);
 
 int isp_vbq_prepare(struct videobuf_queue *vbq, struct videobuf_buffer *vb,
 							enum v4l2_field field);
