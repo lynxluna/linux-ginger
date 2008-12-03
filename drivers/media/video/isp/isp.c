@@ -2159,27 +2159,6 @@ int isp_get(void)
 	DPRINTK_ISPCTRL("isp_get: old %d\n", isp_obj.ref_count);
 	mutex_lock(&(isp_obj.isp_mutex));
 	if (isp_obj.ref_count == 0) {
-		isp_obj.cam_ick = clk_get(&camera_dev, "cam_ick");
-		if (IS_ERR(isp_obj.cam_ick)) {
-			DPRINTK_ISPCTRL("ISP_ERR: clk_get for "
-							"cam_ick failed\n");
-			ret_err = PTR_ERR(isp_obj.cam_ick);
-			goto out_clk_get_ick;
-		}
-		isp_obj.cam_mclk = clk_get(&camera_dev, "cam_mclk");
-		if (IS_ERR(isp_obj.cam_mclk)) {
-			DPRINTK_ISPCTRL("ISP_ERR: clk_get for "
-							"cam_mclk failed\n");
-			ret_err = PTR_ERR(isp_obj.cam_mclk);
-			goto out_clk_get_mclk;
-		}
-		isp_obj.csi2_fck = clk_get(&camera_dev, "csi2_96m_fck");
-		if (IS_ERR(isp_obj.csi2_fck)) {
-			DPRINTK_ISPCTRL("ISP_ERR: clk_get for csi2_fclk"
-								" failed\n");
-			ret_err = PTR_ERR(isp_obj.csi2_fck);
-			goto out_clk_get_csi2_fclk;
-		}
 		ret_err = clk_enable(isp_obj.cam_ick);
 		if (ret_err) {
 			DPRINTK_ISPCTRL("ISP_ERR: clk_en for ick failed\n");
@@ -2215,12 +2194,6 @@ out_clk_enable_csi2_fclk:
 out_clk_enable_mclk:
 	clk_disable(isp_obj.cam_ick);
 out_clk_enable_ick:
-	clk_put(isp_obj.csi2_fck);
-out_clk_get_csi2_fclk:
-	clk_put(isp_obj.cam_mclk);
-out_clk_get_mclk:
-	clk_put(isp_obj.cam_ick);
-out_clk_get_ick:
 
 	mutex_unlock(&(isp_obj.isp_mutex));
 
@@ -2249,9 +2222,6 @@ int isp_put(void)
 			clk_disable(isp_obj.cam_ick);
 			clk_disable(isp_obj.cam_mclk);
 			clk_disable(isp_obj.csi2_fck);
-			clk_put(isp_obj.cam_ick);
-			clk_put(isp_obj.cam_mclk);
-			clk_put(isp_obj.csi2_fck);
 			memset(&ispcroprect, 0, sizeof(ispcroprect));
 			memset(&cur_rect, 0, sizeof(cur_rect));
 		}
@@ -2311,16 +2281,39 @@ static void __exit ispmmu_cleanup(void)
  **/
 static int __init isp_init(void)
 {
+	int ret_err = 0;
+
 	DPRINTK_ISPCTRL("+isp_init for Omap 3430 Camera ISP\n");
 	isp_obj.ref_count = 0;
 
 	mutex_init(&(isp_obj.isp_mutex));
 	spin_lock_init(&isp_obj.lock);
 
+	isp_obj.cam_ick = clk_get(&camera_dev, "cam_ick");
+	if (IS_ERR(isp_obj.cam_ick)) {
+		DPRINTK_ISPCTRL("ISP_ERR: clk_get for "
+				"cam_ick failed\n");
+		return PTR_ERR(isp_obj.cam_ick);
+	}
+	isp_obj.cam_mclk = clk_get(&camera_dev, "cam_mclk");
+	if (IS_ERR(isp_obj.cam_mclk)) {
+		DPRINTK_ISPCTRL("ISP_ERR: clk_get for "
+				"cam_mclk failed\n");
+		ret_err = PTR_ERR(isp_obj.cam_mclk);
+		goto out_clk_get_mclk;
+	}
+	isp_obj.csi2_fck = clk_get(&camera_dev, "csi2_96m_fck");
+	if (IS_ERR(isp_obj.csi2_fck)) {
+		DPRINTK_ISPCTRL("ISP_ERR: clk_get for csi2_fclk"
+				" failed\n");
+		ret_err = PTR_ERR(isp_obj.csi2_fck);
+		goto out_clk_get_csi2_fclk;
+	}
 	if (request_irq(INT_34XX_CAM_IRQ, omap34xx_isp_isr, IRQF_SHARED,
 				"Omap 34xx Camera ISP", &ispirq_obj)) {
 		DPRINTK_ISPCTRL("Could not install ISR\n");
-		return -EINVAL;
+		ret_err = -EINVAL;
+		goto out_request_irq;
 	}
 
 	isp_ccdc_init();
@@ -2334,6 +2327,15 @@ static int __init isp_init(void)
 
 	DPRINTK_ISPCTRL("-isp_init for Omap 3430 Camera ISP\n");
 	return 0;
+
+out_request_irq:
+	clk_put(isp_obj.csi2_fck);
+out_clk_get_csi2_fclk:
+	clk_put(isp_obj.cam_mclk);
+out_clk_get_mclk:
+	clk_put(isp_obj.cam_ick);
+
+	return ret_err;
 }
 EXPORT_SYMBOL(isp_buf_init);
 
@@ -2351,6 +2353,10 @@ static void __exit isp_cleanup(void)
 	isp_hist_cleanup();
 	isp_ccdc_cleanup();
 	free_irq(INT_34XX_CAM_IRQ, &ispirq_obj);
+
+	clk_put(isp_obj.cam_ick);
+	clk_put(isp_obj.cam_mclk);
+	clk_put(isp_obj.csi2_fck);
 }
 
 /**
