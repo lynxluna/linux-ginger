@@ -51,8 +51,6 @@
 #include "ispresizer.h"
 #include "ispcsi2.h"
 
-#define MAGIC 0x8d00d138
-
 //#define PRINTK(...) printk(__VA_ARGS__)
 #define PRINTK(...) do { } while (0)
 
@@ -324,9 +322,6 @@ void isp_release_resources(void)
 		ispresizer_free();
 	return;
 }
-
-/* Flag to check first time of isp_get */
-static int off_mode;
 
 int isp_wait(int (*busy)(void), int wait_for_busy, int max_wait)
 {
@@ -2153,7 +2148,7 @@ EXPORT_SYMBOL(isp_restore_ctx);
  **/
 int isp_get(void)
 {
-	struct isp_sysc isp_sysconfig;
+	static int has_context = 0;
 	int ret_err = 0;
 
 	DPRINTK_ISPCTRL("isp_get: old %d\n", isp_obj.ref_count);
@@ -2175,14 +2170,14 @@ int isp_get(void)
 								" failed\n");
 			goto out_clk_enable_csi2_fclk;
 		}
-		if (off_mode == 1)
+
+		/* We don't want to restore context before saving it! */
+		if (has_context)
 			isp_restore_ctx();
+		else
+			has_context = 1;
 	}
 	isp_obj.ref_count++;
-
-	isp_sysconfig.reset = 0;
-	isp_sysconfig.idle_mode = 1;
-	isp_power_settings(isp_sysconfig);
 
 	mutex_unlock(&(isp_obj.isp_mutex));
 
@@ -2213,7 +2208,6 @@ int isp_put(void)
 	if (isp_obj.ref_count)
 		if (--isp_obj.ref_count == 0) {
 			isp_save_ctx();
-			off_mode = 1;
 #if ISP_WORKAROUND
 			isp_buf_free();
 #endif
@@ -2281,6 +2275,7 @@ static void __exit ispmmu_cleanup(void)
  **/
 static int __init isp_init(void)
 {
+	struct isp_sysc isp_sysconfig;
 	int ret_err = 0;
 
 	DPRINTK_ISPCTRL("+isp_init for Omap 3430 Camera ISP\n");
@@ -2324,6 +2319,12 @@ static int __init isp_init(void)
 	isp_resizer_init();
 	isp_af_init();
 	isp_csi2_init();
+
+	isp_get();
+	isp_sysconfig.reset = 0;
+	isp_sysconfig.idle_mode = 1;
+	isp_power_settings(isp_sysconfig);
+	isp_put();
 
 	DPRINTK_ISPCTRL("-isp_init for Omap 3430 Camera ISP\n");
 	return 0;
