@@ -201,7 +201,7 @@ static int omap34xxcam_vbq_setup(struct videobuf_queue *vbq, unsigned int *cnt,
 	while (*size * *cnt > fh->vdev->vdev_sensor_config.capture_mem)
 		(*cnt)--;
 
-	return 0;
+	return isp_vbq_setup(vbq, cnt, size);
 }
 
 /**
