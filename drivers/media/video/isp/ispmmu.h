@@ -29,6 +29,16 @@
 
 extern struct iommu *isp_iommu;
 
+static inline dma_addr_t ispmmu_vmalloc(size_t bytes)
+{
+	return (dma_addr_t)iommu_vmalloc(isp_iommu, NULL, bytes, IOMMU_FLAG);
+}
+
+static inline void ispmmu_vfree(const dma_addr_t da)
+{
+	iommu_vfree(isp_iommu, (void *)da);
+}
+
 static inline dma_addr_t ispmmu_kmap(u32 pa, int size)
 {
 	void *da;
