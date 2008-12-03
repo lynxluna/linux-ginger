@@ -2153,7 +2153,9 @@ EXPORT_SYMBOL(isp_restore_ctx);
  **/
 int isp_get(void)
 {
+	struct isp_sysc isp_sysconfig;
 	int ret_err = 0;
+
 	DPRINTK_ISPCTRL("isp_get: old %d\n", isp_obj.ref_count);
 	mutex_lock(&(isp_obj.isp_mutex));
 	if (isp_obj.ref_count == 0) {
@@ -2198,8 +2200,12 @@ int isp_get(void)
 			isp_restore_ctx();
 	}
 	isp_obj.ref_count++;
-	mutex_unlock(&(isp_obj.isp_mutex));
 
+	isp_sysconfig.reset = 0;
+	isp_sysconfig.idle_mode = 1;
+	isp_power_settings(isp_sysconfig);
+
+	mutex_unlock(&(isp_obj.isp_mutex));
 
 	DPRINTK_ISPCTRL("isp_get: new %d\n", isp_obj.ref_count);
 	return isp_obj.ref_count;
