@@ -76,4 +76,21 @@ static inline void ispmmu_restore_context(void)
 	iommu_restore_ctx(isp_iommu);
 }
 
+static inline int ispmmu_init(void)
+{
+	isp_get();
+	isp_iommu = iommu_get("isp");
+	isp_put();
+
+	if (IS_ERR(isp_iommu))
+		return PTR_ERR(isp_iommu);
+
+	return 0;
+}
+
+static inline void ispmmu_cleanup(void)
+{
+	iommu_put(isp_iommu);
+}
+
 #endif /* OMAP_ISP_MMU_H */

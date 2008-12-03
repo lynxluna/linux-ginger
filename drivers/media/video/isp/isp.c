@@ -2253,23 +2253,6 @@ void isp_restore_context(struct isp_reg *reg_list)
 }
 EXPORT_SYMBOL(isp_restore_context);
 
-static int __init ispmmu_init(void)
-{
-	isp_get();
-	isp_iommu = iommu_get("isp");
-	isp_put();
-
-	if (IS_ERR(isp_iommu))
-		return PTR_ERR(isp_iommu);
-
-	return 0;
-}
-
-static void __exit ispmmu_cleanup(void)
-{
-	iommu_put(isp_iommu);
-}
-
 /**
  * isp_init - ISP module initialization.
  **/
