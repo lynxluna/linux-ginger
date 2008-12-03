@@ -55,11 +55,8 @@
 #define PRINTK(...) do { } while (0)
 
 #if ISP_WORKAROUND
-void *buff_addr;
-dma_addr_t buff_addr_mapped;
-struct scatterlist *sglist_alloc;
-static int alloc_done, num_sc;
-unsigned long offset_value;
+dma_addr_t isp_tmp_buf;
+unsigned long isp_tmp_buf_offset;
 #endif
 
 struct iommu *isp_iommu;
@@ -1008,7 +1005,8 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *ispirq_disp)
 				irqdis->isp_callbk_arg2[CBK_PREV_DONE]);
 		else if (!bufs->is_raw && !ispresizer_busy()) {
 			if (ispmodule_obj.applyCrop) {
-				ispresizer_applycrop();
+				ispresizer_applycrop(isp_tmp_buf
+						     + isp_tmp_buf_offset);
 				if (!ispresizer_busy())
 					ispmodule_obj.applyCrop = 0;
 			}
@@ -1139,60 +1137,31 @@ struct device camera_dev = {
 
 #if ISP_WORKAROUND
 /**
- *  isp_buf_allocation - To allocate a 10MB memory
+ *  isp_tmp_buf_alloc - To allocate a 10MB memory
  *
  **/
-u32 isp_buf_allocation(void)
+u32 isp_tmp_buf_alloc(void)
 {
-	buff_addr = (void *) vmalloc(buffer_size);
-
-	if (!buff_addr) {
-		printk(KERN_ERR "Cannot allocate memory ");
-		return -ENOMEM;
-	}
-
-	sglist_alloc = videobuf_vmalloc_to_sg(buff_addr, no_of_pages);
-	if (!sglist_alloc) {
-		printk(KERN_ERR "videobuf_vmalloc_to_sg error");
-		return -ENOMEM;
-	}
-	num_sc = dma_map_sg(NULL, sglist_alloc, no_of_pages, 1);
-	buff_addr_mapped = ispmmu_vmap(sglist_alloc, no_of_pages);
-	if (!buff_addr_mapped) {
+	isp_tmp_buf = ispmmu_vmalloc(ISP_TMP_BUFFER_SIZE);
+	if (IS_ERR((void *)isp_tmp_buf)) {
 		printk(KERN_ERR "ispmmu_vmap mapping failed ");
 		return -ENOMEM;
 	}
-	isppreview_set_outaddr(buff_addr_mapped);
-	alloc_done = 1;
+
+	isppreview_set_outaddr(isp_tmp_buf);
+
 	return 0;
 }
 
 /**
- *  isp_buf_get - Get the buffer pointer address
- **/
-dma_addr_t isp_buf_get(void)
-{
-	dma_addr_t retaddr;
-
-	if (alloc_done == 1)
-		retaddr = buff_addr_mapped + offset_value;
-	else
-		retaddr = 0;
-	return retaddr;
-}
-
-/**
- *  isp_buf_free - To free allocated 10MB memory
+ *  isp_tmp_buf_free - To free allocated 10MB memory
  *
  **/
-void isp_buf_free(void)
+void isp_tmp_buf_free(void)
 {
-	if (alloc_done == 1) {
-		ispmmu_vunmap(buff_addr_mapped);
-		dma_unmap_sg(NULL, sglist_alloc, no_of_pages, 1);
-		kfree(sglist_alloc);
-		vfree(buff_addr);
-		alloc_done = 0;
+	if (isp_tmp_buf) {
+		ispmmu_vfree(isp_tmp_buf);
+		isp_tmp_buf = 0;
 	}
 }
 #endif
@@ -1310,8 +1279,8 @@ u32 isp_calc_pipeline(struct v4l2_pix_format *pix_input,
 #if ISP_WORKAROUND
 		isppreview_config_datapath(PRV_RAW_CCDC, PREVIEW_MEM);
 		ispresizer_config_datapath(RSZ_MEM_YUV);
-		if (alloc_done == 0) {
-			rval = isp_buf_allocation();
+		if (!isp_tmp_buf) {
+			rval = isp_tmp_buf_alloc();
 			if (rval)
 				return -EINVAL;
 		}
@@ -1355,9 +1324,10 @@ void isp_config_pipeline(struct v4l2_pix_format *pix_input,
 
 	if (ispmodule_obj.isp_pipeline & OMAP_ISP_RESIZER)
 		ispresizer_config_size(ispmodule_obj.resizer_input_width,
-			ispmodule_obj.resizer_input_height,
-			ispmodule_obj.resizer_output_width,
-			ispmodule_obj.resizer_output_height);
+				       ispmodule_obj.resizer_input_height,
+				       ispmodule_obj.resizer_output_width,
+				       ispmodule_obj.resizer_output_height,
+				       isp_tmp_buf + isp_tmp_buf_offset);
 
 	if (pix_output->pixelformat == V4L2_PIX_FMT_UYVY) {
 		isppreview_config_ycpos(YCPOS_YCrYCb);
@@ -1872,7 +1842,7 @@ void isp_config_crop(struct v4l2_pix_format *croppix)
 	while (((int)cur_rect.width & 0xFFFFFFF0) != (int)cur_rect.width)
 		(int)cur_rect.width--;
 
-	offset_value = ((cur_rect.left * 2) + \
+	isp_tmp_buf_offset = ((cur_rect.left * 2) + \
 		((ispmodule_obj.preview_output_width) * 2 * cur_rect.top));
 #endif
 
@@ -2209,7 +2179,7 @@ int isp_put(void)
 		if (--isp_obj.ref_count == 0) {
 			isp_save_ctx();
 #if ISP_WORKAROUND
-			isp_buf_free();
+			isp_tmp_buf_free();
 #endif
 			isp_release_resources();
 			ispmodule_obj.isp_pipeline = 0;

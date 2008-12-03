@@ -63,8 +63,7 @@
 #define NUM_ISP_CAPTURE_FORMATS 	(sizeof(isp_formats) /\
 							sizeof(isp_formats[0]))
 #define ISP_WORKAROUND 1
-#define buffer_size (1024 * 1024 * 10)
-#define no_of_pages (buffer_size / (4 * 1024))
+#define ISP_TMP_BUFFER_SIZE		(1024 * 1024 * 10)
 
 typedef int (*isp_vbq_callback_ptr) (struct videobuf_buffer *vb);
 typedef void (*isp_callback_t) (unsigned long status,
