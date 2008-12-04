@@ -155,12 +155,12 @@ struct isp_bufs {
 	struct isp_buf buf[NUM_BUFS];
 	/* Next slot to queue a buffer. */
 	int queue;
-	/* Received hs_vs interrupt after starting ccdc? */
-	int hs_vs;
 	/* Buffer that is being processed. */
 	int done;
 	/* raw capture? */
 	int is_raw;
+	/* Wait for this many hs_vs before anything else. */
+	int wait_hs_vs;
 };
 
 /**
@@ -186,6 +186,7 @@ struct isp_bufs {
  * @hskip: Horizontal Start Pixel performed in Preview module.
  * @vskip: Vertical Start Line performed in Preview module.
  * @wenlog: Store the value for the sensor specific wenlog field.
+ * @wait_hs_vs: Wait for this many hs_vs before anything else in the beginning.
  */
 struct isp_interface_config {
 	enum isp_interface_type ccdc_par_ser;
@@ -199,6 +200,7 @@ struct isp_interface_config {
 	u32 prev_sph;
 	u32 prev_slv;
 	u32 wenlog;
+	int wait_hs_vs;
 	union {
 		struct par {
 			unsigned par_bridge:2;

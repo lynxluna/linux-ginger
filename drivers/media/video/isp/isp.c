@@ -958,22 +958,21 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *ispirq_disp)
 	unsigned long flags;
 	u32 irqstatus = 0;
 	unsigned long irqflags = 0;
-	int hs_vs;
+	int wait_hs_vs = 0;
 
 	irqstatus = omap_readl(ISP_IRQ0STATUS);
 	omap_writel(irqstatus, ISP_IRQ0STATUS);
 
 	spin_lock_irqsave(&bufs->lock, flags);
-	hs_vs = bufs->hs_vs;
-	if ((irqstatus & HS_VS) == HS_VS) {
-		bufs->hs_vs = 1;
-	}
+	if (irqstatus & HS_VS && bufs->wait_hs_vs)
+		bufs->wait_hs_vs--;
+	wait_hs_vs = bufs->wait_hs_vs;
 	spin_unlock_irqrestore(&bufs->lock, flags);
 	/*
 	 * We need to wait for the first HS_VS interrupt from CCDC. 
 	 * Otherwise our frame (and everything else) might be bad.
 	 */
-	if (!hs_vs)
+	if (wait_hs_vs)
 		goto out_no_unlock;
 
 	spin_lock_irqsave(&isp_obj.lock, irqflags);
@@ -1350,6 +1349,7 @@ void isp_buf_init()
 	bufs->queue = 0;
 	bufs->done = 0;
 	bufs->is_raw = 1;
+	bufs->wait_hs_vs = isp_obj.config->wait_hs_vs;
 	if ((ispmodule_obj.isp_pipeline & OMAP_ISP_RESIZER) ||
 	    (ispmodule_obj.isp_pipeline & OMAP_ISP_PREVIEW))
 		bufs->is_raw = 0;
@@ -1403,7 +1403,12 @@ int isp_buf_process(struct isp_bufs *bufs)
 			ispccdc_enable(0);
 		else
 			ispresizer_enable(0);
-		bufs->hs_vs = 0;
+		/*
+		 * We must wait for the HS_VS since before that the
+		 * CCDC may trigger interrupts even if it's not
+		 * receiving a frame.
+		 */
+		bufs->wait_hs_vs = 1;
 	}
 	if ((bufs->is_raw && ispccdc_busy())
 	    || (!bufs->is_raw && ispresizer_busy())) {
