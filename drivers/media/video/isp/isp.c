@@ -1506,9 +1506,13 @@ int isp_vbq_setup(struct videobuf_queue *vbq, unsigned int *cnt,
 		  unsigned int *size)
 {
 	int rval = 0;
+	size_t tmp_size = PAGE_ALIGN(ispmodule_obj.preview_output_width
+				     * ispmodule_obj.preview_output_height
+				     * ISP_BYTES_PER_PIXEL);
 
-	if (!isp_tmp_buf || isp_tmp_buf_size < PAGE_ALIGN(*size))
-		rval = isp_tmp_buf_alloc(PAGE_ALIGN(*size));
+	if (ispmodule_obj.isp_pipeline & OMAP_ISP_PREVIEW
+	    && isp_tmp_buf_size < tmp_size)
+		rval = isp_tmp_buf_alloc(tmp_size);
 
 	return rval;
 }
