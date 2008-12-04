@@ -964,9 +964,9 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *ispirq_disp)
 	omap_writel(irqstatus, ISP_IRQ0STATUS);
 
 	spin_lock_irqsave(&bufs->lock, flags);
+	wait_hs_vs = bufs->wait_hs_vs;
 	if (irqstatus & HS_VS && bufs->wait_hs_vs)
 		bufs->wait_hs_vs--;
-	wait_hs_vs = bufs->wait_hs_vs;
 	spin_unlock_irqrestore(&bufs->lock, flags);
 	/*
 	 * We need to wait for the first HS_VS interrupt from CCDC. 
