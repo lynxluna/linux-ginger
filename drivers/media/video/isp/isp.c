@@ -172,6 +172,7 @@ static struct isp {
 	struct clk *cam_ick;
 	struct clk *cam_mclk;
 	struct clk *csi2_fck;
+	struct isp_interface_config *config;
 } isp_obj;
 
 struct isp_bufs ispbufs;
@@ -885,6 +886,8 @@ int isp_configure_interface(struct isp_interface_config *config)
 	/* Set sensor specific fields in CCDC and Previewer module.*/
 	isppreview_set_skip(config->prev_sph, config->prev_slv);
 	ispccdc_set_wenlog(config->wenlog);
+
+	isp_obj.config = config;
 
 	return 0;
 }
