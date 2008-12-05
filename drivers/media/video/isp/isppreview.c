@@ -126,10 +126,10 @@ static u8 flr_nf_strgth = 0x03;
 
 /* Default values in Office Flourescent Light for White Balance*/
 static u16 flr_wbal_dgain = 0x100;
-static u8 flr_wbal_coef0 = 0x68;
-static u8 flr_wbal_coef1 = 0x5c;
-static u8 flr_wbal_coef2 = 0x5c;
-static u8 flr_wbal_coef3 = 0x94;
+static u8 flr_wbal_coef0 = 0x20;
+static u8 flr_wbal_coef1 = 0x35;
+static u8 flr_wbal_coef2 = 0x2b;
+static u8 flr_wbal_coef3 = 0x20;
 
 /* Default values in Office Flourescent Light for Black Adjustment*/
 static u8 flr_blkadj_blue = 0x0;
@@ -1828,10 +1828,10 @@ int __init isp_preview_init(void)
 	mutex_init(&ispprev_obj.ispprev_mutex);
 
 	if (system_rev > OMAP3430_REV_ES1_0) {
-		flr_wbal_coef0 = 0x23;
-		flr_wbal_coef1 = 0x20;
-		flr_wbal_coef2 = 0x20;
-		flr_wbal_coef3 = 0x39;
+		flr_wbal_coef0 = 0x20;
+		flr_wbal_coef1 = 0x23;
+		flr_wbal_coef2 = 0x39;
+		flr_wbal_coef3 = 0x20;
 	}
 
 	/* Init values */
