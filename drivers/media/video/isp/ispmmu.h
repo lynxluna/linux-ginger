@@ -21,6 +21,7 @@
 #define OMAP_ISP_MMU_H
 
 #include <linux/err.h>
+#include <linux/scatterlist.h>
 
 #include <mach/iommu.h>
 #include <mach/iovmm.h>
@@ -43,7 +44,7 @@ static inline dma_addr_t ispmmu_kmap(u32 pa, int size)
 {
 	void *da;
 
-	da = iommu_kmap(isp_iommu, NULL, (void *)pa, size, IOMMU_FLAG);
+	da = iommu_kmap(isp_iommu, NULL, pa, size, IOMMU_FLAG);
 	if (IS_ERR(da))
 		return PTR_ERR(da);
 
