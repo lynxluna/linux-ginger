@@ -101,7 +101,9 @@ static inline int ispmmu_init(void)
 
 static inline void ispmmu_cleanup(void)
 {
+	isp_get();
 	iommu_put(isp_iommu);
+	isp_put();
 }
 
 #endif /* OMAP_ISP_MMU_H */
