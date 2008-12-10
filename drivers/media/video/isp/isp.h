@@ -120,47 +120,6 @@ struct isp_reg {
 	u32 val;
 };
 
-struct isp_buf {
-	dma_addr_t isp_addr;
-	void (*complete)(struct videobuf_buffer *vb, void *priv);
-	struct videobuf_buffer *vb;
-	void *priv;
-	u32 vb_state;
-};
-
-
-#define ISP_BUFS_IS_FULL(bufs) \
-	(((bufs)->queue + 1) % NUM_BUFS == (bufs)->done)
-#define ISP_BUFS_IS_EMPTY(bufs)		((bufs)->queue == (bufs)->done)
-#define ISP_BUFS_IS_LAST(bufs) \
-	((bufs)->queue == ((bufs)->done + 1) % NUM_BUFS)
-#define ISP_BUFS_QUEUED(bufs) \
-	((((bufs)->done - (bufs)->queue + NUM_BUFS)) % NUM_BUFS)
-#define ISP_BUF_DONE(bufs)		((bufs)->buf + (bufs)->done)
-#define ISP_BUF_NEXT_DONE(bufs)	\
-	((bufs)->buf + ((bufs)->done + 1) % NUM_BUFS)
-#define ISP_BUF_QUEUE(bufs)		((bufs)->buf + (bufs)->queue)
-#define ISP_BUF_MARK_DONE(bufs) \
-	(bufs)->done = ((bufs)->done + 1) % NUM_BUFS;
-#define ISP_BUF_MARK_QUEUED(bufs) \
-	(bufs)->queue = ((bufs)->queue + 1) % NUM_BUFS;
-
-struct isp_bufs {
-	dma_addr_t isp_addr_capture[VIDEO_MAX_FRAME];
-	spinlock_t lock;	/* For handling current buffer */
-	/* queue full: (ispsg.queue + 1) % NUM_BUFS == ispsg.done
-	   queue empty: ispsg.queue == ispsg.done */
-	struct isp_buf buf[NUM_BUFS];
-	/* Next slot to queue a buffer. */
-	int queue;
-	/* Buffer that is being processed. */
-	int done;
-	/* raw capture? */
-	int is_raw;
-	/* Wait for this many hs_vs before anything else. */
-	int wait_hs_vs;
-};
-
 /**
  * struct isp_interface_config - ISP interface configuration.
  * @ccdc_par_ser: ISP interface type. 0 - Parallel, 1 - CSIA, 2 - CSIB to CCDC.
