@@ -60,6 +60,8 @@ size_t isp_tmp_buf_size;
 unsigned long isp_tmp_buf_offset;
 #endif
 
+static void isp_buf_init(void);
+
 struct iommu *isp_iommu;
 EXPORT_SYMBOL_GPL(isp_iommu);
 
@@ -1145,7 +1147,9 @@ void isp_stop()
 		udelay(1);
 	}
 	isp_restore_ctx();
+	isp_buf_init();
 }
+EXPORT_SYMBOL(isp_stop);
 
 void isp_set_buf(struct isp_buf *buf)
 {
@@ -1239,7 +1243,7 @@ void isp_config_pipeline(struct v4l2_pix_format *pix_input,
 	return;
 }
 
-void isp_buf_init()
+static void isp_buf_init(void)
 {
 	struct isp_bufs *bufs = &ispbufs;
 	int sg;
@@ -1257,7 +1261,6 @@ void isp_buf_init()
 		bufs->buf[sg].priv = NULL;
 	}
 }
-EXPORT_SYMBOL(isp_stop);
 
 /**
  * isp_vbq_sync - Walks the pages table and flushes the cache for
@@ -2207,7 +2210,7 @@ out_clk_get_mclk:
 
 	return ret_err;
 }
-EXPORT_SYMBOL(isp_buf_init);
+EXPORT_SYMBOL(isp_init);
 
 /**
  * isp_cleanup - ISP module cleanup.

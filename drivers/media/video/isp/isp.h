@@ -224,8 +224,6 @@ void isp_start(void);
 
 void isp_stop(void);
 
-void isp_buf_init(void);
-
 void isp_vbq_done(unsigned long status, isp_vbq_callback_ptr arg1, void *arg2);
 
 int isp_buf_queue(struct videobuf_buffer *vb,
