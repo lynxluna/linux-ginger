@@ -54,11 +54,9 @@
 //#define PRINTK(...) printk(__VA_ARGS__)
 #define PRINTK(...) do { } while (0)
 
-#if ISP_WORKAROUND
 dma_addr_t isp_tmp_buf;
 size_t isp_tmp_buf_size;
 unsigned long isp_tmp_buf_offset;
-#endif
 
 static void isp_buf_init(void);
 
@@ -1037,7 +1035,6 @@ struct device camera_dev = {
 	.driver = &camera_drv,
 };
 
-#if ISP_WORKAROUND
 /**
  *  isp_tmp_buf_free - To free allocated 10MB memory
  *
@@ -1073,7 +1070,6 @@ u32 isp_tmp_buf_alloc(size_t size)
 
 	return 0;
 }
-#endif
 
 /**
  * isp_start - Starts ISP submodule
@@ -1156,11 +1152,6 @@ void isp_set_buf(struct isp_buf *buf)
 	if ((ispmodule_obj.isp_pipeline & OMAP_ISP_RESIZER) &&
 						is_ispresizer_enabled())
 		ispresizer_set_outaddr(buf->isp_addr);
-#if (ISP_WORKAROUND == 0)
-	else if ((ispmodule_obj.isp_pipeline & OMAP_ISP_PREVIEW) &&
-						is_isppreview_enabled())
-		isppreview_set_outaddr(buf->isp_addr);
-#endif
 	else if (ispmodule_obj.isp_pipeline & OMAP_ISP_CCDC)
 		ispccdc_set_outaddr(buf->isp_addr);
 
@@ -1183,13 +1174,8 @@ u32 isp_calc_pipeline(struct v4l2_pix_format *pix_input,
 			isppreview_request();
 			ispresizer_request();
 		ispccdc_config_datapath(CCDC_RAW, CCDC_OTHERS_VP);
-#if ISP_WORKAROUND
 		isppreview_config_datapath(PRV_RAW_CCDC, PREVIEW_MEM);
 		ispresizer_config_datapath(RSZ_MEM_YUV);
-#else
-		isppreview_config_datapath(PRV_RAW_CCDC, PREVIEW_RSZ);
-		ispresizer_config_datapath(RSZ_OTFLY_YUV);
-#endif
 	} else {
 		ispmodule_obj.isp_pipeline = OMAP_ISP_CCDC;
 		ispccdc_request();
@@ -1734,9 +1720,7 @@ void isp_config_crop(struct v4l2_pix_format *croppix)
 {
 	u8 crop_scaling_w;
 	u8 crop_scaling_h;
-#if ISP_WORKAROUND
 	unsigned long org_left, num_pix, new_top;
-#endif
 
 	struct v4l2_pix_format *pix = croppix;
 
@@ -1750,7 +1734,6 @@ void isp_config_crop(struct v4l2_pix_format *croppix)
 	cur_rect.width = (ispcroprect.width * crop_scaling_w) / 10;
 	cur_rect.height = (ispcroprect.height * crop_scaling_h) / 10;
 
-#if ISP_WORKAROUND
 	org_left = cur_rect.left;
 	while (((int)cur_rect.left & 0xFFFFFFF0) != (int)cur_rect.left)
 		(int)cur_rect.left--;
@@ -1766,7 +1749,6 @@ void isp_config_crop(struct v4l2_pix_format *croppix)
 
 	isp_tmp_buf_offset = ((cur_rect.left * 2) + \
 		((ispmodule_obj.preview_output_width) * 2 * cur_rect.top));
-#endif
 
 	ispresizer_trycrop(cur_rect.left, cur_rect.top, cur_rect.width,
 					cur_rect.height,
@@ -2100,9 +2082,7 @@ int isp_put(void)
 	if (isp_obj.ref_count)
 		if (--isp_obj.ref_count == 0) {
 			isp_save_ctx();
-#if ISP_WORKAROUND
 			isp_tmp_buf_free();
-#endif
 			isp_release_resources();
 			ispmodule_obj.isp_pipeline = 0;
 			clk_disable(isp_obj.cam_ick);

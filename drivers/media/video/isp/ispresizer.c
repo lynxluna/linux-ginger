@@ -29,10 +29,6 @@
 #include "ispreg.h"
 #include "ispresizer.h"
 
-#if ISP_WORKAROUND
-dma_addr_t buff_addr_lsc_wa;
-#endif
-
 /* Default configuration of resizer,filter coefficients,yenh for camera isp */
 static struct isprsz_yenh ispreszdefaultyenh = {0, 0, 0, 0};
 static struct isprsz_coef ispreszdefcoef = {
@@ -512,19 +508,11 @@ int ispresizer_config_size(u32 input_w, u32 input_h, u32 output_w,
 						(ispres_obj.v_startphase <<
 						ISPRSZ_CNT_VSTPH_SHIFT),
 						ISPRSZ_CNT);
-#if ISP_WORKAROUND
+
 	omap_writel((0x00 <<	ISPRSZ_IN_START_HORZ_ST_SHIFT) |
 					(0x00 <<
 					ISPRSZ_IN_START_VERT_ST_SHIFT),
 					ISPRSZ_IN_START);
-
-#else
-	omap_writel(((ispres_obj.ipwd_crop * 2) <<
-					ISPRSZ_IN_START_HORZ_ST_SHIFT) |
-					(ispres_obj.ipht_crop <<
-					ISPRSZ_IN_START_VERT_ST_SHIFT),
-					ISPRSZ_IN_START);
-#endif
 
 	omap_writel((ispres_obj.inputwidth << ISPRSZ_IN_SIZE_HORZ_SHIFT) |
 						(ispres_obj.inputheight <<
