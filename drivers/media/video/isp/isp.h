@@ -265,10 +265,6 @@ u32 isp_set_xclk(u32 xclk, u8 xclksel);
 
 u32 isp_get_xclk(u8 xclksel);
 
-int isp_request_interface(enum isp_interface_type if_t);
-
-int isp_free_interface(enum isp_interface_type if_t);
-
 void isp_power_settings(struct isp_sysc);
 
 int isp_configure_interface(struct isp_interface_config *config);
