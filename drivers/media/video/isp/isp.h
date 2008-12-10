@@ -178,8 +178,6 @@ struct isp_bufs {
  * @hsvs_syncdetect: HS or VS synchronization signal detection.
  *                       0 - HS Falling, 1 - HS rising
  *                       2 - VS falling, 3 - VS rising
- * @vdint0_timing: VD0 Interrupt timing.
- * @vdint1_timing: VD1 Interrupt timing.
  * @strobe: Strobe related parameter.
  * @prestrobe: PreStrobe related parameter.
  * @shutter: Shutter related parameter.
@@ -192,8 +190,6 @@ struct isp_interface_config {
 	enum isp_interface_type ccdc_par_ser;
 	u8 dataline_shift;
 	u32 hsvs_syncdetect;
-	u16 vdint0_timing;
-	u16 vdint1_timing;
 	int strobe;
 	int prestrobe;
 	int shutter;
