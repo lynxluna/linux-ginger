@@ -601,7 +601,7 @@ EXPORT_SYMBOL(isp_get_xclk);
  *
  * Sets the power settings for the ISP, and SBL bus.
  **/
-void isp_power_settings(struct isp_sysc isp_sysconfig)
+static void isp_power_settings(struct isp_sysc isp_sysconfig)
 {
 	if (isp_sysconfig.idle_mode) {
 		omap_writel(ISP_SYSCONFIG_AUTOIDLE |
@@ -642,7 +642,6 @@ void isp_power_settings(struct isp_sysc isp_sysconfig)
 		omap_writel(ISPCTRL_SBL_AUTOIDLE, ISP_CTRL);
 	}
 }
-EXPORT_SYMBOL(isp_power_settings);
 
 #define BIT_SET(var, shift, mask, val)		\
 	do {					\
@@ -835,50 +834,6 @@ int isp_configure_interface(struct isp_interface_config *config)
 	return 0;
 }
 EXPORT_SYMBOL(isp_configure_interface);
-
-/**
- * isp_configure_interface_bridge - Configure CCDC i/f bridge.
- *
- * Sets the bit field that controls the 8 to 16-bit bridge at
- * the input to CCDC.
- **/
-int isp_configure_interface_bridge(u32 par_bridge)
-{
-	u32 ispctrl_val = omap_readl(ISP_CTRL);
-
-	ispctrl_val &= ~ISPCTRL_PAR_BRIDGE_BENDIAN;
-	ispctrl_val |= (par_bridge << ISPCTRL_PAR_BRIDGE_SHIFT);
-	omap_writel(ispctrl_val, ISP_CTRL);
-	return 0;
-}
-EXPORT_SYMBOL(isp_configure_interface_bridge);
-
-/**
- * isp_CCDC_VD01_enable - Enables VD0 and VD1 IRQs.
- *
- * Sets VD0 and VD1 bits in IRQ0STATUS to reset the flag, and sets them in
- * IRQ0ENABLE to enable the corresponding IRQs.
- **/
-void isp_CCDC_VD01_enable(void)
-{
-	omap_writel(IRQ0STATUS_CCDC_VD0_IRQ | IRQ0STATUS_CCDC_VD1_IRQ,
-							ISP_IRQ0STATUS);
-	omap_writel(omap_readl(ISP_IRQ0ENABLE) | IRQ0ENABLE_CCDC_VD0_IRQ |
-						IRQ0ENABLE_CCDC_VD1_IRQ,
-						ISP_IRQ0ENABLE);
-}
-
-/**
- * isp_CCDC_VD01_disable - Disables VD0 and VD1 IRQs.
- *
- * Clears VD0 and VD1 bits in IRQ0ENABLE register.
- **/
-void isp_CCDC_VD01_disable(void)
-{
-	omap_writel(omap_readl(ISP_IRQ0ENABLE) & ~(IRQ0ENABLE_CCDC_VD0_IRQ |
-						IRQ0ENABLE_CCDC_VD1_IRQ),
-						ISP_IRQ0ENABLE);
-}
 
 int isp_buf_process(struct isp_bufs *bufs);
 

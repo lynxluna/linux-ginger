@@ -265,13 +265,7 @@ u32 isp_set_xclk(u32 xclk, u8 xclksel);
 
 u32 isp_get_xclk(u8 xclksel);
 
-void isp_power_settings(struct isp_sysc);
-
 int isp_configure_interface(struct isp_interface_config *config);
-
-void isp_CCDC_VD01_disable(void);
-
-void isp_CCDC_VD01_enable(void);
 
 int isp_get(void);
 
@@ -319,9 +313,6 @@ void isp_restore_context(struct isp_reg *);
 void isp_save_ctx(void);
 
 void isp_restore_ctx(void);
-
-/* Configure CCDC interface bridge*/
-int isp_configure_interface_bridge(u32 par_bridge);
 
 void isp_print_status(void);
 
