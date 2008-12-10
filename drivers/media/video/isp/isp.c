@@ -54,10 +54,6 @@
 //#define PRINTK(...) printk(__VA_ARGS__)
 #define PRINTK(...) do { } while (0)
 
-dma_addr_t isp_tmp_buf;
-size_t isp_tmp_buf_size;
-unsigned long isp_tmp_buf_offset;
-
 static void isp_buf_init(void);
 
 struct iommu *isp_iommu;
@@ -169,6 +165,9 @@ static struct isp {
 	struct clk *cam_mclk;
 	struct clk *csi2_fck;
 	struct isp_interface_config *config;
+	dma_addr_t tmp_buf;
+	size_t tmp_buf_size;
+	unsigned long tmp_buf_offset;
 } isp_obj;
 
 struct isp_bufs ispbufs;
@@ -1041,10 +1040,10 @@ struct device camera_dev = {
  **/
 void isp_tmp_buf_free(void)
 {
-	if (isp_tmp_buf) {
-		ispmmu_vfree(isp_tmp_buf);
-		isp_tmp_buf = 0;
-		isp_tmp_buf_size = 0;
+	if (isp_obj.tmp_buf) {
+		ispmmu_vfree(isp_obj.tmp_buf);
+		isp_obj.tmp_buf = 0;
+		isp_obj.tmp_buf_size = 0;
 	}
 }
 
@@ -1058,15 +1057,15 @@ u32 isp_tmp_buf_alloc(size_t size)
 
 	printk(KERN_INFO "%s: allocating %d bytes\n", __func__, size);
 
-	isp_tmp_buf = ispmmu_vmalloc(size);
-	if (IS_ERR((void *)isp_tmp_buf)) {
+	isp_obj.tmp_buf = ispmmu_vmalloc(size);
+	if (IS_ERR((void *)isp_obj.tmp_buf)) {
 		printk(KERN_ERR "ispmmu_vmap mapping failed ");
 		return -ENOMEM;
 	}
-	isp_tmp_buf_size = size;
+	isp_obj.tmp_buf_size = size;
 
-	isppreview_set_outaddr(isp_tmp_buf);
-	ispresizer_set_inaddr(isp_tmp_buf);
+	isppreview_set_outaddr(isp_obj.tmp_buf);
+	ispresizer_set_inaddr(isp_obj.tmp_buf);
 
 	return 0;
 }
@@ -1398,7 +1397,7 @@ int isp_vbq_setup(struct videobuf_queue *vbq, unsigned int *cnt,
 				     * ISP_BYTES_PER_PIXEL);
 
 	if (ispmodule_obj.isp_pipeline & OMAP_ISP_PREVIEW
-	    && isp_tmp_buf_size < tmp_size)
+	    && isp_obj.tmp_buf_size < tmp_size)
 		rval = isp_tmp_buf_alloc(tmp_size);
 
 	return rval;
@@ -1747,7 +1746,7 @@ void isp_config_crop(struct v4l2_pix_format *croppix)
 	while (((int)cur_rect.width & 0xFFFFFFF0) != (int)cur_rect.width)
 		(int)cur_rect.width--;
 
-	isp_tmp_buf_offset = ((cur_rect.left * 2) + \
+	isp_obj.tmp_buf_offset = ((cur_rect.left * 2) + \
 		((ispmodule_obj.preview_output_width) * 2 * cur_rect.top));
 
 	ispresizer_trycrop(cur_rect.left, cur_rect.top, cur_rect.width,
