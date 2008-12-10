@@ -222,16 +222,6 @@ struct isp_interface_config {
 	} u;
 };
 
-/**
- * struct isp_sysc - ISP Power switches to set.
- * @reset: Flag for setting ISP reset.
- * @idle_mode: Flag for setting ISP idle mode.
- */
-struct isp_sysc {
-	char reset;
-	char idle_mode;
-};
-
 void isp_release_resources(void);
 
 void isp_start(void);

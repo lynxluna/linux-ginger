@@ -601,9 +601,9 @@ EXPORT_SYMBOL(isp_get_xclk);
  *
  * Sets the power settings for the ISP, and SBL bus.
  **/
-static void isp_power_settings(struct isp_sysc isp_sysconfig)
+static void isp_power_settings(int idle)
 {
-	if (isp_sysconfig.idle_mode) {
+	if (idle) {
 		omap_writel(ISP_SYSCONFIG_AUTOIDLE |
 				(ISP_SYSCONFIG_MIDLEMODE_SMARTSTANDBY <<
 				ISP_SYSCONFIG_MIDLEMODE_SHIFT),
@@ -2147,7 +2147,6 @@ EXPORT_SYMBOL(isp_restore_context);
  **/
 static int __init isp_init(void)
 {
-	struct isp_sysc isp_sysconfig;
 	int ret_err = 0;
 
 	DPRINTK_ISPCTRL("+isp_init for Omap 3430 Camera ISP\n");
@@ -2193,9 +2192,7 @@ static int __init isp_init(void)
 	isp_csi2_init();
 
 	isp_get();
-	isp_sysconfig.reset = 0;
-	isp_sysconfig.idle_mode = 1;
-	isp_power_settings(isp_sysconfig);
+	isp_power_settings(1);
 	isp_put();
 
 	DPRINTK_ISPCTRL("-isp_init for Omap 3430 Camera ISP\n");
