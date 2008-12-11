@@ -127,8 +127,8 @@ static u8 flr_nf_strgth = 0x03;
 /* Default values in Office Flourescent Light for White Balance*/
 static u16 flr_wbal_dgain = 0x100;
 static u8 flr_wbal_coef0 = 0x20;
-static u8 flr_wbal_coef1 = 0x35;
-static u8 flr_wbal_coef2 = 0x2b;
+static u8 flr_wbal_coef1 = 0x29;
+static u8 flr_wbal_coef2 = 0x2d;
 static u8 flr_wbal_coef3 = 0x20;
 
 /* Default values in Office Flourescent Light for Black Adjustment*/
@@ -1872,14 +1872,14 @@ int __init isp_preview_init(void)
 	params->rgb2rgb = flr_rgb2rgb;
 	params->rgb2ycbcr = flr_prev_csc[ispprev_obj.color];
 
-	params->features = PREV_CFA | PREV_CHROMA_SUPPRESS | PREV_LUMA_ENHANCE
-				| PREV_DEFECT_COR | PREV_NOISE_FILTER;
+	params->features = PREV_CFA | PREV_DEFECT_COR | PREV_NOISE_FILTER;
 	params->features &= ~(PREV_AVERAGER | PREV_INVERSE_ALAW |
 						PREV_HORZ_MEDIAN_FILTER |
 						PREV_GAMMA_BYPASS |
 						PREV_DARK_FRAME_SUBTRACT |
 						PREV_LENS_SHADING |
-						PREV_DARK_FRAME_CAPTURE);
+						PREV_DARK_FRAME_CAPTURE |
+						PREV_CHROMA_SUPPRESS | PREV_LUMA_ENHANCE);
 	return 0;
 }
 
