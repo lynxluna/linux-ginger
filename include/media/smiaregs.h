@@ -43,6 +43,7 @@ struct smia_mode {
 	struct v4l2_fract timeperframe;
 	__u32 max_exp;			/* Maximum exposure value */
 	__u32 pixel_format;		/* V4L2_PIX_FMT_xxx */
+	__u32 sensitivity;		/* 16.16 fixed point */
 };
 
 #ifdef __KERNEL__
