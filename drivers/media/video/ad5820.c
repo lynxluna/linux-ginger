@@ -65,7 +65,7 @@ static struct v4l2_queryctrl ad5820_ctrls[] = {
 	{
 		.id		= V4L2_CID_FOCUS_ABSOLUTE,
 		.type		= V4L2_CTRL_TYPE_INTEGER,
-		.name		= "Focus position",
+		.name		= "Focus, Absolute",
 		.minimum	= 0,
 		.maximum	= 1023,
 		.step		= 1,
