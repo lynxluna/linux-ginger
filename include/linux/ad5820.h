@@ -1,5 +1,5 @@
 /*
- * drivers/media/video/ad5820.h
+ * include/media/ad5820.h
  *
  * Copyright (C) 2008 Nokia Corporation
  * Copyright (C) 2007 Texas Instruments
@@ -23,6 +23,13 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
  * 02110-1301 USA
  */
+
+#ifndef AD5820_H
+#define AD5820_H
+
+#include <linux/videodev2.h>
+
+#ifdef __KERNEL__
 
 #include <linux/i2c.h>
 
@@ -49,5 +56,9 @@ struct ad5820_device {
 	struct v4l2_int_device *v4l2_int_device;
 };
 
-#define V4L2_CID_FOCUS_RAMP_TIME	(V4L2_CID_FOCUS_AUTO + 20)
-#define V4L2_CID_FOCUS_RAMP_MODE	(V4L2_CID_FOCUS_AUTO + 21)
+#endif /* __KERNEL__ */
+
+#define V4L2_CID_FOCUS_RAMP_TIME	(V4L2_CID_PRIVATE_BASE + 0xAF + 1)
+#define V4L2_CID_FOCUS_RAMP_MODE	(V4L2_CID_PRIVATE_BASE + 0xAF + 2)
+
+#endif /* AD5820_H */

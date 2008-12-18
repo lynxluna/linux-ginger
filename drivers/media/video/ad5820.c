@@ -37,7 +37,7 @@
 #include <mach/io.h>
 #include <mach/gpio.h>
 
-#include "ad5820.h"
+#include <linux/ad5820.h>
 
 #define BIT_POWER_DOWN		(1<<15)
 
