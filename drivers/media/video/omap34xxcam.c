@@ -1892,16 +1892,6 @@ static int omap34xxcam_remove(struct platform_device *pdev)
 		cam->vdevs[i].cam = NULL;
 	}
 
-	if (cam->mmio_base) {
-		iounmap((void *)cam->mmio_base);
-		cam->mmio_base = 0;
-	}
-
-	if (cam->mmio_base_phys) {
-		release_mem_region(cam->mmio_base_phys, cam->mmio_size);
-		cam->mmio_base_phys = 0;
-	}
-
 	omap34xxcam = NULL;
 
 	kfree(cam);
@@ -1922,8 +1912,6 @@ static int omap34xxcam_remove(struct platform_device *pdev)
 static int omap34xxcam_probe(struct platform_device *pdev)
 {
 	struct omap34xxcam_device *cam;
-	struct resource *mem;
-	int irq;
 	int i;
 
 	cam = kzalloc(sizeof(*cam), GFP_KERNEL);
@@ -1935,37 +1923,6 @@ static int omap34xxcam_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, cam);
 
 	cam->dev = &pdev->dev;
-
-	/* request the mem region for the camera registers */
-	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!mem) {
-		dev_err(cam->dev, "no mem resource?\n");
-		goto err;
-	}
-
-	if (!request_mem_region(mem->start, (mem->end - mem->start) + 1,
-				pdev->name)) {
-		dev_err(cam->dev,
-			"cannot reserve camera register I/O region\n");
-		goto err;
-
-	}
-	cam->mmio_base_phys = mem->start;
-	cam->mmio_size = (mem->end - mem->start) + 1;
-
-	/* map the region */
-	cam->mmio_base = (unsigned long)
-			ioremap_nocache(cam->mmio_base_phys, cam->mmio_size);
-	if (!cam->mmio_base) {
-		dev_err(cam->dev, "cannot map camera register I/O region\n");
-		goto err;
-	}
-
-	irq = platform_get_irq(pdev, 0);
-	if (irq <= 0) {
-		dev_err(cam->dev, "no irq for camera?\n");
-		goto err;
-	}
 
 	omap34xxcam = cam;
 
