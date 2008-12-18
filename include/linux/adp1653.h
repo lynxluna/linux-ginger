@@ -59,9 +59,6 @@
 
 #define ADP1653_TORCH_INTENSITY_MAX		11
 
-#define ADP1653_CID_FIRST			V4L2_CID_CAMERA_FLASH_STROBE
-#define ADP1653_CID_LAST			V4L2_CID_CAMERA_FLASH_FAULT_OV
-
 struct adp1653_platform_data {
 	int (*g_priv)(struct v4l2_int_device *s, void *priv);
 	int (*power_on)(struct v4l2_int_device *s);
