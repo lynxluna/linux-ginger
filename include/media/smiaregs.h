@@ -102,6 +102,9 @@ int smia_ctrl_find(struct v4l2_queryctrl *ctrls, size_t nctrls, int id);
 int smia_ctrl_find_next(struct v4l2_queryctrl *ctrls, size_t nctrls, int id);
 int smia_ctrl_query(struct v4l2_queryctrl *ctrls, size_t nctrls,
 		    struct v4l2_queryctrl *a);
+int smia_mode_query(const __u32 *ctrls, size_t nctrls, struct v4l2_queryctrl *a);
+int smia_mode_g_ctrl(const __u32 *ctrls, size_t nctrls, struct v4l2_control *vc,
+		     const struct smia_mode *sm);
 
 int smia_reglist_import(struct smia_meta_reglist *meta);
 struct smia_reglist *smia_reglist_find_type(struct smia_meta_reglist *meta,

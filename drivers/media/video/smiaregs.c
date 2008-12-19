@@ -69,13 +69,14 @@ EXPORT_SYMBOL_GPL(smia_ctrl_find_next);
 int smia_ctrl_query(struct v4l2_queryctrl *ctrls, size_t nctrls,
 		    struct v4l2_queryctrl *a)
 {
-	int i;
+	int id, i;
 
-	if (a->id & V4L2_CTRL_FLAG_NEXT_CTRL) {
-		a->id &= ~V4L2_CTRL_FLAG_NEXT_CTRL;
-		i = smia_ctrl_find_next(ctrls, nctrls, a->id);
+	id = a->id;
+	if (id & V4L2_CTRL_FLAG_NEXT_CTRL) {
+		id &= ~V4L2_CTRL_FLAG_NEXT_CTRL;
+		i = smia_ctrl_find_next(ctrls, nctrls, id);
 	} else {
-		i = smia_ctrl_find(ctrls, nctrls, a->id);
+		i = smia_ctrl_find(ctrls, nctrls, id);
 	}
 
 	if (i < 0)
@@ -86,6 +87,90 @@ int smia_ctrl_query(struct v4l2_queryctrl *ctrls, size_t nctrls,
 	return 0;
 }
 EXPORT_SYMBOL_GPL(smia_ctrl_query);
+
+int smia_mode_query(const __u32 *ctrls, size_t nctrls, struct v4l2_queryctrl *a)
+{
+	static const struct {
+		__u32 id;
+		char *name;
+	} ctrl[] = {
+		{ .id = V4L2_CID_MODE_FRAME_WIDTH,    .name = "Frame width" },
+		{ .id = V4L2_CID_MODE_FRAME_HEIGHT,   .name = "Frame height" },
+		{ .id = V4L2_CID_MODE_VISIBLE_WIDTH,  .name = "Visible width" },
+		{ .id = V4L2_CID_MODE_VISIBLE_HEIGHT, .name = "Visible height" },
+		{ .id = V4L2_CID_MODE_PIXELCLOCK,     .name = "Pixel clock [Hz]" },
+		{ .id = V4L2_CID_MODE_SENSITIVITY,    .name = "Sensitivity" },
+	};
+	int id, next = 0, i;
+
+	id = a->id;
+	if (id & V4L2_CTRL_FLAG_NEXT_CTRL) {
+		id &= ~V4L2_CTRL_FLAG_NEXT_CTRL;
+		next = 1;
+	}
+
+	for (i = 0; i < ARRAY_SIZE(ctrl); i++) {
+		if ((!next && ctrl[i].id == id) ||
+		    (next && ctrl[i].id > id)) {
+			int j;
+			for (j = 0; j < nctrls; j++)
+				if (ctrl[i].id == ctrls[j])
+					goto found;
+		}
+	}
+	return -EINVAL;
+
+found:
+	a->id            = ctrl[i].id;
+	strcpy(a->name, ctrl[i].name);
+	a->type          = V4L2_CTRL_TYPE_INTEGER;
+	a->minimum       = 0;
+	a->maximum       = 0;
+	a->step          = 0;
+	a->default_value = 0;
+	a->flags         = V4L2_CTRL_FLAG_READ_ONLY;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(smia_mode_query);
+
+int smia_mode_g_ctrl(const __u32 *ctrls, size_t nctrls, struct v4l2_control *vc,
+		     const struct smia_mode *sm)
+{
+	int i;
+
+	for (i = 0; i < nctrls; i++)
+		if (ctrls[i] == vc->id)
+			break;
+	if (i >= nctrls)
+		return -EINVAL;
+
+	switch (vc->id) {
+	case V4L2_CID_MODE_FRAME_WIDTH:
+		vc->value = sm->width;
+		break;
+	case V4L2_CID_MODE_FRAME_HEIGHT:
+		vc->value = sm->height;
+		break;
+	case V4L2_CID_MODE_VISIBLE_WIDTH:
+		vc->value = sm->window_width;
+		break;
+	case V4L2_CID_MODE_VISIBLE_HEIGHT:
+		vc->value = sm->window_height;
+		break;
+	case V4L2_CID_MODE_PIXELCLOCK:
+		vc->value = sm->pixel_clock;
+		break;
+	case V4L2_CID_MODE_SENSITIVITY:
+		vc->value = sm->sensitivity;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(smia_mode_g_ctrl);
 
 /*
  *
