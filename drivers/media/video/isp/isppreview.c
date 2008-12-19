@@ -1141,13 +1141,15 @@ EXPORT_SYMBOL(isppreview_enable_chroma_suppression);
  **/
 void isppreview_config_whitebalance(struct ispprev_wbal prev_wbal)
 {
+	u32 val;
 
 	omap_writel(prev_wbal.dgain, ISPPRV_WB_DGAIN);
-	omap_writel(prev_wbal.coef0 |
-				prev_wbal.coef1 << ISPPRV_WBGAIN_COEF1_SHIFT |
-				prev_wbal.coef2 << ISPPRV_WBGAIN_COEF2_SHIFT |
-				prev_wbal.coef3 << ISPPRV_WBGAIN_COEF3_SHIFT,
-				ISPPRV_WBGAIN);
+
+	val = (prev_wbal.coef0 << ISPPRV_WBGAIN_COEF0_SHIFT);
+	val |= (prev_wbal.coef1 << ISPPRV_WBGAIN_COEF1_SHIFT);
+	val |= (prev_wbal.coef2 << ISPPRV_WBGAIN_COEF2_SHIFT);
+	val |= (prev_wbal.coef3 << ISPPRV_WBGAIN_COEF3_SHIFT);
+	omap_writel(val, ISPPRV_WBGAIN);
 
 	omap_writel((ISPPRV_WBSEL_COEF0 << ISPPRV_WBSEL_N0_0_SHIFT) |
 			(ISPPRV_WBSEL_COEF1 << ISPPRV_WBSEL_N0_1_SHIFT) |
@@ -1166,7 +1168,6 @@ void isppreview_config_whitebalance(struct ispprev_wbal prev_wbal)
 			(ISPPRV_WBSEL_COEF2 << ISPPRV_WBSEL_N3_2_SHIFT) |
 			(ISPPRV_WBSEL_COEF3 << ISPPRV_WBSEL_N3_3_SHIFT),
 			ISPPRV_WBSEL);
-
 }
 EXPORT_SYMBOL(isppreview_config_whitebalance);
 
@@ -1228,36 +1229,33 @@ EXPORT_SYMBOL(isppreview_config_blkadj);
  **/
 void isppreview_config_rgb_blending(struct ispprev_rgbtorgb rgb2rgb)
 {
-	omap_writel((rgb2rgb.matrix[0][0] << ISPPRV_RGB_MAT1_MTX_RR_SHIFT) |
-						(rgb2rgb.matrix[0][1] <<
-						ISPPRV_RGB_MAT1_MTX_GR_SHIFT),
-						ISPPRV_RGB_MAT1);
-	omap_writel((rgb2rgb.matrix[0][2] << ISPPRV_RGB_MAT2_MTX_BR_SHIFT) |
-						(rgb2rgb.matrix[1][0] <<
-						ISPPRV_RGB_MAT2_MTX_RG_SHIFT),
-						ISPPRV_RGB_MAT2);
+	u32 val = 0;
 
-	omap_writel((rgb2rgb.matrix[1][1] << ISPPRV_RGB_MAT3_MTX_GG_SHIFT) |
-						(rgb2rgb.matrix[1][2] <<
-						ISPPRV_RGB_MAT3_MTX_BG_SHIFT),
-						ISPPRV_RGB_MAT3);
+	val = (rgb2rgb.matrix[0][0] & 0xfff) << ISPPRV_RGB_MAT1_MTX_RR_SHIFT;
+	val |= (rgb2rgb.matrix[0][1] & 0xfff) << ISPPRV_RGB_MAT1_MTX_GR_SHIFT;
+	omap_writel(val, ISPPRV_RGB_MAT1);
 
-	omap_writel((rgb2rgb.matrix[2][0] << ISPPRV_RGB_MAT4_MTX_RB_SHIFT) |
-						(rgb2rgb.matrix[2][1] <<
-						ISPPRV_RGB_MAT4_MTX_GB_SHIFT),
-						ISPPRV_RGB_MAT4);
+	val = (rgb2rgb.matrix[0][2] & 0xfff) << ISPPRV_RGB_MAT2_MTX_BR_SHIFT;
+	val |= (rgb2rgb.matrix[1][0] & 0xfff) << ISPPRV_RGB_MAT2_MTX_RG_SHIFT;
+	omap_writel(val, ISPPRV_RGB_MAT2);
 
-	omap_writel((rgb2rgb.matrix[2][2] << ISPPRV_RGB_MAT5_MTX_BB_SHIFT),
-						ISPPRV_RGB_MAT5);
+	val = (rgb2rgb.matrix[1][1] & 0xfff) << ISPPRV_RGB_MAT3_MTX_GG_SHIFT;
+	val |= (rgb2rgb.matrix[1][2] & 0xfff) << ISPPRV_RGB_MAT3_MTX_BG_SHIFT;
+	omap_writel(val, ISPPRV_RGB_MAT3);
 
-	omap_writel((rgb2rgb.offset[0] << ISPPRV_RGB_OFF1_MTX_OFFG_SHIFT) |
-					(rgb2rgb.offset[1] <<
-					ISPPRV_RGB_OFF1_MTX_OFFR_SHIFT),
-					ISPPRV_RGB_OFF1);
+	val = (rgb2rgb.matrix[2][0] & 0xfff) << ISPPRV_RGB_MAT4_MTX_RB_SHIFT;
+	val |= (rgb2rgb.matrix[2][1] & 0xfff) << ISPPRV_RGB_MAT4_MTX_GB_SHIFT;
+	omap_writel(val, ISPPRV_RGB_MAT4);
 
-	omap_writel(rgb2rgb.offset[2] << ISPPRV_RGB_OFF2_MTX_OFFB_SHIFT,
-						ISPPRV_RGB_OFF2);
+	val = (rgb2rgb.matrix[2][2] & 0xfff) << ISPPRV_RGB_MAT5_MTX_BB_SHIFT;
+	omap_writel(val, ISPPRV_RGB_MAT5);
 
+	val = (rgb2rgb.offset[0] & 0x3ff) << ISPPRV_RGB_OFF1_MTX_OFFG_SHIFT;
+	val |= (rgb2rgb.offset[1] & 0x3ff) << ISPPRV_RGB_OFF1_MTX_OFFR_SHIFT;
+	omap_writel(val, ISPPRV_RGB_OFF1);
+
+	val = (rgb2rgb.offset[2] & 0x3ff) << ISPPRV_RGB_OFF2_MTX_OFFB_SHIFT;
+	omap_writel(val, ISPPRV_RGB_OFF2);
 }
 EXPORT_SYMBOL(isppreview_config_rgb_blending);
 
@@ -1268,25 +1266,27 @@ EXPORT_SYMBOL(isppreview_config_rgb_blending);
  **/
 void isppreview_config_rgb_to_ycbcr(struct ispprev_csc prev_csc)
 {
-	omap_writel(prev_csc.matrix[0][0] << ISPPRV_CSC0_RY_SHIFT |
-				prev_csc.matrix[0][1] << ISPPRV_CSC0_GY_SHIFT |
-				prev_csc.matrix[0][2] << ISPPRV_CSC0_BY_SHIFT,
-				ISPPRV_CSC0);
+	u32 val = 0;
 
-	omap_writel(prev_csc.matrix[1][0] << ISPPRV_CSC1_RCB_SHIFT |
-			prev_csc.matrix[1][1] << ISPPRV_CSC1_GCB_SHIFT |
-			prev_csc.matrix[1][2] << ISPPRV_CSC1_BCB_SHIFT,
-			ISPPRV_CSC1);
+	val = (prev_csc.matrix[0][0] & 0x3ff) << ISPPRV_CSC0_RY_SHIFT;
+	val |= (prev_csc.matrix[0][1] & 0x3ff) << ISPPRV_CSC0_GY_SHIFT;
+	val |= (prev_csc.matrix[0][2] & 0x3ff) << ISPPRV_CSC0_BY_SHIFT;
+	omap_writel(val, ISPPRV_CSC0);
 
-	omap_writel(prev_csc.matrix[2][0] << ISPPRV_CSC2_RCR_SHIFT |
-			prev_csc.matrix[2][1] << ISPPRV_CSC2_GCR_SHIFT |
-			prev_csc.matrix[2][2] << ISPPRV_CSC2_BCR_SHIFT,
-			ISPPRV_CSC2);
+	val = (prev_csc.matrix[1][0] & 0x3ff) << ISPPRV_CSC1_RCB_SHIFT;
+	val |= (prev_csc.matrix[1][1] & 0x3ff) << ISPPRV_CSC1_GCB_SHIFT;
+	val |= (prev_csc.matrix[1][2] & 0x3ff) << ISPPRV_CSC1_BCB_SHIFT;
+	omap_writel(val, ISPPRV_CSC1);
 
-	omap_writel(prev_csc.offset[0] << ISPPRV_CSC_OFFSET_CR_SHIFT |
-			prev_csc.offset[1] << ISPPRV_CSC_OFFSET_CB_SHIFT |
-			prev_csc.offset[2] << ISPPRV_CSC_OFFSET_Y_SHIFT,
-			ISPPRV_CSC_OFFSET);
+	val = (prev_csc.matrix[2][0] & 0x3ff) << ISPPRV_CSC2_RCR_SHIFT;
+	val |= (prev_csc.matrix[2][1] & 0x3ff) << ISPPRV_CSC2_GCR_SHIFT;
+	val |= (prev_csc.matrix[2][2] & 0x3ff) << ISPPRV_CSC2_BCR_SHIFT;
+	omap_writel(val, ISPPRV_CSC2);
+
+	val = (prev_csc.offset[0] & 0xff) << ISPPRV_CSC_OFFSET_CR_SHIFT;
+	val |= (prev_csc.offset[1] & 0xff) << ISPPRV_CSC_OFFSET_CB_SHIFT;
+	val |= (prev_csc.offset[2] & 0xff) << ISPPRV_CSC_OFFSET_Y_SHIFT;
+	omap_writel(val, ISPPRV_CSC_OFFSET);
 }
 EXPORT_SYMBOL(isppreview_config_rgb_to_ycbcr);
 
