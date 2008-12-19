@@ -39,6 +39,8 @@
 
 #include <linux/ad5820.h>
 
+#include <media/smiaregs.h>
+
 #define BIT_POWER_DOWN		(1<<15)
 
 #define CODE_TO_RAMP_US(s)	((s) == 0 ? 0 : (1 << ((s) - 1)) * 50)
