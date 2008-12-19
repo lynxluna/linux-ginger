@@ -384,6 +384,15 @@ static struct v4l2_queryctrl et8ek8_ctrls[] = {
 	},
 };
 
+static const __u32 et8ek8_mode_ctrls[] = {
+	V4L2_CID_MODE_FRAME_WIDTH,
+	V4L2_CID_MODE_FRAME_HEIGHT,
+	V4L2_CID_MODE_VISIBLE_WIDTH,
+	V4L2_CID_MODE_VISIBLE_HEIGHT,
+	V4L2_CID_MODE_PIXELCLOCK,
+	V4L2_CID_MODE_SENSITIVITY,
+};
+
 static int et8ek8_ioctl_queryctrl(struct v4l2_int_device *s,
 				  struct v4l2_queryctrl *a)
 {
@@ -391,8 +400,10 @@ static int et8ek8_ioctl_queryctrl(struct v4l2_int_device *s,
 	int rval, ctrl;
 
 	rval = smia_ctrl_query(et8ek8_ctrls, ARRAY_SIZE(et8ek8_ctrls), a);
-	if (rval)
-		return rval;
+	if (rval) {
+		return smia_mode_query(et8ek8_mode_ctrls,
+					ARRAY_SIZE(et8ek8_mode_ctrls), a);
+	}
 
 	ctrl = CID_TO_CTRL(a->id);
 	if (ctrl < 0)
@@ -410,7 +421,15 @@ static int et8ek8_ioctl_g_ctrl(struct v4l2_int_device *s,
 			       struct v4l2_control *vc)
 {
 	struct et8ek8_sensor *sensor = s->priv;
-	int ctrl = CID_TO_CTRL(vc->id);
+	int ctrl;
+
+	int rval = smia_mode_g_ctrl(et8ek8_mode_ctrls,
+			ARRAY_SIZE(et8ek8_mode_ctrls),
+			vc, &sensor->current_reglist->mode);
+	if (rval == 0)
+		return 0;
+
+	ctrl = CID_TO_CTRL(vc->id);
 	if (ctrl < 0)
 		return ctrl;
 	vc->value = sensor->controls[ctrl].value;
@@ -729,23 +748,6 @@ static int et8ek8_ioctl_enum_slaves(struct v4l2_int_device *s,
 	return 0;
 }
 
-static int et8ek8_ioctl_g_smia_mode(struct v4l2_int_device *s,
-			     struct v4l2_smia_mode *mode)
-{
-	struct et8ek8_sensor *sensor = s->priv;
-	struct smia_mode *sm = &sensor->current_reglist->mode;
-
-	mode->width		= sm->width;
-	mode->height		= sm->height;
-	mode->window_origin_x	= sm->window_origin_x;
-	mode->window_origin_y	= sm->window_origin_y;
-	mode->window_width	= sm->window_width;
-	mode->window_height	= sm->window_height;
-	mode->pixel_clock	= sm->pixel_clock;
-
-	return 0;
-}
-
 static ssize_t
 et8ek8_priv_mem_read(struct device *dev, struct device_attribute *attr,
 		     char *buf)
@@ -793,8 +795,6 @@ static struct v4l2_int_ioctl_desc et8ek8_ioctl_desc[] = {
 	  (v4l2_int_ioctl_func *)et8ek8_ioctl_enum_frameintervals },
 	{ vidioc_int_enum_slaves_num,
 	  (v4l2_int_ioctl_func *)et8ek8_ioctl_enum_slaves },
-	{ vidioc_int_g_smia_mode_num,
-	  (v4l2_int_ioctl_func *)et8ek8_ioctl_g_smia_mode },
 };
 
 static struct v4l2_int_slave et8ek8_slave = {
