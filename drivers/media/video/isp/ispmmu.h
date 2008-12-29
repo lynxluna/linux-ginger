@@ -59,22 +59,49 @@ static inline void ispmmu_kunmap(dma_addr_t da)
 static inline dma_addr_t ispmmu_vmap(const struct scatterlist *sglist,
 				     int sglen)
 {
+	int err;
 	void *da;
-	struct sg_table sgt;
+	struct sg_table *sgt;
+	unsigned int i;
+	struct scatterlist *sg, *src = (struct scatterlist *)sglist;
 
-	sgt.sgl = (struct scatterlist *)sglist;
-	sgt.nents = sglen;
+	/*
+	 * convert isp sglist to iommu sgt
+	 * FIXME: should be fixed in the upper layer?
+	 */
+	sgt = kmalloc(sizeof(*sgt), GFP_KERNEL);
+	if (!sgt)
+		return -ENOMEM;
+	err = sg_alloc_table(sgt, sglen, GFP_KERNEL);
+	if (err)
+		goto err_sg_alloc;
 
-	da = iommu_vmap(isp_iommu, NULL, &sgt, IOMMU_FLAG);
+	for_each_sg(sgt->sgl, sg, sgt->nents, i)
+		sg_set_buf(sg, phys_to_virt(sg_dma_address(src + i)),
+			   sg_dma_len(src + i));
+
+	da = iommu_vmap(isp_iommu, NULL, sgt, IOMMU_FLAG);
 	if (IS_ERR(da))
-		return PTR_ERR(da);
+		goto err_vmap;
 
 	return (dma_addr_t)da;
+
+err_vmap:
+	sg_free_table(sgt);
+err_sg_alloc:
+	kfree(sgt);
+	return -ENOMEM;
 }
 
 static inline void ispmmu_vunmap(dma_addr_t da)
 {
-	iommu_vunmap(isp_iommu, (void *)da);
+	struct sg_table *sgt;
+
+	sgt = iommu_vunmap(isp_iommu, (void *)da);
+	if (!sgt)
+		return;
+	sg_free_table(sgt);
+	kfree(sgt);
 }
 
 static inline void ispmmu_save_context(void)
