@@ -769,6 +769,9 @@ int isp_configure_interface(struct isp_interface_config *config)
 	ispctrl_val &= ~ISPCTRL_PAR_CLK_POL_INV;
 
 	ispctrl_val &= (ISPCTRL_PAR_SER_CLK_SEL_MASK);
+
+	isp_buf_init();
+
 	switch (config->ccdc_par_ser) {
 	case ISP_PARLL:
 		ispctrl_val |= ISPCTRL_PAR_SER_CLK_SEL_PARALLEL;
