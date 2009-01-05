@@ -1283,7 +1283,7 @@ int isp_buf_process(struct isp_bufs *bufs)
 		 * CCDC may trigger interrupts even if it's not
 		 * receiving a frame.
 		 */
-		bufs->wait_hs_vs = min(1, isp_obj.config->wait_hs_vs);
+		bufs->wait_hs_vs = isp_obj.config->wait_hs_vs;
 	}
 	if ((RAW_CAPTURE(&isp_obj) && ispccdc_busy())
 	    || (!RAW_CAPTURE(&isp_obj) && ispresizer_busy())) {
