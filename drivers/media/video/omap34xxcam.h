@@ -61,7 +61,7 @@
 
 #define OMAP34XXCAM_VIDEODEVS		4
 
-#define OMAP34XXCAM_POWEROFF_DELAY (2 * HZ)
+/* #define OMAP34XXCAM_POWEROFF_DELAY (2 * HZ) */
 
 struct omap34xxcam_device;
 struct omap34xxcam_videodev;
