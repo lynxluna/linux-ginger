@@ -2166,6 +2166,9 @@ static int __init isp_init(void)
 	isp_power_settings(1);
 	isp_put();
 
+	isph3a_notify(1);
+	isp_af_notify(1);
+
 	DPRINTK_ISPCTRL("-isp_init for Omap 3430 Camera ISP\n");
 	return 0;
 
