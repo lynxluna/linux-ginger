@@ -61,8 +61,6 @@
 /* global variables */
 static struct omap34xxcam_device *omap34xxcam;
 
-#define OMAP34XXCAM_POWEROFF_DELAY (2 * HZ)
-
 /*
  *
  * Sensor handling.
@@ -82,7 +80,9 @@ static int omap34xxcam_slave_power_set(struct omap34xxcam_videodev *vdev,
 
 	BUG_ON(!mutex_is_locked(&vdev->mutex));
 
+#ifdef OMAP34XXCAM_POWEROFF_DELAY
 	vdev->power_state_wish = -1;
+#endif
 
 	for (i = 0; i <= OMAP34XXCAM_SLAVE_FLASH; i++) {
 		if (vdev->slave[i] == v4l2_int_device_dummy())
@@ -116,6 +116,7 @@ out:
 	return rval;
 }
 
+#ifdef OMAP34XXCAM_POWEROFF_DELAY
 static void omap34xxcam_slave_power_work(struct work_struct *work)
 {
 	struct omap34xxcam_videodev *vdev =
@@ -156,6 +157,14 @@ static void omap34xxcam_slave_power_suggest(struct omap34xxcam_videodev *vdev,
 
 	mod_timer(&vdev->poweroff_timer, jiffies + OMAP34XXCAM_POWEROFF_DELAY);
 }
+#else /* OMAP34XXCAM_POWEROFF_DELAY */
+static void omap34xxcam_slave_power_suggest(struct omap34xxcam_videodev *vdev,
+					    enum v4l2_power power,
+					    int mask)
+{
+	omap34xxcam_slave_power_set(vdev, power, mask);
+}
+#endif /* OMAP34XXCAM_POWEROFF_DELAY */
 
 /**
  * omap34xxcam_update_vbq - Updates VBQ with completed input buffer
@@ -1942,9 +1951,11 @@ static int omap34xxcam_probe(struct platform_device *pdev)
 		vdev->vdev_sensor =
 			vdev->vdev_lens =
 			vdev->vdev_flash = v4l2_int_device_dummy();
+#ifdef OMAP34XXCAM_POWEROFF_DELAY
 		setup_timer(&vdev->poweroff_timer,
 			    omap34xxcam_slave_power_timer, (unsigned long)vdev);
 		INIT_WORK(&vdev->poweroff_work, omap34xxcam_slave_power_work);
+#endif /* OMAP34XXCAM_POWEROFF_DELAY */
 
 		if (v4l2_int_device_register(m))
 			goto err;
