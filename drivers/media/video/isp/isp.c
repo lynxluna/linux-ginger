@@ -339,7 +339,7 @@ static int find_next_vctrl(int id)
 /**
  * isp_release_resources - Free ISP submodules
  **/
-void isp_release_resources(void)
+static void isp_release_resources(void)
 {
 	if (isp_obj.module.isp_pipeline & OMAP_ISP_CCDC)
 		ispccdc_free();
@@ -352,7 +352,7 @@ void isp_release_resources(void)
 	return;
 }
 
-int isp_wait(int (*busy)(void), int wait_for_busy, int max_wait)
+static int isp_wait(int (*busy)(void), int wait_for_busy, int max_wait)
 {
 	int wait = 0;
 
@@ -374,7 +374,7 @@ int isp_wait(int (*busy)(void), int wait_for_busy, int max_wait)
 	return 0;
 }
 
-int ispccdc_sbl_wait_idle(int max_wait)
+static int ispccdc_sbl_wait_idle(int max_wait)
 {
 	return isp_wait(ispccdc_sbl_busy, 0, max_wait);
 }
@@ -829,7 +829,7 @@ int isp_configure_interface(struct isp_interface_config *config)
 }
 EXPORT_SYMBOL(isp_configure_interface);
 
-int isp_buf_process(struct isp_bufs *bufs);
+static int isp_buf_process(struct isp_bufs *bufs);
 
 /**
  * omap34xx_isp_isr - Interrupt Service Routine for Camera ISP module.
@@ -1034,7 +1034,7 @@ struct device camera_dev = {
  *  isp_tmp_buf_free - To free allocated 10MB memory
  *
  **/
-void isp_tmp_buf_free(void)
+static void isp_tmp_buf_free(void)
 {
 	if (isp_obj.tmp_buf) {
 		ispmmu_vfree(isp_obj.tmp_buf);
@@ -1047,7 +1047,7 @@ void isp_tmp_buf_free(void)
  *  isp_tmp_buf_alloc - To allocate a 10MB memory
  *
  **/
-u32 isp_tmp_buf_alloc(size_t size)
+static u32 isp_tmp_buf_alloc(size_t size)
 {
 	isp_tmp_buf_free();
 
@@ -1142,7 +1142,7 @@ void isp_stop()
 }
 EXPORT_SYMBOL(isp_stop);
 
-void isp_set_buf(struct isp_buf *buf)
+static void isp_set_buf(struct isp_buf *buf)
 {
 	if ((isp_obj.module.isp_pipeline & OMAP_ISP_RESIZER) &&
 						is_ispresizer_enabled())
@@ -1157,8 +1157,8 @@ void isp_set_buf(struct isp_buf *buf)
  * @pix_input: Pointer to V4L2 pixel format structure for input image.
  * @pix_output: Pointer to V4L2 pixel format structure for output image.
  **/
-u32 isp_calc_pipeline(struct v4l2_pix_format *pix_input,
-					struct v4l2_pix_format *pix_output)
+static u32 isp_calc_pipeline(struct v4l2_pix_format *pix_input,
+			     struct v4l2_pix_format *pix_output)
 {
 	isp_release_resources();
 	if ((pix_input->pixelformat == V4L2_PIX_FMT_SGRBG10) &&
@@ -1191,8 +1191,8 @@ u32 isp_calc_pipeline(struct v4l2_pix_format *pix_input,
  * The configuration of ycpos depends on the output pixel format for both the
  * Preview and Resizer submodules.
  **/
-void isp_config_pipeline(struct v4l2_pix_format *pix_input,
-					struct v4l2_pix_format *pix_output)
+static void isp_config_pipeline(struct v4l2_pix_format *pix_input,
+				struct v4l2_pix_format *pix_output)
 {
 	ispccdc_config_size(isp_obj.module.ccdc_input_width,
 			isp_obj.module.ccdc_input_height,
@@ -1243,14 +1243,14 @@ static void isp_buf_init(void)
  * isp_vbq_sync - Walks the pages table and flushes the cache for
  *                each page.
  **/
-int isp_vbq_sync(struct videobuf_buffer *vb, int when)
+static int isp_vbq_sync(struct videobuf_buffer *vb, int when)
 {
 	flush_cache_all();
 
 	return 0;
 }
 
-int isp_buf_process(struct isp_bufs *bufs)
+static int isp_buf_process(struct isp_bufs *bufs)
 {
 	struct isp_buf *buf = NULL;
 	unsigned long flags;
@@ -2181,7 +2181,6 @@ out_clk_get_mclk:
 
 	return ret_err;
 }
-EXPORT_SYMBOL(isp_init);
 
 /**
  * isp_cleanup - ISP module cleanup.

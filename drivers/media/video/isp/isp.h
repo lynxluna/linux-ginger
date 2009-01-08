@@ -42,10 +42,6 @@
 						 */
 #define NUM_BUFS		VIDEO_MAX_FRAME
 
-#define ISP_BUF_INIT		0
-#define ISP_FREE_RUNNING	1
-#define ISP_BUF_TRAN		2
-
 #ifndef CONFIG_ARCH_OMAP3410
 #define USE_ISP_PREVIEW
 #define USE_ISP_RESZ
@@ -56,9 +52,6 @@
 #define is_ispresizer_enabled()		0
 #endif
 
-#define ISP_XCLKA_DEFAULT		0x12
-#define ISP_OUTPUT_WIDTH_DEFAULT	176
-#define ISP_OUTPUT_HEIGHT_DEFAULT	144
 #define ISP_BYTES_PER_PIXEL		2
 #define NUM_ISP_CAPTURE_FORMATS 	(sizeof(isp_formats) /\
 							sizeof(isp_formats[0]))
@@ -176,13 +169,9 @@ struct isp_interface_config {
 	} u;
 };
 
-void isp_release_resources(void);
-
 void isp_start(void);
 
 void isp_stop(void);
-
-void isp_vbq_done(unsigned long status, isp_vbq_callback_ptr arg1, void *arg2);
 
 int isp_buf_queue(struct videobuf_buffer *vb,
 		  void (*complete)(struct videobuf_buffer *vb, void *priv),
@@ -208,9 +197,6 @@ int isp_configure_interface(struct isp_interface_config *config);
 int isp_get(void);
 
 int isp_put(void);
-
-void isp_config_pipeline(struct v4l2_pix_format *pix_input,
-					struct v4l2_pix_format *pix_output);
 
 int isp_queryctrl(struct v4l2_queryctrl *a);
 
@@ -244,8 +230,6 @@ void isp_save_context(struct isp_reg *);
 void isp_restore_context(struct isp_reg *);
 
 void isp_print_status(void);
-
-dma_addr_t isp_buf_get(void);
 
 int __init isp_ccdc_init(void);
 int __init isp_hist_init(void);
