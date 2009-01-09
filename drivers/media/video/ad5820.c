@@ -37,7 +37,7 @@
 #include <mach/io.h>
 #include <mach/gpio.h>
 
-#include <linux/ad5820.h>
+#include <media/ad5820.h>
 
 #include <media/smiaregs.h>
 
@@ -75,7 +75,7 @@ static struct v4l2_queryctrl ad5820_ctrls[] = {
 		.flags		= 0,
 	},
 	{
-		.id		= V4L2_CID_FOCUS_RAMP_TIME,
+		.id		= V4L2_CID_FOCUS_AD5820_RAMP_TIME,
 		.type		= V4L2_CTRL_TYPE_INTEGER,
 		.name		= "Focus ramping time [us]",
 		.minimum	= 0,
@@ -85,7 +85,7 @@ static struct v4l2_queryctrl ad5820_ctrls[] = {
 		.flags		= 0,
 	},
 	{
-		.id		= V4L2_CID_FOCUS_RAMP_MODE,
+		.id		= V4L2_CID_FOCUS_AD5820_RAMP_MODE,
 		.type		= V4L2_CTRL_TYPE_MENU,
 		.name		= "Focus ramping mode",
 		.minimum	= 0,
@@ -188,7 +188,7 @@ static int ad5820_ioctl_querymenu(struct v4l2_int_device *s,
 				  struct v4l2_querymenu *qm)
 {
 	switch (qm->id) {
-	case V4L2_CID_FOCUS_RAMP_MODE:
+	case V4L2_CID_FOCUS_AD5820_RAMP_MODE:
 		if (qm->index & ~1)
 			return -EINVAL;
 		strcpy(qm->name, qm->index == 0 ? "Linear ramp" : "64/16 ramp");
@@ -208,10 +208,10 @@ static int ad5820_ioctl_g_ctrl(struct v4l2_int_device *s,
 	case V4L2_CID_FOCUS_ABSOLUTE:
 		vc->value = coil->focus_absolute;
 		break;
-	case V4L2_CID_FOCUS_RAMP_TIME:
+	case V4L2_CID_FOCUS_AD5820_RAMP_TIME:
 		vc->value = coil->focus_ramp_time;
 		break;
-	case V4L2_CID_FOCUS_RAMP_MODE:
+	case V4L2_CID_FOCUS_AD5820_RAMP_MODE:
 		vc->value = coil->focus_ramp_mode;
 		break;
 	default:
@@ -235,7 +235,7 @@ static int ad5820_ioctl_s_ctrl(struct v4l2_int_device *s,
 		r = ad5820_update_hw(s);
 		break;
 
-	case V4L2_CID_FOCUS_RAMP_TIME:
+	case V4L2_CID_FOCUS_AD5820_RAMP_TIME:
 		code = clamp(vc->value,
 				ad5820_ctrls[CTRL_FOCUS_RAMP_TIME].minimum,
 				ad5820_ctrls[CTRL_FOCUS_RAMP_TIME].maximum);
@@ -243,7 +243,7 @@ static int ad5820_ioctl_s_ctrl(struct v4l2_int_device *s,
 		coil->focus_ramp_time = CODE_TO_RAMP_US(code);
 		break;
 
-	case V4L2_CID_FOCUS_RAMP_MODE:
+	case V4L2_CID_FOCUS_AD5820_RAMP_MODE:
 		coil->focus_ramp_mode = clamp(vc->value,
 				ad5820_ctrls[CTRL_FOCUS_RAMP_MODE].minimum,
 				ad5820_ctrls[CTRL_FOCUS_RAMP_MODE].maximum);

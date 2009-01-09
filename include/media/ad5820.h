@@ -29,8 +29,6 @@
 
 #include <linux/videodev2.h>
 
-#ifdef __KERNEL__
-
 #include <linux/i2c.h>
 
 #include <media/v4l2-int-device.h>
@@ -55,10 +53,5 @@ struct ad5820_device {
 	struct ad5820_platform_data *platform_data;
 	struct v4l2_int_device *v4l2_int_device;
 };
-
-#endif /* __KERNEL__ */
-
-#define V4L2_CID_FOCUS_RAMP_TIME	(V4L2_CID_PRIVATE_BASE + 0xAF + 1)
-#define V4L2_CID_FOCUS_RAMP_MODE	(V4L2_CID_PRIVATE_BASE + 0xAF + 2)
 
 #endif /* AD5820_H */
