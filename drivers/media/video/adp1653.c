@@ -40,8 +40,7 @@
 #include <linux/delay.h>
 #include <linux/i2c.h>
 #include <linux/version.h>
-
-#include <linux/adp1653.h>
+#include <media/adp1653.h>
 
 #define TIMEOUT_US_TO_CODE(t)	((820000 + 27300 - (t))/54600)
 #define TIMEOUT_CODE_TO_US(c)	(820000 - (c) * 54600)
@@ -137,7 +136,7 @@ static int adp1653_get_fault(struct v4l2_int_device *s)
 
 static struct v4l2_queryctrl adp1653_ctrls[] = {
 	{
-		.id		= V4L2_CID_CAMERA_FLASH_STROBE,
+		.id		= V4L2_CID_FLASH_STROBE,
 		.type		= V4L2_CTRL_TYPE_BUTTON,
 		.name		= "Flash strobe",
 		.minimum	= 0,
@@ -148,7 +147,7 @@ static struct v4l2_queryctrl adp1653_ctrls[] = {
 	},
 
 	{
-		.id		= V4L2_CID_CAMERA_FLASH_TIMEOUT,
+		.id		= V4L2_CID_FLASH_TIMEOUT,
 		.type		= V4L2_CTRL_TYPE_INTEGER,
 		.name		= "Flash timeout [us]",
 		.minimum	= 1000,
@@ -156,7 +155,7 @@ static struct v4l2_queryctrl adp1653_ctrls[] = {
 		.flags		= V4L2_CTRL_FLAG_SLIDER,
 	},
 	{
-		.id		= V4L2_CID_CAMERA_FLASH_INTENSITY,
+		.id		= V4L2_CID_FLASH_INTENSITY,
 		.type		= V4L2_CTRL_TYPE_INTEGER,
 		.name		= "Flash intensity",
 		.minimum	= ADP1653_TORCH_INTENSITY_MAX + 1,
@@ -165,7 +164,7 @@ static struct v4l2_queryctrl adp1653_ctrls[] = {
 		.flags		= V4L2_CTRL_FLAG_SLIDER,
 	},
 	{
-		.id		= V4L2_CID_CAMERA_FLASH_TORCH_INTENSITY,
+		.id		= V4L2_CID_TORCH_INTENSITY,
 		.type		= V4L2_CTRL_TYPE_INTEGER,
 		.name		= "Torch intensity",
 		.minimum	= 0,
@@ -174,7 +173,7 @@ static struct v4l2_queryctrl adp1653_ctrls[] = {
 		.flags		= V4L2_CTRL_FLAG_SLIDER,
 	},
 	{
-		.id		= V4L2_CID_CAMERA_FLASH_INDICATOR_INTENSITY,
+		.id		= V4L2_CID_INDICATOR_INTENSITY,
 		.type		= V4L2_CTRL_TYPE_INTEGER,
 		.name		= "Indicator intensity",
 		.minimum	= 0,
@@ -185,7 +184,7 @@ static struct v4l2_queryctrl adp1653_ctrls[] = {
 
 	/* Faults */
 	{
-		.id		= V4L2_CID_CAMERA_FLASH_FAULT_SCP,
+		.id		= V4L2_CID_FLASH_ADP1653_FAULT_SCP,
 		.type		= V4L2_CTRL_TYPE_BOOLEAN,
 		.name		= "Short-circuit fault",
 		.minimum	= 0,
@@ -195,7 +194,7 @@ static struct v4l2_queryctrl adp1653_ctrls[] = {
 		.flags		= V4L2_CTRL_FLAG_READ_ONLY,
 	},
 	{
-		.id		= V4L2_CID_CAMERA_FLASH_FAULT_OT,
+		.id		= V4L2_CID_FLASH_ADP1653_FAULT_OT,
 		.type		= V4L2_CTRL_TYPE_BOOLEAN,
 		.name		= "Overtemperature fault",
 		.minimum	= 0,
@@ -205,7 +204,7 @@ static struct v4l2_queryctrl adp1653_ctrls[] = {
 		.flags		= V4L2_CTRL_FLAG_READ_ONLY,
 	},
 	{
-		.id		= V4L2_CID_CAMERA_FLASH_FAULT_TMR,
+		.id		= V4L2_CID_FLASH_ADP1653_FAULT_TMR,
 		.type		= V4L2_CTRL_TYPE_BOOLEAN,
 		.name		= "Timeout fault",
 		.minimum	= 0,
@@ -215,7 +214,7 @@ static struct v4l2_queryctrl adp1653_ctrls[] = {
 		.flags		= V4L2_CTRL_FLAG_READ_ONLY,
 	},
 	{
-		.id		= V4L2_CID_CAMERA_FLASH_FAULT_OV,
+		.id		= V4L2_CID_FLASH_ADP1653_FAULT_OV,
 		.type		= V4L2_CTRL_TYPE_BOOLEAN,
 		.name		= "Overvoltage fault",
 		.minimum	= 0,
@@ -238,32 +237,32 @@ static int adp1653_ioctl_g_ctrl(struct v4l2_int_device *s,
 	struct adp1653_flash *flash = s->priv;
 
 	switch (vc->id) {
-	case V4L2_CID_CAMERA_FLASH_TIMEOUT:
+	case V4L2_CID_FLASH_TIMEOUT:
 		vc->value = flash->flash_timeout;
 		break;
-	case V4L2_CID_CAMERA_FLASH_INTENSITY:
+	case V4L2_CID_FLASH_INTENSITY:
 		vc->value = flash->flash_intensity;
 		break;
-	case V4L2_CID_CAMERA_FLASH_TORCH_INTENSITY:
+	case V4L2_CID_TORCH_INTENSITY:
 		vc->value = flash->torch_intensity;
 		break;
-	case V4L2_CID_CAMERA_FLASH_INDICATOR_INTENSITY:
+	case V4L2_CID_INDICATOR_INTENSITY:
 		vc->value = flash->indicator_intensity;
 		break;
 
-	case V4L2_CID_CAMERA_FLASH_FAULT_SCP:
+	case V4L2_CID_FLASH_ADP1653_FAULT_SCP:
 		vc->value = (adp1653_get_fault(s)
 			    & ADP1653_REG_FAULT_FLT_SCP) != 0;
 		break;
-	case V4L2_CID_CAMERA_FLASH_FAULT_OT:
+	case V4L2_CID_FLASH_ADP1653_FAULT_OT:
 		vc->value = (adp1653_get_fault(s)
 			    & ADP1653_REG_FAULT_FLT_OT) != 0;
 		break;
-	case V4L2_CID_CAMERA_FLASH_FAULT_TMR:
+	case V4L2_CID_FLASH_ADP1653_FAULT_TMR:
 		vc->value = (adp1653_get_fault(s)
 			    & ADP1653_REG_FAULT_FLT_TMR) != 0;
 		break;
-	case V4L2_CID_CAMERA_FLASH_FAULT_OV:
+	case V4L2_CID_FLASH_ADP1653_FAULT_OV:
 		vc->value = (adp1653_get_fault(s)
 			    & ADP1653_REG_FAULT_FLT_OV) != 0;
 		break;
@@ -281,22 +280,22 @@ static int adp1653_ioctl_s_ctrl(struct v4l2_int_device *s,
 	int *value;
 
 	switch (vc->id) {
-	case V4L2_CID_CAMERA_FLASH_STROBE:
+	case V4L2_CID_FLASH_STROBE:
 		return adp1653_strobe(s);
 
-	case V4L2_CID_CAMERA_FLASH_TIMEOUT:
+	case V4L2_CID_FLASH_TIMEOUT:
 		ctrl = CTRL_CAMERA_FLASH_TIMEOUT;
 		value = &flash->flash_timeout;
 		break;
-	case V4L2_CID_CAMERA_FLASH_INTENSITY:
+	case V4L2_CID_FLASH_INTENSITY:
 		ctrl = CTRL_CAMERA_FLASH_INTENSITY;
 		value = &flash->flash_intensity;
 		break;
-	case V4L2_CID_CAMERA_FLASH_TORCH_INTENSITY:
+	case V4L2_CID_TORCH_INTENSITY:
 		ctrl = CTRL_CAMERA_FLASH_TORCH_INTENSITY;
 		value = &flash->torch_intensity;
 		break;
-	case V4L2_CID_CAMERA_FLASH_INDICATOR_INTENSITY:
+	case V4L2_CID_INDICATOR_INTENSITY:
 		ctrl = CTRL_CAMERA_FLASH_INDICATOR_INTENSITY;
 		value = &flash->indicator_intensity;
 		break;

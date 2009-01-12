@@ -1,5 +1,5 @@
 /*
- * drivers/media/video/adp1653.h
+ * include/media/adp1653.h
  *
  * Copyright (C) 2008 Nokia Corporation
  *
@@ -26,9 +26,6 @@
 #define ADP1653_H
 
 #include <linux/videodev2.h>
-
-#ifdef __KERNEL__
-
 #include <linux/i2c.h>
 #include <media/v4l2-int-device.h>
 #include <media/smiaregs.h>
@@ -85,22 +82,6 @@ struct adp1653_flash {
 
 	bool dev_init_done;
 	enum v4l2_power power;		/* Requested power state */
-};
-
-#endif /* __KERNEL__ */
-
-enum v4l2_camera_flash_cids {
-	V4L2_CID_CAMERA_FLASH_STROBE = V4L2_CID_FOCUS_AUTO + 10,
-
-	V4L2_CID_CAMERA_FLASH_TIMEOUT,
-	V4L2_CID_CAMERA_FLASH_INTENSITY,
-	V4L2_CID_CAMERA_FLASH_TORCH_INTENSITY,
-	V4L2_CID_CAMERA_FLASH_INDICATOR_INTENSITY,
-
-	V4L2_CID_CAMERA_FLASH_FAULT_SCP,
-	V4L2_CID_CAMERA_FLASH_FAULT_OT,
-	V4L2_CID_CAMERA_FLASH_FAULT_TMR,
-	V4L2_CID_CAMERA_FLASH_FAULT_OV,
 };
 
 #endif /* ADP1653_H */
