@@ -1153,14 +1153,10 @@ static int vidioc_cropcap(struct file *file, void *fh, struct v4l2_cropcap *a)
 
 	mutex_lock(&vdev->mutex);
 
-	if (vdev->vdev_sensor_config.sensor_isp) {
-		rval = vidioc_int_cropcap(vdev->vdev_sensor, a);
-	} else {
-		struct v4l2_format f;
+	rval = vidioc_int_cropcap(vdev->vdev_sensor, a);
 
-		rval = vidioc_int_cropcap(vdev->vdev_sensor, a);
-		if (!rval)
-			return rval;
+	if (rval && !vdev->vdev_sensor_config.sensor_isp) {
+		struct v4l2_format f;
 
 		/* cropcap failed, try to do this via g_fmt_cap */
 		rval = vidioc_int_g_fmt_cap(vdev->vdev_sensor, &f);
