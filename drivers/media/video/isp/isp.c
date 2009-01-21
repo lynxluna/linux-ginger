@@ -1082,6 +1082,10 @@ void isp_start(void)
 }
 EXPORT_SYMBOL(isp_start);
 
+#define ISP_STATISTICS_BUSY				\
+	(isp_af_busy()					\
+	 || isph3a_aewb_busy()				\
+	 || isp_hist_busy())
 #define ISP_STOP_TIMEOUT	msecs_to_jiffies(1000)
 /**
  * isp_stop - Stops isp submodules
@@ -1089,42 +1093,51 @@ EXPORT_SYMBOL(isp_start);
 void isp_stop()
 {
 	unsigned long timeout = jiffies + ISP_STOP_TIMEOUT;
+	int reset = 0;
 
 	isp_disable_interrupts();
 
-	if (RAW_CAPTURE(&isp_obj)) {
-		/* RAW capture. Only CCDC needs to be stopped. */
+	/*
+	 * We need to stop all the modules after CCDC first or they'll
+	 * never stop since they may not get a full frame from CCDC.
+	 */
+	isp_hist_enable(0);
+	isph3a_aewb_enable(0);
+	isp_af_enable(0);
+	ispresizer_enable(0);
+	isppreview_enable(0);
 
-		ispccdc_enable_lsc(0);
-		ispccdc_enable(0);
+	timeout = jiffies + ISP_STOP_TIMEOUT;
+	while ((ISP_STATISTICS_BUSY
+		|| isppreview_busy()
+		|| ispresizer_busy())
+	       && !time_after(jiffies, timeout))
+		msleep(1);
 
-		timeout = jiffies + ISP_STOP_TIMEOUT;
-		while (ispccdc_busy() && !time_after(jiffies, timeout))
-			msleep(1);
-
-	} else {
-		/*
-		 * YUV capture. Only resizer must stop since we are
-		 * writing to the temporary buffer. We still need to
-		 * flush that buffer, though.
-		 */
-		ispresizer_enable(0);
-		isppreview_enable(0);
-/* 		while (isppreview_busy() && !time_after(jiffies, timeout)) */
-/* 			msleep(1); */
-
-/* 		if (isppreview_busy()) */
-/* 			printk(KERN_ERR "%s: preview doesn't stop\n", __func__); */
-
-/* 		printk(KERN_ERR "prv %d\n",  jiffies - timeout + ISP_STOP_TIMEOUT); */
-
-		timeout = jiffies + ISP_STOP_TIMEOUT;
-		while (ispresizer_busy() && !time_after(jiffies, timeout))
-			msleep(1);
-
-		ispccdc_enable_lsc(0);
-		ispccdc_enable(0);
+	if (ISP_STATISTICS_BUSY
+	    || isppreview_busy()
+	    || ispresizer_busy()) {
+		printk(KERN_ERR "%s: can't stop non-ccdc modules\n", __func__);
+		reset = 1;
 	}
+
+	/* Let's stop CCDC now. */
+	ispccdc_enable_lsc(0);
+	ispccdc_enable(0);
+
+	timeout = jiffies + ISP_STOP_TIMEOUT;
+	while (ispccdc_busy() && !time_after(jiffies, timeout))
+		msleep(1);
+
+	if (ispccdc_busy()) {
+		printk(KERN_ERR "%s: can't stop ccdc\n", __func__);
+		reset = 1;
+	}
+
+	isp_buf_init();
+	
+	if (!reset)
+		return;
 
 	isp_save_ctx();
 	omap_writel(omap_readl(ISP_SYSCONFIG) | ISP_SYSCONFIG_SOFTRESET,
@@ -1132,13 +1145,12 @@ void isp_stop()
 	timeout = 0;
 	while (!(omap_readl(ISP_SYSSTATUS) & 0x1)) {
 		if (timeout++ > 10000) {
-			printk(KERN_ALERT "isp.c: cannot reset ISP\n");
+			printk(KERN_ALERT "%s: cannot reset ISP\n", __func__);
 			break;
 		}
 		udelay(1);
 	}
 	isp_restore_ctx();
-	isp_buf_init();
 }
 EXPORT_SYMBOL(isp_stop);
 

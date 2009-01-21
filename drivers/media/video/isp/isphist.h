@@ -86,6 +86,10 @@
 		| (reg_n_vert & ISPHIST_REGVERT_MASK)))
 
 
+void isp_hist_enable(u8 enable);
+
+int isp_hist_busy(void);
+
 int isp_hist_configure(struct isp_hist_config *histcfg);
 
 int isp_hist_request_statistics(struct isp_hist_data *histdata);

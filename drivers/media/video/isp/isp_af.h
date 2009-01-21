@@ -110,6 +110,7 @@ int isp_af_check_paxel(void);
 int isp_af_check_iir(void);
 int isp_af_register_setup(struct af_device *af_dev);
 int isp_af_enable(int);
+int isp_af_busy(void);
 void isp_af_notify(int notify);
 int isp_af_request_statistics(struct isp_af_data *afdata);
 int isp_af_configure(struct af_configuration *afconfig);

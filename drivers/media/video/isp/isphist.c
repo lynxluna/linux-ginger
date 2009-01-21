@@ -134,7 +134,7 @@ static void isp_hist_print_status(void);
  * Client should configure all the Histogram registers before calling this
  * function.
  **/
-static void isp_hist_enable(u8 enable)
+void isp_hist_enable(u8 enable)
 {
 	if (enable) {
 		omap_writel(omap_readl(ISPHIST_PCR) | (ISPHIST_PCR_EN),
@@ -148,6 +148,12 @@ static void isp_hist_enable(u8 enable)
 
 	histstat.hist_enable = enable;
 }
+
+int isp_hist_busy(void)
+{
+	return omap_readl(ISPHIST_PCR) & ISPHIST_PCR_BUSY;
+}
+
 
 /**
  * isp_hist_update_regs - Helper function to update Histogram registers.
@@ -232,7 +238,7 @@ static int isp_hist_set_params(struct isp_hist_config *user_cfg)
 	int bit_shift = 0;
 
 
-	if (omap_readl(ISPHIST_PCR) & ISPHIST_PCR_BUSY_MASK)
+	if (isp_hist_busy())
 		return -EINVAL;
 
 	if (user_cfg->input_bit_width > MIN_BIT_WIDTH)
@@ -472,7 +478,7 @@ int isp_hist_request_statistics(struct isp_hist_data *histdata)
 	int i, ret;
 	u32 curr;
 
-	if (omap_readl(ISPHIST_PCR) & ISPHIST_PCR_BUSY_MASK)
+	if (isp_hist_busy())
 		return -EBUSY;
 
 	if (!histstat.completed && histstat.initialized)

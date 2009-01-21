@@ -208,7 +208,7 @@ EXPORT_SYMBOL(isph3a_aewb_setxtrastats);
  *
  * Client should configure all the AE & AWB registers in H3A before this.
  **/
-static void isph3a_aewb_enable(u8 enable)
+void isph3a_aewb_enable(u8 enable)
 {
 	omap_writel(IRQ0STATUS_H3A_AWB_DONE_IRQ, ISP_IRQ0STATUS);
 
@@ -224,6 +224,11 @@ static void isph3a_aewb_enable(u8 enable)
 		DPRINTK_ISPH3A("    H3A disabled \n");
 	}
 	aewb_config_local.aewb_enable = enable;
+}
+
+int isph3a_aewb_busy(void)
+{
+	return omap_readl(ISPH3A_PCR) & ISPH3A_PCR_BUSYAEAWB;
 }
 
 /**
