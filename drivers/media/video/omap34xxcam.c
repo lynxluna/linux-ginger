@@ -1801,7 +1801,6 @@ static int omap34xxcam_device_register(struct v4l2_int_device *s)
 		vfd->minor	= -1;
 		vfd->fops	= &omap34xxcam_fops;
 		vfd->ioctl_ops	= &omap34xxcam_ioctl_ops;
-		vfd->priv	= vdev;
 
 		if (video_register_device(vfd, VFL_TYPE_GRABBER,
 					  hwc.dev_minor) < 0) {
