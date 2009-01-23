@@ -1083,9 +1083,7 @@ void isp_start(void)
 EXPORT_SYMBOL(isp_start);
 
 #define ISP_STATISTICS_BUSY				\
-	(isp_af_busy()					\
-	 || isph3a_aewb_busy()				\
-	 || isp_hist_busy())
+	()
 #define ISP_STOP_TIMEOUT	msecs_to_jiffies(1000)
 /**
  * isp_stop - Stops isp submodules
@@ -1101,24 +1099,25 @@ void isp_stop()
 	 * We need to stop all the modules after CCDC first or they'll
 	 * never stop since they may not get a full frame from CCDC.
 	 */
-	isp_hist_enable(0);
-	isph3a_aewb_enable(0);
 	isp_af_enable(0);
-	ispresizer_enable(0);
+	isph3a_aewb_enable(0);
+	isp_hist_enable(0);
 	isppreview_enable(0);
+	ispresizer_enable(0);
 
 	timeout = jiffies + ISP_STOP_TIMEOUT;
-	while ((ISP_STATISTICS_BUSY
-		|| isppreview_busy()
-		|| ispresizer_busy())
-	       && !time_after(jiffies, timeout))
+	while (isp_af_busy()
+	       || isph3a_aewb_busy()
+	       || isp_hist_busy()
+	       || isppreview_busy()
+	       || ispresizer_busy()) {
+		if (time_after(jiffies, timeout)) {
+			printk(KERN_ERR "%s: can't stop non-ccdc modules\n",
+			       __func__);
+			reset = 1;
+			break;
+		}
 		msleep(1);
-
-	if (ISP_STATISTICS_BUSY
-	    || isppreview_busy()
-	    || ispresizer_busy()) {
-		printk(KERN_ERR "%s: can't stop non-ccdc modules\n", __func__);
-		reset = 1;
 	}
 
 	/* Let's stop CCDC now. */
@@ -1126,12 +1125,13 @@ void isp_stop()
 	ispccdc_enable(0);
 
 	timeout = jiffies + ISP_STOP_TIMEOUT;
-	while (ispccdc_busy() && !time_after(jiffies, timeout))
+	while (ispccdc_busy()) {
+		if (time_after(jiffies, timeout)) {
+			printk(KERN_ERR "%s: can't stop ccdc\n", __func__);
+			reset = 1;
+			break;
+		}
 		msleep(1);
-
-	if (ispccdc_busy()) {
-		printk(KERN_ERR "%s: can't stop ccdc\n", __func__);
-		reset = 1;
 	}
 
 	isp_buf_init();
