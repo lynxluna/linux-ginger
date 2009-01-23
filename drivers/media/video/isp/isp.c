@@ -2137,6 +2137,7 @@ static int __init isp_init(void)
 
 	mutex_init(&(isp_obj.isp_mutex));
 	spin_lock_init(&isp_obj.lock);
+	spin_lock_init(&isp_obj.bufs.lock);
 
 	isp_obj.cam_ick = clk_get(&camera_dev, "cam_ick");
 	if (IS_ERR(isp_obj.cam_ick)) {
