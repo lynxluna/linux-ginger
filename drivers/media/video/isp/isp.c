@@ -657,7 +657,7 @@ static void isp_power_settings(int idle)
 				ISP_SYSCONFIG_MIDLEMODE_SHIFT),
 				OMAP3_ISP_IOMEM_MAIN,
 				ISP_SYSCONFIG);
-		if (system_rev == OMAP3430_REV_ES1_0) {
+		if (omap_rev() == OMAP3430_REV_ES1_0) {
 			isp_reg_writel(ISPCSI1_AUTOIDLE |
 					(ISPCSI1_MIDLEMODE_SMARTSTANDBY <<
 					ISPCSI1_MIDLEMODE_SHIFT),
@@ -677,7 +677,7 @@ static void isp_power_settings(int idle)
 				ISP_SYSCONFIG_MIDLEMODE_SHIFT),
 				OMAP3_ISP_IOMEM_MAIN,
 				ISP_SYSCONFIG);
-		if (system_rev == OMAP3430_REV_ES1_0) {
+		if (omap_rev() == OMAP3430_REV_ES1_0) {
 			isp_reg_writel(ISPCSI1_AUTOIDLE |
 					(ISPCSI1_MIDLEMODE_FORCESTANDBY <<
 					ISPCSI1_MIDLEMODE_SHIFT),
