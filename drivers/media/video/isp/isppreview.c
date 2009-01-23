@@ -1513,7 +1513,7 @@ int isppreview_try_size(u32 input_w, u32 input_h, u32 *output_w, u32 *output_h)
 				"width < 16 or height < 32 \n");
 		return -EINVAL;
 	}
-	if (system_rev == OMAP3430_REV_ES1_0)
+	if (omap_rev() == OMAP3430_REV_ES1_0)
 		max_out = ISPPRV_MAXOUTPUT_WIDTH;
 	else
 		max_out = ISPPRV_MAXOUTPUT_WIDTH_ES2;

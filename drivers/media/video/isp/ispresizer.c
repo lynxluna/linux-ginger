@@ -351,7 +351,7 @@ int ispresizer_try_size(u32 *input_width, u32 *input_height, u32 *output_w,
 	if (*output_h < 2)
 		*output_h = 2;
 
-	if (system_rev == OMAP3430_REV_ES1_0) {
+	if (omap_rev() == OMAP3430_REV_ES1_0) {
 		max_in_otf = MAX_IN_WIDTH_ONTHEFLY_MODE;
 		max_out_7tap = MAX_7TAP_VRSZ_OUTWIDTH;
 	} else {
