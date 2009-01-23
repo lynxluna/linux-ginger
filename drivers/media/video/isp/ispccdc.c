@@ -799,7 +799,7 @@ int ispccdc_config_black_clamp(struct ispccdc_bclamp bclamp)
 		bclamp_val |= bclamp.obstpixel << ISPCCDC_CLAMP_OBST_SHIFT;
 		isp_reg_writel(bclamp_val, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_CLAMP);
 	} else {
-		if (system_rev < OMAP3430_REV_ES2_0)
+		if (omap_rev() < OMAP3430_REV_ES2_0)
 			if ((ispccdc_obj.syncif_ipmod == YUV16) ||
 					(ispccdc_obj.syncif_ipmod == YUV8) ||
 					(isp_reg_readl(OMAP3_ISP_IOMEM_CCDC,
