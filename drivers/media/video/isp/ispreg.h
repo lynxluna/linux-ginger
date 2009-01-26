@@ -31,6 +31,7 @@
 #define OMAP_ISPRESZ_DEBUG
 #define OMAP_ISPMMU_DEBUG
 #define OMAP_ISPH3A_DEBUG
+#define OMAP_ISP_AF_DEBUG
 #define OMAP_ISPHIST_DEBUG
 #endif
 
@@ -86,6 +87,15 @@
 #else
 #define DPRINTK_ISPH3A(format, ...)
 #define is_isph3a_debug_enabled()		0
+#endif
+
+#ifdef OMAP_ISP_AF_DEBUG
+#define DPRINTK_ISP_AF(format, ...)\
+	printk(KERN_INFO "ISP_AF: " format, ## __VA_ARGS__)
+#define is_isp_af_debug_enabled()		1
+#else
+#define DPRINTK_ISP_AF(format, ...)
+#define is_isp_af_debug_enabled()		0
 #endif
 
 #ifdef OMAP_ISPHIST_DEBUG
