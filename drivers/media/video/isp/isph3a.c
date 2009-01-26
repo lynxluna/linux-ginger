@@ -1,13 +1,13 @@
 /*
- * drivers/media/video/isp/isph3a.c
+ * isph3a.c
  *
- * H3A module for TI's OMAP3430 Camera ISP
+ * H3A module for TI's OMAP3 Camera ISP
  *
- * Copyright (C) 2008 Texas Instruments.
+ * Copyright (C) 2009 Texas Instruments, Inc.
  *
  * Contributors:
  *	Sergio Aguirre <saaguirre@ti.com>
- *	Troy Laramy <t-laramy@ti.com>
+ *	Troy Laramy
  *
  * This package is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -18,16 +18,10 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  */
 
-#include <linux/mm.h>
-#include <linux/mman.h>
-#include <linux/syscalls.h>
-#include <linux/module.h>
-#include <linux/errno.h>
-#include <linux/types.h>
-#include <linux/dma-mapping.h>
-#include <linux/io.h>
-#include <linux/uaccess.h>
 #include <asm/cacheflush.h>
+
+#include <linux/dma-mapping.h>
+#include <linux/uaccess.h>
 
 #include "isp.h"
 #include "ispreg.h"
@@ -171,33 +165,37 @@ static void isph3a_print_status(void);
 void isph3a_aewb_setxtrastats(struct isph3a_aewb_xtrastats *xtrastats)
 {
 	int i;
+
 	if (active_buff == NULL)
 		return;
 
 	for (i = 0; i < H3A_MAX_BUFF; i++) {
-		if (aewbstat.h3a_buff[i].frame_num == active_buff->frame_num) {
-			if (i == 0) {
-				if (aewbstat.h3a_buff[H3A_MAX_BUFF - 1].
-								locked == 0)
-					h3a_xtrastats[H3A_MAX_BUFF - 1] =
-								*xtrastats;
-				else
-					h3a_xtrastats[H3A_MAX_BUFF - 2] =
-								*xtrastats;
-			} else if (i == 1) {
-				if (aewbstat.h3a_buff[0].locked == 0)
-					h3a_xtrastats[0] = *xtrastats;
-				else
-					h3a_xtrastats[H3A_MAX_BUFF - 1] =
-								*xtrastats;
+		if (aewbstat.h3a_buff[i].frame_num != active_buff->frame_num)
+			continue;
+
+		if (i == 0) {
+			if (aewbstat.h3a_buff[H3A_MAX_BUFF - 1].
+							locked == 0) {
+				h3a_xtrastats[H3A_MAX_BUFF - 1] =
+							*xtrastats;
 			} else {
-				if (aewbstat.h3a_buff[i - 1].locked == 0)
-					h3a_xtrastats[i - 1] = *xtrastats;
-				else
-					h3a_xtrastats[i - 2] = *xtrastats;
+				h3a_xtrastats[H3A_MAX_BUFF - 2] =
+							*xtrastats;
 			}
-			return;
+		} else if (i == 1) {
+			if (aewbstat.h3a_buff[0].locked == 0)
+				h3a_xtrastats[0] = *xtrastats;
+			else {
+				h3a_xtrastats[H3A_MAX_BUFF - 1] =
+							*xtrastats;
+			}
+		} else {
+			if (aewbstat.h3a_buff[i - 1].locked == 0)
+				h3a_xtrastats[i - 1] = *xtrastats;
+			else
+				h3a_xtrastats[i - 2] = *xtrastats;
 		}
+		return;
 	}
 }
 EXPORT_SYMBOL(isph3a_aewb_setxtrastats);
@@ -271,7 +269,7 @@ static void isph3a_aewb_update_req_buffer(struct isph3a_aewb_buffer *buffer)
 
 	size = PAGE_ALIGN(size);
 	dmac_inv_range((void *)buffer->addr_align,
-		(void *)buffer->addr_align + size);
+					(void *)buffer->addr_align + size);
 }
 
 /**
@@ -290,28 +288,24 @@ static int isph3a_aewb_stats_available(struct isph3a_aewb_data *aewbdata)
 		DPRINTK_ISPH3A("Checking Stats buff[%d] (%d) for %d\n",
 				i, aewbstat.h3a_buff[i].frame_num,
 				aewbdata->frame_number);
-		if ((aewbdata->frame_number == aewbstat.h3a_buff[i].frame_num)
-					&& (aewbstat.h3a_buff[i].frame_num !=
-					active_buff->frame_num)) {
-			aewbstat.h3a_buff[i].locked = 1;
-			spin_unlock_irqrestore(&aewbstat.buffer_lock, irqflags);
-			isph3a_aewb_update_req_buffer(&aewbstat.h3a_buff[i]);
-			aewbstat.h3a_buff[i].frame_num = 0;
-			ret = copy_to_user(
-				(void *)aewbdata->h3a_aewb_statistics_buf,
-				(void *)aewbstat.h3a_buff[i].virt_addr,
-				aewbstat.curr_cfg_buf_size);
-			if (ret) {
-				printk(KERN_ERR
-					"Failed copy_to_user for "
+		if ((aewbdata->frame_number != aewbstat.h3a_buff[i].frame_num) ||
+			(aewbstat.h3a_buff[i].frame_num == active_buff->frame_num))
+			continue;
+		aewbstat.h3a_buff[i].locked = 1;
+		spin_unlock_irqrestore(&aewbstat.buffer_lock, irqflags);
+		isph3a_aewb_update_req_buffer(&aewbstat.h3a_buff[i]);
+		aewbstat.h3a_buff[i].frame_num = 0;
+		ret = copy_to_user((void *)aewbdata->h3a_aewb_statistics_buf,
+					(void *)aewbstat.h3a_buff[i].virt_addr,
+					aewbstat.curr_cfg_buf_size);
+		if (ret) {
+			printk(KERN_ERR "Failed copy_to_user for "
 					"H3A stats buff, %d\n", ret);
-			}
-			aewbdata->ts = aewbstat.h3a_buff[i].ts;
-			aewbdata->config_counter =
-				aewbstat.h3a_buff[i].config_counter;
-			aewbdata->field_count = h3a_xtrastats[i].field_count;
-			return 0;
 		}
+		aewbdata->ts = aewbstat.h3a_buff[i].ts;
+		aewbdata->config_counter = aewbstat.h3a_buff[i].config_counter;
+		aewbdata->field_count = h3a_xtrastats[i].field_count;
+		return 0;
 	}
 	spin_unlock_irqrestore(&aewbstat.buffer_lock, irqflags);
 
@@ -391,7 +385,6 @@ static void isph3a_aewb_isr(unsigned long status, isp_vbq_callback_ptr arg1,
 
 	if (aewbstat.update)
 		isph3a_aewb_update_regs();
-
 }
 
 /**
@@ -409,8 +402,8 @@ static int isph3a_aewb_set_params(struct isph3a_aewb_config *user_cfg)
 		printk(KERN_ERR "Invalid Saturation_limit: %d\n",
 			user_cfg->saturation_limit);
 		return -EINVAL;
-	} else if (aewb_config_local.saturation_limit !=
-						user_cfg->saturation_limit) {
+	}
+	if (aewb_config_local.saturation_limit != user_cfg->saturation_limit) {
 		WRITE_SAT_LIM(aewb_regs.reg_pcr, user_cfg->saturation_limit);
 		aewb_config_local.saturation_limit =
 						user_cfg->saturation_limit;
@@ -429,7 +422,8 @@ static int isph3a_aewb_set_params(struct isph3a_aewb_config *user_cfg)
 		printk(KERN_ERR "Invalid window height: %d\n",
 							user_cfg->win_height);
 		return -EINVAL;
-	} else if (aewb_config_local.win_height != user_cfg->win_height) {
+	}
+	if (aewb_config_local.win_height != user_cfg->win_height) {
 		WRITE_WIN_H(aewb_regs.reg_win1, user_cfg->win_height);
 		aewb_config_local.win_height = user_cfg->win_height;
 		aewbstat.update = 1;
@@ -441,7 +435,8 @@ static int isph3a_aewb_set_params(struct isph3a_aewb_config *user_cfg)
 		printk(KERN_ERR "Invalid window width: %d\n",
 							user_cfg->win_width);
 		return -EINVAL;
-	} else if (aewb_config_local.win_width != user_cfg->win_width) {
+	}
+	if (aewb_config_local.win_width != user_cfg->win_width) {
 		WRITE_WIN_W(aewb_regs.reg_win1, user_cfg->win_width);
 		aewb_config_local.win_width = user_cfg->win_width;
 		aewbstat.update = 1;
@@ -452,8 +447,8 @@ static int isph3a_aewb_set_params(struct isph3a_aewb_config *user_cfg)
 		printk(KERN_ERR "Invalid vertical window count: %d\n",
 						user_cfg->ver_win_count);
 		return -EINVAL;
-	} else if (aewb_config_local.ver_win_count
-						!= user_cfg->ver_win_count) {
+	}
+	if (aewb_config_local.ver_win_count != user_cfg->ver_win_count) {
 		WRITE_VER_C(aewb_regs.reg_win1, user_cfg->ver_win_count);
 		aewb_config_local.ver_win_count = user_cfg->ver_win_count;
 		aewbstat.update = 1;
@@ -464,21 +459,19 @@ static int isph3a_aewb_set_params(struct isph3a_aewb_config *user_cfg)
 		printk(KERN_ERR "Invalid horizontal window count: %d\n",
 						user_cfg->hor_win_count);
 		return -EINVAL;
-	} else if (aewb_config_local.hor_win_count
-						!= user_cfg->hor_win_count) {
-		WRITE_HOR_C(aewb_regs.reg_win1,
-					user_cfg->hor_win_count);
-		aewb_config_local.hor_win_count	=
-					user_cfg->hor_win_count;
+	}
+	if (aewb_config_local.hor_win_count != user_cfg->hor_win_count) {
+		WRITE_HOR_C(aewb_regs.reg_win1, user_cfg->hor_win_count);
+		aewb_config_local.hor_win_count	= user_cfg->hor_win_count;
 		aewbstat.update = 1;
 	}
 
 	if (unlikely(user_cfg->ver_win_start > MAX_WINSTART)) {
 		printk(KERN_ERR "Invalid vertical window start: %d\n",
-			user_cfg->ver_win_start);
+						user_cfg->ver_win_start);
 		return -EINVAL;
-	} else if (aewb_config_local.ver_win_start
-						!= user_cfg->ver_win_start) {
+	}
+	if (aewb_config_local.ver_win_start != user_cfg->ver_win_start) {
 		WRITE_VER_WIN_ST(aewb_regs.reg_start, user_cfg->ver_win_start);
 		aewb_config_local.ver_win_start = user_cfg->ver_win_start;
 		aewbstat.update = 1;
@@ -486,72 +479,68 @@ static int isph3a_aewb_set_params(struct isph3a_aewb_config *user_cfg)
 
 	if (unlikely(user_cfg->hor_win_start > MAX_WINSTART)) {
 		printk(KERN_ERR "Invalid horizontal window start: %d\n",
-			user_cfg->hor_win_start);
+						user_cfg->hor_win_start);
 		return -EINVAL;
-	} else if (aewb_config_local.hor_win_start
-				!= user_cfg->hor_win_start){
-		WRITE_HOR_WIN_ST(aewb_regs.reg_start,
-					 user_cfg->hor_win_start);
-		aewb_config_local.hor_win_start	=
-					user_cfg->hor_win_start;
+	}
+	if (aewb_config_local.hor_win_start != user_cfg->hor_win_start) {
+		WRITE_HOR_WIN_ST(aewb_regs.reg_start, user_cfg->hor_win_start);
+		aewb_config_local.hor_win_start	= user_cfg->hor_win_start;
 		aewbstat.update = 1;
 	}
 
 	if (unlikely(user_cfg->blk_ver_win_start > MAX_WINSTART)) {
 		printk(KERN_ERR "Invalid black vertical window start: %d\n",
-			user_cfg->blk_ver_win_start);
+						user_cfg->blk_ver_win_start);
 		return -EINVAL;
-	} else if (aewb_config_local.blk_ver_win_start
-				!= user_cfg->blk_ver_win_start){
+	}
+	if (aewb_config_local.blk_ver_win_start != user_cfg->blk_ver_win_start) {
 		WRITE_BLK_VER_WIN_ST(aewb_regs.reg_blk,
-					user_cfg->blk_ver_win_start);
+						user_cfg->blk_ver_win_start);
 		aewb_config_local.blk_ver_win_start =
-					user_cfg->blk_ver_win_start;
+						user_cfg->blk_ver_win_start;
 		aewbstat.update = 1;
 	}
 
-	if (unlikely((user_cfg->blk_win_height < MIN_WIN_H)
-			|| (user_cfg->blk_win_height > MAX_WIN_H)
-			|| (user_cfg->blk_win_height & 0x01))) {
+	if (unlikely((user_cfg->blk_win_height < MIN_WIN_H) ||
+				(user_cfg->blk_win_height > MAX_WIN_H) ||
+				(user_cfg->blk_win_height & 0x01))) {
 		printk(KERN_ERR "Invalid black window height: %d\n",
-			user_cfg->blk_win_height);
+						user_cfg->blk_win_height);
 		return -EINVAL;
-	} else if (aewb_config_local.blk_win_height
-				!= user_cfg->blk_win_height) {
-		WRITE_BLK_WIN_H(aewb_regs.reg_blk,
-				user_cfg->blk_win_height);
-		aewb_config_local.blk_win_height
-				= user_cfg->blk_win_height;
+	}
+	if (aewb_config_local.blk_win_height != user_cfg->blk_win_height) {
+		WRITE_BLK_WIN_H(aewb_regs.reg_blk, user_cfg->blk_win_height);
+		aewb_config_local.blk_win_height = user_cfg->blk_win_height;
 		aewbstat.update = 1;
 	}
 
-	if (unlikely((user_cfg->subsample_ver_inc < MIN_SUB_INC)
-			|| (user_cfg->subsample_ver_inc > MAX_SUB_INC)
-			|| (user_cfg->subsample_ver_inc & 0x01))) {
+	if (unlikely((user_cfg->subsample_ver_inc < MIN_SUB_INC) ||
+				(user_cfg->subsample_ver_inc > MAX_SUB_INC) ||
+				(user_cfg->subsample_ver_inc & 0x01))) {
 		printk(KERN_ERR "Invalid vertical subsample increment: %d\n",
-			user_cfg->subsample_ver_inc);
+						user_cfg->subsample_ver_inc);
 		return -EINVAL;
-	} else if (aewb_config_local.subsample_ver_inc
-				!= user_cfg->subsample_ver_inc) {
+	}
+	if (aewb_config_local.subsample_ver_inc != user_cfg->subsample_ver_inc) {
 		WRITE_SUB_VER_INC(aewb_regs.reg_subwin,
 						user_cfg->subsample_ver_inc);
-		aewb_config_local.subsample_ver_inc
-					= user_cfg->subsample_ver_inc;
+		aewb_config_local.subsample_ver_inc =
+						user_cfg->subsample_ver_inc;
 		aewbstat.update = 1;
 	}
 
-	if (unlikely((user_cfg->subsample_hor_inc < MIN_SUB_INC)
-			|| (user_cfg->subsample_hor_inc > MAX_SUB_INC)
-			|| (user_cfg->subsample_hor_inc & 0x01))) {
+	if (unlikely((user_cfg->subsample_hor_inc < MIN_SUB_INC) ||
+				(user_cfg->subsample_hor_inc > MAX_SUB_INC) ||
+				(user_cfg->subsample_hor_inc & 0x01))) {
 		printk(KERN_ERR "Invalid horizontal subsample increment: %d\n",
-			user_cfg->subsample_hor_inc);
+						user_cfg->subsample_hor_inc);
 		return -EINVAL;
-	} else if (aewb_config_local.subsample_hor_inc
-				!= user_cfg->subsample_hor_inc) {
+	}
+	if (aewb_config_local.subsample_hor_inc != user_cfg->subsample_hor_inc) {
 		WRITE_SUB_HOR_INC(aewb_regs.reg_subwin,
 						user_cfg->subsample_hor_inc);
-		aewb_config_local.subsample_hor_inc
-					= user_cfg->subsample_hor_inc;
+		aewb_config_local.subsample_hor_inc =
+						user_cfg->subsample_hor_inc;
 		aewbstat.update = 1;
 	}
 
@@ -584,7 +573,7 @@ int isph3a_aewb_configure(struct isph3a_aewb_config *aewbcfg)
 	if (!aewbstat.initialized) {
 		DPRINTK_ISPH3A("Setting callback for H3A\n");
 		ret = isp_set_callback(CBK_H3A_AWB_DONE, isph3a_aewb_isr,
-					(void *)NULL, (void *)NULL);
+						(void *)NULL, (void *)NULL);
 		if (ret) {
 			printk(KERN_ERR "No callback for H3A\n");
 			return ret;
@@ -629,19 +618,17 @@ int isph3a_aewb_configure(struct isph3a_aewb_config *aewbcfg)
 		DPRINTK_ISPH3A("Allocating/mapping new stat buffs\n");
 		for (i = 0; i < H3A_MAX_BUFF; i++) {
 			aewbstat.h3a_buff[i].virt_addr =
-					(unsigned long)dma_alloc_coherent(NULL,
-						aewbstat.min_buf_size,
-						(dma_addr_t *)
-						&aewbstat.h3a_buff[i].
-						phy_addr, GFP_KERNEL |
-						GFP_DMA);
+				(unsigned long)dma_alloc_coherent(NULL,
+				aewbstat.min_buf_size,
+				(dma_addr_t *)&aewbstat.h3a_buff[i].phy_addr,
+				GFP_KERNEL | GFP_DMA);
 			if (aewbstat.h3a_buff[i].virt_addr == 0) {
 				printk(KERN_ERR "Can't acquire memory for "
 					"buffer[%d]\n", i);
 				return -ENOMEM;
 			}
 			aewbstat.h3a_buff[i].addr_align =
-					aewbstat.h3a_buff[i].virt_addr;
+						aewbstat.h3a_buff[i].virt_addr;
 			while ((aewbstat.h3a_buff[i].addr_align &
 							0xFFFFFFC0) !=
 							aewbstat.h3a_buff[i].
@@ -676,7 +663,7 @@ int isph3a_aewb_configure(struct isph3a_aewb_config *aewbcfg)
 	}
 
 	active_buff->frame_num = 1;
-	
+
 	atomic_inc(&aewbstat.config_counter);
 	isph3a_aewb_enable(aewbcfg->aewb_enable);
 	isph3a_print_status();
@@ -718,103 +705,88 @@ int isph3a_aewb_request_statistics(struct isph3a_aewb_data *aewbdata)
 	DPRINTK_ISPH3A("WB gain gb =   0x%04x\n", aewbdata->wb_gain_gb);
 	DPRINTK_ISPH3A("WB gain gr =   0x%04x\n", aewbdata->wb_gain_gr);
 
-	if (aewbdata->update != 0) {
-		if (aewbdata->update & SET_DIGITAL_GAIN)
-			h3awb_update.dgain = (u16)aewbdata->dgain;
-		if (aewbdata->update & SET_COLOR_GAINS) {
-			h3awb_update.coef0 = (u8)aewbdata->wb_gain_gr;
-			h3awb_update.coef1 = (u8)aewbdata->wb_gain_r;
-			h3awb_update.coef2 = (u8)aewbdata->wb_gain_b;
-			h3awb_update.coef3 = (u8)aewbdata->wb_gain_gb;
-		}
-		if (aewbdata->update & (SET_COLOR_GAINS | SET_DIGITAL_GAIN))
-			wb_update = 1;
+	if (!aewbdata->update) {
+		aewbdata->h3a_aewb_statistics_buf = NULL;
+		goto out;
+	}
+	if (aewbdata->update & SET_DIGITAL_GAIN)
+		h3awb_update.dgain = (u16)aewbdata->dgain;
+	if (aewbdata->update & SET_COLOR_GAINS) {
+		h3awb_update.coef0 = (u8)aewbdata->wb_gain_gr;
+		h3awb_update.coef1 = (u8)aewbdata->wb_gain_r;
+		h3awb_update.coef2 = (u8)aewbdata->wb_gain_b;
+		h3awb_update.coef3 = (u8)aewbdata->wb_gain_gb;
+	}
+	if (aewbdata->update & (SET_COLOR_GAINS | SET_DIGITAL_GAIN))
+		wb_update = 1;
 
-		if (aewbdata->update & REQUEST_STATISTICS) {
-			if (aewbdata->frame_number < 1) {
-				printk(KERN_ERR "Illeagal frame number "
-					"requested (%d)\n",
-					aewbdata->frame_number);
-				return -EINVAL;
-			}
+	if (!(aewbdata->update & REQUEST_STATISTICS)) {
+		aewbdata->h3a_aewb_statistics_buf = NULL;
+		goto out;
+	}
 
-			isph3a_aewb_unlock_buffers();
+	if (aewbdata->frame_number < 1) {
+		printk(KERN_ERR "Illeagal frame number "
+			"requested (%d)\n",
+			aewbdata->frame_number);
+		return -EINVAL;
+	}
 
-			DPRINTK_ISPH3A("Stats available?\n");
-			ret = isph3a_aewb_stats_available(aewbdata);
-			if (!ret)
-				goto out;
+	isph3a_aewb_unlock_buffers();
 
-			DPRINTK_ISPH3A("Stats in near future?\n");
-			if (aewbdata->frame_number > frame_cnt) {
-				frame_diff = aewbdata->frame_number - frame_cnt;
-			} else if (aewbdata->frame_number < frame_cnt) {
-				if ((frame_cnt > (MAX_FRAME_COUNT -
-							MAX_FUTURE_FRAMES))
-							&& (aewbdata->
-							frame_number
-							< MAX_FRAME_COUNT))
-					frame_diff = aewbdata->frame_number
-							+ MAX_FRAME_COUNT
-							- frame_cnt;
-				else {
-					frame_diff = MAX_FUTURE_FRAMES + 1;
-				}
-			}
+	DPRINTK_ISPH3A("Stats available?\n");
+	ret = isph3a_aewb_stats_available(aewbdata);
+	if (!ret)
+		goto out;
 
-			if (frame_diff > MAX_FUTURE_FRAMES) {
-				printk(KERN_ERR "Invalid frame requested"
-					", returning current frame stats\n");
-				aewbdata->frame_number = frame_cnt;
-			}
-			if (!camnotify) {
-				DPRINTK_ISPH3A("Waiting on stats IRQ "
-					"for frame %d\n",
-					aewbdata->frame_number);
-				aewbstat.frame_req = aewbdata->frame_number;
-				aewbstat.stats_req = 1;
-				aewbstat.stats_done = 0;
-				init_waitqueue_entry(&wqt, current);
-				ret = wait_event_interruptible
-						(aewbstat.stats_wait,
+	DPRINTK_ISPH3A("Stats in near future?\n");
+	if (aewbdata->frame_number > frame_cnt)
+		frame_diff = aewbdata->frame_number - frame_cnt;
+	else if (aewbdata->frame_number < frame_cnt) {
+		if ((frame_cnt > (MAX_FRAME_COUNT - MAX_FUTURE_FRAMES)) &&
+				(aewbdata->frame_number < MAX_FRAME_COUNT)) {
+			frame_diff = aewbdata->frame_number + MAX_FRAME_COUNT -
+								frame_cnt;
+		} else
+			frame_diff = MAX_FUTURE_FRAMES + 1;
+	}
+
+	if (frame_diff > MAX_FUTURE_FRAMES) {
+		printk(KERN_ERR "Invalid frame requested, returning current"
+							" frame stats\n");
+		aewbdata->frame_number = frame_cnt;
+	}
+	if (camnotify) {
+		DPRINTK_ISPH3A("NOT Waiting on stats IRQ for frame %d "
+			"because camnotify set\n", aewbdata->frame_number);
+		aewbdata->h3a_aewb_statistics_buf = NULL;
+		goto out;
+	}
+	DPRINTK_ISPH3A("Waiting on stats IRQ for frame %d\n",
+						aewbdata->frame_number);
+	aewbstat.frame_req = aewbdata->frame_number;
+	aewbstat.stats_req = 1;
+	aewbstat.stats_done = 0;
+	init_waitqueue_entry(&wqt, current);
+	ret = wait_event_interruptible(aewbstat.stats_wait,
 						aewbstat.stats_done == 1);
-				if (ret < 0) {
-					printk(KERN_ERR
-						"isph3a_aewb_request_statistics"
-						" Error on wait event %d\n",
-						ret);
-					aewbdata->h3a_aewb_statistics_buf =
-									NULL;
-					return ret;
-				}
+	if (ret < 0) {
+		printk(KERN_ERR "isph3a_aewb_request_statistics"
+					" Error on wait event %d\n", ret);
+		aewbdata->h3a_aewb_statistics_buf = NULL;
+		return ret;
+	}
 
-				DPRINTK_ISPH3A("ISP AEWB request status"
-						" interrupt raised\n");
-				ret = isph3a_aewb_stats_available(aewbdata);
-				if (ret) {
-					DPRINTK_ISPH3A
-						("After waiting for stats,"
-						" stats not available!!\n");
-					aewbdata->h3a_aewb_statistics_buf =
-									NULL;
-				}
-			} else {
-				DPRINTK_ISPH3A("NOT Waiting on stats IRQ "
-					"for frame %d "
-					"because camnotify set\n",
-					aewbdata->frame_number);
-				aewbdata->h3a_aewb_statistics_buf = NULL;
-			}
-		} else {
-			aewbdata->h3a_aewb_statistics_buf = NULL;
-		}
-	} else {
+	DPRINTK_ISPH3A("ISP AEWB request status interrupt raised\n");
+	ret = isph3a_aewb_stats_available(aewbdata);
+	if (ret) {
+		DPRINTK_ISPH3A("After waiting for stats, stats not available!!\n");
 		aewbdata->h3a_aewb_statistics_buf = NULL;
 	}
 out:
 	DPRINTK_ISPH3A("isph3a_aewb_request_statistics: "
-		"aewbdata->h3a_aewb_statistics_buf => %p\n",
-		aewbdata->h3a_aewb_statistics_buf);
+				"aewbdata->h3a_aewb_statistics_buf => %p\n",
+				aewbdata->h3a_aewb_statistics_buf);
 	aewbdata->curr_frame = aewbstat.frame_count;
 
 	return 0;

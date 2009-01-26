@@ -1,13 +1,13 @@
 /*
- * drivers/media/video/isp/isphist.c
+ * isphist.c
  *
- * HISTOGRAM module for TI's OMAP3430 Camera ISP
+ * HISTOGRAM module for TI's OMAP3 Camera ISP
  *
- * Copyright (C) 2008 Texas Instruments.
+ * Copyright (C) 2009 Texas Instruments, Inc.
  *
  * Contributors:
  *	Sergio Aguirre <saaguirre@ti.com>
- *	Troy Laramy <t-laramy@ti.com>
+ *	Troy Laramy
  *
  * This package is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -18,23 +18,16 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  */
 
-#include <linux/mm.h>
-#include <linux/mman.h>
-#include <linux/syscalls.h>
-#include <linux/module.h>
-#include <linux/errno.h>
-#include <linux/delay.h>
-#include <linux/types.h>
-#include <linux/dma-mapping.h>
-#include <linux/io.h>
-#include <linux/uaccess.h>
 #include <asm/cacheflush.h>
+
+#include <linux/delay.h>
+#include <linux/dma-mapping.h>
+#include <linux/uaccess.h>
 
 #include "isp.h"
 #include "ispreg.h"
 #include "isphist.h"
 #include "ispmmu.h"
-#include "isppreview.h"
 
 /**
  * struct isp_hist_status - Histogram status.
@@ -252,9 +245,9 @@ static int isp_hist_set_params(struct isp_hist_config *user_cfg)
 		WRITE_HV_INFO(hist_regs.reg_h_v_info, user_cfg->hist_h_v_info);
 
 		if ((user_cfg->hist_radd & ISP_32B_BOUNDARY_BUF) ==
-		    user_cfg->hist_radd) {
+							user_cfg->hist_radd) {
 			WRITE_RADD(hist_regs.reg_hist_radd,
-				   user_cfg->hist_radd);
+							user_cfg->hist_radd);
 		} else {
 			printk(KERN_ERR "Address should be in 32 byte boundary"
 									"\n");
@@ -262,9 +255,9 @@ static int isp_hist_set_params(struct isp_hist_config *user_cfg)
 		}
 
 		if ((user_cfg->hist_radd_off & ISP_32B_BOUNDARY_OFFSET) ==
-		    user_cfg->hist_radd_off) {
+						user_cfg->hist_radd_off) {
 			WRITE_RADD_OFF(hist_regs.reg_hist_radd_off,
-				       user_cfg->hist_radd_off);
+						user_cfg->hist_radd_off);
 		} else {
 			printk(KERN_ERR "Offset should be in 32 byte boundary"
 									"\n");
@@ -306,9 +299,9 @@ static int isp_hist_set_params(struct isp_hist_config *user_cfg)
 		return -EINVAL;
 	}
 
-	if (likely((user_cfg->reg0_ver & ISPHIST_REGVERT_VEND_MASK)
-		     - ((user_cfg->reg0_ver & ISPHIST_REGVERT_VSTART_MASK)
-			>> ISPHIST_REGVERT_VSTART_SHIFT))) {
+	if (likely((user_cfg->reg0_ver & ISPHIST_REGVERT_VEND_MASK) -
+			((user_cfg->reg0_ver & ISPHIST_REGVERT_VSTART_MASK) >>
+			ISPHIST_REGVERT_VSTART_SHIFT))) {
 		WRITE_REG_VERT(hist_regs.reg_r0_v, user_cfg->reg0_ver);
 	} else {
 		printk(KERN_ERR "Invalid Region parameters\n");
@@ -491,10 +484,8 @@ int isp_hist_request_statistics(struct isp_hist_data *histdata)
 		curr = omap_readl(ISPHIST_DATA);
 		ret = put_user(curr, (histdata->hist_statistics_buf + i));
 		if (ret) {
-			printk(KERN_ERR
-				"Failed copy_to_user for "
-				"HIST stats buff, %d\n",
-				ret);
+			printk(KERN_ERR "Failed copy_to_user for "
+						"HIST stats buff, %d\n", ret);
 		}
 	}
 
@@ -530,8 +521,7 @@ void __exit isp_hist_cleanup(void)
 /**
  * isphist_save_context - Saves the values of the histogram module registers.
  **/
-void
-isphist_save_context(void)
+void isphist_save_context(void)
 {
 	DPRINTK_ISPHIST(" Saving context\n");
 	isp_save_context(isphist_reg_list);
@@ -541,8 +531,7 @@ EXPORT_SYMBOL(isphist_save_context);
 /**
  * isphist_restore_context - Restores the values of the histogram module regs.
  **/
-void
-isphist_restore_context(void)
+void isphist_restore_context(void)
 {
 	DPRINTK_ISPHIST(" Restoring context\n");
 	isp_restore_context(isphist_reg_list);
