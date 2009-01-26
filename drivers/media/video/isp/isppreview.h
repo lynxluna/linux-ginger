@@ -1,13 +1,14 @@
 /*
- * drivers/media/video/isp/isppreview.h
+ * isppreview.h
  *
- * Driver header file for Preview module in TI's OMAP3430 Camera ISP
+ * Driver header file for Preview module in TI's OMAP3 Camera ISP
  *
- * Copyright (C) 2008 Texas Instruments, Inc.
+ * Copyright (C) 2009 Texas Instruments, Inc.
  *
  * Contributors:
  *	Senthilvadivu Guruswamy <svadivu@ti.com>
  *	Pallavi Kulkarni <p-kulkarni@ti.com>
+ *	Sergio Aguirre <saaguirre@ti.com>
  *
  * This package is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -63,6 +64,11 @@
 #define ISP_NF_TABLE_SIZE 		(1 << 10)
 
 #define ISP_GAMMA_TABLE_SIZE 		(1 << 10)
+
+/* Table addresses */
+#define ISPPRV_TBL_ADDR_RED_G_START  0x00
+#define ISPPRV_TBL_ADDR_BLUE_G_START  0x800
+#define ISPPRV_TBL_ADDR_GREEN_G_START  0x400
 
 /*
  *Enumeration Constants for input and output format

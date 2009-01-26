@@ -1,13 +1,14 @@
 /*
- * drivers/media/video/isp/isppreview.c
+ * isppreview.c
  *
- * Driver Library for Preview module in TI's OMAP3430 Camera ISP
+ * Driver Library for Preview module in TI's OMAP3 Camera ISP
  *
- * Copyright (C) 2008 Texas Instruments, Inc.
+ * Copyright (C) 2009 Texas Instruments, Inc.
  *
  * Contributors:
  *	Senthilvadivu Guruswamy <svadivu@ti.com>
  *	Pallavi Kulkarni <p-kulkarni@ti.com>
+ *	Sergio Aguirre <saaguirre@ti.com>
  *
  * This package is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -18,11 +19,8 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  */
 
-#include <linux/io.h>
-#include <linux/errno.h>
 #include <linux/mutex.h>
 #include <linux/module.h>
-#include <linux/types.h>
 #include <linux/uaccess.h>
 
 #include "isp.h"
@@ -31,7 +29,7 @@
 
 static struct ispprev_nf prev_nf_t;
 static struct prev_params *params;
-static int RG_update, GG_update, BG_update, NF_enable, NF_update;
+static int rg_update, gg_update, bg_update, nf_enable, nf_update;
 
 /* Structure for saving/restoring preview module registers */
 static struct isp_reg ispprev_reg_list[] = {
@@ -81,7 +79,7 @@ static struct ispprev_rgbtorgb flr_rgb2rgb = {
 		{0x0F9B, 0x01AC, 0x0FB9},
 		{0x0FE0, 0x0EC0, 0x0260}
 	},	/* RGB Offset */
-		{0x0000, 0x0000, 0x0000}
+	{0x0000, 0x0000, 0x0000}
 };
 
 /* Default values in Office Flourescent Light for RGB to YUV Conversion*/
@@ -92,7 +90,7 @@ static struct ispprev_csc flr_prev_csc[] = {
 			{-38, -75, 112},
 			{112, -94 , -18}
 		},	/* CSC Offset */
-			{0x0, 0x0, 0x0}
+		{0x0, 0x0, 0x0}
 	},
 	{
 		{	/* CSC Coef Matrix Sepia */
@@ -100,7 +98,7 @@ static struct ispprev_csc flr_prev_csc[] = {
 			{0, 0, 0},
 			{0, 0, 0}
 		},	/* CSC Offset */
-			{0x0, 0xE7, 0x14}
+		{0x0, 0xE7, 0x14}
 	},
 	{
 		{	/* CSC Coef Matrix BW */
@@ -108,33 +106,38 @@ static struct ispprev_csc flr_prev_csc[] = {
 			{0, 0, 0},
 			{0, 0, 0}
 		},	/* CSC Offset */
-			{0x0, 0x0, 0x0}
+		{0x0, 0x0, 0x0}
 	}
 };
 
 
 /* Default values in Office Flourescent Light for CFA Gradient*/
-static u8 flr_cfa_gradthrs_horz = 0x28;
-static u8 flr_cfa_gradthrs_vert = 0x28;
+#define FLR_CFA_GRADTHRS_HORZ	0x28
+#define FLR_CFA_GRADTHRS_VERT	0x28
 
 /* Default values in Office Flourescent Light for Chroma Suppression*/
-static u8 flr_csup_gain = 0x0D;
-static u8 flr_csup_thres = 0xEB;
+#define FLR_CSUP_GAIN		0x0D
+#define FLR_CSUP_THRES		0xEB
 
 /* Default values in Office Flourescent Light for Noise Filter*/
-static u8 flr_nf_strgth = 0x03;
+#define FLR_NF_STRGTH		0x03
 
 /* Default values in Office Flourescent Light for White Balance*/
-static u16 flr_wbal_dgain = 0x100;
-static u8 flr_wbal_coef0 = 0x20;
-static u8 flr_wbal_coef1 = 0x29;
-static u8 flr_wbal_coef2 = 0x2d;
-static u8 flr_wbal_coef3 = 0x20;
+#define FLR_WBAL_DGAIN		0x100
+#define FLR_WBAL_COEF0		0x20
+#define FLR_WBAL_COEF1		0x29
+#define FLR_WBAL_COEF2		0x2d
+#define FLR_WBAL_COEF3		0x20
+
+#define FLR_WBAL_COEF0_ES1	0x20
+#define FLR_WBAL_COEF1_ES1	0x23
+#define FLR_WBAL_COEF2_ES1	0x39
+#define FLR_WBAL_COEF3_ES1	0x20
 
 /* Default values in Office Flourescent Light for Black Adjustment*/
-static u8 flr_blkadj_blue = 0x0;
-static u8 flr_blkadj_green = 0x0;
-static u8 flr_blkadj_red = 0x0;
+#define FLR_BLKADJ_BLUE		0x0
+#define FLR_BLKADJ_GREEN	0x0
+#define FLR_BLKADJ_RED		0x0
 
 static int update_color_matrix;
 
@@ -188,7 +191,7 @@ static struct isp_prev {
 } ispprev_obj;
 
 /* Saved parameters */
-struct prev_params *prev_config_params;
+static struct prev_params *prev_config_params;
 
 /*
  * Coeficient Tables for the submodules in Preview.
@@ -256,29 +259,25 @@ int omap34xx_isp_preview_config(void *userspace_add)
 	struct ispprev_dcor prev_dcor_t;
 	struct ispprv_update_config *preview_struct;
 	struct isptables_update isp_table_update;
-	int yen_t[128];
+	int yen_t[ISPPRV_YENH_TBL_SIZE];
 
 	if (userspace_add == NULL)
 		return -EINVAL;
 
-	preview_struct = (struct ispprv_update_config *) userspace_add;
+	preview_struct = userspace_add;
 
-	if ((ISP_ABS_PREV_LUMAENH & preview_struct->flag) ==
-							ISP_ABS_PREV_LUMAENH) {
-		if ((ISP_ABS_PREV_LUMAENH & preview_struct->update) ==
-							ISP_ABS_PREV_LUMAENH) {
+	if (ISP_ABS_PREV_LUMAENH & preview_struct->flag) {
+		if (ISP_ABS_PREV_LUMAENH & preview_struct->update) {
 			if (copy_from_user(yen_t, preview_struct->yen,
 								sizeof(yen_t)))
 				goto err_copy_from_user;
 			isppreview_config_luma_enhancement(yen_t);
 		}
 		params->features |= PREV_LUMA_ENHANCE;
-	} else if ((ISP_ABS_PREV_LUMAENH & preview_struct->update) ==
-							ISP_ABS_PREV_LUMAENH)
+	} else if (ISP_ABS_PREV_LUMAENH & preview_struct->update)
 			params->features &= ~PREV_LUMA_ENHANCE;
 
-	if ((ISP_ABS_PREV_INVALAW & preview_struct->flag) ==
-							ISP_ABS_PREV_INVALAW) {
+	if (ISP_ABS_PREV_INVALAW & preview_struct->flag) {
 		isppreview_enable_invalaw(1);
 		params->features |= PREV_INVERSE_ALAW;
 	} else {
@@ -286,30 +285,27 @@ int omap34xx_isp_preview_config(void *userspace_add)
 		params->features &= ~PREV_INVERSE_ALAW;
 	}
 
-	if ((ISP_ABS_PREV_HRZ_MED & preview_struct->flag) ==
-							ISP_ABS_PREV_HRZ_MED) {
-		if ((ISP_ABS_PREV_HRZ_MED & preview_struct->update) ==
-							ISP_ABS_PREV_HRZ_MED) {
+	if (ISP_ABS_PREV_HRZ_MED & preview_struct->flag) {
+		if (ISP_ABS_PREV_HRZ_MED & preview_struct->update) {
 			if (copy_from_user(&prev_hmed_t,
 						(struct ispprev_hmed *)
-						(preview_struct->prev_hmed),
+						preview_struct->prev_hmed,
 						sizeof(struct ispprev_hmed)))
 				goto err_copy_from_user;
 			isppreview_config_hmed(prev_hmed_t);
 		}
 		isppreview_enable_hmed(1);
 		params->features |= PREV_HORZ_MEDIAN_FILTER;
-	} else if ((ISP_ABS_PREV_HRZ_MED & preview_struct->update) ==
-							ISP_ABS_PREV_HRZ_MED) {
+	} else if (ISP_ABS_PREV_HRZ_MED & preview_struct->update) {
 		isppreview_enable_hmed(0);
 		params->features &= ~PREV_HORZ_MEDIAN_FILTER;
 	}
-	if ((ISP_ABS_PREV_CFA & preview_struct->flag) == ISP_ABS_PREV_CFA) {
-		if ((ISP_ABS_PREV_CFA & preview_struct->update) ==
-							ISP_ABS_PREV_CFA) {
+
+	if (ISP_ABS_PREV_CFA & preview_struct->flag) {
+		if (ISP_ABS_PREV_CFA & preview_struct->update) {
 			if (copy_from_user(&prev_cfa_t,
 						(struct ispprev_cfa *)
-						(preview_struct->prev_cfa),
+						preview_struct->prev_cfa,
 						sizeof(struct ispprev_cfa)))
 				goto err_copy_from_user;
 
@@ -317,96 +313,84 @@ int omap34xx_isp_preview_config(void *userspace_add)
 		}
 		isppreview_enable_cfa(1);
 		params->features |= PREV_CFA;
-	} else if ((ISP_ABS_PREV_CFA & preview_struct->update) ==
-							ISP_ABS_PREV_CFA) {
+	} else if (ISP_ABS_PREV_CFA & preview_struct->update) {
 		isppreview_enable_cfa(0);
 		params->features &= ~PREV_CFA;
 	}
 
-	if ((ISP_ABS_PREV_CHROMA_SUPP & preview_struct->flag) ==
-						ISP_ABS_PREV_CHROMA_SUPP) {
-		if ((ISP_ABS_PREV_CHROMA_SUPP & preview_struct->update) ==
-						ISP_ABS_PREV_CHROMA_SUPP) {
+	if (ISP_ABS_PREV_CHROMA_SUPP & preview_struct->flag) {
+		if (ISP_ABS_PREV_CHROMA_SUPP & preview_struct->update) {
 			if (copy_from_user(&csup_t,
 						(struct ispprev_csup *)
-						(preview_struct->csup),
+						preview_struct->csup,
 						sizeof(struct ispprev_csup)))
 				goto err_copy_from_user;
 			isppreview_config_chroma_suppression(csup_t);
 		}
 		isppreview_enable_chroma_suppression(1);
 		params->features |= PREV_CHROMA_SUPPRESS;
-	} else if ((ISP_ABS_PREV_CHROMA_SUPP & preview_struct->update) ==
-						ISP_ABS_PREV_CHROMA_SUPP) {
+	} else if (ISP_ABS_PREV_CHROMA_SUPP & preview_struct->update) {
 		isppreview_enable_chroma_suppression(0);
 		params->features &= ~PREV_CHROMA_SUPPRESS;
 	}
 
-	if ((ISP_ABS_PREV_WB & preview_struct->update) == ISP_ABS_PREV_WB) {
+	if (ISP_ABS_PREV_WB & preview_struct->update) {
 		if (copy_from_user(&prev_wbal_t, (struct ispprev_wbal *)
-						(preview_struct->prev_wbal),
+						preview_struct->prev_wbal,
 						sizeof(struct ispprev_wbal)))
 			goto err_copy_from_user;
 		isppreview_config_whitebalance(prev_wbal_t);
 	}
 
-	if ((ISP_ABS_PREV_BLKADJ & preview_struct->update) ==
-							ISP_ABS_PREV_BLKADJ) {
+	if (ISP_ABS_PREV_BLKADJ & preview_struct->update) {
 		if (copy_from_user(&prev_blkadj_t, (struct ispprev_blkadjl *)
-					(preview_struct->prev_blkadj),
+					preview_struct->prev_blkadj,
 					sizeof(struct ispprev_blkadj)))
 			goto err_copy_from_user;
 		isppreview_config_blkadj(prev_blkadj_t);
 	}
 
-	if ((ISP_ABS_PREV_RGB2RGB & preview_struct->update) ==
-							ISP_ABS_PREV_RGB2RGB) {
+	if (ISP_ABS_PREV_RGB2RGB & preview_struct->update) {
 		if (copy_from_user(&rgb2rgb_t, (struct ispprev_rgbtorgb *)
-					(preview_struct->rgb2rgb),
+					preview_struct->rgb2rgb,
 					sizeof(struct ispprev_rgbtorgb)))
 			goto err_copy_from_user;
 		isppreview_config_rgb_blending(rgb2rgb_t);
 	}
 
-	if ((ISP_ABS_PREV_COLOR_CONV & preview_struct->update) ==
-						ISP_ABS_PREV_COLOR_CONV) {
+	if (ISP_ABS_PREV_COLOR_CONV & preview_struct->update) {
 		if (copy_from_user(&prev_csc_t, (struct ispprev_csc *)
-						(preview_struct->prev_csc),
+						preview_struct->prev_csc,
 						sizeof(struct ispprev_csc)))
 			goto err_copy_from_user;
 		isppreview_config_rgb_to_ycbcr(prev_csc_t);
 	}
 
-	if ((ISP_ABS_PREV_YC_LIMIT & preview_struct->update) ==
-		ISP_ABS_PREV_YC_LIMIT) {
+	if (ISP_ABS_PREV_YC_LIMIT & preview_struct->update) {
 		if (copy_from_user(&yclimit_t, (struct ispprev_yclimit *)
-					(preview_struct->yclimit),
+					preview_struct->yclimit,
 					sizeof(struct ispprev_yclimit)))
 			goto err_copy_from_user;
 		isppreview_config_yc_range(yclimit_t);
 	}
 
-	if ((ISP_ABS_PREV_DEFECT_COR & preview_struct->flag) ==
-						ISP_ABS_PREV_DEFECT_COR) {
-		if ((ISP_ABS_PREV_DEFECT_COR & preview_struct->update) ==
-						ISP_ABS_PREV_DEFECT_COR) {
+	if (ISP_ABS_PREV_DEFECT_COR & preview_struct->flag) {
+		if (ISP_ABS_PREV_DEFECT_COR & preview_struct->update) {
 			if (copy_from_user(&prev_dcor_t,
 						(struct ispprev_dcor *)
-						(preview_struct->prev_dcor),
+						preview_struct->prev_dcor,
 						sizeof(struct ispprev_dcor)))
 				goto err_copy_from_user;
 			isppreview_config_dcor(prev_dcor_t);
 		}
 		isppreview_enable_dcor(1);
 		params->features |= PREV_DEFECT_COR;
-	} else if ((ISP_ABS_PREV_DEFECT_COR & preview_struct->update) ==
-						ISP_ABS_PREV_DEFECT_COR) {
+	} else if (ISP_ABS_PREV_DEFECT_COR & preview_struct->update) {
 		isppreview_enable_dcor(0);
 		params->features &= ~PREV_DEFECT_COR;
 	}
 
-	if ((ISP_ABS_PREV_GAMMABYPASS & preview_struct->flag) ==
-						ISP_ABS_PREV_GAMMABYPASS) {
+	if (ISP_ABS_PREV_GAMMABYPASS & preview_struct->flag) {
 		isppreview_enable_gammabypass(1);
 		params->features |= PREV_GAMMA_BYPASS;
 	} else {
@@ -428,9 +412,9 @@ int omap34xx_isp_preview_config(void *userspace_add)
 
 err_copy_from_user:
 	printk(KERN_ERR "Preview Config: Copy From User Error");
-	return -EINVAL;
+	return -EFAULT;
 }
-EXPORT_SYMBOL(omap34xx_isp_preview_config);
+EXPORT_SYMBOL_GPL(omap34xx_isp_preview_config);
 
 /**
  * omap34xx_isp_tables_update - Abstraction layer Tables update.
@@ -440,65 +424,60 @@ EXPORT_SYMBOL(omap34xx_isp_preview_config);
 int omap34xx_isp_tables_update(struct isptables_update *isptables_struct)
 {
 
-	if ((ISP_ABS_TBL_NF & isptables_struct->flag) == ISP_ABS_TBL_NF) {
-		NF_enable = 1;
-		params->features |= (PREV_NOISE_FILTER);
-		if ((ISP_ABS_TBL_NF & isptables_struct->update) ==
-							ISP_ABS_TBL_NF) {
+	if (ISP_ABS_TBL_NF & isptables_struct->flag) {
+		nf_enable = 1;
+		params->features |= PREV_NOISE_FILTER;
+		if (ISP_ABS_TBL_NF & isptables_struct->update) {
 			if (copy_from_user(&prev_nf_t, (struct ispprev_nf *)
-						(isptables_struct->prev_nf),
+						isptables_struct->prev_nf,
 						sizeof(struct ispprev_nf)))
 				goto err_copy_from_user;
 
-			NF_update = 1;
+			nf_update = 1;
 		} else
-			NF_update = 0;
+			nf_update = 0;
 	} else {
-		NF_enable = 0;
-		params->features &= ~(PREV_NOISE_FILTER);
-		if ((ISP_ABS_TBL_NF & isptables_struct->update) ==
-								ISP_ABS_TBL_NF)
-			NF_update = 1;
+		nf_enable = 0;
+		params->features &= ~PREV_NOISE_FILTER;
+		if (ISP_ABS_TBL_NF & isptables_struct->update)
+			nf_update = 1;
 		else
-			NF_update = 0;
+			nf_update = 0;
 	}
 
-	if ((ISP_ABS_TBL_REDGAMMA & isptables_struct->update) ==
-							ISP_ABS_TBL_REDGAMMA) {
+	if (ISP_ABS_TBL_REDGAMMA & isptables_struct->update) {
 		if (copy_from_user(redgamma_table, isptables_struct->red_gamma,
 						sizeof(redgamma_table))) {
 			goto err_copy_from_user;
 		}
-		RG_update = 1;
+		rg_update = 1;
 	} else
-		RG_update = 0;
+		rg_update = 0;
 
-	if ((ISP_ABS_TBL_GREENGAMMA & isptables_struct->update) ==
-						ISP_ABS_TBL_GREENGAMMA) {
+	if (ISP_ABS_TBL_GREENGAMMA & isptables_struct->update) {
 		if (copy_from_user(greengamma_table,
 						isptables_struct->green_gamma,
 						sizeof(greengamma_table)))
 			goto err_copy_from_user;
-		GG_update = 1;
+		gg_update = 1;
 	} else
-		GG_update = 0;
+		gg_update = 0;
 
-	if ((ISP_ABS_TBL_BLUEGAMMA & isptables_struct->update) ==
-					ISP_ABS_TBL_BLUEGAMMA) {
-		if (copy_from_user(bluegamma_table, (isptables_struct->
-						blue_gamma),
-						sizeof(bluegamma_table))) {
+	if (ISP_ABS_TBL_BLUEGAMMA & isptables_struct->update) {
+		if (copy_from_user(bluegamma_table,
+					isptables_struct->blue_gamma,
+					sizeof(bluegamma_table))) {
 			goto err_copy_from_user;
 		}
-		BG_update = 1;
+		bg_update = 1;
 	} else
-		BG_update = 0;
+		bg_update = 0;
 
 	return 0;
 
 err_copy_from_user:
 	printk(KERN_ERR "Preview Tables:Copy From User Error");
-	return -EINVAL;
+	return -EFAULT;
 }
 
 /**
@@ -512,72 +491,71 @@ void isppreview_config_shadow_registers()
 	int ctr, prv_disabled;
 
 	isppreview_query_brightness(&current_brightness_contrast);
-	if (current_brightness_contrast != ((ispprev_obj.brightness) *
-							ISPPRV_BRIGHT_UNITS)) {
+	if (current_brightness_contrast !=
+			(ispprev_obj.brightness * ISPPRV_BRIGHT_UNITS)) {
 		DPRINTK_ISPPREV(" Changing Brightness level to %d\n",
 						ispprev_obj.brightness);
-		isppreview_config_brightness((ispprev_obj.brightness) *
+		isppreview_config_brightness(ispprev_obj.brightness *
 							ISPPRV_BRIGHT_UNITS);
 	}
 
 	isppreview_query_contrast(&current_brightness_contrast);
-	if (current_brightness_contrast != ((ispprev_obj.contrast) *
-						ISPPRV_CONTRAST_UNITS)) {
+	if (current_brightness_contrast !=
+			(ispprev_obj.contrast * ISPPRV_CONTRAST_UNITS)) {
 		DPRINTK_ISPPREV(" Changing Contrast level to %d\n",
 							ispprev_obj.contrast);
-		isppreview_config_contrast((ispprev_obj.contrast) *
+		isppreview_config_contrast(ispprev_obj.contrast *
 							ISPPRV_CONTRAST_UNITS);
 	}
 	if (update_color_matrix) {
-		isppreview_config_rgb_to_ycbcr(flr_prev_csc[ispprev_obj.
-								color]);
+		isppreview_config_rgb_to_ycbcr(flr_prev_csc[ispprev_obj.color]);
 		update_color_matrix = 0;
 	}
-	if (GG_update || RG_update || BG_update || NF_update) {
+	if (gg_update || rg_update || bg_update || nf_update) {
 		isppreview_enable(0);
 		prv_disabled = 1;
 	}
 
-	if (GG_update) {
-		omap_writel(0x400, ISPPRV_SET_TBL_ADDR);
+	if (gg_update) {
+		omap_writel(ISPPRV_TBL_ADDR_GREEN_G_START,
+				ISPPRV_SET_TBL_ADDR);
 
 		for (ctr = 0; ctr < ISP_GAMMA_TABLE_SIZE; ctr++) {
 			omap_writel(greengamma_table[ctr],
 							ISPPRV_SET_TBL_DATA);
 		}
-		GG_update = 0;
+		gg_update = 0;
 	}
 
-	if (RG_update) {
-		omap_writel(0, ISPPRV_SET_TBL_ADDR);
+	if (rg_update) {
+		omap_writel(ISPPRV_TBL_ADDR_RED_G_START, ISPPRV_SET_TBL_ADDR);
 
 		for (ctr = 0; ctr < ISP_GAMMA_TABLE_SIZE; ctr++)
 			omap_writel(redgamma_table[ctr], ISPPRV_SET_TBL_DATA);
-		RG_update = 0;
+		rg_update = 0;
 	}
 
-	if (BG_update) {
-		omap_writel(0x800, ISPPRV_SET_TBL_ADDR);
+	if (bg_update) {
+		omap_writel(ISPPRV_TBL_ADDR_BLUE_G_START, ISPPRV_SET_TBL_ADDR);
 
 		for (ctr = 0; ctr < ISP_GAMMA_TABLE_SIZE; ctr++)
 			omap_writel(bluegamma_table[ctr], ISPPRV_SET_TBL_DATA);
-		BG_update = 0;
+		bg_update = 0;
 	}
 
-	if (NF_update && NF_enable) {
+	if (nf_update && nf_enable) {
 		omap_writel(0xC00, ISPPRV_SET_TBL_ADDR);
 		omap_writel(prev_nf_t.spread, ISPPRV_NF);
-		for (ctr = 0; ctr < 64; ctr++)
-			omap_writel(prev_nf_t.table[ctr],
-							ISPPRV_SET_TBL_DATA);
+		for (ctr = 0; ctr < ISPPRV_NF_TBL_SIZE; ctr++)
+			omap_writel(prev_nf_t.table[ctr], ISPPRV_SET_TBL_DATA);
 		isppreview_enable_noisefilter(1);
-		NF_update = 0;
+		nf_update = 0;
 	}
 
-	if (~NF_update && NF_enable)
+	if (~nf_update && nf_enable)
 		isppreview_enable_noisefilter(1);
 
-	if (NF_update && ~NF_enable)
+	if (nf_update && ~nf_enable)
 		isppreview_enable_noisefilter(0);
 
 	if (prv_disabled) {
@@ -585,7 +563,7 @@ void isppreview_config_shadow_registers()
 		prv_disabled = 0;
 	}
 }
-EXPORT_SYMBOL(isppreview_config_shadow_registers);
+EXPORT_SYMBOL_GPL(isppreview_config_shadow_registers);
 
 /**
  * isppreview_request - Reserves the preview module.
@@ -595,20 +573,19 @@ EXPORT_SYMBOL(isppreview_config_shadow_registers);
 int isppreview_request()
 {
 	mutex_lock(&ispprev_obj.ispprev_mutex);
-	if (!(ispprev_obj.prev_inuse)) {
-		ispprev_obj.prev_inuse = 1;
-		mutex_unlock(&ispprev_obj.ispprev_mutex);
-		omap_writel((omap_readl(ISP_CTRL)) | ISPCTRL_PREV_RAM_EN |
-			ISPCTRL_PREV_CLK_EN | ISPCTRL_SBL_WR1_RAM_EN
-			, ISP_CTRL);
-		return 0;
-	} else {
+	if (ispprev_obj.prev_inuse) {
 		mutex_unlock(&ispprev_obj.ispprev_mutex);
 		printk(KERN_ERR "ISP_ERR : Preview Module Busy\n");
 		return -EBUSY;
 	}
+	ispprev_obj.prev_inuse = 1;
+	mutex_unlock(&ispprev_obj.ispprev_mutex);
+	omap_writel((omap_readl(ISP_CTRL)) | ISPCTRL_PREV_RAM_EN |
+		ISPCTRL_PREV_CLK_EN | ISPCTRL_SBL_WR1_RAM_EN
+		, ISP_CTRL);
+	return 0;
 }
-EXPORT_SYMBOL(isppreview_request);
+EXPORT_SYMBOL_GPL(isppreview_request);
 
 /**
  * isppreview_free - Frees the preview module.
@@ -632,7 +609,7 @@ int isppreview_free()
 	}
 
 }
-EXPORT_SYMBOL(isppreview_free);
+EXPORT_SYMBOL_GPL(isppreview_free);
 
 /** isppreview_config_datapath - Specifies input and output modules for Preview
  * @input: Indicates the module that gives the image to preview.
@@ -660,8 +637,8 @@ int isppreview_config_datapath(enum preview_input input,
 
 	switch (input) {
 	case PRV_RAW_CCDC:
-		pcr &= ~(ISPPRV_PCR_SOURCE);
-		pcr &= ~(ISPPRV_PCR_ONESHOT);
+		pcr &= ~ISPPRV_PCR_SOURCE;
+		pcr &= ~ISPPRV_PCR_ONESHOT;
 		ispprev_obj.prev_inpfmt = PRV_RAW_CCDC;
 		break;
 	case PRV_RAW_MEM:
@@ -688,18 +665,21 @@ int isppreview_config_datapath(enum preview_input input,
 		return -EINVAL;
 	};
 
-	if (output == PREVIEW_RSZ) {
+	switch (output) {
+	case PREVIEW_RSZ:
 		pcr |= ISPPRV_PCR_RSZPORT;
 		pcr &= ~ISPPRV_PCR_SDRPORT;
-		ispprev_obj.prev_outfmt = PREVIEW_RSZ;
-	} else if (output == PREVIEW_MEM) {
+		break;
+	case PREVIEW_MEM:
 		pcr &= ~ISPPRV_PCR_RSZPORT;
 		pcr |= ISPPRV_PCR_SDRPORT;
-		ispprev_obj.prev_outfmt = PREVIEW_MEM;
-	} else {
+		break;
+	default:
 		printk(KERN_ERR "ISP_ERR : Wrong Output\n");
 		return -EINVAL;
 	}
+	ispprev_obj.prev_outfmt = output;
+
 	omap_writel(pcr, ISPPRV_PCR);
 
 	isppreview_config_ycpos(params->pix_fmt);
@@ -714,31 +694,26 @@ int isppreview_config_datapath(enum preview_input input,
 	if (params->gtable.redtable != NULL)
 		isppreview_config_gammacorrn(params->gtable);
 
-	enable = ((params->features & PREV_CFA) == PREV_CFA) ? 1 : 0;
+	enable = (params->features & PREV_CFA) ? 1 : 0;
 	isppreview_enable_cfa(enable);
 
-	enable = ((params->features & PREV_CHROMA_SUPPRESS) ==
-						PREV_CHROMA_SUPPRESS) ? 1 : 0;
+	enable = (params->features & PREV_CHROMA_SUPPRESS) ? 1 : 0;
 	isppreview_enable_chroma_suppression(enable);
 
-	enable = ((params->features & PREV_LUMA_ENHANCE) ==
-						PREV_LUMA_ENHANCE) ? 1 : 0;
+	enable = (params->features & PREV_LUMA_ENHANCE) ? 1 : 0;
 	isppreview_enable_luma_enhancement(enable);
 
-	enable = ((params->features & PREV_NOISE_FILTER) ==
-						PREV_NOISE_FILTER) ? 1 : 0;
+	enable = (params->features & PREV_NOISE_FILTER) ? 1 : 0;
 	if (enable)
 		isppreview_config_noisefilter(params->nf);
 	isppreview_enable_noisefilter(enable);
 
-	enable = ((params->features & PREV_DEFECT_COR) ==
-						PREV_DEFECT_COR) ? 1 : 0;
+	enable = (params->features & PREV_DEFECT_COR) ? 1 : 0;
 	if (enable)
 		isppreview_config_dcor(params->dcor);
 	isppreview_enable_dcor(enable);
 
-	enable = ((params->features & PREV_GAMMA_BYPASS) ==
-						PREV_GAMMA_BYPASS) ? 1 : 0;
+	enable = (params->features & PREV_GAMMA_BYPASS) ? 1 : 0;
 	isppreview_enable_gammabypass(enable);
 
 	isppreview_config_whitebalance(params->wbal);
@@ -757,7 +732,7 @@ int isppreview_config_datapath(enum preview_input input,
 
 	return 0;
 }
-EXPORT_SYMBOL(isppreview_config_datapath);
+EXPORT_SYMBOL_GPL(isppreview_config_datapath);
 
 /**
  * isppreview_set_skip - Set the number of rows/columns that should be skipped.
@@ -769,7 +744,7 @@ void isppreview_set_skip(u32 h, u32 v)
 	ispprev_obj.sph = h;
 	ispprev_obj.slv = v;
 }
-EXPORT_SYMBOL(isppreview_set_skip);
+EXPORT_SYMBOL_GPL(isppreview_set_skip);
 
 /**
  * isppreview_config_ycpos - Configure byte layout of YUV image.
@@ -782,7 +757,7 @@ void isppreview_config_ycpos(enum preview_ycpos_mode mode)
 	pcr |= (mode << ISPPRV_PCR_YCPOS_SHIFT);
 	omap_writel(pcr, ISPPRV_PCR);
 }
-EXPORT_SYMBOL(isppreview_config_ycpos);
+EXPORT_SYMBOL_GPL(isppreview_config_ycpos);
 
 /**
  * isppreview_config_averager - Enable / disable / configure averager
@@ -795,7 +770,7 @@ void isppreview_config_averager(u8 average)
 	reg = AVE_ODD_PIXEL_DIST | AVE_EVEN_PIXEL_DIST | average;
 	omap_writel(reg, ISPPRV_AVE);
 }
-EXPORT_SYMBOL(isppreview_config_averager);
+EXPORT_SYMBOL_GPL(isppreview_config_averager);
 
 /**
  * isppreview_enable_invalaw - Enable/Disable Inverse A-Law module in Preview.
@@ -806,14 +781,15 @@ void isppreview_enable_invalaw(u8 enable)
 	u32 pcr_val = 0;
 	pcr_val = omap_readl(ISPPRV_PCR);
 
-	if (enable)
+	if (enable) {
 		omap_writel(pcr_val | ISPPRV_PCR_WIDTH | ISPPRV_PCR_INVALAW,
 								ISPPRV_PCR);
-	else
+	} else {
 		omap_writel(pcr_val & ~(ISPPRV_PCR_WIDTH | ISPPRV_PCR_INVALAW),
 								ISPPRV_PCR);
+	}
 }
-EXPORT_SYMBOL(isppreview_enable_invalaw);
+EXPORT_SYMBOL_GPL(isppreview_enable_invalaw);
 
 /**
  * isppreview_enable_drkframe - Enable/Disable of the darkframe subtract.
@@ -824,14 +800,15 @@ EXPORT_SYMBOL(isppreview_enable_invalaw);
  **/
 void isppreview_enable_drkframe(u8 enable)
 {
-	if (enable)
+	if (enable) {
 		omap_writel(omap_readl(ISPPRV_PCR) | ISPPRV_PCR_DRKFEN,
 								ISPPRV_PCR);
-	else
+	} else {
 		omap_writel((omap_readl(ISPPRV_PCR)) & ~ISPPRV_PCR_DRKFEN,
 								ISPPRV_PCR);
+	}
 }
-EXPORT_SYMBOL(isppreview_enable_drkframe);
+EXPORT_SYMBOL_GPL(isppreview_enable_drkframe);
 
 /**
  * isppreview_enable_shadcomp - Enables/Disables the shading compensation.
@@ -852,7 +829,7 @@ void isppreview_enable_shadcomp(u8 enable)
 								ISPPRV_PCR);
 	}
 }
-EXPORT_SYMBOL(isppreview_enable_shadcomp);
+EXPORT_SYMBOL_GPL(isppreview_enable_shadcomp);
 
 /**
  * isppreview_config_drkf_shadcomp - Configures shift value in shading comp.
@@ -866,7 +843,7 @@ void isppreview_config_drkf_shadcomp(u8 scomp_shtval)
 	omap_writel(pcr_val | (scomp_shtval << ISPPRV_PCR_SCOMP_SFT_SHIFT),
 								ISPPRV_PCR);
 }
-EXPORT_SYMBOL(isppreview_config_drkf_shadcomp);
+EXPORT_SYMBOL_GPL(isppreview_config_drkf_shadcomp);
 
 /**
  * isppreview_enable_hmed - Enables/Disables of the Horizontal Median Filter.
@@ -877,14 +854,13 @@ void isppreview_enable_hmed(u8 enable)
 	if (enable) {
 		omap_writel((omap_readl(ISPPRV_PCR)) | ISPPRV_PCR_HMEDEN,
 			ISPPRV_PCR);
-		ispprev_obj.hmed_en = 1;
 	} else {
 		omap_writel((omap_readl(ISPPRV_PCR)) & ~ISPPRV_PCR_HMEDEN,
 			ISPPRV_PCR);
-		ispprev_obj.hmed_en = 0;
 	}
+	ispprev_obj.hmed_en = enable ? 1 : 0;
 }
-EXPORT_SYMBOL(isppreview_enable_hmed);
+EXPORT_SYMBOL_GPL(isppreview_enable_hmed);
 
 /**
  * isppreview_config_hmed - Configures the Horizontal Median Filter.
@@ -912,7 +888,7 @@ void isppreview_config_hmed(struct ispprev_hmed prev_hmed)
 						ISPPRV_HMED);
 
 }
-EXPORT_SYMBOL(isppreview_config_hmed);
+EXPORT_SYMBOL_GPL(isppreview_config_hmed);
 
 /**
  * isppreview_config_noisefilter - Configures the Noise Filter.
@@ -924,10 +900,10 @@ void isppreview_config_noisefilter(struct ispprev_nf prev_nf)
 	int i = 0;
 	omap_writel(prev_nf.spread, ISPPRV_NF);
 	omap_writel(ISPPRV_NF_TABLE_ADDR, ISPPRV_SET_TBL_ADDR);
-	for (i = 0; i < 64; i++)
+	for (i = 0; i < ISPPRV_NF_TBL_SIZE; i++)
 		omap_writel(prev_nf.table[i], ISPPRV_SET_TBL_DATA);
 }
-EXPORT_SYMBOL(isppreview_config_noisefilter);
+EXPORT_SYMBOL_GPL(isppreview_config_noisefilter);
 
 /**
  * isppreview_config_dcor - Configures the defect correction
@@ -947,7 +923,7 @@ void isppreview_config_dcor(struct ispprev_dcor prev_dcor)
 								ISPPRV_PCR);
 	}
 }
-EXPORT_SYMBOL(isppreview_config_dcor);
+EXPORT_SYMBOL_GPL(isppreview_config_dcor);
 
 /**
  * isppreview_config_cfa - Configures the CFA Interpolation parameters.
@@ -957,6 +933,7 @@ EXPORT_SYMBOL(isppreview_config_dcor);
 void isppreview_config_cfa(struct ispprev_cfa prev_cfa)
 {
 	int i = 0;
+
 	ispprev_obj.cfafmt = prev_cfa.cfafmt;
 
 	omap_writel((omap_readl(ISPPRV_PCR)) | (prev_cfa.cfafmt <<
@@ -970,10 +947,10 @@ void isppreview_config_cfa(struct ispprev_cfa prev_cfa)
 
 	omap_writel(ISPPRV_CFA_TABLE_ADDR, ISPPRV_SET_TBL_ADDR);
 
-	for (i = 0; i < 576; i++)
+	for (i = 0; i < ISPPRV_CFA_TBL_SIZE; i++)
 		omap_writel(prev_cfa.cfa_table[i], ISPPRV_SET_TBL_DATA);
 }
-EXPORT_SYMBOL(isppreview_config_cfa);
+EXPORT_SYMBOL_GPL(isppreview_config_cfa);
 
 /**
  * isppreview_config_gammacorrn - Configures the Gamma Correction table values
@@ -984,18 +961,18 @@ void isppreview_config_gammacorrn(struct ispprev_gtable gtable)
 	int i = 0;
 
 	omap_writel(ISPPRV_REDGAMMA_TABLE_ADDR, ISPPRV_SET_TBL_ADDR);
-	for (i = 0; i < 1024; i++)
+	for (i = 0; i < ISPPRV_GAMMA_TBL_SIZE; i++)
 		omap_writel(gtable.redtable[i], ISPPRV_SET_TBL_DATA);
 
 	omap_writel(ISPPRV_GREENGAMMA_TABLE_ADDR, ISPPRV_SET_TBL_ADDR);
-	for (i = 0; i < 1024; i++)
+	for (i = 0; i < ISPPRV_GAMMA_TBL_SIZE; i++)
 		omap_writel(gtable.greentable[i], ISPPRV_SET_TBL_DATA);
 
 	omap_writel(ISPPRV_BLUEGAMMA_TABLE_ADDR, ISPPRV_SET_TBL_ADDR);
-	for (i = 0; i < 1024; i++)
+	for (i = 0; i < ISPPRV_GAMMA_TBL_SIZE; i++)
 		omap_writel(gtable.bluetable[i], ISPPRV_SET_TBL_DATA);
 }
-EXPORT_SYMBOL(isppreview_config_gammacorrn);
+EXPORT_SYMBOL_GPL(isppreview_config_gammacorrn);
 
 /**
  * isppreview_config_luma_enhancement - Sets the Luminance Enhancement table.
@@ -1005,10 +982,10 @@ void isppreview_config_luma_enhancement(u32 *ytable)
 {
 	int i = 0;
 	omap_writel(ISPPRV_YENH_TABLE_ADDR, ISPPRV_SET_TBL_ADDR);
-	for (i = 0; i < 128; i++)
+	for (i = 0; i < ISPPRV_YENH_TBL_SIZE; i++)
 		omap_writel(ytable[i], ISPPRV_SET_TBL_DATA);
 }
-EXPORT_SYMBOL(isppreview_config_luma_enhancement);
+EXPORT_SYMBOL_GPL(isppreview_config_luma_enhancement);
 
 /**
  * isppreview_config_chroma_suppression - Configures the Chroma Suppression.
@@ -1021,7 +998,7 @@ void isppreview_config_chroma_suppression(struct ispprev_csup csup)
 				(csup.hypf_en << ISPPRV_CSUP_HPYF_SHIFT),
 				ISPPRV_CSUP);
 }
-EXPORT_SYMBOL(isppreview_config_chroma_suppression);
+EXPORT_SYMBOL_GPL(isppreview_config_chroma_suppression);
 
 /**
  * isppreview_enable_noisefilter - Enables/Disables the Noise Filter.
@@ -1032,14 +1009,13 @@ void isppreview_enable_noisefilter(u8 enable)
 	if (enable) {
 		omap_writel((omap_readl(ISPPRV_PCR)) | ISPPRV_PCR_NFEN,
 								ISPPRV_PCR);
-		ispprev_obj.nf_en = 1;
 	} else {
 		omap_writel((omap_readl(ISPPRV_PCR)) & ~ISPPRV_PCR_NFEN,
 								ISPPRV_PCR);
-		ispprev_obj.nf_en = 0;
 	}
+	ispprev_obj.nf_en = enable ? 1 : 0;
 }
-EXPORT_SYMBOL(isppreview_enable_noisefilter);
+EXPORT_SYMBOL_GPL(isppreview_enable_noisefilter);
 
 /**
  * isppreview_enable_dcor - Enables/Disables the defect correction.
@@ -1050,14 +1026,13 @@ void isppreview_enable_dcor(u8 enable)
 	if (enable) {
 		omap_writel((omap_readl(ISPPRV_PCR)) | ISPPRV_PCR_DCOREN,
 								ISPPRV_PCR);
-		ispprev_obj.dcor_en = 1;
 	} else {
 		omap_writel((omap_readl(ISPPRV_PCR)) & ~ISPPRV_PCR_DCOREN,
 								ISPPRV_PCR);
-		ispprev_obj.dcor_en = 0;
 	}
+	ispprev_obj.dcor_en = enable ? 1 : 0;
 }
-EXPORT_SYMBOL(isppreview_enable_dcor);
+EXPORT_SYMBOL_GPL(isppreview_enable_dcor);
 
 /**
  * isppreview_enable_cfa - Enable/Disable the CFA Interpolation.
@@ -1068,15 +1043,13 @@ void isppreview_enable_cfa(u8 enable)
 	if (enable) {
 		omap_writel((omap_readl(ISPPRV_PCR)) | ISPPRV_PCR_CFAEN,
 								ISPPRV_PCR);
-		ispprev_obj.cfa_en = 1;
 	} else {
 		omap_writel((omap_readl(ISPPRV_PCR)) & ~ISPPRV_PCR_CFAEN,
 								ISPPRV_PCR);
-		ispprev_obj.cfa_en = 0;
 	}
-
+	ispprev_obj.cfa_en = enable ? 1 : 0;
 }
-EXPORT_SYMBOL(isppreview_enable_cfa);
+EXPORT_SYMBOL_GPL(isppreview_enable_cfa);
 
 /**
  * isppreview_enable_gammabypass - Enables/Disables the GammaByPass
@@ -1094,7 +1067,7 @@ void isppreview_enable_gammabypass(u8 enable)
 						ISPPRV_PCR);
 	}
 }
-EXPORT_SYMBOL(isppreview_enable_gammabypass);
+EXPORT_SYMBOL_GPL(isppreview_enable_gammabypass);
 
 /**
  * isppreview_enable_luma_enhancement - Enables/Disables Luminance Enhancement
@@ -1105,14 +1078,13 @@ void isppreview_enable_luma_enhancement(u8 enable)
 	if (enable) {
 		omap_writel((omap_readl(ISPPRV_PCR)) | ISPPRV_PCR_YNENHEN,
 								ISPPRV_PCR);
-		ispprev_obj.yenh_en = 1;
 	} else {
 		omap_writel((omap_readl(ISPPRV_PCR)) & ~ISPPRV_PCR_YNENHEN,
 								ISPPRV_PCR);
-		ispprev_obj.yenh_en = 0;
 	}
+	ispprev_obj.yenh_en = enable ? 1 : 0;
 }
-EXPORT_SYMBOL(isppreview_enable_luma_enhancement);
+EXPORT_SYMBOL_GPL(isppreview_enable_luma_enhancement);
 
 /**
  * isppreview_enable_chroma_suppression - Enables/Disables Chrominance Suppr.
@@ -1123,14 +1095,13 @@ void isppreview_enable_chroma_suppression(u8 enable)
 	if (enable) {
 		omap_writel((omap_readl(ISPPRV_PCR)) | ISPPRV_PCR_SUPEN,
 								ISPPRV_PCR);
-		ispprev_obj.csup_en = 1;
 	} else {
 		omap_writel((omap_readl(ISPPRV_PCR)) & ~ISPPRV_PCR_SUPEN,
 								ISPPRV_PCR);
-		ispprev_obj.csup_en = 0;
 	}
+	ispprev_obj.csup_en = enable ? 1 : 0;
 }
-EXPORT_SYMBOL(isppreview_enable_chroma_suppression);
+EXPORT_SYMBOL_GPL(isppreview_enable_chroma_suppression);
 
 /**
  * isppreview_config_whitebalance - Configures the White Balance parameters.
@@ -1169,7 +1140,7 @@ void isppreview_config_whitebalance(struct ispprev_wbal prev_wbal)
 			(ISPPRV_WBSEL_COEF3 << ISPPRV_WBSEL_N3_3_SHIFT),
 			ISPPRV_WBSEL);
 }
-EXPORT_SYMBOL(isppreview_config_whitebalance);
+EXPORT_SYMBOL_GPL(isppreview_config_whitebalance);
 
 /**
  * isppreview_config_whitebalance2 - Configures the White Balance parameters.
@@ -1205,7 +1176,7 @@ void isppreview_config_whitebalance2(struct prev_white_balance prev_wbal)
 		prev_wbal.wb_coefmatrix[3][3] << ISPPRV_WBSEL_N3_3_SHIFT,
 		ISPPRV_WBSEL);
 }
-EXPORT_SYMBOL(isppreview_config_whitebalance2);
+EXPORT_SYMBOL_GPL(isppreview_config_whitebalance2);
 
 /**
  * isppreview_config_blkadj - Configures the Black Adjustment parameters.
@@ -1214,13 +1185,12 @@ EXPORT_SYMBOL(isppreview_config_whitebalance2);
  **/
 void isppreview_config_blkadj(struct ispprev_blkadj prev_blkadj)
 {
-	omap_writel(prev_blkadj.blue | (prev_blkadj.green <<
-					ISPPRV_BLKADJOFF_G_SHIFT) |
-					(prev_blkadj.red <<
-					ISPPRV_BLKADJOFF_R_SHIFT),
-					ISPPRV_BLKADJOFF);
+	omap_writel(prev_blkadj.blue |
+			(prev_blkadj.green << ISPPRV_BLKADJOFF_G_SHIFT) |
+			(prev_blkadj.red << ISPPRV_BLKADJOFF_R_SHIFT),
+			ISPPRV_BLKADJOFF);
 }
-EXPORT_SYMBOL(isppreview_config_blkadj);
+EXPORT_SYMBOL_GPL(isppreview_config_blkadj);
 
 /**
  * isppreview_config_rgb_blending - Configures the RGB-RGB Blending matrix.
@@ -1257,7 +1227,7 @@ void isppreview_config_rgb_blending(struct ispprev_rgbtorgb rgb2rgb)
 	val = (rgb2rgb.offset[2] & 0x3ff) << ISPPRV_RGB_OFF2_MTX_OFFB_SHIFT;
 	omap_writel(val, ISPPRV_RGB_OFF2);
 }
-EXPORT_SYMBOL(isppreview_config_rgb_blending);
+EXPORT_SYMBOL_GPL(isppreview_config_rgb_blending);
 
 /**
  * Configures the RGB-YCbYCr conversion matrix
@@ -1288,7 +1258,7 @@ void isppreview_config_rgb_to_ycbcr(struct ispprev_csc prev_csc)
 	val |= (prev_csc.offset[2] & 0xff) << ISPPRV_CSC_OFFSET_Y_SHIFT;
 	omap_writel(val, ISPPRV_CSC_OFFSET);
 }
-EXPORT_SYMBOL(isppreview_config_rgb_to_ycbcr);
+EXPORT_SYMBOL_GPL(isppreview_config_rgb_to_ycbcr);
 
 /**
  * isppreview_query_contrast - Query the contrast.
@@ -1297,11 +1267,12 @@ EXPORT_SYMBOL(isppreview_config_rgb_to_ycbcr);
 void isppreview_query_contrast(u8 *contrast)
 {
 	u32 brt_cnt_val = 0;
+
 	brt_cnt_val = omap_readl(ISPPRV_CNT_BRT);
 	*contrast = (brt_cnt_val >> ISPPRV_CNT_BRT_CNT_SHIFT) & 0xFF;
 	DPRINTK_ISPPREV(" Current brt cnt value in hw is %x\n", brt_cnt_val);
 }
-EXPORT_SYMBOL(isppreview_query_contrast);
+EXPORT_SYMBOL_GPL(isppreview_query_contrast);
 
 /**
  * isppreview_update_contrast - Updates the contrast.
@@ -1313,7 +1284,7 @@ void isppreview_update_contrast(u8 *contrast)
 {
 	ispprev_obj.contrast = *contrast;
 }
-EXPORT_SYMBOL(isppreview_update_contrast);
+EXPORT_SYMBOL_GPL(isppreview_update_contrast);
 
 /**
  * isppreview_config_contrast - Configures the Contrast.
@@ -1331,7 +1302,7 @@ void isppreview_config_contrast(u8 contrast)
 	omap_writel(brt_cnt_val | (contrast << ISPPRV_CNT_BRT_CNT_SHIFT),
 							ISPPRV_CNT_BRT);
 }
-EXPORT_SYMBOL(isppreview_config_contrast);
+EXPORT_SYMBOL_GPL(isppreview_config_contrast);
 
 /**
  * isppreview_get_contrast_range - Gets the range contrast value.
@@ -1343,7 +1314,7 @@ void isppreview_get_contrast_range(u8 *min_contrast, u8 *max_contrast)
 	*min_contrast = ISPPRV_CONTRAST_MIN;
 	*max_contrast = ISPPRV_CONTRAST_MAX;
 }
-EXPORT_SYMBOL(isppreview_get_contrast_range);
+EXPORT_SYMBOL_GPL(isppreview_get_contrast_range);
 
 /**
  * isppreview_update_brightness - Updates the brightness in preview module.
@@ -1354,7 +1325,7 @@ void isppreview_update_brightness(u8 *brightness)
 {
 	ispprev_obj.brightness = *brightness;
 }
-EXPORT_SYMBOL(isppreview_update_brightness);
+EXPORT_SYMBOL_GPL(isppreview_update_brightness);
 
 /**
  * isppreview_config_brightness - Configures the brightness.
@@ -1363,6 +1334,7 @@ EXPORT_SYMBOL(isppreview_update_brightness);
 void isppreview_config_brightness(u8 brightness)
 {
 	u32 brt_cnt_val = 0;
+
 	DPRINTK_ISPPREV("\tConfiguring brightness in ISP: %d\n", brightness);
 	brt_cnt_val = omap_readl(ISPPRV_CNT_BRT);
 	brt_cnt_val &= ~(0xFF << ISPPRV_CNT_BRT_BRT_SHIFT);
@@ -1370,7 +1342,7 @@ void isppreview_config_brightness(u8 brightness)
 	omap_writel(brt_cnt_val | (brightness << ISPPRV_CNT_BRT_BRT_SHIFT),
 							ISPPRV_CNT_BRT);
 }
-EXPORT_SYMBOL(isppreview_config_brightness);
+EXPORT_SYMBOL_GPL(isppreview_config_brightness);
 
 /**
  * isppreview_query_brightness - Query the brightness.
@@ -1378,10 +1350,9 @@ EXPORT_SYMBOL(isppreview_config_brightness);
  **/
 void isppreview_query_brightness(u8 *brightness)
 {
-
 	*brightness = omap_readl(ISPPRV_CNT_BRT);
 }
-EXPORT_SYMBOL(isppreview_query_brightness);
+EXPORT_SYMBOL_GPL(isppreview_query_brightness);
 
 /**
  * isppreview_get_brightness_range - Gets the range brightness value
@@ -1393,7 +1364,7 @@ void isppreview_get_brightness_range(u8 *min_brightness, u8 *max_brightness)
 	*min_brightness = ISPPRV_BRIGHT_MIN;
 	*max_brightness = ISPPRV_BRIGHT_MAX;
 }
-EXPORT_SYMBOL(isppreview_get_brightness_range);
+EXPORT_SYMBOL_GPL(isppreview_get_brightness_range);
 
 /**
  * isppreview_set_color - Sets the color effect.
@@ -1404,7 +1375,7 @@ void isppreview_set_color(u8 *mode)
 	ispprev_obj.color = *mode;
 	update_color_matrix = 1;
 }
-EXPORT_SYMBOL(isppreview_set_color);
+EXPORT_SYMBOL_GPL(isppreview_set_color);
 
 /**
  * isppreview_get_color - Gets the current color effect.
@@ -1414,7 +1385,7 @@ void isppreview_get_color(u8 *mode)
 {
 	*mode = ispprev_obj.color;
 }
-EXPORT_SYMBOL(isppreview_get_color);
+EXPORT_SYMBOL_GPL(isppreview_get_color);
 
 /**
  * isppreview_config_yc_range - Configures the max and min Y and C values.
@@ -1428,7 +1399,7 @@ void isppreview_config_yc_range(struct ispprev_yclimit yclimit)
 				(yclimit.minY << ISPPRV_SETUP_YC_MINY_SHIFT)),
 				ISPPRV_SETUP_YC);
 }
-EXPORT_SYMBOL(isppreview_config_yc_range);
+EXPORT_SYMBOL_GPL(isppreview_config_yc_range);
 
 /**
  * isppreview_try_size - Calculates output dimensions with the modules enabled.
@@ -1497,7 +1468,7 @@ int isppreview_try_size(u32 input_w, u32 input_h, u32 *output_w, u32 *output_h)
 			break;
 		};
 	}
-	if ((ispprev_obj.yenh_en) || (ispprev_obj.csup_en))
+	if (ispprev_obj.yenh_en || ispprev_obj.csup_en)
 		prevout_w -= 2;
 
 	/* Start at the correct row/column by skipping
@@ -1511,8 +1482,8 @@ int isppreview_try_size(u32 input_w, u32 input_h, u32 *output_w, u32 *output_h)
 		prevout_w -= 1;
 
 	if (ispprev_obj.prev_outfmt == PREVIEW_MEM) {
-		if (((prevout_w * 2) & ISP_32B_BOUNDARY_OFFSET) != (prevout_w *
-									2)) {
+		if (((prevout_w * 2) & ISP_32B_BOUNDARY_OFFSET) !=
+							(prevout_w * 2)) {
 			prevout_w = ((prevout_w * 2) &
 						ISP_32B_BOUNDARY_OFFSET) / 2;
 		}
@@ -1523,7 +1494,7 @@ int isppreview_try_size(u32 input_w, u32 input_h, u32 *output_w, u32 *output_h)
 	ispprev_obj.prevout_h = prevout_h;
 	return 0;
 }
-EXPORT_SYMBOL(isppreview_try_size);
+EXPORT_SYMBOL_GPL(isppreview_try_size);
 
 /**
  * isppreview_config_size - Sets the size of ISP preview output.
@@ -1536,8 +1507,7 @@ EXPORT_SYMBOL(isppreview_try_size);
  * HORZ/VERT_INFO. Configures PRV_AVE if needed for downsampling as calculated
  * in trysize.
  **/
-int isppreview_config_size(u32 input_w, u32 input_h, u32 output_w,
-								u32 output_h)
+int isppreview_config_size(u32 input_w, u32 input_h, u32 output_w, u32 output_h)
 {
 	u32 prevsdroff;
 
@@ -1575,7 +1545,7 @@ int isppreview_config_size(u32 input_w, u32 input_h, u32 output_w,
 	}
 	return 0;
 }
-EXPORT_SYMBOL(isppreview_config_size);
+EXPORT_SYMBOL_GPL(isppreview_config_size);
 
 /**
  * isppreview_config_inlineoffset - Configures the Read address line offset.
@@ -1592,7 +1562,7 @@ int isppreview_config_inlineoffset(u32 offset)
 	}
 	return 0;
 }
-EXPORT_SYMBOL(isppreview_config_inlineoffset);
+EXPORT_SYMBOL_GPL(isppreview_config_inlineoffset);
 
 /**
  * isppreview_set_inaddr - Sets memory address of input frame.
@@ -1611,7 +1581,7 @@ int isppreview_set_inaddr(u32 addr)
 	}
 	return 0;
 }
-EXPORT_SYMBOL(isppreview_set_inaddr);
+EXPORT_SYMBOL_GPL(isppreview_set_inaddr);
 
 /**
  * isppreview_config_outlineoffset - Configures the Write address line offset.
@@ -1619,16 +1589,15 @@ EXPORT_SYMBOL(isppreview_set_inaddr);
  **/
 int isppreview_config_outlineoffset(u32 offset)
 {
-	if ((offset & ISP_32B_BOUNDARY_OFFSET) == offset) {
-		omap_writel(offset & 0xFFFF, ISPPRV_WADD_OFFSET);
-	} else {
+	if ((offset & ISP_32B_BOUNDARY_OFFSET) != offset) {
 		printk(KERN_ERR "ISP_ERR : Offset should be in 32 byte "
 								"boundary\n");
 		return -EINVAL;
 	}
+	omap_writel(offset & 0xFFFF, ISPPRV_WADD_OFFSET);
 	return 0;
 }
-EXPORT_SYMBOL(isppreview_config_outlineoffset);
+EXPORT_SYMBOL_GPL(isppreview_config_outlineoffset);
 
 /**
  * isppreview_set_outaddr - Sets the memory address to store output frame
@@ -1638,16 +1607,15 @@ EXPORT_SYMBOL(isppreview_config_outlineoffset);
  **/
 int isppreview_set_outaddr(u32 addr)
 {
-	if ((addr & ISP_32B_BOUNDARY_BUF) == addr) {
-		omap_writel(addr, ISPPRV_WSDR_ADDR);
-	} else {
+	if ((addr & ISP_32B_BOUNDARY_BUF) != addr) {
 		printk(KERN_ERR "ISP_ERR: Address should be in 32 byte "
 								"boundary\n");
 		return -EINVAL;
 	}
+	omap_writel(addr, ISPPRV_WSDR_ADDR);
 	return 0;
 }
-EXPORT_SYMBOL(isppreview_set_outaddr);
+EXPORT_SYMBOL_GPL(isppreview_set_outaddr);
 
 /**
  * isppreview_config_darklineoffset - Sets the Dark frame address line offset.
@@ -1655,16 +1623,15 @@ EXPORT_SYMBOL(isppreview_set_outaddr);
  **/
 int isppreview_config_darklineoffset(u32 offset)
 {
-	if ((offset & ISP_32B_BOUNDARY_OFFSET) == offset)
-		omap_writel(offset & 0xFFFF, ISPPRV_DRKF_OFFSET);
-	else {
+	if ((offset & ISP_32B_BOUNDARY_OFFSET) != offset) {
 		printk(KERN_ERR "ISP_ERR : Offset should be in 32 byte "
 								"boundary\n");
 		return -EINVAL;
 	}
+	omap_writel(offset & 0xFFFF, ISPPRV_DRKF_OFFSET);
 	return 0;
 }
-EXPORT_SYMBOL(isppreview_config_darklineoffset);
+EXPORT_SYMBOL_GPL(isppreview_config_darklineoffset);
 
 /**
  * isppreview_set_darkaddr - Sets the memory address to store Dark frame.
@@ -1672,16 +1639,15 @@ EXPORT_SYMBOL(isppreview_config_darklineoffset);
  **/
 int isppreview_set_darkaddr(u32 addr)
 {
-	if ((addr & ISP_32B_BOUNDARY_BUF) == addr)
-		omap_writel(addr, ISPPRV_DSDR_ADDR);
-	else {
+	if ((addr & ISP_32B_BOUNDARY_BUF) != addr) {
 		printk(KERN_ERR "ISP_ERR : Address should be in 32 byte "
 								"boundary\n");
 		return -EINVAL;
 	}
+	omap_writel(addr, ISPPRV_DSDR_ADDR);
 	return 0;
 }
-EXPORT_SYMBOL(isppreview_set_darkaddr);
+EXPORT_SYMBOL_GPL(isppreview_set_darkaddr);
 
 /**
  * isppreview_enable - Enables the Preview module.
@@ -1693,14 +1659,14 @@ void isppreview_enable(u8 enable)
 {
 
 	if (enable) {
-		omap_writel((omap_readl(ISPPRV_PCR)) | ISPPRV_PCR_EN,
+		omap_writel(omap_readl(ISPPRV_PCR) | ISPPRV_PCR_EN,
 								ISPPRV_PCR);
 	} else {
-		omap_writel((omap_readl(ISPPRV_PCR)) & ~ISPPRV_PCR_EN,
+		omap_writel(omap_readl(ISPPRV_PCR) & ~ISPPRV_PCR_EN,
 								ISPPRV_PCR);
 	}
 }
-EXPORT_SYMBOL(isppreview_enable);
+EXPORT_SYMBOL_GPL(isppreview_enable);
 
 /**
  * isppreview_busy - Gets busy state of preview module.
@@ -1709,7 +1675,7 @@ int isppreview_busy(void)
 {
 	return omap_readl(ISPPRV_PCR) & ISPPRV_PCR_BUSY;
 }
-EXPORT_SYMBOL(isppreview_busy);
+EXPORT_SYMBOL_GPL(isppreview_busy);
 
 /**
  * isppreview_get_config - Gets parameters of preview module.
@@ -1718,7 +1684,7 @@ struct prev_params *isppreview_get_config(void)
 {
 	return prev_config_params;
 }
-EXPORT_SYMBOL(isppreview_get_config);
+EXPORT_SYMBOL_GPL(isppreview_get_config);
 
 /**
  * isppreview_save_context - Saves the values of the preview module registers.
@@ -1728,7 +1694,7 @@ void isppreview_save_context(void)
 	DPRINTK_ISPPREV("Saving context\n");
 	isp_save_context(ispprev_reg_list);
 }
-EXPORT_SYMBOL(isppreview_save_context);
+EXPORT_SYMBOL_GPL(isppreview_save_context);
 
 /**
  * isppreview_restore_context - Restores the values of preview module registers
@@ -1738,7 +1704,7 @@ void isppreview_restore_context(void)
 	DPRINTK_ISPPREV("Restoring context\n");
 	isp_restore_context(ispprev_reg_list);
 }
-EXPORT_SYMBOL(isppreview_restore_context);
+EXPORT_SYMBOL_GPL(isppreview_restore_context);
 
 /**
  * isppreview_print_status - Prints the values of the Preview Module registers.
@@ -1808,7 +1774,7 @@ void isppreview_print_status(void)
 						omap_readl(ISPPRV_SETUP_YC));
 #endif
 }
-EXPORT_SYMBOL(isppreview_print_status);
+EXPORT_SYMBOL_GPL(isppreview_print_status);
 
 /**
  * isp_preview_init - Module Initialization.
@@ -1818,7 +1784,7 @@ int __init isp_preview_init(void)
 	int i = 0;
 
 	prev_config_params = kmalloc(sizeof(*prev_config_params), GFP_KERNEL);
-	if (prev_config_params == NULL) {
+	if (!prev_config_params) {
 		printk(KERN_ERR "Can't get memory for isp_preview params!\n");
 		return -ENOMEM;
 	}
@@ -1826,13 +1792,6 @@ int __init isp_preview_init(void)
 
 	ispprev_obj.prev_inuse = 0;
 	mutex_init(&ispprev_obj.ispprev_mutex);
-
-	if (system_rev > OMAP3430_REV_ES1_0) {
-		flr_wbal_coef0 = 0x20;
-		flr_wbal_coef1 = 0x23;
-		flr_wbal_coef2 = 0x39;
-		flr_wbal_coef3 = 0x20;
-	}
 
 	/* Init values */
 	ispprev_obj.sph = 2;
@@ -1847,13 +1806,13 @@ int __init isp_preview_init(void)
 	params->pix_fmt = YCPOS_YCrYCb;
 	params->cfa.cfafmt = CFAFMT_BAYER;
 	params->cfa.cfa_table = cfa_coef_table;
-	params->cfa.cfa_gradthrs_horz = flr_cfa_gradthrs_horz;
-	params->cfa.cfa_gradthrs_vert = flr_cfa_gradthrs_vert;
-	params->csup.gain = flr_csup_gain;
-	params->csup.thres = flr_csup_thres;
+	params->cfa.cfa_gradthrs_horz = FLR_CFA_GRADTHRS_HORZ;
+	params->cfa.cfa_gradthrs_vert = FLR_CFA_GRADTHRS_VERT;
+	params->csup.gain = FLR_CSUP_GAIN;
+	params->csup.thres = FLR_CSUP_THRES;
 	params->csup.hypf_en = 0;
 	params->ytable = luma_enhance_table;
-	params->nf.spread = flr_nf_strgth;
+	params->nf.spread = FLR_NF_STRGTH;
 	memcpy(params->nf.table, noise_filter_table, sizeof(params->nf.table));
 	params->dcor.couplet_mode_en = 1;
 	for (i = 0; i < 4; i++)
@@ -1861,14 +1820,21 @@ int __init isp_preview_init(void)
 	params->gtable.bluetable = bluegamma_table;
 	params->gtable.greentable = greengamma_table;
 	params->gtable.redtable = redgamma_table;
-	params->wbal.dgain = flr_wbal_dgain;
-	params->wbal.coef0 = flr_wbal_coef0;
-	params->wbal.coef1 = flr_wbal_coef1;
-	params->wbal.coef2 = flr_wbal_coef2;
-	params->wbal.coef3 = flr_wbal_coef3;
-	params->blk_adj.red = flr_blkadj_red;
-	params->blk_adj.green = flr_blkadj_green;
-	params->blk_adj.blue = flr_blkadj_blue;
+	params->wbal.dgain = FLR_WBAL_DGAIN;
+	if (omap_rev() > OMAP3430_REV_ES1_0) {
+		params->wbal.coef0 = FLR_WBAL_COEF0_ES1;
+		params->wbal.coef1 = FLR_WBAL_COEF1_ES1;
+		params->wbal.coef2 = FLR_WBAL_COEF2_ES1;
+		params->wbal.coef3 = FLR_WBAL_COEF3_ES1;
+	} else {
+		params->wbal.coef0 = FLR_WBAL_COEF0;
+		params->wbal.coef1 = FLR_WBAL_COEF1;
+		params->wbal.coef2 = FLR_WBAL_COEF2;
+		params->wbal.coef3 = FLR_WBAL_COEF3;
+	}
+	params->blk_adj.red = FLR_BLKADJ_RED;
+	params->blk_adj.green = FLR_BLKADJ_GREEN;
+	params->blk_adj.blue = FLR_BLKADJ_BLUE;
 	params->rgb2rgb = flr_rgb2rgb;
 	params->rgb2ycbcr = flr_prev_csc[ispprev_obj.color];
 
@@ -1889,5 +1855,4 @@ int __init isp_preview_init(void)
 void __exit isp_preview_cleanup(void)
 {
 	kfree(prev_config_params);
-	prev_config_params = NULL;
 }

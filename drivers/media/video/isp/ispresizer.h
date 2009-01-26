@@ -1,13 +1,14 @@
 /*
- * drivers/media/video/isp/ispresizer.h
+ * ispresizer.h
  *
- * Driver header file for Resizer module in TI's OMAP3430 Camera ISP
+ * Driver header file for Resizer module in TI's OMAP3 Camera ISP
  *
- * Copyright (C) 2008 Texas Instruments, Inc.
+ * Copyright (C) 2009 Texas Instruments, Inc.
  *
  * Contributors:
  * 	Sameer Venkatraman <sameerv@ti.com>
- * 	Mohit Jalori <mjalori@ti.com>
+ * 	Mohit Jalori
+ *	Sergio Aguirre <saaguirre@ti.com>
  *
  * This package is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -130,7 +131,7 @@ void ispresizer_trycrop(u32 left, u32 top, u32 width, u32 height, u32 ow,
 								u32 oh);
 
 int ispresizer_config_size(u32 input_w, u32 input_h, u32 output_w,
-			   u32 output_h);
+					u32 output_h);
 
 int ispresizer_config_inlineoffset(u32 offset);
 
