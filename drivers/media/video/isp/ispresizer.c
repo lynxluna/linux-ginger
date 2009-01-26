@@ -112,48 +112,48 @@ static struct isp_res {
 
 /* Structure for saving/restoring resizer module registers */
 static struct isp_reg isprsz_reg_list[] = {
-	{ISPRSZ_CNT, 0x0000},
-	{ISPRSZ_OUT_SIZE, 0x0000},
-	{ISPRSZ_IN_START, 0x0000},
-	{ISPRSZ_IN_SIZE, 0x0000},
-	{ISPRSZ_SDR_INADD, 0x0000},
-	{ISPRSZ_SDR_INOFF, 0x0000},
-	{ISPRSZ_SDR_OUTADD, 0x0000},
-	{ISPRSZ_SDR_OUTOFF, 0x0000},
-	{ISPRSZ_HFILT10, 0x0000},
-	{ISPRSZ_HFILT32, 0x0000},
-	{ISPRSZ_HFILT54, 0x0000},
-	{ISPRSZ_HFILT76, 0x0000},
-	{ISPRSZ_HFILT98, 0x0000},
-	{ISPRSZ_HFILT1110, 0x0000},
-	{ISPRSZ_HFILT1312, 0x0000},
-	{ISPRSZ_HFILT1514, 0x0000},
-	{ISPRSZ_HFILT1716, 0x0000},
-	{ISPRSZ_HFILT1918, 0x0000},
-	{ISPRSZ_HFILT2120, 0x0000},
-	{ISPRSZ_HFILT2322, 0x0000},
-	{ISPRSZ_HFILT2524, 0x0000},
-	{ISPRSZ_HFILT2726, 0x0000},
-	{ISPRSZ_HFILT2928, 0x0000},
-	{ISPRSZ_HFILT3130, 0x0000},
-	{ISPRSZ_VFILT10, 0x0000},
-	{ISPRSZ_VFILT32, 0x0000},
-	{ISPRSZ_VFILT54, 0x0000},
-	{ISPRSZ_VFILT76, 0x0000},
-	{ISPRSZ_VFILT98, 0x0000},
-	{ISPRSZ_VFILT1110, 0x0000},
-	{ISPRSZ_VFILT1312, 0x0000},
-	{ISPRSZ_VFILT1514, 0x0000},
-	{ISPRSZ_VFILT1716, 0x0000},
-	{ISPRSZ_VFILT1918, 0x0000},
-	{ISPRSZ_VFILT2120, 0x0000},
-	{ISPRSZ_VFILT2322, 0x0000},
-	{ISPRSZ_VFILT2524, 0x0000},
-	{ISPRSZ_VFILT2726, 0x0000},
-	{ISPRSZ_VFILT2928, 0x0000},
-	{ISPRSZ_VFILT3130, 0x0000},
-	{ISPRSZ_YENH, 0x0000},
-	{ISP_TOK_TERM, 0x0000}
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_CNT, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_OUT_SIZE, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_IN_START, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_IN_SIZE, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_SDR_INADD, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_SDR_INOFF, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_SDR_OUTADD, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_SDR_OUTOFF, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_HFILT10, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_HFILT32, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_HFILT54, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_HFILT76, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_HFILT98, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_HFILT1110, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_HFILT1312, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_HFILT1514, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_HFILT1716, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_HFILT1918, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_HFILT2120, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_HFILT2322, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_HFILT2524, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_HFILT2726, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_HFILT2928, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_HFILT3130, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_VFILT10, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_VFILT32, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_VFILT54, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_VFILT76, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_VFILT98, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_VFILT1110, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_VFILT1312, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_VFILT1514, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_VFILT1716, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_VFILT1918, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_VFILT2120, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_VFILT2322, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_VFILT2524, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_VFILT2726, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_VFILT2928, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_VFILT3130, 0x0000},
+	{OMAP3_ISP_IOMEM_RESZ, ISPRSZ_YENH, 0x0000},
+	{0, ISP_TOK_TERM, 0x0000}
 };
 
 /**
@@ -211,8 +211,10 @@ int ispresizer_request()
 	if (!ispres_obj.res_inuse) {
 		ispres_obj.res_inuse = 1;
 		mutex_unlock(&ispres_obj.ispres_mutex);
-		omap_writel(omap_readl(ISP_CTRL) | ISPCTRL_SBL_WR0_RAM_EN |
-						ISPCTRL_RSZ_CLK_EN, ISP_CTRL);
+		isp_reg_writel(isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_CTRL) |
+					ISPCTRL_SBL_WR0_RAM_EN |
+					ISPCTRL_RSZ_CLK_EN,
+					OMAP3_ISP_IOMEM_MAIN, ISP_CTRL);
 		return 0;
 	} else {
 		mutex_unlock(&ispres_obj.ispres_mutex);
@@ -233,8 +235,8 @@ int ispresizer_free()
 	if (ispres_obj.res_inuse) {
 		ispres_obj.res_inuse = 0;
 		mutex_unlock(&ispres_obj.ispres_mutex);
-		omap_writel(omap_readl(ISP_CTRL) & ~(ISPCTRL_RSZ_CLK_EN |
-					ISPCTRL_SBL_WR0_RAM_EN), ISP_CTRL);
+		isp_reg_writel(isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_CTRL) & ~(ISPCTRL_RSZ_CLK_EN |
+					ISPCTRL_SBL_WR0_RAM_EN), OMAP3_ISP_IOMEM_MAIN, ISP_CTRL);
 		return 0;
 	} else {
 		mutex_unlock(&ispres_obj.ispres_mutex);
@@ -276,7 +278,7 @@ int ispresizer_config_datapath(enum ispresizer_input input)
 		printk(KERN_ERR "ISP_ERR : Wrong Input\n");
 		return -EINVAL;
 	}
-	omap_writel(omap_readl(ISPRSZ_CNT) | cnt, ISPRSZ_CNT);
+	isp_reg_writel(isp_reg_readl(OMAP3_ISP_IOMEM_RESZ, ISPRSZ_CNT) | cnt, OMAP3_ISP_IOMEM_RESZ, ISPRSZ_CNT);
 	ispresizer_config_ycpos(0);
 	ispresizer_config_filter_coef(&ispreszdefcoef);
 	ispresizer_enable_cbilin(0);
@@ -498,49 +500,56 @@ int ispresizer_config_size(u32 input_w, u32 input_h, u32 output_w,
 	}
 
 	/* Set Resizer input address and offset adderss */
-	ispresizer_config_inlineoffset(omap_readl(ISPPRV_WADD_OFFSET));
+	ispresizer_config_inlineoffset(isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_WADD_OFFSET));
 
-	res = omap_readl(ISPRSZ_CNT) & (~(ISPRSZ_CNT_HSTPH_MASK |
-					ISPRSZ_CNT_VSTPH_MASK));
-	omap_writel(res | (ispres_obj.h_startphase << ISPRSZ_CNT_HSTPH_SHIFT) |
+	res = isp_reg_readl(OMAP3_ISP_IOMEM_RESZ, ISPRSZ_CNT) & (~(ISPRSZ_CNT_HSTPH_MASK |
+							ISPRSZ_CNT_VSTPH_MASK));
+	isp_reg_writel(res | (ispres_obj.h_startphase << ISPRSZ_CNT_HSTPH_SHIFT) |
 						(ispres_obj.v_startphase <<
 						ISPRSZ_CNT_VSTPH_SHIFT),
+						OMAP3_ISP_IOMEM_RESZ,
 						ISPRSZ_CNT);
-	omap_writel((0x00 << ISPRSZ_IN_START_HORZ_ST_SHIFT) |
+	isp_reg_writel((0x00 << ISPRSZ_IN_START_HORZ_ST_SHIFT) |
 					(0x00 << ISPRSZ_IN_START_VERT_ST_SHIFT),
+					OMAP3_ISP_IOMEM_RESZ,
 					ISPRSZ_IN_START);
 
-	omap_writel((ispres_obj.inputwidth << ISPRSZ_IN_SIZE_HORZ_SHIFT) |
+	isp_reg_writel((ispres_obj.inputwidth << ISPRSZ_IN_SIZE_HORZ_SHIFT) |
 						(ispres_obj.inputheight <<
 						ISPRSZ_IN_SIZE_VERT_SHIFT),
+						OMAP3_ISP_IOMEM_RESZ,
 						ISPRSZ_IN_SIZE);
 	if (!ispres_obj.algo) {
-		omap_writel((output_w << ISPRSZ_OUT_SIZE_HORZ_SHIFT) |
+		isp_reg_writel((output_w << ISPRSZ_OUT_SIZE_HORZ_SHIFT) |
 						(output_h <<
 						ISPRSZ_OUT_SIZE_VERT_SHIFT),
+						OMAP3_ISP_IOMEM_RESZ,
 						ISPRSZ_OUT_SIZE);
 	} else {
-		omap_writel(((output_w - 4) << ISPRSZ_OUT_SIZE_HORZ_SHIFT) |
+		isp_reg_writel(((output_w - 4) << ISPRSZ_OUT_SIZE_HORZ_SHIFT) |
 						(output_h <<
 						ISPRSZ_OUT_SIZE_VERT_SHIFT),
+						OMAP3_ISP_IOMEM_RESZ,
 						ISPRSZ_OUT_SIZE);
 	}
 
-	res = omap_readl(ISPRSZ_CNT) & (~(ISPRSZ_CNT_HRSZ_MASK |
+	res = isp_reg_readl(OMAP3_ISP_IOMEM_RESZ, ISPRSZ_CNT) & (~(ISPRSZ_CNT_HRSZ_MASK |
 						ISPRSZ_CNT_VRSZ_MASK));
-	omap_writel(res | ((ispres_obj.h_resz - 1) << ISPRSZ_CNT_HRSZ_SHIFT) |
+	isp_reg_writel(res | ((ispres_obj.h_resz - 1) << ISPRSZ_CNT_HRSZ_SHIFT) |
 						((ispres_obj.v_resz - 1) <<
 						ISPRSZ_CNT_VRSZ_SHIFT),
+						OMAP3_ISP_IOMEM_RESZ,
 						ISPRSZ_CNT);
 	if (ispres_obj.h_resz <= MID_RESIZE_VALUE) {
 		j = 0;
 		for (i = 0; i < 16; i++) {
-			omap_writel((ispres_obj.coeflist.
+			isp_reg_writel((ispres_obj.coeflist.
 						h_filter_coef_4tap[j] <<
 						ISPRSZ_HFILT10_COEF0_SHIFT) |
 						(ispres_obj.coeflist.
 						h_filter_coef_4tap[j + 1] <<
 						ISPRSZ_HFILT10_COEF1_SHIFT),
+						OMAP3_ISP_IOMEM_RESZ,
 						ISPRSZ_HFILT10 + (i * 0x04));
 			j += 2;
 		}
@@ -548,18 +557,20 @@ int ispresizer_config_size(u32 input_w, u32 input_h, u32 output_w,
 		j = 0;
 		for (i = 0; i < 16; i++) {
 			if ((i + 1) % 4 == 0) {
-				omap_writel((ispres_obj.coeflist.
+				isp_reg_writel((ispres_obj.coeflist.
 						h_filter_coef_7tap[j] <<
 						ISPRSZ_HFILT10_COEF0_SHIFT),
+						OMAP3_ISP_IOMEM_RESZ,
 						ISPRSZ_HFILT10 + (i * 0x04));
 				j += 1;
 			} else {
-				omap_writel((ispres_obj.coeflist.
+				isp_reg_writel((ispres_obj.coeflist.
 						h_filter_coef_7tap[j] <<
 						ISPRSZ_HFILT10_COEF0_SHIFT) |
 						(ispres_obj.coeflist.
 						h_filter_coef_7tap[j+1] <<
 						ISPRSZ_HFILT10_COEF1_SHIFT),
+						OMAP3_ISP_IOMEM_RESZ,
 						ISPRSZ_HFILT10 + (i * 0x04));
 				j += 2;
 			}
@@ -568,12 +579,13 @@ int ispresizer_config_size(u32 input_w, u32 input_h, u32 output_w,
 	if (ispres_obj.v_resz <= MID_RESIZE_VALUE) {
 		j = 0;
 		for (i = 0; i < 16; i++) {
-			omap_writel((ispres_obj.coeflist.
+			isp_reg_writel((ispres_obj.coeflist.
 						v_filter_coef_4tap[j] <<
 						ISPRSZ_VFILT10_COEF0_SHIFT) |
 						(ispres_obj.coeflist.
 						v_filter_coef_4tap[j + 1] <<
 						ISPRSZ_VFILT10_COEF1_SHIFT),
+						OMAP3_ISP_IOMEM_RESZ,
 						ISPRSZ_VFILT10 + (i * 0x04));
 			j += 2;
 		}
@@ -581,18 +593,20 @@ int ispresizer_config_size(u32 input_w, u32 input_h, u32 output_w,
 		j = 0;
 		for (i = 0; i < 16; i++) {
 			if ((i + 1) % 4 == 0) {
-				omap_writel((ispres_obj.coeflist.
+				isp_reg_writel((ispres_obj.coeflist.
 						v_filter_coef_7tap[j] <<
 						ISPRSZ_VFILT10_COEF0_SHIFT),
+						OMAP3_ISP_IOMEM_RESZ,
 						ISPRSZ_VFILT10 + (i * 0x04));
 				j += 1;
 			} else {
-				omap_writel((ispres_obj.coeflist.
+				isp_reg_writel((ispres_obj.coeflist.
 						v_filter_coef_7tap[j] <<
 						ISPRSZ_VFILT10_COEF0_SHIFT) |
 						(ispres_obj.coeflist.
 						v_filter_coef_7tap[j+1] <<
 						ISPRSZ_VFILT10_COEF1_SHIFT),
+						OMAP3_ISP_IOMEM_RESZ,
 						ISPRSZ_VFILT10 + (i * 0x04));
 				j += 2;
 			}
@@ -616,10 +630,10 @@ void ispresizer_enable(u8 enable)
 	int val;
 	DPRINTK_ISPRESZ("+ispresizer_enable()+\n");
 	if (enable)
-		val = (((omap_readl(ISPRSZ_PCR)) & 0x2) | ISPRSZ_PCR_ENABLE);
+		val = (((isp_reg_readl(OMAP3_ISP_IOMEM_RESZ, ISPRSZ_PCR)) & 0x2) | ISPRSZ_PCR_ENABLE);
 	else
-		val = (omap_readl(ISPRSZ_PCR) & ~ISPRSZ_PCR_ENABLE);
-	omap_writel(val, ISPRSZ_PCR);
+		val = (isp_reg_readl(OMAP3_ISP_IOMEM_RESZ, ISPRSZ_PCR) & ~ISPRSZ_PCR_ENABLE);
+	isp_reg_writel(val, OMAP3_ISP_IOMEM_RESZ, ISPRSZ_PCR);
 	DPRINTK_ISPRESZ("+ispresizer_enable()-\n");
 }
 EXPORT_SYMBOL(ispresizer_enable);
@@ -631,7 +645,7 @@ EXPORT_SYMBOL(ispresizer_enable);
  **/
 int ispresizer_busy(void)
 {
-	return omap_readl(ISPRSZ_PCR) & ISPPRV_PCR_BUSY;
+	return isp_reg_readl(OMAP3_ISP_IOMEM_RESZ, ISPRSZ_PCR) & ISPPRV_PCR_BUSY;
 }
 EXPORT_SYMBOL(ispresizer_busy);
 
@@ -660,11 +674,11 @@ void ispresizer_config_ycpos(u8 yc)
 {
 	DPRINTK_ISPRESZ("ispresizer_config_ycpos()+\n");
 	if (yc) {
-		omap_writel((omap_readl(ISPRSZ_CNT)) |
-			(ISPRSZ_CNT_YCPOS), ISPRSZ_CNT);
+		isp_reg_writel((isp_reg_readl(OMAP3_ISP_IOMEM_RESZ, ISPRSZ_CNT)) |
+					(ISPRSZ_CNT_YCPOS), OMAP3_ISP_IOMEM_RESZ, ISPRSZ_CNT);
 	} else {
-		omap_writel((omap_readl(ISPRSZ_CNT)) &
-			(~ISPRSZ_CNT_YCPOS), ISPRSZ_CNT);
+		isp_reg_writel((isp_reg_readl(OMAP3_ISP_IOMEM_RESZ, ISPRSZ_CNT)) &
+					(~ISPRSZ_CNT_YCPOS), OMAP3_ISP_IOMEM_RESZ, ISPRSZ_CNT);
 	}
 	DPRINTK_ISPRESZ("ispresizer_config_ycpos()-\n");
 }
@@ -679,11 +693,11 @@ void ispresizer_enable_cbilin(u8 enable)
 {
 	DPRINTK_ISPRESZ("ispresizer_enable_cbilin()+\n");
 	if (enable) {
-		omap_writel(omap_readl(ISPRSZ_CNT) | ISPRSZ_CNT_CBILIN,
-								ISPRSZ_CNT);
+		isp_reg_writel(isp_reg_readl(OMAP3_ISP_IOMEM_RESZ, ISPRSZ_CNT) | ISPRSZ_CNT_CBILIN,
+					OMAP3_ISP_IOMEM_RESZ, ISPRSZ_CNT);
 	} else {
-		omap_writel(omap_readl(ISPRSZ_CNT) & ~ISPRSZ_CNT_CBILIN,
-								ISPRSZ_CNT);
+		isp_reg_writel(isp_reg_readl(OMAP3_ISP_IOMEM_RESZ, ISPRSZ_CNT) & ~ISPRSZ_CNT_CBILIN,
+					OMAP3_ISP_IOMEM_RESZ, ISPRSZ_CNT);
 	}
 	DPRINTK_ISPRESZ("ispresizer_enable_cbilin()-\n");
 }
@@ -698,11 +712,12 @@ void ispresizer_config_luma_enhance(struct isprsz_yenh *yenh)
 {
 	DPRINTK_ISPRESZ("ispresizer_config_luma_enhance()+\n");
 	ispres_obj.algo = yenh->algo;
-	omap_writel((yenh->algo << ISPRSZ_YENH_ALGO_SHIFT) |
-			(yenh->gain << ISPRSZ_YENH_GAIN_SHIFT) |
-			(yenh->slope << ISPRSZ_YENH_SLOP_SHIFT) |
-			(yenh->coreoffset << ISPRSZ_YENH_CORE_SHIFT),
-			ISPRSZ_YENH);
+	isp_reg_writel((yenh->algo << ISPRSZ_YENH_ALGO_SHIFT) |
+				(yenh->gain << ISPRSZ_YENH_GAIN_SHIFT) |
+				(yenh->slope << ISPRSZ_YENH_SLOP_SHIFT) |
+				(yenh->coreoffset << ISPRSZ_YENH_CORE_SHIFT),
+				OMAP3_ISP_IOMEM_RESZ,
+				ISPRSZ_YENH);
 	DPRINTK_ISPRESZ("ispresizer_config_luma_enhance()-\n");
 }
 EXPORT_SYMBOL(ispresizer_config_luma_enhance);
@@ -745,7 +760,8 @@ int ispresizer_config_inlineoffset(u32 offset)
 	DPRINTK_ISPRESZ("ispresizer_config_inlineoffset()+\n");
 	if (offset % 32)
 		return -EINVAL;
-	omap_writel(offset << ISPRSZ_SDR_INOFF_OFFSET_SHIFT, ISPRSZ_SDR_INOFF);
+	isp_reg_writel(offset << ISPRSZ_SDR_INOFF_OFFSET_SHIFT,
+				OMAP3_ISP_IOMEM_RESZ, ISPRSZ_SDR_INOFF);
 	DPRINTK_ISPRESZ("ispresizer_config_inlineoffset()-\n");
 	return 0;
 }
@@ -762,7 +778,8 @@ int ispresizer_set_inaddr(u32 addr)
 	DPRINTK_ISPRESZ("ispresizer_set_inaddr()+\n");
 	if (addr % 32)
 		return -EINVAL;
-	omap_writel(addr << ISPRSZ_SDR_INADD_ADDR_SHIFT, ISPRSZ_SDR_INADD);
+	isp_reg_writel(addr << ISPRSZ_SDR_INADD_ADDR_SHIFT,
+				OMAP3_ISP_IOMEM_RESZ, ISPRSZ_SDR_INADD);
 	DPRINTK_ISPRESZ("ispresizer_set_inaddr()-\n");
 	return 0;
 }
@@ -779,8 +796,8 @@ int ispresizer_config_outlineoffset(u32 offset)
 	DPRINTK_ISPRESZ("ispresizer_config_outlineoffset()+\n");
 	if (offset % 32)
 		return -EINVAL;
-	omap_writel(offset << ISPRSZ_SDR_OUTOFF_OFFSET_SHIFT,
-							ISPRSZ_SDR_OUTOFF);
+	isp_reg_writel(offset << ISPRSZ_SDR_OUTOFF_OFFSET_SHIFT,
+				OMAP3_ISP_IOMEM_RESZ, ISPRSZ_SDR_OUTOFF);
 	DPRINTK_ISPRESZ("ispresizer_config_outlineoffset()-\n");
 	return 0;
 }
@@ -795,8 +812,8 @@ int ispresizer_set_outaddr(u32 addr)
 	DPRINTK_ISPRESZ("ispresizer_set_outaddr()+\n");
 	if (addr % 32)
 		return -EINVAL;
-	omap_writel(addr << ISPRSZ_SDR_OUTADD_ADDR_SHIFT, ISPRSZ_SDR_OUTADD);
-
+	isp_reg_writel(addr << ISPRSZ_SDR_OUTADD_ADDR_SHIFT,
+				OMAP3_ISP_IOMEM_RESZ, ISPRSZ_SDR_OUTADD);
 	DPRINTK_ISPRESZ("ispresizer_set_outaddr()-\n");
 	return 0;
 }
@@ -829,28 +846,28 @@ void ispresizer_print_status()
 {
 	if (!is_ispresz_debug_enabled())
 		return;
-	DPRINTK_ISPRESZ("###ISP_CTRL inresizer =0x%x\n", omap_readl(ISP_CTRL));
+	DPRINTK_ISPRESZ("###ISP_CTRL inresizer =0x%x\n", isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_CTRL));
 
 	DPRINTK_ISPRESZ("###ISP_IRQ0ENABLE in resizer =0x%x\n",
-						omap_readl(ISP_IRQ0ENABLE));
+						isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE));
 	DPRINTK_ISPRESZ("###ISP_IRQ0STATUS in resizer =0x%x\n",
-						omap_readl(ISP_IRQ0STATUS));
-	DPRINTK_ISPRESZ("###RSZ PCR =0x%x\n", omap_readl(ISPRSZ_PCR));
-	DPRINTK_ISPRESZ("###RSZ CNT =0x%x\n", omap_readl(ISPRSZ_CNT));
+						isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0STATUS));
+	DPRINTK_ISPRESZ("###RSZ PCR =0x%x\n", isp_reg_readl(OMAP3_ISP_IOMEM_RESZ, ISPRSZ_PCR));
+	DPRINTK_ISPRESZ("###RSZ CNT =0x%x\n", isp_reg_readl(OMAP3_ISP_IOMEM_RESZ, ISPRSZ_CNT));
 	DPRINTK_ISPRESZ("###RSZ OUT SIZE =0x%x\n",
-						omap_readl(ISPRSZ_OUT_SIZE));
+						isp_reg_readl(OMAP3_ISP_IOMEM_RESZ, ISPRSZ_OUT_SIZE));
 	DPRINTK_ISPRESZ("###RSZ IN START =0x%x\n",
-						omap_readl(ISPRSZ_IN_START));
-	DPRINTK_ISPRESZ("###RSZ IN SIZE =0x%x\n", omap_readl(ISPRSZ_IN_SIZE));
+						isp_reg_readl(OMAP3_ISP_IOMEM_RESZ, ISPRSZ_IN_START));
+	DPRINTK_ISPRESZ("###RSZ IN SIZE =0x%x\n", isp_reg_readl(OMAP3_ISP_IOMEM_RESZ, ISPRSZ_IN_SIZE));
 	DPRINTK_ISPRESZ("###RSZ SDR INADD =0x%x\n",
-						omap_readl(ISPRSZ_SDR_INADD));
+						isp_reg_readl(OMAP3_ISP_IOMEM_RESZ, ISPRSZ_SDR_INADD));
 	DPRINTK_ISPRESZ("###RSZ SDR INOFF =0x%x\n",
-						omap_readl(ISPRSZ_SDR_INOFF));
+						isp_reg_readl(OMAP3_ISP_IOMEM_RESZ, ISPRSZ_SDR_INOFF));
 	DPRINTK_ISPRESZ("###RSZ SDR OUTADD =0x%x\n",
-						omap_readl(ISPRSZ_SDR_OUTADD));
+						isp_reg_readl(OMAP3_ISP_IOMEM_RESZ, ISPRSZ_SDR_OUTADD));
 	DPRINTK_ISPRESZ("###RSZ SDR OTOFF =0x%x\n",
-						omap_readl(ISPRSZ_SDR_OUTOFF));
-	DPRINTK_ISPRESZ("###RSZ YENH =0x%x\n", omap_readl(ISPRSZ_YENH));
+						isp_reg_readl(OMAP3_ISP_IOMEM_RESZ, ISPRSZ_SDR_OUTOFF));
+	DPRINTK_ISPRESZ("###RSZ YENH =0x%x\n", isp_reg_readl(OMAP3_ISP_IOMEM_RESZ, ISPRSZ_YENH));
 }
 EXPORT_SYMBOL(ispresizer_print_status);
 
