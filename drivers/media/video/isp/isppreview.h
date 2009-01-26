@@ -95,13 +95,6 @@ enum preview_ycpos_mode {
 	YCPOS_CrYCbY = 3
 };
 
-enum preview_color_effect {
-	PREV_DEFAULT_COLOR = 0,
-	PREV_SEPIA_COLOR = 1,
-	PREV_BW_COLOR = 2
-};
-
-
 /**
  * struct ispprev_gtable - Structure for Gamma Correction.
  * @redtable: Pointer to the red gamma table.

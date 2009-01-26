@@ -95,20 +95,20 @@ static struct ispprev_csc flr_prev_csc[] = {
 		{0x0, 0x0, 0x0}
 	},
 	{
-		{	/* CSC Coef Matrix Sepia */
-			{19, 38, 7},
-			{0, 0, 0},
-			{0, 0, 0}
-		},	/* CSC Offset */
-		{0x0, 0xE7, 0x14}
-	},
-	{
 		{	/* CSC Coef Matrix BW */
 			{66, 129, 25},
 			{0, 0, 0},
 			{0, 0, 0}
 		},	/* CSC Offset */
 		{0x0, 0x0, 0x0}
+	},
+	{
+		{	/* CSC Coef Matrix Sepia */
+			{19, 38, 7},
+			{0, 0, 0},
+			{0, 0, 0}
+		},	/* CSC Offset */
+		{0x0, 0xE7, 0x14}
 	}
 };
 
@@ -185,8 +185,8 @@ static struct isp_prev {
 	u8 fmtavg;
 	u8 brightness;
 	u8 contrast;
-	enum preview_color_effect color;
 	int stream_on;
+	enum v4l2_colorfx color;
 	enum cfa_fmt cfafmt;
 	struct mutex ispprev_mutex; /* For checking/modifying prev_inuse */
 	spinlock_t ispprev_lock;
@@ -1857,7 +1857,7 @@ int __init isp_preview_init(void)
 	/* Init values */
 	ispprev_obj.sph = 2;
 	ispprev_obj.slv = 0;
-	ispprev_obj.color = PREV_DEFAULT_COLOR;
+	ispprev_obj.color = V4L2_COLORFX_NONE;
 	ispprev_obj.contrast = ISPPRV_CONTRAST_DEF;
 	params->contrast = ISPPRV_CONTRAST_DEF;
 	ispprev_obj.brightness = ISPPRV_BRIGHT_DEF;
