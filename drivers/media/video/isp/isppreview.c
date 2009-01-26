@@ -28,8 +28,10 @@
 #include "isppreview.h"
 
 static struct ispprev_nf prev_nf_t;
+static struct ispprev_csc prev_csc_t;
 static struct prev_params *params;
 static int rg_update, gg_update, bg_update, nf_enable, nf_update;
+static int csc_update;
 
 /* Structure for saving/restoring preview module registers */
 static struct isp_reg ispprev_reg_list[] = {
@@ -184,8 +186,10 @@ static struct isp_prev {
 	u8 brightness;
 	u8 contrast;
 	enum preview_color_effect color;
+	int stream_on;
 	enum cfa_fmt cfafmt;
 	struct mutex ispprev_mutex; /* For checking/modifying prev_inuse */
+	spinlock_t ispprev_lock;
 	u32 sph;
 	u32 slv;
 } ispprev_obj;
@@ -254,7 +258,6 @@ int omap34xx_isp_preview_config(void *userspace_add)
 	struct ispprev_wbal prev_wbal_t;
 	struct ispprev_blkadj prev_blkadj_t;
 	struct ispprev_rgbtorgb rgb2rgb_t;
-	struct ispprev_csc prev_csc_t;
 	struct ispprev_yclimit yclimit_t;
 	struct ispprev_dcor prev_dcor_t;
 	struct ispprv_update_config *preview_struct;
@@ -363,8 +366,16 @@ int omap34xx_isp_preview_config(void *userspace_add)
 						preview_struct->prev_csc,
 						sizeof(struct ispprev_csc)))
 			goto err_copy_from_user;
-		isppreview_config_rgb_to_ycbcr(prev_csc_t);
-	}
+		spin_lock(&ispprev_obj.ispprev_lock);
+		if (ispprev_obj.stream_on == 0) {
+			isppreview_config_rgb_to_ycbcr(prev_csc_t);
+			csc_update = 0;
+		} else
+			csc_update = 1;
+
+		spin_unlock(&ispprev_obj.ispprev_lock);
+	} else
+		csc_update = 0;
 
 	if (ISP_ABS_PREV_YC_LIMIT & preview_struct->update) {
 		if (copy_from_user(&yclimit_t, (struct ispprev_yclimit *)
@@ -423,6 +434,7 @@ EXPORT_SYMBOL_GPL(omap34xx_isp_preview_config);
  **/
 int omap34xx_isp_tables_update(struct isptables_update *isptables_struct)
 {
+	int ctr;
 
 	if (ISP_ABS_TBL_NF & isptables_struct->flag) {
 		nf_enable = 1;
@@ -433,7 +445,15 @@ int omap34xx_isp_tables_update(struct isptables_update *isptables_struct)
 						sizeof(struct ispprev_nf)))
 				goto err_copy_from_user;
 
-			nf_update = 1;
+			spin_lock(&ispprev_obj.ispprev_lock);
+			if (!ispprev_obj.stream_on) {
+				nf_update = 0;
+				isppreview_config_noisefilter(prev_nf_t);
+				isppreview_enable_noisefilter(nf_enable);
+			} else
+				nf_update = 1;
+
+			spin_unlock(&ispprev_obj.ispprev_lock);
 		} else
 			nf_update = 0;
 	} else {
@@ -450,7 +470,18 @@ int omap34xx_isp_tables_update(struct isptables_update *isptables_struct)
 						sizeof(redgamma_table))) {
 			goto err_copy_from_user;
 		}
-		rg_update = 1;
+		spin_lock(&ispprev_obj.ispprev_lock);
+		if (!ispprev_obj.stream_on) {
+			rg_update = 0;
+			omap_writel(ISPPRV_TBL_ADDR_RED_G_START,
+				ISPPRV_SET_TBL_ADDR);
+			for (ctr = 0; ctr < ISP_GAMMA_TABLE_SIZE; ctr++)
+				omap_writel(redgamma_table[ctr],
+						ISPPRV_SET_TBL_DATA);
+		} else
+			rg_update = 1;
+
+		spin_unlock(&ispprev_obj.ispprev_lock);
 	} else
 		rg_update = 0;
 
@@ -459,7 +490,18 @@ int omap34xx_isp_tables_update(struct isptables_update *isptables_struct)
 						isptables_struct->green_gamma,
 						sizeof(greengamma_table)))
 			goto err_copy_from_user;
-		gg_update = 1;
+		spin_lock(&ispprev_obj.ispprev_lock);
+		if (!ispprev_obj.stream_on) {
+			gg_update = 0;
+			omap_writel(ISPPRV_TBL_ADDR_GREEN_G_START,
+				ISPPRV_SET_TBL_ADDR);
+			for (ctr = 0; ctr < ISP_GAMMA_TABLE_SIZE; ctr++)
+				omap_writel(greengamma_table[ctr],
+						ISPPRV_SET_TBL_DATA);
+		} else
+			gg_update = 1;
+
+		spin_unlock(&ispprev_obj.ispprev_lock);
 	} else
 		gg_update = 0;
 
@@ -469,7 +511,18 @@ int omap34xx_isp_tables_update(struct isptables_update *isptables_struct)
 					sizeof(bluegamma_table))) {
 			goto err_copy_from_user;
 		}
-		bg_update = 1;
+		spin_lock(&ispprev_obj.ispprev_lock);
+		if (!ispprev_obj.stream_on) {
+			bg_update = 0;
+			omap_writel(ISPPRV_TBL_ADDR_BLUE_G_START,
+					ISPPRV_SET_TBL_ADDR);
+			for (ctr = 0; ctr < ISP_GAMMA_TABLE_SIZE; ctr++)
+				omap_writel(bluegamma_table[ctr],
+						ISPPRV_SET_TBL_DATA);
+		} else
+			bg_update = 1;
+
+		spin_unlock(&ispprev_obj.ispprev_lock);
 	} else
 		bg_update = 0;
 
@@ -511,9 +564,14 @@ void isppreview_config_shadow_registers()
 		isppreview_config_rgb_to_ycbcr(flr_prev_csc[ispprev_obj.color]);
 		update_color_matrix = 0;
 	}
-	if (gg_update || rg_update || bg_update || nf_update) {
+	if (gg_update || rg_update || bg_update || nf_update || csc_update) {
 		isppreview_enable(0);
 		prv_disabled = 1;
+	}
+
+	if (csc_update) {
+		isppreview_config_rgb_to_ycbcr(prev_csc_t);
+		csc_update = 0;
 	}
 
 	if (gg_update) {
@@ -1657,7 +1715,9 @@ EXPORT_SYMBOL_GPL(isppreview_set_darkaddr);
  **/
 void isppreview_enable(u8 enable)
 {
-
+	spin_lock(&ispprev_obj.ispprev_lock);
+	ispprev_obj.stream_on = enable ? 1 : 0;
+	spin_unlock(&ispprev_obj.ispprev_lock);
 	if (enable) {
 		omap_writel(omap_readl(ISPPRV_PCR) | ISPPRV_PCR_EN,
 								ISPPRV_PCR);
@@ -1792,6 +1852,7 @@ int __init isp_preview_init(void)
 
 	ispprev_obj.prev_inuse = 0;
 	mutex_init(&ispprev_obj.ispprev_mutex);
+	spin_lock_init(&ispprev_obj.ispprev_lock);
 
 	/* Init values */
 	ispprev_obj.sph = 2;
