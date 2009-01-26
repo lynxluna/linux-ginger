@@ -109,6 +109,9 @@ out:
 		if (vdev->slave[i] == v4l2_int_device_dummy())
 			continue;
 
+		if (!(mask & (1 << i)))
+			continue;
+
 		vidioc_int_s_power(vdev->slave[i], power);
 		vdev->power_state[i] = power;
 	}
