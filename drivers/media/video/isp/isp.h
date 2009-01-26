@@ -58,6 +58,42 @@ typedef int (*isp_vbq_callback_ptr) (struct videobuf_buffer *vb);
 typedef void (*isp_callback_t) (unsigned long status,
 					isp_vbq_callback_ptr arg1, void *arg2);
 
+enum isp_mem_resources {
+	OMAP3_ISP_IOMEM_MAIN,
+	OMAP3_ISP_IOMEM_CBUFF,
+	OMAP3_ISP_IOMEM_CCP2,
+	OMAP3_ISP_IOMEM_CCDC,
+	OMAP3_ISP_IOMEM_HIST,
+	OMAP3_ISP_IOMEM_H3A,
+	OMAP3_ISP_IOMEM_PREV,
+	OMAP3_ISP_IOMEM_RESZ,
+	OMAP3_ISP_IOMEM_SBL,
+	OMAP3_ISP_IOMEM_CSI2A,
+	OMAP3_ISP_IOMEM_CSI2PHY
+};
+
+struct isp_device {
+	struct device *dev;
+
+	/*** platform HW resources ***/
+	unsigned int irq;
+
+#define mmio_base_main mmio_base[OMAP3_ISP_IOMEM_MAIN]
+#define mmio_cbuff_main mmio_base[OMAP3_ISP_IOMEM_CBUFF]
+#define mmio_ccp2_main mmio_base[OMAP3_ISP_IOMEM_CCP2]
+#define mmio_ccdc_main mmio_base[OMAP3_ISP_IOMEM_CCDC]
+#define mmio_hist_main mmio_base[OMAP3_ISP_IOMEM_HIST]
+#define mmio_h3a_main mmio_base[OMAP3_ISP_IOMEM_H3A]
+#define mmio_prev_main mmio_base[OMAP3_ISP_IOMEM_PREV]
+#define mmio_resz_main mmio_base[OMAP3_ISP_IOMEM_RESZ]
+#define mmio_sbl_main mmio_base[OMAP3_ISP_IOMEM_SBL]
+#define mmio_csi2_main mmio_base[OMAP3_ISP_IOMEM_CSI2A]
+#define mmio_csi2phy_main mmio_base[OMAP3_ISP_IOMEM_CSI2PHY]
+	unsigned long mmio_base[OMAP3_ISP_IOMEM_CSI2PHY + 1];
+	unsigned long mmio_base_phys[OMAP3_ISP_IOMEM_CSI2PHY + 1];
+	unsigned long mmio_size[OMAP3_ISP_IOMEM_CSI2PHY + 1];
+};
+
 enum isp_interface_type {
 	ISP_PARLL = 1,
 	ISP_CSIA = 2,
@@ -109,6 +145,7 @@ enum isp_callback_type {
  * @val: 32-bit Register value.
  */
 struct isp_reg {
+	enum isp_mem_resources mmio_range;
 	u32 reg;
 	u32 val;
 };
@@ -167,6 +204,32 @@ struct isp_interface_config {
 		} csi;
 	} u;
 };
+
+u32 isp_reg_readl(enum isp_mem_resources isp_mmio_range, u32 reg_offset);
+
+void isp_reg_writel(u32 reg_value, enum isp_mem_resources isp_mmio_range,
+								u32 reg_offset);
+
+static void inline isp_reg_and(enum isp_mem_resources mmio_range, u32 reg, u32 and_bits)
+{
+	u32 v = isp_reg_readl(mmio_range, reg);
+
+	isp_reg_writel(v & and_bits, mmio_range, reg);
+}
+
+static void inline isp_reg_or(enum isp_mem_resources mmio_range, u32 reg, u32 or_bits)
+{
+	u32 v = isp_reg_readl(mmio_range, reg);
+
+	isp_reg_writel(v | or_bits, mmio_range, reg);
+}
+
+static void inline isp_reg_and_or(enum isp_mem_resources mmio_range, u32 reg, u32 and_bits, u32 or_bits)
+{
+	u32 v = isp_reg_readl(mmio_range, reg);
+
+	isp_reg_writel((v & and_bits) | or_bits, mmio_range, reg);
+}
 
 void isp_start(void);
 
