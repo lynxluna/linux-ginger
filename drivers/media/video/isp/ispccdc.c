@@ -88,47 +88,47 @@ static u8 *lsc_gain_table_tmp;
 
 /* Structure for saving/restoring CCDC module registers*/
 static struct isp_reg ispccdc_reg_list[] = {
-	{ISPCCDC_SYN_MODE, 0},
-	{ISPCCDC_HD_VD_WID, 0},
-	{ISPCCDC_PIX_LINES, 0},
-	{ISPCCDC_HORZ_INFO, 0},
-	{ISPCCDC_VERT_START, 0},
-	{ISPCCDC_VERT_LINES, 0},
-	{ISPCCDC_CULLING, 0},
-	{ISPCCDC_HSIZE_OFF, 0},
-	{ISPCCDC_SDOFST, 0},
-	{ISPCCDC_SDR_ADDR, 0},
-	{ISPCCDC_CLAMP, 0},
-	{ISPCCDC_DCSUB, 0},
-	{ISPCCDC_COLPTN, 0},
-	{ISPCCDC_BLKCMP, 0},
-	{ISPCCDC_FPC, 0},
-	{ISPCCDC_FPC_ADDR, 0},
-	{ISPCCDC_VDINT, 0},
-	{ISPCCDC_ALAW, 0},
-	{ISPCCDC_REC656IF, 0},
-	{ISPCCDC_CFG, 0},
-	{ISPCCDC_FMTCFG, 0},
-	{ISPCCDC_FMT_HORZ, 0},
-	{ISPCCDC_FMT_VERT, 0},
-	{ISPCCDC_FMT_ADDR0, 0},
-	{ISPCCDC_FMT_ADDR1, 0},
-	{ISPCCDC_FMT_ADDR2, 0},
-	{ISPCCDC_FMT_ADDR3, 0},
-	{ISPCCDC_FMT_ADDR4, 0},
-	{ISPCCDC_FMT_ADDR5, 0},
-	{ISPCCDC_FMT_ADDR6, 0},
-	{ISPCCDC_FMT_ADDR7, 0},
-	{ISPCCDC_PRGEVEN0, 0},
-	{ISPCCDC_PRGEVEN1, 0},
-	{ISPCCDC_PRGODD0, 0},
-	{ISPCCDC_PRGODD1, 0},
-	{ISPCCDC_VP_OUT, 0},
-	{ISPCCDC_LSC_CONFIG, 0},
-	{ISPCCDC_LSC_INITIAL, 0},
-	{ISPCCDC_LSC_TABLE_BASE, 0},
-	{ISPCCDC_LSC_TABLE_OFFSET, 0},
-	{ISP_TOK_TERM, 0}
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_SYN_MODE, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_HD_VD_WID, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_PIX_LINES, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_HORZ_INFO, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_VERT_START, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_VERT_LINES, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_CULLING, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_HSIZE_OFF, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_SDOFST, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_SDR_ADDR, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_CLAMP, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_DCSUB, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_COLPTN, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_BLKCMP, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FPC, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FPC_ADDR, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_VDINT, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_ALAW, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_REC656IF, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_CFG, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMTCFG, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMT_HORZ, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMT_VERT, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMT_ADDR0, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMT_ADDR1, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMT_ADDR2, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMT_ADDR3, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMT_ADDR4, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMT_ADDR5, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMT_ADDR6, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMT_ADDR7, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_PRGEVEN0, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_PRGEVEN1, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_PRGODD0, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_PRGODD1, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_VP_OUT, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_LSC_CONFIG, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_LSC_INITIAL, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_LSC_TABLE_BASE, 0},
+	{OMAP3_ISP_IOMEM_CCDC, ISPCCDC_LSC_TABLE_OFFSET, 0},
+	{0, ISP_TOK_TERM, 0}
 };
 
 /**
@@ -299,11 +299,10 @@ int ispccdc_request(void)
 
 	ispccdc_obj.ccdc_inuse = 1;
 	mutex_unlock(&ispccdc_obj.mutexlock);
-	omap_writel(omap_readl(ISP_CTRL) | ISPCTRL_CCDC_RAM_EN |
+	isp_reg_or(OMAP3_ISP_IOMEM_MAIN, ISP_CTRL, ISPCTRL_CCDC_RAM_EN |
 							ISPCTRL_CCDC_CLK_EN |
-							ISPCTRL_SBL_WR1_RAM_EN,
-							ISP_CTRL);
-	omap_writel(omap_readl(ISPCCDC_CFG) | ISPCCDC_CFG_VDLC, ISPCCDC_CFG);
+							ISPCTRL_SBL_WR1_RAM_EN);
+	isp_reg_or(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_CFG, ISPCCDC_CFG_VDLC);
 	return 0;
 }
 EXPORT_SYMBOL(ispccdc_request);
@@ -326,10 +325,10 @@ int ispccdc_free(void)
 
 	ispccdc_obj.ccdc_inuse = 0;
 	mutex_unlock(&ispccdc_obj.mutexlock);
-	omap_writel(omap_readl(ISP_CTRL) & ~(ISPCTRL_CCDC_CLK_EN |
-						ISPCTRL_CCDC_RAM_EN |
-						ISPCTRL_SBL_WR1_RAM_EN),
-						ISP_CTRL);
+	isp_reg_and(OMAP3_ISP_IOMEM_MAIN, ISP_CTRL,
+			~(ISPCTRL_CCDC_CLK_EN |
+			ISPCTRL_CCDC_RAM_EN |
+			ISPCTRL_SBL_WR1_RAM_EN));
 	return 0;
 }
 EXPORT_SYMBOL(ispccdc_free);
@@ -346,7 +345,7 @@ static int ispccdc_free_lsc(void)
 
 	ispccdc_enable_lsc(0);
 	lsc_initialized = 0;
-	omap_writel(0, ISPCCDC_LSC_TABLE_BASE);
+	isp_reg_writel(0, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_LSC_TABLE_BASE);
 	ispmmu_kunmap(lsc_ispmmu_addr);
 	kfree(lsc_gain_table);
 	return 0;
@@ -401,7 +400,7 @@ static int ispccdc_program_lsc(void)
 	if (lsc_initialized)
 		return 0;
 
-	omap_writel(lsc_ispmmu_addr, ISPCCDC_LSC_TABLE_BASE);
+	isp_reg_writel(lsc_ispmmu_addr, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_LSC_TABLE_BASE);
 	lsc_initialized = 1;
 	return 0;
 }
@@ -449,20 +448,21 @@ void ispccdc_config_lsc(struct ispccdc_lsc_config *lsc_cfg)
 		return;
 
 	ispccdc_enable_lsc(0);
-	omap_writel(lsc_cfg->offset, ISPCCDC_LSC_TABLE_OFFSET);
+	isp_reg_writel(lsc_cfg->offset, OMAP3_ISP_IOMEM_CCDC,
+					ISPCCDC_LSC_TABLE_OFFSET);
 
 	reg = 0;
 	reg |= (lsc_cfg->gain_mode_n << ISPCCDC_LSC_GAIN_MODE_N_SHIFT);
 	reg |= (lsc_cfg->gain_mode_m << ISPCCDC_LSC_GAIN_MODE_M_SHIFT);
 	reg |= (lsc_cfg->gain_format << ISPCCDC_LSC_GAIN_FORMAT_SHIFT);
-	omap_writel(reg, ISPCCDC_LSC_CONFIG);
+	isp_reg_writel(reg, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_LSC_CONFIG);
 
 	reg = 0;
 	reg &= ~ISPCCDC_LSC_INITIAL_X_MASK;
 	reg |= (lsc_cfg->initial_x << ISPCCDC_LSC_INITIAL_X_SHIFT);
 	reg &= ~ISPCCDC_LSC_INITIAL_Y_MASK;
 	reg |= (lsc_cfg->initial_y << ISPCCDC_LSC_INITIAL_Y_SHIFT);
-	omap_writel(reg, ISPCCDC_LSC_INITIAL);
+	isp_reg_writel(reg, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_LSC_INITIAL);
 }
 EXPORT_SYMBOL(ispccdc_config_lsc);
 
@@ -476,14 +476,14 @@ void ispccdc_enable_lsc(u8 enable)
 		return;
 
 	if (enable) {
-		omap_writel(omap_readl(ISP_CTRL) | ISPCTRL_SBL_SHARED_RPORTB |
-					ISPCTRL_SBL_RD_RAM_EN, ISP_CTRL);
-		omap_writel(omap_readl(ISPCCDC_LSC_CONFIG) | 0x1,
-							ISPCCDC_LSC_CONFIG);
+		isp_reg_or(OMAP3_ISP_IOMEM_MAIN, ISP_CTRL,
+			ISPCTRL_SBL_SHARED_RPORTB | ISPCTRL_SBL_RD_RAM_EN);
+
+		isp_reg_or(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_LSC_CONFIG, 0x1);
+
 		ispccdc_obj.lsc_en = 1;
 	} else {
-		omap_writel(omap_readl(ISPCCDC_LSC_CONFIG) & 0xFFFE,
-							ISPCCDC_LSC_CONFIG);
+		isp_reg_and(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_LSC_CONFIG, 0xFFFE);
 		ispccdc_obj.lsc_en = 0;
 	}
 }
@@ -568,7 +568,7 @@ int ispccdc_config_datapath(enum ccdc_input input, enum ccdc_output output)
 		return -EINVAL;
 	}
 
-	syn_mode = omap_readl(ISPCCDC_SYN_MODE);
+	syn_mode = isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_SYN_MODE);
 
 	switch (output) {
 	case CCDC_YUV_RSZ:
@@ -597,8 +597,7 @@ int ispccdc_config_datapath(enum ccdc_input input, enum ccdc_output output)
 		syn_mode &= ~ISPCCDC_SYN_MODE_SDR2RSZ;
 		syn_mode |= ISPCCDC_SYN_MODE_WEN;
 		syn_mode &= ~ISPCCDC_SYN_MODE_EXWEN;
-		omap_writel(omap_readl(ISPCCDC_CFG) & ~ISPCCDC_CFG_WENLOG,
-								ISPCCDC_CFG);
+		isp_reg_and(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_CFG, ~ISPCCDC_CFG_WENLOG);
 		vpcfg.bitshift_sel = BIT11_2;
 		vpcfg.freq_sel = PIXCLKBY2;
 		ispccdc_config_vp(vpcfg);
@@ -610,8 +609,9 @@ int ispccdc_config_datapath(enum ccdc_input input, enum ccdc_output output)
 		syn_mode &= ~ISPCCDC_SYN_MODE_SDR2RSZ;
 		syn_mode |= ISPCCDC_SYN_MODE_WEN;
 		syn_mode |= ISPCCDC_SYN_MODE_EXWEN;
-		omap_writel((omap_readl(ISPCCDC_CFG) & ~ISPCCDC_CFG_WENLOG) |
-					ispccdc_obj.wenlog, ISPCCDC_CFG);
+		isp_reg_and_or(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_CFG,
+							~ISPCCDC_CFG_WENLOG,
+							ispccdc_obj.wenlog);
 		vpcfg.bitshift_sel = BIT9_0;
 		vpcfg.freq_sel = PIXCLKBY2;
 		ispccdc_config_vp(vpcfg);
@@ -622,7 +622,7 @@ int ispccdc_config_datapath(enum ccdc_input input, enum ccdc_output output)
 		return -EINVAL;
 	};
 
-	omap_writel(syn_mode, ISPCCDC_SYN_MODE);
+	isp_reg_writel(syn_mode, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_SYN_MODE);
 
 	switch (input) {
 	case CCDC_RAW:
@@ -688,7 +688,7 @@ EXPORT_SYMBOL(ispccdc_config_datapath);
  **/
 void ispccdc_config_sync_if(struct ispccdc_syncif syncif)
 {
-	u32 syn_mode = omap_readl(ISPCCDC_SYN_MODE);
+	u32 syn_mode = isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_SYN_MODE);
 
 	syn_mode |= ISPCCDC_SYN_MODE_VDHDEN;
 
@@ -754,24 +754,25 @@ void ispccdc_config_sync_if(struct ispccdc_syncif syncif)
 
 	if (syncif.ccdc_mastermode) {
 		syn_mode |= ISPCCDC_SYN_MODE_FLDOUT | ISPCCDC_SYN_MODE_VDHDOUT;
-		omap_writel((syncif.hs_width << ISPCCDC_HD_VD_WID_HDW_SHIFT)
+		isp_reg_writel((syncif.hs_width << ISPCCDC_HD_VD_WID_HDW_SHIFT)
 						| (syncif.vs_width <<
 						ISPCCDC_HD_VD_WID_VDW_SHIFT),
+						OMAP3_ISP_IOMEM_CCDC,
 						ISPCCDC_HD_VD_WID);
 
-		omap_writel(syncif.ppln << ISPCCDC_PIX_LINES_PPLN_SHIFT
+		isp_reg_writel(syncif.ppln << ISPCCDC_PIX_LINES_PPLN_SHIFT
 			| syncif.hlprf << ISPCCDC_PIX_LINES_HLPRF_SHIFT,
+			OMAP3_ISP_IOMEM_CCDC,
 			ISPCCDC_PIX_LINES);
 	} else
 		syn_mode &= ~(ISPCCDC_SYN_MODE_FLDOUT |
 						ISPCCDC_SYN_MODE_VDHDOUT);
 
-	omap_writel(syn_mode, ISPCCDC_SYN_MODE);
+	isp_reg_writel(syn_mode, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_SYN_MODE);
 
 	if (!(syncif.bt_r656_en)) {
-		omap_writel(omap_readl(ISPCCDC_REC656IF) &
-						~ISPCCDC_REC656IF_R656ON,
-						ISPCCDC_REC656IF);
+		isp_reg_and(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_REC656IF,
+						~ISPCCDC_REC656IF_R656ON);
 	}
 }
 EXPORT_SYMBOL(ispccdc_config_sync_if);
@@ -796,15 +797,16 @@ int ispccdc_config_black_clamp(struct ispccdc_bclamp bclamp)
 		bclamp_val |= bclamp.oblen << ISPCCDC_CLAMP_OBSLEN_SHIFT;
 		bclamp_val |= bclamp.oblines << ISPCCDC_CLAMP_OBSLN_SHIFT;
 		bclamp_val |= bclamp.obstpixel << ISPCCDC_CLAMP_OBST_SHIFT;
-		omap_writel(bclamp_val, ISPCCDC_CLAMP);
+		isp_reg_writel(bclamp_val, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_CLAMP);
 	} else {
 		if (system_rev < OMAP3430_REV_ES2_0)
 			if ((ispccdc_obj.syncif_ipmod == YUV16) ||
 					(ispccdc_obj.syncif_ipmod == YUV8) ||
-					(omap_readl(ISPCCDC_REC656IF) &
+					(isp_reg_readl(OMAP3_ISP_IOMEM_CCDC,
+					ISPCCDC_REC656IF) &
 					ISPCCDC_REC656IF_R656ON))
 				bclamp.dcsubval = 0;
-		omap_writel(bclamp.dcsubval, ISPCCDC_DCSUB);
+		isp_reg_writel(bclamp.dcsubval, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_DCSUB);
 	}
 	return 0;
 }
@@ -819,10 +821,9 @@ EXPORT_SYMBOL(ispccdc_config_black_clamp);
  **/
 void ispccdc_enable_black_clamp(u8 enable)
 {
-	omap_writel(omap_readl(ISPCCDC_CLAMP) &
-					~ISPCCDC_CLAMP_CLAMPEN |
-					(enable ? ISPCCDC_CLAMP_CLAMPEN : 0),
-					ISPCCDC_CLAMP);
+	isp_reg_and_or(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_CLAMP,
+					~ISPCCDC_CLAMP_CLAMPEN,
+					enable ? ISPCCDC_CLAMP_CLAMPEN : 0);
 	ispccdc_obj.obclamp_en = enable;
 }
 EXPORT_SYMBOL(ispccdc_enable_black_clamp);
@@ -839,17 +840,19 @@ int ispccdc_config_fpc(struct ispccdc_fpc fpc)
 {
 	u32 fpc_val = 0;
 
-	fpc_val = omap_readl(ISPCCDC_FPC);
+	fpc_val = isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FPC);
 
 	if ((fpc.fpcaddr & 0xFFFFFFC0) == fpc.fpcaddr) {
-		omap_writel(fpc_val&(~ISPCCDC_FPC_FPCEN), ISPCCDC_FPC);
-		omap_writel(fpc.fpcaddr, ISPCCDC_FPC_ADDR);
+		isp_reg_writel(fpc_val & (~ISPCCDC_FPC_FPCEN),
+					OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FPC);
+		isp_reg_writel(fpc.fpcaddr,
+				OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FPC_ADDR);
 	} else {
 		DPRINTK_ISPCCDC("FPC Address should be on 64byte boundary\n");
 		return -EINVAL;
 	}
-	omap_writel(fpc_val | (fpc.fpnum << ISPCCDC_FPC_FPNUM_SHIFT),
-								ISPCCDC_FPC);
+	isp_reg_writel(fpc_val | (fpc.fpnum << ISPCCDC_FPC_FPNUM_SHIFT),
+					OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FPC);
 	return 0;
 }
 EXPORT_SYMBOL(ispccdc_config_fpc);
@@ -860,13 +863,9 @@ EXPORT_SYMBOL(ispccdc_config_fpc);
  **/
 void ispccdc_enable_fpc(u8 enable)
 {
-	if (enable) {
-		omap_writel(omap_readl(ISPCCDC_FPC) | ISPCCDC_FPC_FPCEN,
-								ISPCCDC_FPC);
-	} else {
-		omap_writel(omap_readl(ISPCCDC_FPC) & ~ISPCCDC_FPC_FPCEN,
-								ISPCCDC_FPC);
-	}
+	isp_reg_and_or(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FPC,
+					~ISPCCDC_FPC_FPCEN,
+					enable ? ISPCCDC_FPC_FPCEN : 0);
 }
 EXPORT_SYMBOL(ispccdc_enable_fpc);
 
@@ -884,7 +883,7 @@ void ispccdc_config_black_comp(struct ispccdc_blcomp blcomp)
 	blcomp_val |= blcomp.gr_cy << ISPCCDC_BLKCMP_GR_CY_SHIFT;
 	blcomp_val |= blcomp.r_ye << ISPCCDC_BLKCMP_R_YE_SHIFT;
 
-	omap_writel(blcomp_val, ISPCCDC_BLKCMP);
+	isp_reg_writel(blcomp_val, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_BLKCMP);
 }
 EXPORT_SYMBOL(ispccdc_config_black_comp);
 
@@ -895,7 +894,7 @@ EXPORT_SYMBOL(ispccdc_config_black_comp);
  **/
 void ispccdc_config_vp(struct ispccdc_vp vpcfg)
 {
-	u32 fmtcfg_vp = omap_readl(ISPCCDC_FMTCFG);
+	u32 fmtcfg_vp = isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMTCFG);
 
 	fmtcfg_vp &= ISPCCDC_FMTCFG_VPIN_MASK & ISPCCDC_FMTCF_VPIF_FRQ_MASK;
 
@@ -930,7 +929,7 @@ void ispccdc_config_vp(struct ispccdc_vp vpcfg)
 		fmtcfg_vp |= ISPCCDC_FMTCF_VPIF_FRQ_BY6;
 		break;
 	};
-	omap_writel(fmtcfg_vp, ISPCCDC_FMTCFG);
+	isp_reg_writel(fmtcfg_vp, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMTCFG);
 }
 EXPORT_SYMBOL(ispccdc_config_vp);
 
@@ -940,10 +939,9 @@ EXPORT_SYMBOL(ispccdc_config_vp);
  **/
 void ispccdc_enable_vp(u8 enable)
 {
-	omap_writel(omap_readl(ISPCCDC_FMTCFG) &
-					~ISPCCDC_FMTCFG_VPEN |
-					(enable ? ISPCCDC_FMTCFG_VPEN : 0),
-					ISPCCDC_FMTCFG);
+	isp_reg_and_or(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMTCFG,
+					~ISPCCDC_FMTCFG_VPEN,
+					enable ? ISPCCDC_FMTCFG_VPEN : 0);
 }
 EXPORT_SYMBOL(ispccdc_enable_vp);
 
@@ -959,7 +957,7 @@ void ispccdc_config_reformatter(struct ispccdc_refmt refmt)
 {
 	u32 fmtcfg_val = 0;
 
-	fmtcfg_val = omap_readl(ISPCCDC_FMTCFG);
+	fmtcfg_val = isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMTCFG);
 
 	if (refmt.lnalt)
 		fmtcfg_val |= ISPCCDC_FMTCFG_LNALT;
@@ -971,20 +969,20 @@ void ispccdc_config_reformatter(struct ispccdc_refmt refmt)
 						ISPCCDC_FMTCFG_PLEN_EVEN_SHIFT;
 		fmtcfg_val |= refmt.plen_odd << ISPCCDC_FMTCFG_PLEN_ODD_SHIFT;
 
-		omap_writel(refmt.prgeven0, ISPCCDC_PRGEVEN0);
-		omap_writel(refmt.prgeven1, ISPCCDC_PRGEVEN1);
-		omap_writel(refmt.prgodd0, ISPCCDC_PRGODD0);
-		omap_writel(refmt.prgodd1, ISPCCDC_PRGODD1);
-		omap_writel(refmt.fmtaddr0, ISPCCDC_FMT_ADDR0);
-		omap_writel(refmt.fmtaddr1, ISPCCDC_FMT_ADDR1);
-		omap_writel(refmt.fmtaddr2, ISPCCDC_FMT_ADDR2);
-		omap_writel(refmt.fmtaddr3, ISPCCDC_FMT_ADDR3);
-		omap_writel(refmt.fmtaddr4, ISPCCDC_FMT_ADDR4);
-		omap_writel(refmt.fmtaddr5, ISPCCDC_FMT_ADDR5);
-		omap_writel(refmt.fmtaddr6, ISPCCDC_FMT_ADDR6);
-		omap_writel(refmt.fmtaddr7, ISPCCDC_FMT_ADDR7);
+		isp_reg_writel(refmt.prgeven0, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_PRGEVEN0);
+		isp_reg_writel(refmt.prgeven1, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_PRGEVEN1);
+		isp_reg_writel(refmt.prgodd0, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_PRGODD0);
+		isp_reg_writel(refmt.prgodd1, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_PRGODD1);
+		isp_reg_writel(refmt.fmtaddr0, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMT_ADDR0);
+		isp_reg_writel(refmt.fmtaddr1, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMT_ADDR1);
+		isp_reg_writel(refmt.fmtaddr2, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMT_ADDR2);
+		isp_reg_writel(refmt.fmtaddr3, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMT_ADDR3);
+		isp_reg_writel(refmt.fmtaddr4, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMT_ADDR4);
+		isp_reg_writel(refmt.fmtaddr5, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMT_ADDR5);
+		isp_reg_writel(refmt.fmtaddr6, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMT_ADDR6);
+		isp_reg_writel(refmt.fmtaddr7, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMT_ADDR7);
 	}
-	omap_writel(fmtcfg_val, ISPCCDC_FMTCFG);
+	isp_reg_writel(fmtcfg_val, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMTCFG);
 }
 EXPORT_SYMBOL(ispccdc_config_reformatter);
 
@@ -994,17 +992,10 @@ EXPORT_SYMBOL(ispccdc_config_reformatter);
  **/
 void ispccdc_enable_reformatter(u8 enable)
 {
-	if (enable) {
-		omap_writel(omap_readl(ISPCCDC_FMTCFG) |
-							ISPCCDC_FMTCFG_FMTEN,
-							ISPCCDC_FMTCFG);
-		ispccdc_obj.refmt_en = 1;
-	} else {
-		omap_writel(omap_readl(ISPCCDC_FMTCFG) &
-							~ISPCCDC_FMTCFG_FMTEN,
-							ISPCCDC_FMTCFG);
-		ispccdc_obj.refmt_en = 0;
-	}
+	isp_reg_and_or(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMTCFG,
+					~ISPCCDC_FMTCFG_FMTEN,
+					enable ? ISPCCDC_FMTCFG_FMTEN : 0);
+	ispccdc_obj.refmt_en = enable;
 }
 EXPORT_SYMBOL(ispccdc_enable_reformatter);
 
@@ -1021,7 +1012,7 @@ void ispccdc_config_culling(struct ispccdc_culling cull)
 	culling_val |= cull.h_even << ISPCCDC_CULLING_CULHEVN_SHIFT;
 	culling_val |= cull.h_odd << ISPCCDC_CULLING_CULHODD_SHIFT;
 
-	omap_writel(culling_val, ISPCCDC_CULLING);
+	isp_reg_writel(culling_val, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_CULLING);
 }
 EXPORT_SYMBOL(ispccdc_config_culling);
 
@@ -1031,15 +1022,9 @@ EXPORT_SYMBOL(ispccdc_config_culling);
  **/
 void ispccdc_enable_lpf(u8 enable)
 {
-	if (enable) {
-		omap_writel(omap_readl(ISPCCDC_SYN_MODE) |
-							ISPCCDC_SYN_MODE_LPF,
-							ISPCCDC_SYN_MODE);
-	} else {
-		omap_writel(omap_readl(ISPCCDC_SYN_MODE) &
-							~ISPCCDC_SYN_MODE_LPF,
-							ISPCCDC_SYN_MODE);
-	}
+	isp_reg_and_or(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_SYN_MODE,
+					~ISPCCDC_SYN_MODE_LPF,
+					enable ? ISPCCDC_SYN_MODE_LPF : 0);
 }
 EXPORT_SYMBOL(ispccdc_enable_lpf);
 
@@ -1049,7 +1034,8 @@ EXPORT_SYMBOL(ispccdc_enable_lpf);
  **/
 void ispccdc_config_alaw(enum alaw_ipwidth ipwidth)
 {
-	omap_writel(ipwidth << ISPCCDC_ALAW_GWDI_SHIFT, ISPCCDC_ALAW);
+	isp_reg_writel(ipwidth << ISPCCDC_ALAW_GWDI_SHIFT,
+					OMAP3_ISP_IOMEM_CCDC, ISPCCDC_ALAW);
 }
 EXPORT_SYMBOL(ispccdc_config_alaw);
 
@@ -1059,13 +1045,9 @@ EXPORT_SYMBOL(ispccdc_config_alaw);
  **/
 void ispccdc_enable_alaw(u8 enable)
 {
-	if (enable) {
-		omap_writel(omap_readl(ISPCCDC_ALAW) | ISPCCDC_ALAW_CCDTBL,
-								ISPCCDC_ALAW);
-	} else {
-		omap_writel(omap_readl(ISPCCDC_ALAW) & ~ISPCCDC_ALAW_CCDTBL,
-								ISPCCDC_ALAW);
-	}
+	isp_reg_and_or(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_ALAW,
+					~ISPCCDC_ALAW_CCDTBL,
+					enable ? ISPCCDC_ALAW_CCDTBL : 0);
 }
 EXPORT_SYMBOL(ispccdc_enable_alaw);
 
@@ -1075,7 +1057,7 @@ EXPORT_SYMBOL(ispccdc_enable_alaw);
  **/
 void ispccdc_config_imgattr(u32 colptn)
 {
-	omap_writel(colptn, ISPCCDC_COLPTN);
+	isp_reg_writel(colptn, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_COLPTN);
 }
 EXPORT_SYMBOL(ispccdc_config_imgattr);
 
@@ -1177,81 +1159,100 @@ int ispccdc_config_size(u32 input_w, u32 input_h, u32 output_w, u32 output_h)
 	}
 
 	if (ispccdc_obj.ccdc_outfmt == CCDC_OTHERS_VP) {
-		omap_writel((ispccdc_obj.ccdcin_woffset <<
+		isp_reg_writel((ispccdc_obj.ccdcin_woffset <<
 					ISPCCDC_FMT_HORZ_FMTSPH_SHIFT) |
 					(ispccdc_obj.ccdcin_w <<
 					ISPCCDC_FMT_HORZ_FMTLNH_SHIFT),
+					OMAP3_ISP_IOMEM_CCDC,
 					ISPCCDC_FMT_HORZ);
-		omap_writel((ispccdc_obj.ccdcin_hoffset <<
+		isp_reg_writel((ispccdc_obj.ccdcin_hoffset <<
 					ISPCCDC_FMT_VERT_FMTSLV_SHIFT) |
 					(ispccdc_obj.ccdcin_h <<
 					ISPCCDC_FMT_VERT_FMTLNV_SHIFT),
+					OMAP3_ISP_IOMEM_CCDC,
 					ISPCCDC_FMT_VERT);
-		omap_writel((ispccdc_obj.ccdcout_w <<
+		isp_reg_writel((ispccdc_obj.ccdcout_w <<
 					ISPCCDC_VP_OUT_HORZ_NUM_SHIFT) |
 					(ispccdc_obj.ccdcout_h - 1) <<
 					ISPCCDC_VP_OUT_VERT_NUM_SHIFT,
+					OMAP3_ISP_IOMEM_CCDC,
 					ISPCCDC_VP_OUT);
-		omap_writel((((ispccdc_obj.ccdcout_h - 25) &
+		isp_reg_writel((((ispccdc_obj.ccdcout_h - 25) &
 					ISPCCDC_VDINT_0_MASK) <<
 					ISPCCDC_VDINT_0_SHIFT) |
 					((50 & ISPCCDC_VDINT_1_MASK) <<
-					ISPCCDC_VDINT_1_SHIFT), ISPCCDC_VDINT);
+					ISPCCDC_VDINT_1_SHIFT),
+					OMAP3_ISP_IOMEM_CCDC,
+					ISPCCDC_VDINT);
 
 	} else if (ispccdc_obj.ccdc_outfmt == CCDC_OTHERS_MEM) {
-		omap_writel(0, ISPCCDC_VP_OUT);
+		isp_reg_writel(0, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_VP_OUT);
 		if (ispccdc_obj.ccdc_inpfmt == CCDC_RAW) {
-			omap_writel(0 << ISPCCDC_HORZ_INFO_SPH_SHIFT
+			isp_reg_writel(0 << ISPCCDC_HORZ_INFO_SPH_SHIFT
 					| ((ispccdc_obj.ccdcout_w - 1)
 					<< ISPCCDC_HORZ_INFO_NPH_SHIFT),
+					OMAP3_ISP_IOMEM_CCDC,
 					ISPCCDC_HORZ_INFO);
 		} else {
-			omap_writel(0 << ISPCCDC_HORZ_INFO_SPH_SHIFT
+			isp_reg_writel(0 << ISPCCDC_HORZ_INFO_SPH_SHIFT
 					| ((ispccdc_obj.ccdcout_w - 1)
 					<< ISPCCDC_HORZ_INFO_NPH_SHIFT),
+					OMAP3_ISP_IOMEM_CCDC,
 					ISPCCDC_HORZ_INFO);
 		}
-		omap_writel(0 << ISPCCDC_VERT_START_SLV0_SHIFT,
+		isp_reg_writel(0 << ISPCCDC_VERT_START_SLV0_SHIFT,
+							OMAP3_ISP_IOMEM_CCDC,
 							ISPCCDC_VERT_START);
-		omap_writel((ispccdc_obj.ccdcout_h - 1) <<
+		isp_reg_writel((ispccdc_obj.ccdcout_h - 1) <<
 						ISPCCDC_VERT_LINES_NLV_SHIFT,
+						OMAP3_ISP_IOMEM_CCDC,
 						ISPCCDC_VERT_LINES);
 
 		ispccdc_config_outlineoffset(ispccdc_obj.ccdcout_w * 2, 0, 0);
-		omap_writel((((ispccdc_obj.ccdcout_h - 2) &
+		isp_reg_writel((((ispccdc_obj.ccdcout_h - 2) &
 					ISPCCDC_VDINT_0_MASK) <<
 					ISPCCDC_VDINT_0_SHIFT) |
 					((100 & ISPCCDC_VDINT_1_MASK) <<
-					ISPCCDC_VDINT_1_SHIFT), ISPCCDC_VDINT);
+					ISPCCDC_VDINT_1_SHIFT),
+					OMAP3_ISP_IOMEM_CCDC,
+					ISPCCDC_VDINT);
 	} else if (ispccdc_obj.ccdc_outfmt == CCDC_OTHERS_VP_MEM) {
-		omap_writel((0 << ISPCCDC_FMT_HORZ_FMTSPH_SHIFT) |
+		isp_reg_writel((0 << ISPCCDC_FMT_HORZ_FMTSPH_SHIFT) |
 					(ispccdc_obj.ccdcin_w <<
 					ISPCCDC_FMT_HORZ_FMTLNH_SHIFT),
+					OMAP3_ISP_IOMEM_CCDC,
 					ISPCCDC_FMT_HORZ);
-		omap_writel((0 << ISPCCDC_FMT_VERT_FMTSLV_SHIFT) |
+		isp_reg_writel((0 << ISPCCDC_FMT_VERT_FMTSLV_SHIFT) |
 					((ispccdc_obj.ccdcin_h) <<
 					ISPCCDC_FMT_VERT_FMTLNV_SHIFT),
+					OMAP3_ISP_IOMEM_CCDC,
 					ISPCCDC_FMT_VERT);
-		omap_writel((ispccdc_obj.ccdcout_w
+		isp_reg_writel((ispccdc_obj.ccdcout_w
 					<< ISPCCDC_VP_OUT_HORZ_NUM_SHIFT) |
 					((ispccdc_obj.ccdcout_h - 1) <<
 					ISPCCDC_VP_OUT_VERT_NUM_SHIFT),
+					OMAP3_ISP_IOMEM_CCDC,
 					ISPCCDC_VP_OUT);
-		omap_writel(0 << ISPCCDC_HORZ_INFO_SPH_SHIFT |
+		isp_reg_writel(0 << ISPCCDC_HORZ_INFO_SPH_SHIFT |
 					((ispccdc_obj.ccdcout_w - 1) <<
 					ISPCCDC_HORZ_INFO_NPH_SHIFT),
+					OMAP3_ISP_IOMEM_CCDC,
 					ISPCCDC_HORZ_INFO);
-		omap_writel(0 << ISPCCDC_VERT_START_SLV0_SHIFT,
+		isp_reg_writel(0 << ISPCCDC_VERT_START_SLV0_SHIFT,
+					OMAP3_ISP_IOMEM_CCDC,
 					ISPCCDC_VERT_START);
-		omap_writel((ispccdc_obj.ccdcout_h - 1) <<
+		isp_reg_writel((ispccdc_obj.ccdcout_h - 1) <<
 					ISPCCDC_VERT_LINES_NLV_SHIFT,
+					OMAP3_ISP_IOMEM_CCDC,
 					ISPCCDC_VERT_LINES);
 		ispccdc_config_outlineoffset(ispccdc_obj.ccdcout_w * 2, 0, 0);
-		omap_writel((((ispccdc_obj.ccdcout_h - 2) &
+		isp_reg_writel((((ispccdc_obj.ccdcout_h - 2) &
 					ISPCCDC_VDINT_0_MASK) <<
 					ISPCCDC_VDINT_0_SHIFT) |
 					((100 & ISPCCDC_VDINT_1_MASK) <<
-					ISPCCDC_VDINT_1_SHIFT), ISPCCDC_VDINT);
+					ISPCCDC_VDINT_1_SHIFT),
+					OMAP3_ISP_IOMEM_CCDC,
+					ISPCCDC_VDINT);
 	}
 
 	if (is_isplsc_activated()) {
@@ -1284,39 +1285,33 @@ EXPORT_SYMBOL(ispccdc_config_size);
 int ispccdc_config_outlineoffset(u32 offset, u8 oddeven, u8 numlines)
 {
 	if ((offset & ISP_32B_BOUNDARY_OFFSET) == offset)
-		omap_writel((offset & 0xFFFF), ISPCCDC_HSIZE_OFF);
+		isp_reg_writel((offset & 0xFFFF), OMAP3_ISP_IOMEM_CCDC, ISPCCDC_HSIZE_OFF);
 	else {
 		DPRINTK_ISPCCDC("ISP_ERR : Offset should be in 32 byte"
 								" boundary");
 		return -EINVAL;
 	}
 
-	omap_writel((omap_readl(ISPCCDC_SDOFST) & ~ISPCCDC_SDOFST_FINV),
-							ISPCCDC_SDOFST);
+	isp_reg_and(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_SDOFST, ~ISPCCDC_SDOFST_FINV);
 
-	omap_writel(omap_readl(ISPCCDC_SDOFST) & ~ISPCCDC_SDOFST_FOFST_4L,
-							ISPCCDC_SDOFST);
+	isp_reg_and(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_SDOFST, ~ISPCCDC_SDOFST_FOFST_4L);
 
 	switch (oddeven) {
 	case EVENEVEN:
-		omap_writel(omap_readl(ISPCCDC_SDOFST) | ((numlines & 0x7) <<
-						ISPCCDC_SDOFST_LOFST0_SHIFT),
-						ISPCCDC_SDOFST);
+		isp_reg_or(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_SDOFST,
+			(numlines & 0x7) << ISPCCDC_SDOFST_LOFST0_SHIFT);
 		break;
 	case ODDEVEN:
-		omap_writel(omap_readl(ISPCCDC_SDOFST) | ((numlines & 0x7) <<
-						ISPCCDC_SDOFST_LOFST1_SHIFT),
-						ISPCCDC_SDOFST);
+		isp_reg_or(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_SDOFST,
+			(numlines & 0x7) << ISPCCDC_SDOFST_LOFST1_SHIFT);
 		break;
 	case EVENODD:
-		omap_writel(omap_readl(ISPCCDC_SDOFST) | ((numlines & 0x7) <<
-						ISPCCDC_SDOFST_LOFST2_SHIFT),
-						ISPCCDC_SDOFST);
+		isp_reg_or(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_SDOFST,
+			(numlines & 0x7) << ISPCCDC_SDOFST_LOFST2_SHIFT);
 		break;
 	case ODDODD:
-		omap_writel(omap_readl(ISPCCDC_SDOFST) | ((numlines & 0x7) <<
-						ISPCCDC_SDOFST_LOFST3_SHIFT),
-						ISPCCDC_SDOFST);
+		isp_reg_or(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_SDOFST,
+			(numlines & 0x7) << ISPCCDC_SDOFST_LOFST3_SHIFT);
 		break;
 	default:
 		break;
@@ -1337,7 +1332,7 @@ EXPORT_SYMBOL(ispccdc_config_outlineoffset);
 int ispccdc_set_outaddr(u32 addr)
 {
 	if ((addr & ISP_32B_BOUNDARY_BUF) == addr) {
-		omap_writel(addr, ISPCCDC_SDR_ADDR);
+		isp_reg_writel(addr, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_SDR_ADDR);
 		return 0;
 	} else {
 		DPRINTK_ISPCCDC("ISP_ERR : Address should be in 32 byte"
@@ -1361,8 +1356,8 @@ void ispccdc_enable(u8 enable)
 				enable)
 		ispccdc_enable_lsc(1);
 
-	omap_writel((omap_readl(ISPCCDC_PCR) & ~ISPCCDC_PCR_EN) |
-						(enable ? ISPCCDC_PCR_EN : 0));
+	isp_reg_and_or(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_PCR, ~ISPCCDC_PCR_EN,
+						enable ? ISPCCDC_PCR_EN : 0);
 }
 EXPORT_SYMBOL(ispccdc_enable);
 
@@ -1373,10 +1368,14 @@ EXPORT_SYMBOL(ispccdc_enable);
 int ispccdc_sbl_busy(void)
 {
 	return ispccdc_busy()
-		| (omap_readl(ISPSBL_CCDC_WR_0) & ISPSBL_CCDC_WR_0_DATA_READY)
-		| (omap_readl(ISPSBL_CCDC_WR_1) & ISPSBL_CCDC_WR_0_DATA_READY)
-		| (omap_readl(ISPSBL_CCDC_WR_2) & ISPSBL_CCDC_WR_0_DATA_READY)
-		| (omap_readl(ISPSBL_CCDC_WR_3) & ISPSBL_CCDC_WR_0_DATA_READY);
+		| (isp_reg_readl(OMAP3_ISP_IOMEM_SBL, ISPSBL_CCDC_WR_0) &
+				ISPSBL_CCDC_WR_0_DATA_READY)
+		| (isp_reg_readl(OMAP3_ISP_IOMEM_SBL, ISPSBL_CCDC_WR_1) &
+				ISPSBL_CCDC_WR_0_DATA_READY)
+		| (isp_reg_readl(OMAP3_ISP_IOMEM_SBL, ISPSBL_CCDC_WR_2) &
+				ISPSBL_CCDC_WR_0_DATA_READY)
+		| (isp_reg_readl(OMAP3_ISP_IOMEM_SBL, ISPSBL_CCDC_WR_3) &
+				ISPSBL_CCDC_WR_0_DATA_READY);
 }
 EXPORT_SYMBOL(ispccdc_sbl_busy);
 
@@ -1385,7 +1384,8 @@ EXPORT_SYMBOL(ispccdc_sbl_busy);
  **/
 int ispccdc_busy(void)
 {
-	return omap_readl(ISPCCDC_PCR) & ISPCCDC_PCR_BUSY;
+	return isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_PCR) &
+							ISPCCDC_PCR_BUSY;
 }
 EXPORT_SYMBOL(ispccdc_busy);
 
@@ -1396,7 +1396,6 @@ void ispccdc_save_context(void)
 {
 	DPRINTK_ISPCCDC("Saving context\n");
 	isp_save_context(ispccdc_reg_list);
-
 }
 EXPORT_SYMBOL(ispccdc_save_context);
 
@@ -1427,8 +1426,8 @@ void ispccdc_print_status(void)
 	DPRINTK_ISPCCDC("Accepted CCDC Output (width = %d,Height = %d)\n",
 							ispccdc_obj.ccdcout_w,
 							ispccdc_obj.ccdcout_h);
-	DPRINTK_ISPCCDC("###CCDC PCR=0x%x\n", omap_readl(ISPCCDC_PCR));
-	DPRINTK_ISPCCDC("ISP_CTRL =0x%x\n", omap_readl(ISP_CTRL));
+	DPRINTK_ISPCCDC("###CCDC PCR=0x%x\n", isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_PCR));
+	DPRINTK_ISPCCDC("ISP_CTRL =0x%x\n", isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_CTRL));
 	switch (ispccdc_obj.ccdc_inpfmt) {
 	case CCDC_RAW:
 		DPRINTK_ISPCCDC("ccdc input format is CCDC_RAW\n");
@@ -1453,44 +1452,52 @@ void ispccdc_print_status(void)
 		break;
 	}
 
-	DPRINTK_ISPCCDC("###ISP_CTRL in ccdc =0x%x\n", omap_readl(ISP_CTRL));
+	DPRINTK_ISPCCDC("###ISP_CTRL in ccdc =0x%x\n",
+			isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_CTRL));
 	DPRINTK_ISPCCDC("###ISP_IRQ0ENABLE in ccdc =0x%x\n",
-						omap_readl(ISP_IRQ0ENABLE));
+			isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE));
 	DPRINTK_ISPCCDC("###ISP_IRQ0STATUS in ccdc =0x%x\n",
-						omap_readl(ISP_IRQ0STATUS));
+			isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0STATUS));
 	DPRINTK_ISPCCDC("###CCDC SYN_MODE=0x%x\n",
-						omap_readl(ISPCCDC_SYN_MODE));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_SYN_MODE));
 	DPRINTK_ISPCCDC("###CCDC HORZ_INFO=0x%x\n",
-						omap_readl(ISPCCDC_HORZ_INFO));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_HORZ_INFO));
 	DPRINTK_ISPCCDC("###CCDC VERT_START=0x%x\n",
-					omap_readl(ISPCCDC_VERT_START));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_VERT_START));
 	DPRINTK_ISPCCDC("###CCDC VERT_LINES=0x%x\n",
-					omap_readl(ISPCCDC_VERT_LINES));
-	DPRINTK_ISPCCDC("###CCDC CULLING=0x%x\n", omap_readl(ISPCCDC_CULLING));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_VERT_LINES));
+	DPRINTK_ISPCCDC("###CCDC CULLING=0x%x\n",
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_CULLING));
 	DPRINTK_ISPCCDC("###CCDC HSIZE_OFF=0x%x\n",
-						omap_readl(ISPCCDC_HSIZE_OFF));
-	DPRINTK_ISPCCDC("###CCDC SDOFST=0x%x\n", omap_readl(ISPCCDC_SDOFST));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_HSIZE_OFF));
+	DPRINTK_ISPCCDC("###CCDC SDOFST=0x%x\n",
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_SDOFST));
 	DPRINTK_ISPCCDC("###CCDC SDR_ADDR=0x%x\n",
-						omap_readl(ISPCCDC_SDR_ADDR));
-	DPRINTK_ISPCCDC("###CCDC CLAMP=0x%x\n", omap_readl(ISPCCDC_CLAMP));
-	DPRINTK_ISPCCDC("###CCDC COLPTN=0x%x\n", omap_readl(ISPCCDC_COLPTN));
-	DPRINTK_ISPCCDC("###CCDC CFG=0x%x\n", omap_readl(ISPCCDC_CFG));
-	DPRINTK_ISPCCDC("###CCDC VP_OUT=0x%x\n", omap_readl(ISPCCDC_VP_OUT));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_SDR_ADDR));
+	DPRINTK_ISPCCDC("###CCDC CLAMP=0x%x\n",
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_CLAMP));
+	DPRINTK_ISPCCDC("###CCDC COLPTN=0x%x\n",
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_COLPTN));
+	DPRINTK_ISPCCDC("###CCDC CFG=0x%x\n",
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_CFG));
+	DPRINTK_ISPCCDC("###CCDC VP_OUT=0x%x\n",
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_VP_OUT));
 	DPRINTK_ISPCCDC("###CCDC_SDR_ADDR= 0x%x\n",
-						omap_readl(ISPCCDC_SDR_ADDR));
-	DPRINTK_ISPCCDC("###CCDC FMTCFG=0x%x\n", omap_readl(ISPCCDC_FMTCFG));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_SDR_ADDR));
+	DPRINTK_ISPCCDC("###CCDC FMTCFG=0x%x\n",
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMTCFG));
 	DPRINTK_ISPCCDC("###CCDC FMT_HORZ=0x%x\n",
-						omap_readl(ISPCCDC_FMT_HORZ));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMT_HORZ));
 	DPRINTK_ISPCCDC("###CCDC FMT_VERT=0x%x\n",
-						omap_readl(ISPCCDC_FMT_VERT));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMT_VERT));
 	DPRINTK_ISPCCDC("###CCDC LSC_CONFIG=0x%x\n",
-					omap_readl(ISPCCDC_LSC_CONFIG));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_LSC_CONFIG));
 	DPRINTK_ISPCCDC("###CCDC LSC_INIT=0x%x\n",
-					omap_readl(ISPCCDC_LSC_INITIAL));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_LSC_INITIAL));
 	DPRINTK_ISPCCDC("###CCDC LSC_TABLE BASE=0x%x\n",
-					omap_readl(ISPCCDC_LSC_TABLE_BASE));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_LSC_TABLE_BASE));
 	DPRINTK_ISPCCDC("###CCDC LSC TABLE OFFSET=0x%x\n",
-					omap_readl(ISPCCDC_LSC_TABLE_OFFSET));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_LSC_TABLE_OFFSET));
 }
 EXPORT_SYMBOL(ispccdc_print_status);
 
