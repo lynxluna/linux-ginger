@@ -1,8 +1,8 @@
 /*
- * drivers/media/video/omap34xxcam.c
+ * omap34xxcam.h
  *
- * Copyright (C) 2006--2008 Nokia Corporation
- * Copyright (C) 2007, 2008 Texas Instruments
+ * Copyright (C) 2006--2009 Nokia Corporation
+ * Copyright (C) 2007--2009 Texas Instruments
  *
  * Contact: Sakari Ailus <sakari.ailus@nokia.com>
  *          Tuukka Toivonen <tuukka.o.toivonen@nokia.com>
@@ -124,7 +124,7 @@ struct omap34xxcam_hw_config {
  * @streaming: streaming file handle, if streaming is enabled
  */
 struct omap34xxcam_videodev {
-	struct mutex mutex;
+	struct mutex mutex; /* serialises access to this structure */
 
 	struct omap34xxcam_device *cam;
 	struct v4l2_int_device master;
@@ -178,7 +178,7 @@ struct omap34xxcam_videodev {
  * @ick: camera module ick clock information
  */
 struct omap34xxcam_device {
-	struct mutex mutex;
+	struct mutex mutex; /* serialises access to this structure */
 
 	/*** interfaces and device ***/
 	struct device *dev;
@@ -198,7 +198,7 @@ struct omap34xxcam_device {
  * @vdev: our /dev/video specific structure
  */
 struct omap34xxcam_fh {
-	spinlock_t vbq_lock;
+	spinlock_t vbq_lock; /* spinlock for the videobuf queue */
 	struct videobuf_queue vbq;
 	atomic_t field_count;
 	struct omap34xxcam_videodev *vdev;

@@ -1,8 +1,8 @@
 /*
- * drivers/media/video/omap34xxcam.c
+ * omap34xxcam.c
  *
- * Copyright (C) 2006--2008 Nokia Corporation
- * Copyright (C) 2007, 2008 Texas Instruments
+ * Copyright (C) 2006--2009 Nokia Corporation
+ * Copyright (C) 2007--2009 Texas Instruments
  *
  * Contact: Sakari Ailus <sakari.ailus@nokia.com>
  *          Tuukka Toivonen <tuukka.o.toivonen@nokia.com>
@@ -413,7 +413,8 @@ static int try_pix_parm(struct omap34xxcam_videodev *vdev,
 	/* FIXME: this isn't good... */
 	best_pix_in->pixelformat = V4L2_PIX_FMT_SGRBG10;
 
-	best_pix_out.width = best_pix_out.height = INT_MAX >> 1;
+	best_pix_out.height = INT_MAX >> 1;
+	best_pix_out.width = best_pix_out.height;
 
 	/*
 	 * Get supported resolutions.
@@ -512,7 +513,7 @@ static int try_pix_parm(struct omap34xxcam_videodev *vdev,
 
 			continue;
 
-		do_it_now:
+do_it_now:
 			*best_ival = frmi.discrete;
 			best_pix_out = pix_tmp_out;
 			best_pix_in->width = frmi.width;
@@ -1156,7 +1157,8 @@ static int vidioc_cropcap(struct file *file, void *fh, struct v4l2_cropcap *a)
 		/* cropcap failed, try to do this via g_fmt_cap */
 		rval = vidioc_int_g_fmt_cap(vdev->vdev_sensor, &f);
 		if (!rval) {
-			cropcap->bounds.left = cropcap->bounds.top = 0;
+			cropcap->bounds.top = 0;
+			cropcap->bounds.left = 0;
 			cropcap->bounds.width = f.fmt.pix.width;
 			cropcap->bounds.height = f.fmt.pix.height;
 			cropcap->defrect = cropcap->bounds;
@@ -1800,7 +1802,8 @@ static int omap34xxcam_device_register(struct v4l2_int_device *s)
 	/* Are we the first slave? */
 	if (vdev->slaves == 1) {
 		/* initialize the video_device struct */
-		vfd = vdev->vfd = video_device_alloc();
+		vdev->vfd = video_device_alloc();
+		vfd = vdev->vfd;
 		if (!vfd) {
 			dev_err(cam->dev,
 				"could not allocate video device struct\n");
