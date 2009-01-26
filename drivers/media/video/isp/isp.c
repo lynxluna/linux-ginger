@@ -700,26 +700,6 @@ static int isp_init_csi(struct isp_interface_config *config)
 			"omap3_isp: timeout waiting for csi reset\n");
 	}
 
-	/* CONTROL_CSIRXFE */
-	omap_writel(
-		/* CSIb receiver data/clock or data/strobe mode */
-		(config->u.csi.signalling << 10)
-		| BIT(12)	/* Enable differential transceiver */
-		| BIT(13)	/* Disable reset */
-#ifdef TERM_RESISTOR
-		| BIT(8)	/* Enable internal CSIb resistor (no effect) */
-#endif
-/*		| BIT(7) */	/* Strobe/clock inversion (no effect) */
-	, CONTROL_CSIRXFE);
-
-#ifdef TERM_RESISTOR
-	/* Set CONTROL_CSI */
-	val = omap_readl(CONTROL_CSI);
-	val &= ~(0x1F<<16);
-	val |= BIT(31) | (TERM_RESISTOR<<16);
-	omap_writel(val, CONTROL_CSI);
-#endif
-
 	/* ISPCSI1_CTRL */
 	val = omap_readl(ISPCSI1_CTRL);
 	val &= ~BIT(11);	/* Enable VP only off ->
