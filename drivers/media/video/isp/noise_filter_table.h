@@ -1,9 +1,9 @@
 /*
- * drivers/media/video/isp/noise_filter_table.
+ * noise_filter_table.h
  *
- * Noise Filter Table values for TI's OMAP3430 Camera ISP
+ * Noise Filter Table values for TI's OMAP3 Camera ISP
  *
- * Copyright (C) 2008 Texas Instruments, Inc.
+ * Copyright (C) 2009 Texas Instruments, Inc.
  *
  * This package is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as

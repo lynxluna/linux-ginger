@@ -1,7 +1,7 @@
 /*
- * drivers/media/video/omap34xxcam.c
+ * cfa_coef_table.h
  *
- * Copyright (C) 2008 Nokia Corporation
+ * Copyright (C) 2009 Nokia Corporation
  *
  * Contact: Sakari Ailus <sakari.ailus@nokia.com>
  *          Tuukka Toivonen <tuukka.o.toivonen@nokia.com>

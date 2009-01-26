@@ -1,9 +1,9 @@
 /*
- * drivers/media/video/isp/redgamma_table.h
+ * redgamma_table.h
  *
- * Gamma Table values for Red for TI's OMAP3430 Camera ISP
+ * Gamma Table values for RED for TI's OMAP3 Camera ISP
  *
- * Copyright (C) 2008 Texas Instruments, Inc.
+ * Copyright (C) 2009 Texas Instruments, Inc.
  *
  * This package is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
