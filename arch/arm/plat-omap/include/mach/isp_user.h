@@ -1,12 +1,13 @@
 /*
- * include/asm-arm/arch-omap/isp_user.h
+ * isp_user.h
  *
- * Include file for OMAP ISP module in TI's OMAP3430.
+ * Include file for OMAP ISP module in TI's OMAP3.
  *
- * Copyright (C) 2008 Texas Instruments, Inc.
+ * Copyright (C) 2009 Texas Instruments, Inc.
  *
  * Contributors:
  *	Mohit Jalori <mjalori@ti.com>
+ *	Sergio Aguirre <saaguirre@ti.com>
  *
  * This package is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
