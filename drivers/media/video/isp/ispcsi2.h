@@ -1,7 +1,7 @@
 /*
- * drivers/media/video/isp/ispcsi2.h
+ * ispcsi2.h
  *
- * Copyright (C) 2008 Texas Instruments.
+ * Copyright (C) 2009 Texas Instruments.
  *
  * Contributors:
  * 	Sergio Aguirre <saaguirre@ti.com>

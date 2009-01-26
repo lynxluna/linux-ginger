@@ -1,10 +1,10 @@
 /*
- * drivers/media/video/isp/ispcsi2.c
+ * ispcsi2.c
  *
- * Driver Library for ISP CSI Control module in TI's OMAP3430 Camera ISP
+ * Driver Library for ISP CSI Control module in TI's OMAP3 Camera ISP
  * ISP CSI interface and IRQ related APIs are defined here.
  *
- * Copyright (C) 2008 Texas Instruments.
+ * Copyright (C) 2009 Texas Instruments.
  *
  * Contributors:
  * 	Sergio Aguirre <saaguirre@ti.com>
@@ -19,15 +19,8 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  */
 
-#include <linux/errno.h>
 #include <linux/delay.h>
-#include <linux/device.h>
-#include <linux/types.h>
-#include <asm/mach-types.h>
 #include <media/v4l2-common.h>
-#include <media/v4l2-int-device.h>
-#include <linux/io.h>
-#include <mach/io.h>
 
 #include "isp.h"
 #include "ispreg.h"
@@ -78,7 +71,7 @@ int isp_csi2_complexio_lanes_config(struct isp_csi2_lanes_cfg *reqcfg)
 					" parameters for data lane #%d\n", i);
 			goto err_einval;
 		}
-		if ((pos_occupied[reqcfg->data[i].pos - 1] == true) &&
+		if (pos_occupied[reqcfg->data[i].pos - 1] &&
 						reqcfg->data[i].pos > 0) {
 			printk(KERN_ERR "Lane #%d already occupied\n",
 							reqcfg->data[i].pos);
@@ -94,7 +87,7 @@ int isp_csi2_complexio_lanes_config(struct isp_csi2_lanes_cfg *reqcfg)
 						" parameters for clock lane\n");
 		goto err_einval;
 	}
-	if (pos_occupied[reqcfg->clk.pos - 1] == true) {
+	if (pos_occupied[reqcfg->clk.pos - 1]) {
 		printk(KERN_ERR "Lane #%d already occupied",
 							reqcfg->clk.pos);
 		goto err_einval;
@@ -147,12 +140,12 @@ int isp_csi2_complexio_lanes_update(bool force_update)
 	u32 reg;
 	int i;
 
-	if ((update_complexio_cfg1 == false) && (force_update == false))
+	if (!update_complexio_cfg1 && !force_update)
 		return 0;
 
 	reg = omap_readl(ISPCSI2_COMPLEXIO_CFG1);
 	for (i = 0; i < 4; i++) {
-		if ((currlanes_u->data[i] == true) || (force_update == true)) {
+		if (currlanes_u->data[i] || force_update) {
 			reg &= ~(ISPCSI2_COMPLEXIO_CFG1_DATA_POL_MASK(i + 1) |
 				ISPCSI2_COMPLEXIO_CFG1_DATA_POSITION_MASK(i +
 									1));
@@ -165,7 +158,7 @@ int isp_csi2_complexio_lanes_update(bool force_update)
 		}
 	}
 
-	if ((currlanes_u->clk == true) || (force_update == true)) {
+	if (currlanes_u->clk || force_update) {
 		reg &= ~(ISPCSI2_COMPLEXIO_CFG1_CLOCK_POL_MASK |
 				ISPCSI2_COMPLEXIO_CFG1_CLOCK_POSITION_MASK);
 		reg |= (currlanes->clk.pol <<
@@ -257,7 +250,7 @@ int isp_csi2_complexio_power_autoswitch(bool enable)
 	reg = omap_readl(ISPCSI2_COMPLEXIO_CFG1);
 	reg &= ~ISPCSI2_COMPLEXIO_CFG1_PWR_AUTO_MASK;
 
-	if (enable == true)
+	if (enable)
 		reg |= ISPCSI2_COMPLEXIO_CFG1_PWR_AUTO_ENABLE;
 	else
 		reg |= ISPCSI2_COMPLEXIO_CFG1_PWR_AUTO_DISABLE;
@@ -535,10 +528,9 @@ int isp_csi2_ctrl_update(bool force_update)
 						&current_csi2_cfg_update.ctrl;
 	u32 reg;
 
-	if ((update_ctrl == true) || (force_update == true)) {
+	if (update_ctrl || force_update) {
 		reg = omap_readl(ISPCSI2_CTRL);
-		if ((currctrl_u->frame_mode == true) ||
-						(force_update == true)) {
+		if (currctrl_u->frame_mode || force_update) {
 			reg &= ~ISPCSI2_CTRL_FRAME_MASK;
 			if (currctrl->frame_mode)
 				reg |= ISPCSI2_CTRL_FRAME_DISABLE_FEC;
@@ -546,8 +538,7 @@ int isp_csi2_ctrl_update(bool force_update)
 				reg |= ISPCSI2_CTRL_FRAME_DISABLE_IMM;
 			currctrl_u->frame_mode = false;
 		}
-		if ((currctrl_u->vp_clk_enable == true) ||
-						(force_update == true)) {
+		if (currctrl_u->vp_clk_enable || force_update) {
 			reg &= ~ISPCSI2_CTRL_VP_CLK_EN_MASK;
 			if (currctrl->vp_clk_enable)
 				reg |= ISPCSI2_CTRL_VP_CLK_EN_ENABLE;
@@ -555,8 +546,7 @@ int isp_csi2_ctrl_update(bool force_update)
 				reg |= ISPCSI2_CTRL_VP_CLK_EN_DISABLE;
 			currctrl_u->vp_clk_enable = false;
 		}
-		if ((currctrl_u->vp_only_enable == true) ||
-					(force_update == true)) {
+		if (currctrl_u->vp_only_enable || force_update) {
 			reg &= ~ISPCSI2_CTRL_VP_ONLY_EN_MASK;
 			uses_videoport = currctrl->vp_only_enable;
 			if (currctrl->vp_only_enable)
@@ -565,15 +555,13 @@ int isp_csi2_ctrl_update(bool force_update)
 				reg |= ISPCSI2_CTRL_VP_ONLY_EN_DISABLE;
 			currctrl_u->vp_only_enable = false;
 		}
-		if ((currctrl_u->vp_out_ctrl == true) ||
-					(force_update == true)) {
+		if (currctrl_u->vp_out_ctrl || force_update) {
 			reg &= ~ISPCSI2_CTRL_VP_OUT_CTRL_MASK;
 			reg |= (currctrl->vp_out_ctrl - 1) <<
 						ISPCSI2_CTRL_VP_OUT_CTRL_SHIFT;
 			currctrl_u->vp_out_ctrl = false;
 		}
-		if ((currctrl_u->debug_enable == true) ||
-					(force_update == true)) {
+		if (currctrl_u->debug_enable || force_update) {
 			reg &= ~ISPCSI2_CTRL_DBG_EN_MASK;
 			if (currctrl->debug_enable)
 				reg |= ISPCSI2_CTRL_DBG_EN_ENABLE;
@@ -581,15 +569,13 @@ int isp_csi2_ctrl_update(bool force_update)
 				reg |= ISPCSI2_CTRL_DBG_EN_DISABLE;
 			currctrl_u->debug_enable = false;
 		}
-		if ((currctrl_u->burst_size == true) ||
-					(force_update == true)) {
+		if (currctrl_u->burst_size || force_update) {
 			reg &= ~ISPCSI2_CTRL_BURST_SIZE_MASK;
 			reg |= currctrl->burst_size <<
 						ISPCSI2_CTRL_BURST_SIZE_SHIFT;
 			currctrl_u->burst_size = false;
 		}
-		if ((currctrl_u->ecc_enable == true) ||
-					(force_update == true)) {
+		if (currctrl_u->ecc_enable || force_update) {
 			reg &= ~ISPCSI2_CTRL_ECC_EN_MASK;
 			if (currctrl->ecc_enable)
 				reg |= ISPCSI2_CTRL_ECC_EN_ENABLE;
@@ -597,8 +583,7 @@ int isp_csi2_ctrl_update(bool force_update)
 				reg |= ISPCSI2_CTRL_ECC_EN_DISABLE;
 			currctrl_u->ecc_enable = false;
 		}
-		if ((currctrl_u->secure_mode == true) ||
-					(force_update == true)) {
+		if (currctrl_u->secure_mode || force_update) {
 			reg &= ~ISPCSI2_CTRL_SECURE_MASK;
 			if (currctrl->secure_mode)
 				reg |= ISPCSI2_CTRL_SECURE_ENABLE;
@@ -606,8 +591,7 @@ int isp_csi2_ctrl_update(bool force_update)
 				reg |= ISPCSI2_CTRL_SECURE_DISABLE;
 			currctrl_u->secure_mode = false;
 		}
-		if ((currctrl_u->if_enable == true) ||
-						(force_update == true)) {
+		if (currctrl_u->if_enable || force_update) {
 			reg &= ~ISPCSI2_CTRL_IF_EN_MASK;
 			if (currctrl->if_enable)
 				reg |= ISPCSI2_CTRL_IF_EN_ENABLE;
@@ -1039,46 +1023,41 @@ int isp_csi2_ctx_update(u8 ctxnum, bool force_update)
 	selected_ctx = &current_csi2_cfg.contexts[ctxnum];
 	selected_ctx_u = &current_csi2_cfg_update.contexts[ctxnum];
 
-	if ((update_ctx_ctrl1[ctxnum] == true) || (force_update == true)) {
+	if (update_ctx_ctrl1[ctxnum] || force_update) {
 		reg = omap_readl(ISPCSI2_CTX_CTRL1(ctxnum));
-		if ((selected_ctx_u->frame_count == true) ||
-						(force_update == true)) {
+		if (selected_ctx_u->frame_count || force_update) {
 			reg &= ~(ISPCSI2_CTX_CTRL1_COUNT_MASK);
 			reg |= selected_ctx->frame_count <<
 						ISPCSI2_CTX_CTRL1_COUNT_SHIFT;
 			selected_ctx_u->frame_count = false;
 		}
-		if ((selected_ctx_u->eof_enabled == true) ||
-					(force_update == true)) {
+		if (selected_ctx_u->eof_enabled || force_update) {
 			reg &= ~(ISPCSI2_CTX_CTRL1_EOF_EN_MASK);
-			if (selected_ctx->eof_enabled == true)
+			if (selected_ctx->eof_enabled)
 				reg |= ISPCSI2_CTX_CTRL1_EOF_EN_ENABLE;
 			else
 				reg |= ISPCSI2_CTX_CTRL1_EOF_EN_DISABLE;
 			selected_ctx_u->eof_enabled = false;
 		}
-		if ((selected_ctx_u->eol_enabled == true) ||
-					(force_update == true)) {
+		if (selected_ctx_u->eol_enabled || force_update) {
 			reg &= ~(ISPCSI2_CTX_CTRL1_EOL_EN_MASK);
-			if (selected_ctx->eol_enabled == true)
+			if (selected_ctx->eol_enabled)
 				reg |= ISPCSI2_CTX_CTRL1_EOL_EN_ENABLE;
 			else
 				reg |= ISPCSI2_CTX_CTRL1_EOL_EN_DISABLE;
 			selected_ctx_u->eol_enabled = false;
 		}
-		if ((selected_ctx_u->checksum_enabled == true) ||
-					(force_update == true)) {
+		if (selected_ctx_u->checksum_enabled || force_update) {
 			reg &= ~(ISPCSI2_CTX_CTRL1_CS_EN_MASK);
-			if (selected_ctx->checksum_enabled == true)
+			if (selected_ctx->checksum_enabled)
 				reg |= ISPCSI2_CTX_CTRL1_CS_EN_ENABLE;
 			else
 				reg |= ISPCSI2_CTX_CTRL1_CS_EN_DISABLE;
 			selected_ctx_u->checksum_enabled = false;
 		}
-		if ((selected_ctx_u->enabled == true) ||
-					(force_update == true)) {
+		if (selected_ctx_u->enabled || force_update) {
 			reg &= ~(ISPCSI2_CTX_CTRL1_CTX_EN_MASK);
-			if (selected_ctx->enabled == true)
+			if (selected_ctx->enabled)
 				reg |= ISPCSI2_CTX_CTRL1_CTX_EN_ENABLE;
 			else
 				reg |= ISPCSI2_CTX_CTRL1_CTX_EN_DISABLE;
@@ -1088,18 +1067,16 @@ int isp_csi2_ctx_update(u8 ctxnum, bool force_update)
 		update_ctx_ctrl1[ctxnum] = false;
 	}
 
-	if ((update_ctx_ctrl2[ctxnum] == true) || (force_update == true)) {
+	if (update_ctx_ctrl2[ctxnum] || force_update) {
 		reg = omap_readl(ISPCSI2_CTX_CTRL2(ctxnum));
-		if ((selected_ctx_u->virtual_id == true) ||
-						(force_update == true)) {
+		if (selected_ctx_u->virtual_id || force_update) {
 			reg &= ~(ISPCSI2_CTX_CTRL2_VIRTUAL_ID_MASK);
 			reg |= selected_ctx->virtual_id <<
 					ISPCSI2_CTX_CTRL2_VIRTUAL_ID_SHIFT;
 			selected_ctx_u->virtual_id = false;
 		}
 
-		if ((selected_ctx_u->format == true) ||
-						(force_update == true)) {
+		if (selected_ctx_u->format || force_update) {
 			struct v4l2_pix_format *pix;
 			u16 new_format = 0;
 
@@ -1135,10 +1112,9 @@ int isp_csi2_ctx_update(u8 ctxnum, bool force_update)
 		update_ctx_ctrl2[ctxnum] = false;
 	}
 
-	if ((update_ctx_ctrl3[ctxnum] == true) || (force_update == true)) {
+	if (update_ctx_ctrl3[ctxnum] || force_update) {
 		reg = omap_readl(ISPCSI2_CTX_CTRL3(ctxnum));
-		if ((selected_ctx_u->alpha == true) ||
-						(force_update == true)) {
+		if (selected_ctx_u->alpha || force_update) {
 			reg &= ~(ISPCSI2_CTX_CTRL3_ALPHA_MASK);
 			reg |= (selected_ctx->alpha <<
 						ISPCSI2_CTX_CTRL3_ALPHA_SHIFT);
@@ -1148,7 +1124,7 @@ int isp_csi2_ctx_update(u8 ctxnum, bool force_update)
 		update_ctx_ctrl3[ctxnum] = false;
 	}
 
-	if (selected_ctx_u->data_offset == true) {
+	if (selected_ctx_u->data_offset) {
 		reg = omap_readl(ISPCSI2_CTX_DAT_OFST(ctxnum));
 		reg &= ~ISPCSI2_CTX_DAT_OFST_OFST_MASK;
 		reg |= selected_ctx->data_offset <<
@@ -1157,13 +1133,13 @@ int isp_csi2_ctx_update(u8 ctxnum, bool force_update)
 		selected_ctx_u->data_offset = false;
 	}
 
-	if (selected_ctx_u->ping_addr == true) {
+	if (selected_ctx_u->ping_addr) {
 		reg = selected_ctx->ping_addr;
 		omap_writel(reg, ISPCSI2_CTX_DAT_PING_ADDR(ctxnum));
 		selected_ctx_u->ping_addr = false;
 	}
 
-	if (selected_ctx_u->pong_addr == true) {
+	if (selected_ctx_u->pong_addr) {
 		reg = selected_ctx->pong_addr;
 		omap_writel(reg, ISPCSI2_CTX_DAT_PONG_ADDR(ctxnum));
 		selected_ctx_u->pong_addr = false;
@@ -1398,15 +1374,15 @@ int isp_csi2_phy_update(bool force_update)
 						&current_csi2_cfg_update.phy;
 	u32 reg;
 
-	if ((update_phy_cfg0 == true) || (force_update == true)) {
+	if (update_phy_cfg0 || force_update) {
 		reg = omap_readl(ISPCSI2PHY_CFG0);
-		if ((currphy_u->ths_term == true) || (force_update == true)) {
+		if (currphy_u->ths_term || force_update) {
 			reg &= ~ISPCSI2PHY_CFG0_THS_TERM_MASK;
 			reg |= (currphy->ths_term <<
 					ISPCSI2PHY_CFG0_THS_TERM_SHIFT);
 			currphy_u->ths_term = false;
 		}
-		if ((currphy_u->ths_settle == true) || (force_update == true)) {
+		if (currphy_u->ths_settle || force_update) {
 			reg &= ~ISPCSI2PHY_CFG0_THS_SETTLE_MASK;
 			reg |= (currphy->ths_settle <<
 					ISPCSI2PHY_CFG0_THS_SETTLE_SHIFT);
@@ -1416,22 +1392,21 @@ int isp_csi2_phy_update(bool force_update)
 		update_phy_cfg0 = false;
 	}
 
-	if ((update_phy_cfg1 == true) || (force_update == true)) {
+	if (update_phy_cfg1 || force_update) {
 		reg = omap_readl(ISPCSI2PHY_CFG1);
-		if ((currphy_u->tclk_term == true) || (force_update == true)) {
+		if (currphy_u->tclk_term || force_update) {
 			reg &= ~ISPCSI2PHY_CFG1_TCLK_TERM_MASK;
 			reg |= (currphy->tclk_term <<
 					ISPCSI2PHY_CFG1_TCLK_TERM_SHIFT);
 			currphy_u->tclk_term = false;
 		}
-		if ((currphy_u->tclk_miss == true) || (force_update == true)) {
+		if (currphy_u->tclk_miss || force_update) {
 			reg &= ~ISPCSI2PHY_CFG1_TCLK_MISS_MASK;
 			reg |= (currphy->tclk_miss <<
 					ISPCSI2PHY_CFG1_TCLK_MISS_SHIFT);
 			currphy_u->tclk_miss = false;
 		}
-		if ((currphy_u->tclk_settle == true) ||
-						(force_update == true)) {
+		if (currphy_u->tclk_settle || force_update) {
 			reg &= ~ISPCSI2PHY_CFG1_TCLK_SETTLE_MASK;
 			reg |= (currphy->tclk_settle <<
 					ISPCSI2PHY_CFG1_TCLK_SETTLE_SHIFT);
@@ -1613,12 +1588,11 @@ int isp_csi2_timings_update(u8 io, bool force_update)
 	currtimings = &current_csi2_cfg.timings[io - 1];
 	currtimings_u = &current_csi2_cfg_update.timings[io - 1];
 
-	if ((update_timing == true) || (force_update == true)) {
+	if (update_timing || force_update) {
 		reg = omap_readl(ISPCSI2_TIMING);
-		if ((currtimings_u->force_rx_mode == true) ||
-						(force_update == true)) {
+		if (currtimings_u->force_rx_mode || force_update) {
 			reg &= ~ISPCSI2_TIMING_FORCE_RX_MODE_IO_MASK(io);
-			if (currtimings->force_rx_mode == true)
+			if (currtimings->force_rx_mode)
 				reg |= ISPCSI2_TIMING_FORCE_RX_MODE_IO_ENABLE
 									(io);
 			else
@@ -1626,10 +1600,9 @@ int isp_csi2_timings_update(u8 io, bool force_update)
 									(io);
 			currtimings_u->force_rx_mode = false;
 		}
-		if ((currtimings_u->stop_state_16x == true) ||
-						(force_update == true)) {
+		if (currtimings_u->stop_state_16x || force_update) {
 			reg &= ~ISPCSI2_TIMING_STOP_STATE_X16_IO_MASK(io);
-			if (currtimings->stop_state_16x == true)
+			if (currtimings->stop_state_16x)
 				reg |= ISPCSI2_TIMING_STOP_STATE_X16_IO_ENABLE
 									(io);
 			else
@@ -1637,10 +1610,9 @@ int isp_csi2_timings_update(u8 io, bool force_update)
 									(io);
 			currtimings_u->stop_state_16x = false;
 		}
-		if ((currtimings_u->stop_state_4x == true) ||
-						(force_update == true)) {
+		if (currtimings_u->stop_state_4x || force_update) {
 			reg &= ~ISPCSI2_TIMING_STOP_STATE_X4_IO_MASK(io);
-			if (currtimings->stop_state_4x == true) {
+			if (currtimings->stop_state_4x) {
 				reg |= ISPCSI2_TIMING_STOP_STATE_X4_IO_ENABLE
 									(io);
 			} else {
@@ -1649,8 +1621,7 @@ int isp_csi2_timings_update(u8 io, bool force_update)
 			}
 			currtimings_u->stop_state_4x = false;
 		}
-		if ((currtimings_u->stop_state_counter == true) ||
-						(force_update == true)) {
+		if (currtimings_u->stop_state_counter || force_update) {
 			reg &= ~ISPCSI2_TIMING_STOP_STATE_COUNTER_IO_MASK(io);
 			reg |= currtimings->stop_state_counter <<
 				ISPCSI2_TIMING_STOP_STATE_COUNTER_IO_SHIFT(io);
