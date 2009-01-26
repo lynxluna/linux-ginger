@@ -1,15 +1,16 @@
 /*
- * drivers/media/video/isp/isp.h
+ * isp.h
  *
  * Top level public header file for ISP Control module in
- * TI's OMAP3430 Camera ISP
+ * TI's OMAP3 Camera ISP
  *
- * Copyright (C) 2008 Texas Instruments.
- * Copyright (C) 2008 Nokia.
+ * Copyright (C) 2009 Texas Instruments.
+ * Copyright (C) 2009 Nokia.
  *
  * Contributors:
  * 	Sameer Venkatraman <sameerv@ti.com>
  * 	Mohit Jalori <mjalori@ti.com>
+ * 	Sergio Aguirre <saaguirre@ti.com>
  * 	Sakari Ailus <sakari.ailus@nokia.com>
  * 	Tuukka Toivonen <tuukka.o.toivonen@nokia.com>
  *
@@ -24,6 +25,7 @@
 
 #ifndef OMAP_ISP_TOP_H
 #define OMAP_ISP_TOP_H
+#include <mach/cpu.h>
 #include <media/videobuf-dma-sg.h>
 #include <linux/videodev2.h>
 #define OMAP_ISP_CCDC		(1 << 0)

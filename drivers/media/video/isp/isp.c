@@ -1,15 +1,16 @@
 /*
- * drivers/media/video/isp/isp.c
+ * isp.c
  *
- * Driver Library for ISP Control module in TI's OMAP3430 Camera ISP
+ * Driver Library for ISP Control module in TI's OMAP3 Camera ISP
  * ISP interface and IRQ related APIs are defined here.
  *
- * Copyright (C) 2008 Texas Instruments.
- * Copyright (C) 2008 Nokia.
+ * Copyright (C) 2009 Texas Instruments.
+ * Copyright (C) 2009 Nokia.
  *
  * Contributors:
  * 	Sameer Venkatraman <sameerv@ti.com>
  * 	Mohit Jalori <mjalori@ti.com>
+ * 	Sergio Aguirre <saaguirre@ti.com>
  * 	Sakari Ailus <sakari.ailus@nokia.com>
  * 	Tuukka Toivonen <tuukka.o.toivonen@nokia.com>
  *	Toni Leinonen <toni.leinonen@nokia.com>
@@ -23,21 +24,12 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  */
 
-#include <linux/module.h>
-#include <linux/errno.h>
-#include <linux/sched.h>
+#include <asm/cacheflush.h>
+
 #include <linux/delay.h>
-#include <linux/err.h>
 #include <linux/interrupt.h>
 #include <linux/clk.h>
 #include <linux/dma-mapping.h>
-#include <asm/irq.h>
-#include <asm/cacheflush.h>
-#include <linux/bitops.h>
-#include <linux/scatterlist.h>
-#include <asm/mach-types.h>
-#include <linux/device.h>
-#include <linux/videodev2.h>
 #include <linux/vmalloc.h>
 
 #include "isp.h"
@@ -322,10 +314,10 @@ static int find_next_vctrl(int id)
 	u32 best = (u32)-1;
 
 	for (i = 0; i < ARRAY_SIZE(video_control); i++) {
-		if (video_control[i].qc.id > id
-		    && (best == (u32)-1
-			|| video_control[i].qc.id
-			< video_control[best].qc.id)) {
+		if (video_control[i].qc.id > id &&
+						(best == (u32)-1 ||
+						video_control[i].qc.id <
+						video_control[best].qc.id)) {
 			best = i;
 		}
 	}
@@ -784,7 +776,6 @@ int isp_configure_interface(struct isp_interface_config *config)
 	case ISP_CSIA:
 		ispctrl_val |= ISPCTRL_PAR_SER_CLK_SEL_CSIA;
 		ispctrl_val &= ~ISPCTRL_PAR_BRIDGE_BENDIAN;
-		ispctrl_val |= (0x03 << ISPCTRL_PAR_BRIDGE_SHIFT);
 
 		isp_csi2_ctx_config_format(0, config->u.csi.format);
 		isp_csi2_ctx_update(0, false);
@@ -879,17 +870,7 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *_isp)
 		printk(KERN_ERR "%s: lsc prefetch error\n", __func__);
 	}
 
-	if ((irqstatus & CCDC_VD1) == CCDC_VD1) {
-	}
-
 	if ((irqstatus & CCDC_VD0) == CCDC_VD0) {
-/* 		ispccdc_wait_idle(10); */
-/* 		if (!ispccdc_busy()) */
-/* 			ispccdc_config_shadow_registers(); */
-/* 		else */
-/* 			printk(KERN_ALERT */
-/* 			       "%s: ccdc busy, shadow registers not written\n", */
-/* 			       __func__); */
 		if (RAW_CAPTURE(&isp_obj))
 			isp_buf_process(bufs);
 	}
@@ -962,11 +943,11 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *_isp)
 		DPRINTK_ISPCTRL("%x\n", ispcsi1_irqstatus);
 	}
 
-	if (irqdis->isp_callbk[CBK_CATCHALL])
-		irqdis->isp_callbk[CBK_CATCHALL](
-			irqstatus,
+	if (irqdis->isp_callbk[CBK_CATCHALL]) {
+		irqdis->isp_callbk[CBK_CATCHALL](irqstatus,
 			irqdis->isp_callbk_arg1[CBK_CATCHALL],
 			irqdis->isp_callbk_arg2[CBK_CATCHALL]);
+	}
 
 	spin_unlock_irqrestore(&isp_obj.lock, irqflags);
 
@@ -1021,6 +1002,7 @@ out_no_unlock:
 
 	return IRQ_HANDLED;
 }
+
 /* Device name, needed for resource tracking layer */
 struct device_driver camera_drv = {
 	.name = "camera"
@@ -1174,12 +1156,12 @@ static u32 isp_calc_pipeline(struct v4l2_pix_format *pix_input,
 {
 	isp_release_resources();
 	if ((pix_input->pixelformat == V4L2_PIX_FMT_SGRBG10) &&
-		(pix_output->pixelformat != V4L2_PIX_FMT_SGRBG10)) {
-			isp_obj.module.isp_pipeline = OMAP_ISP_CCDC |
-					OMAP_ISP_PREVIEW | OMAP_ISP_RESIZER;
-			ispccdc_request();
-			isppreview_request();
-			ispresizer_request();
+			(pix_output->pixelformat != V4L2_PIX_FMT_SGRBG10)) {
+		isp_obj.module.isp_pipeline = OMAP_ISP_CCDC | OMAP_ISP_PREVIEW |
+							OMAP_ISP_RESIZER;
+		ispccdc_request();
+		isppreview_request();
+		ispresizer_request();
 		ispccdc_config_datapath(CCDC_RAW, CCDC_OTHERS_VP);
 		isppreview_config_datapath(PRV_RAW_CCDC, PREVIEW_MEM);
 		ispresizer_config_datapath(RSZ_MEM_YUV);
@@ -1211,17 +1193,19 @@ static void isp_config_pipeline(struct v4l2_pix_format *pix_input,
 			isp_obj.module.ccdc_output_width,
 			isp_obj.module.ccdc_output_height);
 
-	if (isp_obj.module.isp_pipeline & OMAP_ISP_PREVIEW)
+	if (isp_obj.module.isp_pipeline & OMAP_ISP_PREVIEW) {
 		isppreview_config_size(isp_obj.module.preview_input_width,
 			isp_obj.module.preview_input_height,
 			isp_obj.module.preview_output_width,
 			isp_obj.module.preview_output_height);
+	}
 
-	if (isp_obj.module.isp_pipeline & OMAP_ISP_RESIZER)
+	if (isp_obj.module.isp_pipeline & OMAP_ISP_RESIZER) {
 		ispresizer_config_size(isp_obj.module.resizer_input_width,
-				       isp_obj.module.resizer_input_height,
-				       isp_obj.module.resizer_output_width,
-				       isp_obj.module.resizer_output_height);
+					isp_obj.module.resizer_input_height,
+					isp_obj.module.resizer_output_width,
+					isp_obj.module.resizer_output_height);
+	}
 
 	if (pix_output->pixelformat == V4L2_PIX_FMT_UYVY) {
 		isppreview_config_ycpos(YCPOS_YCrYCb);
@@ -1421,7 +1405,7 @@ int isp_vbq_prepare(struct videobuf_queue *vbq, struct videobuf_buffer *vb,
 							enum v4l2_field field)
 {
 	unsigned int isp_addr;
-	struct videobuf_dmabuf	*vdma;
+	struct videobuf_dmabuf *vdma;
 	struct isp_bufs *bufs = &isp_obj.bufs;
 
 	int err = 0;
@@ -1449,7 +1433,7 @@ void isp_vbq_release(struct videobuf_queue *vbq, struct videobuf_buffer *vb)
 	struct isp_bufs *bufs = &isp_obj.bufs;
 
 	ispmmu_vunmap(bufs->isp_addr_capture[vb->i]);
-	bufs->isp_addr_capture[vb->i] = (dma_addr_t) NULL;
+	bufs->isp_addr_capture[vb->i] = (dma_addr_t)NULL;
 	return;
 }
 EXPORT_SYMBOL(isp_vbq_release);
@@ -1577,40 +1561,40 @@ int isp_handle_private(int cmd, void *arg)
 		break;
 	case VIDIOC_PRIVATE_ISP_AEWB_CFG: {
 		struct isph3a_aewb_config *params;
-		params = (struct isph3a_aewb_config *) arg;
+		params = (struct isph3a_aewb_config *)arg;
 		rval = isph3a_aewb_configure(params);
 		}
 		break;
 	case VIDIOC_PRIVATE_ISP_AEWB_REQ: {
 		struct isph3a_aewb_data *data;
-		data = (struct isph3a_aewb_data *) arg;
+		data = (struct isph3a_aewb_data *)arg;
 		rval = isph3a_aewb_request_statistics(data);
 		}
 		break;
 	case VIDIOC_PRIVATE_ISP_HIST_CFG: {
 		struct isp_hist_config *params;
-		params = (struct isp_hist_config *) arg;
+		params = (struct isp_hist_config *)arg;
 		rval = isp_hist_configure(params);
 		}
 		break;
 	case VIDIOC_PRIVATE_ISP_HIST_REQ: {
 		struct isp_hist_data *data;
-		data = (struct isp_hist_data *) arg;
+		data = (struct isp_hist_data *)arg;
 		rval = isp_hist_request_statistics(data);
 		}
 		break;
 	case VIDIOC_PRIVATE_ISP_AF_CFG: {
 		struct af_configuration *params;
-		params = (struct af_configuration *) arg;
+		params = (struct af_configuration *)arg;
 		rval = isp_af_configure(params);
 		}
-	break;
+		break;
 	case VIDIOC_PRIVATE_ISP_AF_REQ: {
 		struct isp_af_data *data;
-		data = (struct isp_af_data *) arg;
+		data = (struct isp_af_data *)arg;
 		rval = isp_af_request_statistics(data);
 		}
-	break;
+		break;
 	default:
 		rval = -EINVAL;
 		break;
@@ -1750,7 +1734,7 @@ void isp_config_crop(struct v4l2_pix_format *croppix)
 	while (((int)cur_rect.width & 0xFFFFFFF0) != (int)cur_rect.width)
 		(int)cur_rect.width--;
 
-	isp_obj.tmp_buf_offset = ((cur_rect.left * 2) + \
+	isp_obj.tmp_buf_offset = ((cur_rect.left * 2) +
 		((isp_obj.module.preview_output_width) * 2 * cur_rect.top));
 
 	ispresizer_trycrop(cur_rect.left, cur_rect.top, cur_rect.width,
@@ -1865,12 +1849,12 @@ static int isp_try_size(struct v4l2_pix_format *pix_input,
 {
 	int rval = 0;
 
-	if (pix_output->width <= ISPRSZ_MIN_OUTPUT ||
-		pix_output->height <= ISPRSZ_MIN_OUTPUT)
+	if ((pix_output->width <= ISPRSZ_MIN_OUTPUT) ||
+				(pix_output->height <= ISPRSZ_MIN_OUTPUT))
 		return -EINVAL;
 
-	if (pix_output->width >= ISPRSZ_MAX_OUTPUT ||
-		pix_output->height > ISPRSZ_MAX_OUTPUT)
+	if ((pix_output->width >= ISPRSZ_MAX_OUTPUT) ||
+				(pix_output->height > ISPRSZ_MAX_OUTPUT))
 		return -EINVAL;
 
 	isp_obj.module.ccdc_input_width = pix_input->width;
@@ -1965,7 +1949,6 @@ int isp_try_fmt(struct v4l2_pix_format *pix_input,
 		break;
 	default:
 		pix_output->colorspace = V4L2_COLORSPACE_SRGB;
-		break;
 	}
 
 	isp_obj.module.pix.pixelformat = pix_output->pixelformat;
@@ -2079,7 +2062,7 @@ int isp_put(void)
 {
 	DPRINTK_ISPCTRL("isp_put: old %d\n", isp_obj.ref_count);
 	mutex_lock(&(isp_obj.isp_mutex));
-	if (isp_obj.ref_count)
+	if (isp_obj.ref_count) {
 		if (--isp_obj.ref_count == 0) {
 			isp_save_ctx();
 			isp_tmp_buf_free();
@@ -2091,6 +2074,7 @@ int isp_put(void)
 			memset(&ispcroprect, 0, sizeof(ispcroprect));
 			memset(&cur_rect, 0, sizeof(cur_rect));
 		}
+	}
 	mutex_unlock(&(isp_obj.isp_mutex));
 	DPRINTK_ISPCTRL("isp_put: new %d\n", isp_obj.ref_count);
 	return isp_obj.ref_count;
@@ -2225,31 +2209,12 @@ void isp_print_status(void)
 	if (!is_ispctrl_debug_enabled())
 		return;
 
-	DPRINTK_ISPCTRL("###CM_FCLKEN_CAM=0x%x\n", omap_readl(CM_FCLKEN_CAM));
-	DPRINTK_ISPCTRL("###CM_ICLKEN_CAM=0x%x\n", omap_readl(CM_ICLKEN_CAM));
-	DPRINTK_ISPCTRL("###CM_CLKSEL_CAM=0x%x\n", omap_readl(CM_CLKSEL_CAM));
-	DPRINTK_ISPCTRL("###CM_AUTOIDLE_CAM=0x%x\n",
-						omap_readl(CM_AUTOIDLE_CAM));
-	DPRINTK_ISPCTRL("###CM_CLKEN_PLL[18:16] should be 0x7, = 0x%x\n",
-						omap_readl(CM_CLKEN_PLL));
-	DPRINTK_ISPCTRL("###CM_CLKSEL2_PLL[18:8] should be 0x2D, [6:0] should "
-				"be 1 = 0x%x\n", omap_readl(CM_CLKSEL2_PLL));
-	DPRINTK_ISPCTRL("###CTRL_PADCONF_CAM_HS=0x%x\n",
-					omap_readl(CTRL_PADCONF_CAM_HS));
-	DPRINTK_ISPCTRL("###CTRL_PADCONF_CAM_XCLKA=0x%x\n",
-					omap_readl(CTRL_PADCONF_CAM_XCLKA));
-	DPRINTK_ISPCTRL("###CTRL_PADCONF_CAM_D1=0x%x\n",
-					omap_readl(CTRL_PADCONF_CAM_D1));
-	DPRINTK_ISPCTRL("###CTRL_PADCONF_CAM_D3=0x%x\n",
-					omap_readl(CTRL_PADCONF_CAM_D3));
-	DPRINTK_ISPCTRL("###CTRL_PADCONF_CAM_D5=0x%x\n",
-					omap_readl(CTRL_PADCONF_CAM_D5));
-	DPRINTK_ISPCTRL("###CTRL_PADCONF_CAM_D7=0x%x\n",
-					omap_readl(CTRL_PADCONF_CAM_D7));
-	DPRINTK_ISPCTRL("###CTRL_PADCONF_CAM_D9=0x%x\n",
-					omap_readl(CTRL_PADCONF_CAM_D9));
-	DPRINTK_ISPCTRL("###CTRL_PADCONF_CAM_D11=0x%x\n",
-					omap_readl(CTRL_PADCONF_CAM_D11));
+	DPRINTK_ISPCTRL("###ISP_CTRL=0x%x\n", omap_readl(ISP_CTRL));
+	DPRINTK_ISPCTRL("###ISP_TCTRL_CTRL=0x%x\n", omap_readl(ISP_TCTRL_CTRL));
+	DPRINTK_ISPCTRL("###ISP_SYSCONFIG=0x%x\n", omap_readl(ISP_SYSCONFIG));
+	DPRINTK_ISPCTRL("###ISP_SYSSTATUS=0x%x\n", omap_readl(ISP_SYSSTATUS));
+	DPRINTK_ISPCTRL("###ISP_IRQ0ENABLE=0x%x\n", omap_readl(ISP_IRQ0ENABLE));
+	DPRINTK_ISPCTRL("###ISP_IRQ0STATUS=0x%x\n", omap_readl(ISP_IRQ0STATUS));
 }
 EXPORT_SYMBOL(isp_print_status);
 
