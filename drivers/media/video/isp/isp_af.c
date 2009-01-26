@@ -293,7 +293,7 @@ int isp_af_configure(struct af_configuration *afconfig)
 
 	memcpy(af_curr_cfg, afconfig, sizeof(struct af_configuration));
 	/* Get the value of PCR register */
-	busyaf = omap_readl(ISPH3A_PCR);
+	busyaf = isp_reg_readl(OMAP3_ISP_IOMEM_H3A, ISPH3A_PCR);
 
 	if ((busyaf & AF_BUSYAF) == AF_BUSYAF) {
 		DPRINTK_ISP_AF("AF_register_setup_ERROR : Engine Busy");
@@ -358,7 +358,7 @@ int isp_af_configure(struct af_configuration *afconfig)
 				afstat.af_buff[i].addr_align++;
 			afstat.af_buff[i].ispmmu_addr =
 				ispmmu_kmap(afstat.af_buff[i].phy_addr,
-					   afstat.min_buf_size);
+							afstat.min_buf_size);
 		}
 		isp_af_unlock_buffers();
 		isp_af_link_buffers();
@@ -398,7 +398,7 @@ int isp_af_register_setup(struct af_device *af_dev)
 
 	/* Configure Hardware Registers */
 	/* Set PCR Register */
-	pcr = omap_readl(ISPH3A_PCR);	/* Read PCR Register */
+	pcr = isp_reg_readl(OMAP3_ISP_IOMEM_H3A, ISPH3A_PCR);	/* Read PCR Register */
 
 	/* Set Accumulator Mode */
 	if (af_dev->config->mode == ACCUMULATOR_PEAK)
@@ -429,7 +429,7 @@ int isp_af_register_setup(struct af_device *af_dev)
 	} else
 		pcr &= ~AF_MED_EN;
 
-	omap_writel(pcr, ISPH3A_PCR);
+	isp_reg_writel(pcr, OMAP3_ISP_IOMEM_H3A, ISPH3A_PCR);
 
 	pax1 &= ~PAXW;
 	pax1 |= (af_dev->config->paxel_config.width) << AF_PAXW_SHIFT;
@@ -438,7 +438,7 @@ int isp_af_register_setup(struct af_device *af_dev)
 	pax1 &= ~PAXH;
 	pax1 |= af_dev->config->paxel_config.height;
 
-	omap_writel(pax1, ISPH3A_AFPAX1);
+	isp_reg_writel(pax1, OMAP3_ISP_IOMEM_H3A, ISPH3A_AFPAX1);
 
 	/* Configure AFPAX2 Register */
 	/* Set Line Increment in AFPAX2 Register */
@@ -450,7 +450,7 @@ int isp_af_register_setup(struct af_device *af_dev)
 	/* Set Horizontal Count */
 	pax2 &= ~PAXHC;
 	pax2 |= af_dev->config->paxel_config.hz_cnt;
-	omap_writel(pax2, ISPH3A_AFPAX2);
+	isp_reg_writel(pax2, OMAP3_ISP_IOMEM_H3A, ISPH3A_AFPAX2);
 
 	/* Configure PAXSTART Register */
 	/*Configure Horizontal Start */
@@ -460,10 +460,11 @@ int isp_af_register_setup(struct af_device *af_dev)
 	/* Configure Vertical Start */
 	paxstart &= ~PAXSV;
 	paxstart |= af_dev->config->paxel_config.vt_start;
-	omap_writel(paxstart, ISPH3A_AFPAXSTART);
+	isp_reg_writel(paxstart, OMAP3_ISP_IOMEM_H3A, ISPH3A_AFPAXSTART);
 
 	/*SetIIRSH Register */
-	omap_writel(af_dev->config->iir_config.hz_start_pos, ISPH3A_AFIIRSH);
+	isp_reg_writel(af_dev->config->iir_config.hz_start_pos,
+						OMAP3_ISP_IOMEM_H3A, ISPH3A_AFIIRSH);
 
 	/*Set IIR Filter0 Coefficients */
 	base_coef_set0 = ISPH3A_AFCOEF010;
@@ -473,13 +474,13 @@ int isp_af_register_setup(struct af_device *af_dev)
 		coef &= ~COEF_MASK1;
 		coef |= (af_dev->config->iir_config.coeff_set0[index + 1]) <<
 								AF_COEF_SHIFT;
-		omap_writel(coef, base_coef_set0);
+		isp_reg_writel(coef, OMAP3_ISP_IOMEM_H3A, base_coef_set0);
 		base_coef_set0 = base_coef_set0 + AFCOEF_OFFSET;
 	}
 
 	/* set AFCOEF0010 Register */
-	omap_writel(af_dev->config->iir_config.coeff_set0[10],
-							ISPH3A_AFCOEF010);
+	isp_reg_writel(af_dev->config->iir_config.coeff_set0[10],
+						OMAP3_ISP_IOMEM_H3A, ISPH3A_AFCOEF010);
 
 	/*Set IIR Filter1 Coefficients */
 
@@ -490,12 +491,12 @@ int isp_af_register_setup(struct af_device *af_dev)
 		coef &= ~COEF_MASK1;
 		coef |= (af_dev->config->iir_config.coeff_set1[index + 1]) <<
 								AF_COEF_SHIFT;
-		omap_writel(coef, base_coef_set1);
+		isp_reg_writel(coef, OMAP3_ISP_IOMEM_H3A, base_coef_set1);
 
 		base_coef_set1 = base_coef_set1 + AFCOEF_OFFSET;
 	}
-	omap_writel(af_dev->config->iir_config.coeff_set1[10],
-							ISPH3A_AFCOEF1010);
+	isp_reg_writel(af_dev->config->iir_config.coeff_set1[10],
+						OMAP3_ISP_IOMEM_H3A, ISPH3A_AFCOEF1010);
 
 	return 0;
 }
@@ -503,7 +504,7 @@ int isp_af_register_setup(struct af_device *af_dev)
 /* Function to set address */
 void isp_af_set_address(unsigned long address)
 {
-	omap_writel(address, ISPH3A_AFBUFST);
+	isp_reg_writel(address, OMAP3_ISP_IOMEM_H3A, ISPH3A_AFBUFST);
 }
 
 static int isp_af_stats_available(struct isp_af_data *afdata)
@@ -676,7 +677,7 @@ int isp_af_enable(int enable)
 {
 	unsigned int pcr;
 
-	pcr = omap_readl(ISPH3A_PCR);
+	pcr = isp_reg_readl(OMAP3_ISP_IOMEM_H3A, ISPH3A_PCR);
 
 	/* Set AF_EN bit in PCR Register */
 	if (enable) {
@@ -691,7 +692,7 @@ int isp_af_enable(int enable)
 		isp_unset_callback(CBK_H3A_AF_DONE);
 		pcr &= ~AF_EN;
 	}
-	omap_writel(pcr, ISPH3A_PCR);
+	isp_reg_writel(pcr, OMAP3_ISP_IOMEM_H3A, ISPH3A_PCR);
 	return 0;
 }
 

@@ -123,29 +123,29 @@ static struct isph3a_aewb_config aewb_config_local = {
 
 /* Structure for saving/restoring h3a module registers */
 static struct isp_reg isph3a_reg_list[] = {
-	{ISPH3A_AEWWIN1, 0},
-	{ISPH3A_AEWINSTART, 0},
-	{ISPH3A_AEWINBLK, 0},
-	{ISPH3A_AEWSUBWIN, 0},
-	{ISPH3A_AEWBUFST, 0},
-	{ISPH3A_AFPAX1, 0},
-	{ISPH3A_AFPAX2, 0},
-	{ISPH3A_AFPAXSTART, 0},
-	{ISPH3A_AFIIRSH, 0},
-	{ISPH3A_AFBUFST, 0},
-	{ISPH3A_AFCOEF010, 0},
-	{ISPH3A_AFCOEF032, 0},
-	{ISPH3A_AFCOEF054, 0},
-	{ISPH3A_AFCOEF076, 0},
-	{ISPH3A_AFCOEF098, 0},
-	{ISPH3A_AFCOEF0010, 0},
-	{ISPH3A_AFCOEF110, 0},
-	{ISPH3A_AFCOEF132, 0},
-	{ISPH3A_AFCOEF154, 0},
-	{ISPH3A_AFCOEF176, 0},
-	{ISPH3A_AFCOEF198, 0},
-	{ISPH3A_AFCOEF1010, 0},
-	{ISP_TOK_TERM, 0}
+	{OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWWIN1, 0},
+	{OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWINSTART, 0},
+	{OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWINBLK, 0},
+	{OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWSUBWIN, 0},
+	{OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWBUFST, 0},
+	{OMAP3_ISP_IOMEM_H3A, ISPH3A_AFPAX1, 0},
+	{OMAP3_ISP_IOMEM_H3A, ISPH3A_AFPAX2, 0},
+	{OMAP3_ISP_IOMEM_H3A, ISPH3A_AFPAXSTART, 0},
+	{OMAP3_ISP_IOMEM_H3A, ISPH3A_AFIIRSH, 0},
+	{OMAP3_ISP_IOMEM_H3A, ISPH3A_AFBUFST, 0},
+	{OMAP3_ISP_IOMEM_H3A, ISPH3A_AFCOEF010, 0},
+	{OMAP3_ISP_IOMEM_H3A, ISPH3A_AFCOEF032, 0},
+	{OMAP3_ISP_IOMEM_H3A, ISPH3A_AFCOEF054, 0},
+	{OMAP3_ISP_IOMEM_H3A, ISPH3A_AFCOEF076, 0},
+	{OMAP3_ISP_IOMEM_H3A, ISPH3A_AFCOEF098, 0},
+	{OMAP3_ISP_IOMEM_H3A, ISPH3A_AFCOEF0010, 0},
+	{OMAP3_ISP_IOMEM_H3A, ISPH3A_AFCOEF110, 0},
+	{OMAP3_ISP_IOMEM_H3A, ISPH3A_AFCOEF132, 0},
+	{OMAP3_ISP_IOMEM_H3A, ISPH3A_AFCOEF154, 0},
+	{OMAP3_ISP_IOMEM_H3A, ISPH3A_AFCOEF176, 0},
+	{OMAP3_ISP_IOMEM_H3A, ISPH3A_AFCOEF198, 0},
+	{OMAP3_ISP_IOMEM_H3A, ISPH3A_AFCOEF1010, 0},
+	{0, ISP_TOK_TERM, 0}
 };
 
 static struct ispprev_wbal h3awb_update;
@@ -208,17 +208,17 @@ EXPORT_SYMBOL(isph3a_aewb_setxtrastats);
  **/
 void isph3a_aewb_enable(u8 enable)
 {
-	omap_writel(IRQ0STATUS_H3A_AWB_DONE_IRQ, ISP_IRQ0STATUS);
+	isp_reg_writel(IRQ0STATUS_H3A_AWB_DONE_IRQ, OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0STATUS);
 
 	if (enable) {
 		aewb_regs.reg_pcr |= ISPH3A_PCR_AEW_EN;
-		omap_writel(omap_readl(ISPH3A_PCR) | ISPH3A_PCR_AEW_EN,
-								ISPH3A_PCR);
+		isp_reg_writel(isp_reg_readl(OMAP3_ISP_IOMEM_H3A, ISPH3A_PCR) | ISPH3A_PCR_AEW_EN,
+					OMAP3_ISP_IOMEM_H3A, ISPH3A_PCR);
 		DPRINTK_ISPH3A("    H3A enabled \n");
 	} else {
 		aewb_regs.reg_pcr &= ~ISPH3A_PCR_AEW_EN;
-		omap_writel(omap_readl(ISPH3A_PCR) & ~ISPH3A_PCR_AEW_EN,
-								ISPH3A_PCR);
+		isp_reg_writel(isp_reg_readl(OMAP3_ISP_IOMEM_H3A, ISPH3A_PCR) & ~ISPH3A_PCR_AEW_EN,
+					OMAP3_ISP_IOMEM_H3A, ISPH3A_PCR);
 		DPRINTK_ISPH3A("    H3A disabled \n");
 	}
 	aewb_config_local.aewb_enable = enable;
@@ -249,11 +249,11 @@ EXPORT_SYMBOL(isph3a_update_wb);
  **/
 static void isph3a_aewb_update_regs(void)
 {
-	omap_writel(aewb_regs.reg_pcr, ISPH3A_PCR);
-	omap_writel(aewb_regs.reg_win1, ISPH3A_AEWWIN1);
-	omap_writel(aewb_regs.reg_start, ISPH3A_AEWINSTART);
-	omap_writel(aewb_regs.reg_blk, ISPH3A_AEWINBLK);
-	omap_writel(aewb_regs.reg_subwin, ISPH3A_AEWSUBWIN);
+	isp_reg_writel(aewb_regs.reg_pcr, OMAP3_ISP_IOMEM_H3A, ISPH3A_PCR);
+	isp_reg_writel(aewb_regs.reg_win1, OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWWIN1);
+	isp_reg_writel(aewb_regs.reg_start, OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWINSTART);
+	isp_reg_writel(aewb_regs.reg_blk, OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWINBLK);
+	isp_reg_writel(aewb_regs.reg_subwin, OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWSUBWIN);
 
 	aewbstat.update = 0;
 	aewbstat.frame_count = 1;
@@ -364,7 +364,7 @@ static void isph3a_aewb_isr(unsigned long status, isp_vbq_callback_ptr arg1,
 	active_buff = active_buff->next;
 	if (active_buff->locked == 1)
 		active_buff = active_buff->next;
-	omap_writel(active_buff->ispmmu_addr, ISPH3A_AEWBUFST);
+	isp_reg_writel(active_buff->ispmmu_addr, OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWBUFST);
 
 	aewbstat.frame_count++;
 	frame_align = aewbstat.frame_count;
@@ -634,8 +634,7 @@ int isph3a_aewb_configure(struct isph3a_aewb_config *aewbcfg)
 							aewbstat.h3a_buff[i].
 							addr_align)
 				aewbstat.h3a_buff[i].addr_align++;
-			aewbstat.h3a_buff[i].ispmmu_addr =
-							ispmmu_kmap(aewbstat.
+			aewbstat.h3a_buff[i].ispmmu_addr = ispmmu_kmap(aewbstat.
 							h3a_buff[i].phy_addr,
 							aewbstat.min_buf_size);
 		}
@@ -645,7 +644,7 @@ int isph3a_aewb_configure(struct isph3a_aewb_config *aewbcfg)
 		if (active_buff == NULL)
 			active_buff = &aewbstat.h3a_buff[0];
 
-		omap_writel(active_buff->ispmmu_addr, ISPH3A_AEWBUFST);
+		isp_reg_writel(active_buff->ispmmu_addr, OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWBUFST);
 	}
 	for (i = 0; i < H3A_MAX_BUFF; i++) {
 		DPRINTK_ISPH3A("buff[%d] addr is:\n    virt    0x%lX\n"
@@ -834,17 +833,17 @@ void __exit isph3a_aewb_cleanup(void)
  **/
 static void isph3a_print_status(void)
 {
-	DPRINTK_ISPH3A("ISPH3A_PCR = 0x%08x\n", omap_readl(ISPH3A_PCR));
+	DPRINTK_ISPH3A("ISPH3A_PCR = 0x%08x\n", isp_reg_readl(OMAP3_ISP_IOMEM_H3A, ISPH3A_PCR));
 	DPRINTK_ISPH3A("ISPH3A_AEWWIN1 = 0x%08x\n",
-						omap_readl(ISPH3A_AEWWIN1));
+						isp_reg_readl(OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWWIN1));
 	DPRINTK_ISPH3A("ISPH3A_AEWINSTART = 0x%08x\n",
-						omap_readl(ISPH3A_AEWINSTART));
+						isp_reg_readl(OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWINSTART));
 	DPRINTK_ISPH3A("ISPH3A_AEWINBLK = 0x%08x\n",
-						omap_readl(ISPH3A_AEWINBLK));
+						isp_reg_readl(OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWINBLK));
 	DPRINTK_ISPH3A("ISPH3A_AEWSUBWIN = 0x%08x\n",
-						omap_readl(ISPH3A_AEWSUBWIN));
+						isp_reg_readl(OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWSUBWIN));
 	DPRINTK_ISPH3A("ISPH3A_AEWBUFST = 0x%08x\n",
-						omap_readl(ISPH3A_AEWBUFST));
+						isp_reg_readl(OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWBUFST));
 	DPRINTK_ISPH3A("stats windows = %d\n", aewbstat.win_count);
 	DPRINTK_ISPH3A("stats buff size = %d\n", aewbstat.stats_buf_size);
 	DPRINTK_ISPH3A("currently configured stats buff size = %d\n",
