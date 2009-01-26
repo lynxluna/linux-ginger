@@ -166,7 +166,7 @@ void ispccdc_config_alaw(enum alaw_ipwidth ipwidth);
 
 void ispccdc_enable_alaw(u8 enable);
 
-int ispccdc_load_lsc(u32 table_size);
+int ispccdc_load_lsc(u8 *table_addr, u32 table_size);
 
 void ispccdc_config_lsc(struct ispccdc_lsc_config *lsc_cfg);
 

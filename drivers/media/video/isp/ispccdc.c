@@ -83,9 +83,8 @@ static struct ispccdc_lsc_config lsc_config;
 static u8 *lsc_gain_table;
 static unsigned long lsc_ispmmu_addr;
 static int lsc_initialized;
-static int size_mismatch;
 static u8 ccdc_use_lsc;
-static u8 ispccdc_lsc_tbl[LSC_TABLE_INIT_SIZE];
+static u8 *lsc_gain_table_tmp;
 
 /* Structure for saving/restoring CCDC module registers*/
 static struct isp_reg ispccdc_reg_list[] = {
@@ -147,7 +146,6 @@ int omap34xx_isp_ccdc_config(void *userspace_add)
 	struct ispccdc_fpc fpc_t;
 	struct ispccdc_culling cull_t;
 	struct ispccdc_update_config *ccdc_struct;
-	u32 old_size;
 
 	if (userspace_add == NULL)
 		return -EINVAL;
@@ -241,18 +239,12 @@ int omap34xx_isp_ccdc_config(void *userspace_add)
 	if (is_isplsc_activated()) {
 		if (ISP_ABS_CCDC_CONFIG_LSC & ccdc_struct->flag) {
 			if (ISP_ABS_CCDC_CONFIG_LSC & ccdc_struct->update) {
-				old_size = lsc_config.size;
 				if (copy_from_user(&lsc_config,
 						(struct ispccdc_lsc_config *)
 						(ccdc_struct->lsc_cfg),
 						sizeof(struct
 						ispccdc_lsc_config)))
 					goto copy_from_user_err;
-				lsc_initialized = 0;
-				if (lsc_config.size <= old_size)
-					size_mismatch = 0;
-				else
-					size_mismatch = 1;
 				ispccdc_config_lsc(&lsc_config);
 			}
 			ccdc_use_lsc = 1;
@@ -261,28 +253,10 @@ int omap34xx_isp_ccdc_config(void *userspace_add)
 				ccdc_use_lsc = 0;
 		}
 		if (ISP_ABS_TBL_LSC & ccdc_struct->update) {
-			if (size_mismatch) {
-				ispmmu_kunmap(lsc_ispmmu_addr);
-				kfree(lsc_gain_table);
-				lsc_gain_table = kmalloc(
-					lsc_config.size,
-					GFP_KERNEL | GFP_DMA);
-				if (!lsc_gain_table) {
-					printk(KERN_ERR
-						"Cannot allocate memory for gain tables \n");
-					return -ENOMEM;
-				}
-				lsc_ispmmu_addr = ispmmu_kmap(
-					virt_to_phys(lsc_gain_table),
-					lsc_config.size);
-				omap_writel(lsc_ispmmu_addr,
-					ISPCCDC_LSC_TABLE_BASE);
-				lsc_initialized = 1;
-				size_mismatch = 0;
-			}
 			if (copy_from_user(lsc_gain_table,
 				(ccdc_struct->lsc), lsc_config.size))
 				goto copy_from_user_err;
+			ispccdc_load_lsc(lsc_gain_table, lsc_config.size);
 		}
 	}
 
@@ -361,23 +335,40 @@ int ispccdc_free(void)
 EXPORT_SYMBOL(ispccdc_free);
 
 /**
- * ispccdc_load_lsc - Load Lens Shading Compensation table.
- * @table_size: LSC gain table size.
+ * ispccdc_free_lsc - Frees Lens Shading Compensation table
  *
- * Returns 0 if successful, or -ENOMEM of its no memory available.
+ * Always returns 0.
  **/
-int ispccdc_load_lsc(u32 table_size)
+static int ispccdc_free_lsc(void)
 {
-	if (!is_isplsc_activated())
-		return 0;
-
-	if (table_size == 0)
-		return -EINVAL;
-
-	if (lsc_initialized)
+	if (!lsc_ispmmu_addr)
 		return 0;
 
 	ispccdc_enable_lsc(0);
+	lsc_initialized = 0;
+	omap_writel(0, ISPCCDC_LSC_TABLE_BASE);
+	ispmmu_kunmap(lsc_ispmmu_addr);
+	kfree(lsc_gain_table);
+	return 0;
+}
+
+/**
+ * ispccdc_allocate_lsc - Allocate space for Lens Shading Compensation table
+ * @table_size: LSC gain table size.
+ *
+ * Returns 0 if successful, -ENOMEM of its no memory available, or -EINVAL if
+ * table_size is zero.
+ **/
+static int ispccdc_allocate_lsc(u32 table_size)
+{
+	if (table_size == 0)
+		return -EINVAL;
+
+	if ((lsc_config.size >= table_size) && lsc_gain_table)
+		return 0;
+
+	ispccdc_free_lsc();
+
 	lsc_gain_table = kmalloc(table_size, GFP_KERNEL | GFP_DMA);
 
 	if (!lsc_gain_table) {
@@ -385,10 +376,63 @@ int ispccdc_load_lsc(u32 table_size)
 		return -ENOMEM;
 	}
 
-	memcpy(lsc_gain_table, ispccdc_lsc_tbl, table_size);
 	lsc_ispmmu_addr = ispmmu_kmap(virt_to_phys(lsc_gain_table), table_size);
+	if (lsc_ispmmu_addr <= 0) {
+		printk(KERN_ERR "Cannot map memory for gain tables \n");
+		kfree(lsc_gain_table);
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+
+/**
+ * ispccdc_program_lsc - Program Lens Shading Compensation table.
+ * @table_size: LSC gain table size.
+ *
+ * Returns 0 if successful, or -EINVAL if there's no mapped address for the
+ * table yet.
+ **/
+static int ispccdc_program_lsc(void)
+{
+	if (!lsc_ispmmu_addr)
+		return -EINVAL;
+
+	if (lsc_initialized)
+		return 0;
+
 	omap_writel(lsc_ispmmu_addr, ISPCCDC_LSC_TABLE_BASE);
 	lsc_initialized = 1;
+	return 0;
+}
+
+/**
+ * ispccdc_load_lsc - Load Lens Shading Compensation table.
+ * @table_addr: LSC gain table MMU Mapped address.
+ * @table_size: LSC gain table size.
+ *
+ * Returns 0 if successful, -ENOMEM of its no memory available, or -EINVAL if
+ * table_size is zero.
+ **/
+int ispccdc_load_lsc(u8 *table_addr, u32 table_size)
+{
+	int ret;
+
+	if (!is_isplsc_activated())
+		return 0;
+
+	if (!table_addr)
+		return -EINVAL;
+
+	ret = ispccdc_allocate_lsc(table_size);
+	if (ret)
+		return ret;
+
+	if (table_addr != lsc_gain_table)
+		memcpy(lsc_gain_table, table_addr, table_size);
+	ret = ispccdc_program_lsc();
+	if (ret)
+		return ret;
 	return 0;
 }
 EXPORT_SYMBOL(ispccdc_load_lsc);
@@ -598,7 +642,8 @@ int ispccdc_config_datapath(enum ccdc_input input, enum ccdc_output output)
 		ispccdc_config_black_clamp(blkcfg);
 		if (is_isplsc_activated()) {
 			ispccdc_config_lsc(&lsc_config);
-			ispccdc_load_lsc((u32)sizeof(ispccdc_lsc_tbl));
+			ispccdc_load_lsc(lsc_gain_table_tmp,
+							LSC_TABLE_INIT_SIZE);
 		}
 
 		break;
@@ -1212,7 +1257,7 @@ int ispccdc_config_size(u32 input_w, u32 input_h, u32 output_w, u32 output_h)
 	if (is_isplsc_activated()) {
 		if (ispccdc_obj.ccdc_inpfmt == CCDC_RAW) {
 			ispccdc_config_lsc(&lsc_config);
-			ispccdc_load_lsc(lsc_config.size);
+			ispccdc_load_lsc(lsc_gain_table, lsc_config.size);
 		}
 	}
 
@@ -1461,7 +1506,9 @@ int __init isp_ccdc_init(void)
 	mutex_init(&ispccdc_obj.mutexlock);
 
 	if (is_isplsc_activated()) {
-		memset(ispccdc_lsc_tbl, 0x40, LSC_TABLE_INIT_SIZE);
+		lsc_gain_table_tmp = kmalloc(LSC_TABLE_INIT_SIZE, GFP_KERNEL |
+								GFP_DMA);
+		memset(lsc_gain_table_tmp, 0x40, LSC_TABLE_INIT_SIZE);
 		lsc_config.initial_x = 0;
 		lsc_config.initial_y = 0;
 		lsc_config.gain_mode_n = 0x6;
@@ -1481,11 +1528,9 @@ int __init isp_ccdc_init(void)
 void isp_ccdc_cleanup(void)
 {
 	if (is_isplsc_activated()) {
-		if (lsc_initialized) {
-			ispmmu_kunmap(lsc_ispmmu_addr);
-			kfree(lsc_gain_table);
-			lsc_initialized = 0;
-		}
+		ispccdc_free_lsc();
+		if (lsc_gain_table_tmp)
+			kfree(lsc_gain_table_tmp);
 	}
 
 	if (fpc_table_add_m != 0) {
