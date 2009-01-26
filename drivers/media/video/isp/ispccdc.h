@@ -1,13 +1,14 @@
 /*
- * drivers/media/video/isp/ispccdc.h
+ * ispccdc.h
  *
- * Driver header file for CCDC module in TI's OMAP3430 Camera ISP
+ * Driver header file for CCDC module in TI's OMAP3 Camera ISP
  *
- * Copyright (C) 2008 Texas Instruments, Inc.
+ * Copyright (C) 2009 Texas Instruments, Inc.
  *
  * Contributors:
  *	Senthilvadivu Guruswamy <svadivu@ti.com>
  *	Pallavi Kulkarni <p-kulkarni@ti.com>
+ *	Sergio Aguirre <saaguirre@ti.com>
  *
  * This package is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -23,19 +24,7 @@
 
 #include <mach/isp_user.h>
 
-#ifndef CONFIG_ARCH_OMAP3410
-# define cpu_is_omap3410()		0
-# define is_isplsc_activated()		1
-#else
-# define cpu_is_omap3410()		1
-# define is_isplsc_activated()		0
-#endif
-
-#ifdef OMAP_ISPCCDC_DEBUG
-# define is_ispccdc_debug_enabled()		1
-#else
-# define is_ispccdc_debug_enabled()		0
-#endif
+#define is_isplsc_activated()		1
 
 /* Enumeration constants for CCDC input output format */
 enum ccdc_input {
@@ -198,6 +187,7 @@ int ispccdc_set_outaddr(u32 addr);
 void ispccdc_enable(u8 enable);
 
 int ispccdc_sbl_busy(void);
+
 int ispccdc_busy(void);
 
 void ispccdc_save_context(void);
