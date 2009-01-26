@@ -35,9 +35,6 @@
 #define OMAP_ISP_AF		(1 << 4)
 #define OMAP_ISP_HIST		(1 << 5)
 
-/* Our ISP specific controls */
-#define V4L2_CID_PRIVATE_ISP_COLOR_FX		(V4L2_CID_PRIVATE_BASE + 0)
-
 #define ISP_TOK_TERM		0xFFFFFFFF	/*
 						 * terminating token for ISP
 						 * modules reg list
@@ -201,6 +198,8 @@ int isp_get(void);
 int isp_put(void);
 
 int isp_queryctrl(struct v4l2_queryctrl *a);
+
+int isp_querymenu(struct v4l2_querymenu *a);
 
 int isp_g_ctrl(struct v4l2_control *a);
 

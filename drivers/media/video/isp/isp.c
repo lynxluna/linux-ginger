@@ -113,18 +113,35 @@ static struct vcontrol {
 	},
 	{
 		{
-			.id = V4L2_CID_PRIVATE_ISP_COLOR_FX,
-			.type = V4L2_CTRL_TYPE_INTEGER,
+			.id = V4L2_CID_COLORFX,
+			.type = V4L2_CTRL_TYPE_MENU,
 			.name = "Color Effects",
-			.minimum = PREV_DEFAULT_COLOR,
-			.maximum = PREV_BW_COLOR,
+			.minimum = V4L2_COLORFX_NONE,
+			.maximum = V4L2_COLORFX_SEPIA,
 			.step = 1,
-			.default_value = PREV_DEFAULT_COLOR,
+			.default_value = V4L2_COLORFX_NONE,
 		},
-		.current_value = PREV_DEFAULT_COLOR,
+		.current_value = V4L2_COLORFX_NONE,
 	}
 };
 
+static struct v4l2_querymenu video_menu[] = {
+	{
+		.id = V4L2_CID_COLORFX,
+		.index = 0,
+		.name = "None",
+	},
+	{
+		.id = V4L2_CID_COLORFX,
+		.index = 1,
+		.name = "B&W",
+	},
+	{
+		.id = V4L2_CID_COLORFX,
+		.index = 2,
+		.name = "Sepia",
+	},
+};
 
 struct isp_buf {
 	dma_addr_t isp_addr;
@@ -326,6 +343,30 @@ static int find_next_vctrl(int id)
 		return -EINVAL;
 
 	return best;
+}
+
+/**
+ * find_vmenu - Returns the index of the menu array of the requested ctrl option
+ * @id: Requested control ID.
+ * @index: Requested menu option index.
+ *
+ * Returns 0 if successful, -EINVAL if not found, or -EDOM if its out of
+ * domain.
+ **/
+static int find_vmenu(int id, int index)
+{
+	int i;
+
+	if (id < V4L2_CID_BASE)
+		return -EDOM;
+
+	for (i = (ARRAY_SIZE(video_menu) - 1); i >= 0; i--) {
+		if ((video_menu[i].id != id) || (video_menu[i].index != index))
+			continue;
+		return i;
+	}
+
+	return -EINVAL;
 }
 
 /**
@@ -1464,6 +1505,26 @@ int isp_queryctrl(struct v4l2_queryctrl *a)
 EXPORT_SYMBOL(isp_queryctrl);
 
 /**
+ * isp_queryctrl - Query V4L2 control from existing controls in ISP.
+ * @a: Pointer to v4l2_queryctrl structure. It only needs the id field filled.
+ *
+ * Returns 0 if successful, or -EINVAL if not found in ISP.
+ **/
+int isp_querymenu(struct v4l2_querymenu *a)
+{
+	int i;
+
+	i = find_vmenu(a->id, a->index);
+
+	if (i < 0)
+		return -EINVAL;
+
+	*a = video_menu[i];
+	return 0;
+}
+EXPORT_SYMBOL(isp_querymenu);
+
+/**
  * isp_g_ctrl - Gets value of the desired V4L2 control.
  * @a: V4L2 control to read actual value from.
  *
@@ -1483,7 +1544,7 @@ int isp_g_ctrl(struct v4l2_control *a)
 		isppreview_query_contrast(&current_value);
 		a->value = current_value / ISPPRV_CONTRAST_UNITS;
 		break;
-	case V4L2_CID_PRIVATE_ISP_COLOR_FX:
+	case V4L2_CID_COLORFX:
 		isppreview_get_color(&current_value);
 		a->value = current_value;
 		break;
@@ -1523,8 +1584,8 @@ int isp_s_ctrl(struct v4l2_control *a)
 		else
 			isppreview_update_contrast(&new_value);
 		break;
-	case V4L2_CID_PRIVATE_ISP_COLOR_FX:
-		if (new_value > PREV_BW_COLOR)
+	case V4L2_CID_COLORFX:
+		if (new_value > V4L2_COLORFX_SEPIA)
 			rval = -EINVAL;
 		else
 			isppreview_set_color(&new_value);
