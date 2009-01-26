@@ -488,6 +488,11 @@ struct ispccdc_update_config {
 #define ISP_ABS_TBL_GREENGAMMA		(1 << 14)
 #define ISP_ABS_TBL_BLUEGAMMA		(1 << 15)
 
+#define ISPPRV_NF_TBL_SIZE		64
+#define ISPPRV_CFA_TBL_SIZE		576
+#define ISPPRV_GAMMA_TBL_SIZE		1024
+#define ISPPRV_YENH_TBL_SIZE		128
+
 /**
  * struct ispprev_hmed - Structure for Horizontal Median Filter.
  * @odddist: Distance between consecutive pixels of same color in the odd line.
@@ -623,7 +628,7 @@ struct ispprev_dcor {
  */
 struct ispprev_nf {
 	__u8 spread;
-	__u32 table[64];
+	__u32 table[ISPPRV_NF_TBL_SIZE];
 };
 
 /**
