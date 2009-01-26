@@ -978,7 +978,7 @@ static int vidioc_querymenu(struct file *file, void *fh,
 		if (!vidioc_int_querymenu(vdev->slave[i], a))
 			return 0;
 	}
-	return -EINVAL;			/* There is not yet isp_querymenu() */
+	return isp_querymenu(a);
 }
 
 static int vidioc_g_ext_ctrls(struct file *file, void *fh,
