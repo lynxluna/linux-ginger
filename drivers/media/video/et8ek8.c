@@ -627,6 +627,7 @@ static int et8ek8_ioctl_s_power(struct v4l2_int_device *s,
 				enum v4l2_power state)
 {
 	struct et8ek8_sensor *sensor = s->priv;
+	int initialized = sensor->dev_init_done;
 	int rval = 0;
 	enum v4l2_power old_state;
 
@@ -643,15 +644,17 @@ static int et8ek8_ioctl_s_power(struct v4l2_int_device *s,
 		break;
 	case V4L2_POWER_ON:
 		rval = et8ek8_power_on(s);
-		if (!sensor->dev_init_done) {
+		if (!initialized) {
 			rval = et8ek8_dev_init(s);
-			if (rval)
-				return rval;
-			rval = et8ek8_g_priv_mem(s);
 			if (rval)
 				return rval;
 		}
 		rval = et8ek8_configure(s);
+		if (!initialized) {
+			rval = et8ek8_g_priv_mem(s);
+			if (rval)
+				return rval;
+		}
 		break;
 	default:
 		return -EINVAL;
