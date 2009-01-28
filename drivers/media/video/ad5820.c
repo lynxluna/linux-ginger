@@ -291,7 +291,7 @@ static int ad5820_ioctl_s_power(struct v4l2_int_device *s,
 
 	rval = coil->platform_data->s_power(s, state);
 	if (rval)
-		goto fail;
+		return rval;
 	coil->power = state;
 
 	if (state == V4L2_POWER_ON) {
