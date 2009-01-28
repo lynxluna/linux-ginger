@@ -394,7 +394,7 @@ static int adp1653_ioctl_s_power(struct v4l2_int_device *s,
 
 		rval = flash->platform_data->power_on(s);
 		if (rval)
-			goto fail;
+			return rval;
 		flash->power = V4L2_POWER_ON;
 
 		rval = adp1653_init_device(s);
@@ -406,8 +406,6 @@ static int adp1653_ioctl_s_power(struct v4l2_int_device *s,
 	case V4L2_POWER_OFF:
 	case V4L2_POWER_STANDBY:
 		rval = flash->platform_data->power_off(s);
-		if (rval)
-			goto fail;
 		flash->power = V4L2_POWER_OFF;
 		break;
 	}
