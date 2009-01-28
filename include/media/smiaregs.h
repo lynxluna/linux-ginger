@@ -25,10 +25,8 @@
 #ifndef SMIAREGS_H
 #define SMIAREGS_H
 
-#ifdef __KERNEL__
 #include <linux/i2c.h>
 #include <linux/types.h>
-#endif /* __KERNEL__ */
 #include <linux/videodev2.h>
 
 struct smia_mode {
@@ -46,7 +44,6 @@ struct smia_mode {
 	__u32 sensitivity;		/* 16.16 fixed point */
 };
 
-#ifdef __KERNEL__
 #define SMIA_REG_8BIT			1
 #define SMIA_REG_16BIT			2
 #define SMIA_REG_32BIT			4
@@ -135,5 +132,4 @@ int smia_i2c_write_regs(struct i2c_client *client,
 int smia_i2c_reglist_find_write(struct i2c_client *client,
 				struct smia_meta_reglist *meta, u16 type);
 
-#endif /* __KERNEL__ */
 #endif
