@@ -644,17 +644,21 @@ static int et8ek8_ioctl_s_power(struct v4l2_int_device *s,
 		break;
 	case V4L2_POWER_ON:
 		rval = et8ek8_power_on(s);
+		if (rval)
+			break;
 		if (!initialized) {
 			rval = et8ek8_dev_init(s);
 			if (rval)
-				return rval;
+				goto out_on;
 		}
 		rval = et8ek8_configure(s);
-		if (!initialized) {
+		if (rval)
+			goto out_on;
+		if (!initialized)
 			rval = et8ek8_g_priv_mem(s);
-			if (rval)
-				return rval;
-		}
+	out_on:
+		if (rval)
+			et8ek8_power_off(s);
 		break;
 	default:
 		return -EINVAL;
