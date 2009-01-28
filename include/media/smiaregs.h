@@ -29,6 +29,8 @@
 #include <linux/types.h>
 #include <linux/videodev2.h>
 
+#define SMIA_MAGIC			0x53140001
+
 struct smia_mode {
 	__u16 width;
 	__u16 height;
@@ -78,6 +80,7 @@ struct smia_reglist {
 
 #define SMIA_MAX_LEN			32
 struct smia_meta_reglist {
+	u32 magic;
 	char version[SMIA_MAX_LEN];
 	/*
 	 * When we generate a reglist, the objcopy program will put

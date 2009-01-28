@@ -219,6 +219,11 @@ int smia_reglist_import(struct smia_meta_reglist *meta)
 {
 	uintptr_t nlists = 0;
 
+	if (meta->magic != SMIA_MAGIC) {
+		printk(KERN_ERR "invalid camera sensor firmware (0x%08X)\n", meta->magic);
+		return -EILSEQ;
+	}
+
 	printk(KERN_ALERT "%s: meta_reglist version %s\n",
 	       __func__, meta->version);
 
