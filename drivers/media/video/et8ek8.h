@@ -32,6 +32,7 @@
 #define ET8EK8_I2C_ADDR		(0x7C >> 1)
 
 #define ET8EK8_PRIV_MEM_SIZE	128
+#define ET8EK8_NCTRLS		3
 
 struct et8ek8_platform_data {
 	int (*g_priv)(struct v4l2_int_device *s, void *priv);
@@ -60,7 +61,7 @@ struct et8ek8_sensor {
 
 	u16 version;
 
-	struct et8ek8_control controls[2];
+	struct et8ek8_control controls[ET8EK8_NCTRLS];
 
 	struct smia_reglist *current_reglist;
 	struct v4l2_int_device *v4l2_int_device;

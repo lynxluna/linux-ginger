@@ -42,8 +42,11 @@
 
 #define CTRL_GAIN		0
 #define CTRL_EXPOSURE		1
+#define CTRL_TEST_PATTERN	2
+
 #define CID_TO_CTRL(id)		((id)==V4L2_CID_GAIN ? CTRL_GAIN : \
 				 (id)==V4L2_CID_EXPOSURE ? CTRL_EXPOSURE : \
+				 (id)==V4L2_CID_TEST_PATTERN ? CTRL_TEST_PATTERN : \
 				 -EINVAL)
 
 enum et8ek8_versions {
@@ -191,6 +194,70 @@ static int et8ek8_set_exposure(struct et8ek8_sensor *sensor, s32 exptime)
 
 	return smia_i2c_write_reg(sensor->i2c_client, SMIA_REG_16BIT, 0x1243,
 				  swab16(rows));
+}
+
+static int et8ek8_set_test_pattern(struct et8ek8_sensor *sensor, s32 mode)
+{
+	int cbh_mode, cbv_mode, tp_mode, din_sw, r1420, rval;
+
+	if (mode < 0 || mode > 8)
+		return -EINVAL;
+
+	sensor->controls[CTRL_TEST_PATTERN].value = mode;
+
+	if (sensor->power != V4L2_POWER_ON)
+		return 0;
+
+	/* Values for normal mode */
+	cbh_mode = 0;
+	cbv_mode = 0;
+	tp_mode  = 0;
+	din_sw   = 0x00;
+	r1420    = 0xF0;
+
+	if (mode != 0) {
+		/* Test pattern mode */
+		if (mode < 5) {
+			cbh_mode = 1;
+			cbv_mode = 1;
+			tp_mode  = mode + 3;
+		} else {
+			cbh_mode = 0;
+			cbv_mode = 0;
+			tp_mode  = mode - 4 + 3;
+		}
+		din_sw   = 0x01;
+		r1420    = 0xE0;
+	}
+
+	rval = smia_i2c_write_reg(sensor->i2c_client, SMIA_REG_8BIT,
+				  0x111B, tp_mode << 4);
+	if (rval)
+		goto out;
+
+	rval = smia_i2c_write_reg(sensor->i2c_client, SMIA_REG_8BIT,
+				  0x1121, cbh_mode << 7);
+	if (rval)
+		goto out;
+
+	rval = smia_i2c_write_reg(sensor->i2c_client, SMIA_REG_8BIT,
+				  0x1124, cbv_mode << 7);
+	if (rval)
+		goto out;
+
+	rval = smia_i2c_write_reg(sensor->i2c_client, SMIA_REG_8BIT,
+				  0x112C, din_sw);
+	if (rval)
+		goto out;
+
+	rval = smia_i2c_write_reg(sensor->i2c_client, SMIA_REG_8BIT,
+				  0x1420, r1420);
+	if (rval)
+		goto out;
+
+out:
+	return rval;
+
 }
 
 static int et8ek8_configure(struct v4l2_int_device *s)
@@ -341,6 +408,16 @@ static struct v4l2_queryctrl et8ek8_ctrls[] = {
 		.name		= "Exposure time [us]",
 		.flags		= V4L2_CTRL_FLAG_SLIDER,
 	},
+	{
+		.id		= V4L2_CID_TEST_PATTERN,
+		.type		= V4L2_CTRL_TYPE_MENU,
+		.name		= "Test pattern mode",
+		.flags		= 0,
+		.minimum	= 0,
+		.maximum	= 8,
+		.step		= 1,
+		.default_value	= 0,
+	},
 };
 
 static const __u32 et8ek8_mode_ctrls[] = {
@@ -373,6 +450,33 @@ static int et8ek8_ioctl_queryctrl(struct v4l2_int_device *s,
 	a->step          = sensor->controls[ctrl].step;
 	a->default_value = sensor->controls[ctrl].default_value;
 
+	return 0;
+}
+
+static int et8ek8_ioctl_querymenu(struct v4l2_int_device *s,
+				  struct v4l2_querymenu *qm)
+{
+	static const char *menu_name[] = {
+		"Normal",
+		"Vertical colorbar",
+		"Horizontal colorbar",
+		"Scale",
+		"Ramp",
+		"Small vertical colorbar",
+		"Small horizontal colorbar",
+		"Small scale",
+		"Small ramp",
+	};
+
+	switch (qm->id) {
+	case V4L2_CID_TEST_PATTERN:
+		if (qm->index >= ARRAY_SIZE(menu_name))
+			return -EINVAL;
+		strcpy(qm->name, menu_name[qm->index]);
+		break;
+	default:
+		return -EINVAL;
+	}
 	return 0;
 }
 
@@ -734,6 +838,8 @@ static struct v4l2_int_ioctl_desc et8ek8_ioctl_desc[] = {
 	  (v4l2_int_ioctl_func *)et8ek8_ioctl_s_fmt_cap },
 	{ vidioc_int_queryctrl_num,
 	  (v4l2_int_ioctl_func *)et8ek8_ioctl_queryctrl },
+	{ vidioc_int_querymenu_num,
+	  (v4l2_int_ioctl_func *)et8ek8_ioctl_querymenu },
 	{ vidioc_int_g_ctrl_num,
 	  (v4l2_int_ioctl_func *)et8ek8_ioctl_g_ctrl },
 	{ vidioc_int_s_ctrl_num,
@@ -807,6 +913,14 @@ static int et8ek8_probe(struct i2c_client *client,
 	sensor->controls[CTRL_EXPOSURE].default_value = 0;
 	sensor->controls[CTRL_EXPOSURE].value         = 0;
 	sensor->controls[CTRL_EXPOSURE].set           = et8ek8_set_exposure;
+
+	/* Test pattern mode control */
+	sensor->controls[CTRL_TEST_PATTERN].minimum       = et8ek8_ctrls[CTRL_TEST_PATTERN].minimum;
+	sensor->controls[CTRL_TEST_PATTERN].maximum       = et8ek8_ctrls[CTRL_TEST_PATTERN].maximum;
+	sensor->controls[CTRL_TEST_PATTERN].step          = et8ek8_ctrls[CTRL_TEST_PATTERN].step;
+	sensor->controls[CTRL_TEST_PATTERN].default_value = et8ek8_ctrls[CTRL_TEST_PATTERN].default_value;
+	sensor->controls[CTRL_TEST_PATTERN].value         = 0;
+	sensor->controls[CTRL_TEST_PATTERN].set           = et8ek8_set_test_pattern;
 
 	sensor->i2c_client = client;
 	i2c_set_clientdata(client, sensor);
