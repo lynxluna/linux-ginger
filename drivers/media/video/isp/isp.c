@@ -2245,7 +2245,7 @@ static int isp_probe(struct platform_device *pdev)
 			goto err;
 		}
 
-		if (!request_mem_region(mem->start, (mem->end - mem->start) 1,
+		if (!request_mem_region(mem->start, (mem->end - mem->start) + 1,
 					pdev->name)) {
 			dev_err(isp->dev,
 				"cannot reserve camera register I/O region\n");
