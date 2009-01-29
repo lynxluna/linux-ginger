@@ -158,12 +158,7 @@ static void omap34xxcam_slave_power_suggest(struct omap34xxcam_videodev *vdev,
 	mod_timer(&vdev->poweroff_timer, jiffies + OMAP34XXCAM_POWEROFF_DELAY);
 }
 #else /* OMAP34XXCAM_POWEROFF_DELAY */
-static void omap34xxcam_slave_power_suggest(struct omap34xxcam_videodev *vdev,
-					    enum v4l2_power power,
-					    int mask)
-{
-	omap34xxcam_slave_power_set(vdev, power, mask);
-}
+#define omap34xxcam_slave_power_suggest(a, b, c) do {} while(0)
 #endif /* OMAP34XXCAM_POWEROFF_DELAY */
 
 /**
