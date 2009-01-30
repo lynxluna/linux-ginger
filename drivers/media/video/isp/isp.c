@@ -1548,6 +1548,9 @@ int isp_g_ctrl(struct v4l2_control *a)
 	u8 current_value;
 	int rval = 0;
 
+	if (!isp_obj.ref_count)
+		return -EINVAL;
+
 	switch (a->id) {
 	case V4L2_CID_BRIGHTNESS:
 		isppreview_query_brightness(&current_value);
@@ -1583,6 +1586,9 @@ int isp_s_ctrl(struct v4l2_control *a)
 {
 	int rval = 0;
 	u8 new_value = a->value;
+
+	if (!isp_obj.ref_count)
+		return -EINVAL;
 
 	switch (a->id) {
 	case V4L2_CID_BRIGHTNESS:
@@ -1625,6 +1631,9 @@ EXPORT_SYMBOL(isp_s_ctrl);
 int isp_handle_private(int cmd, void *arg)
 {
 	int rval = 0;
+
+	if (!isp_obj.ref_count)
+		return -EINVAL;
 
 	switch (cmd) {
 	case VIDIOC_PRIVATE_ISP_CCDC_CFG:
@@ -1738,6 +1747,9 @@ int isp_s_fmt_cap(struct v4l2_pix_format *pix_input,
 	int crop_scaling_w = 0, crop_scaling_h = 0;
 	int rval = 0;
 
+	if (!isp_obj.ref_count)
+		return -EINVAL;
+
 	rval = isp_calc_pipeline(pix_input, pix_output);
 	if (rval)
 		goto out;
@@ -1846,6 +1858,9 @@ int isp_s_crop(struct v4l2_crop *a, struct v4l2_pix_format *pix)
 {
 	struct v4l2_crop *crop = a;
 	int rval = 0;
+
+	if (!isp_obj.ref_count)
+		return -EINVAL;
 
 	if (crop->c.left < 0)
 		crop->c.left = 0;
