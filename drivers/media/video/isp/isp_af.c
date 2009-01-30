@@ -698,7 +698,8 @@ int isp_af_enable(int enable)
 
 int isp_af_busy(void)
 {
-	return omap_readl(ISPH3A_PCR) & ISPH3A_PCR_BUSYAF;
+	return isp_reg_readl(OMAP3_ISP_IOMEM_H3A, ISPH3A_PCR)
+		& ISPH3A_PCR_BUSYAF;
 }
 
 /* Function to register the AF character device driver. */

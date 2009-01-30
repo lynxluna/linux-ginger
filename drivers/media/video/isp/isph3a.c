@@ -226,7 +226,8 @@ void isph3a_aewb_enable(u8 enable)
 
 int isph3a_aewb_busy(void)
 {
-	return omap_readl(ISPH3A_PCR) & ISPH3A_PCR_BUSYAEAWB;
+	return isp_reg_readl(OMAP3_ISP_IOMEM_H3A, ISPH3A_PCR)
+		& ISPH3A_PCR_BUSYAEAWB;
 }
 
 /**
