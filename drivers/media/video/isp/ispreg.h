@@ -116,7 +116,7 @@
 
 /* ISP Submodules offset */
 
-#define OMAP3ISP_REG_BASE		OMAP3_ISP_BASE
+#define OMAP3ISP_REG_BASE		OMAP3430_ISP_BASE
 #define OMAP3ISP_REG(offset)		(OMAP3ISP_REG_BASE + (offset))
 
 #define OMAP3ISP_CBUFF_REG_OFFSET	0x0100
