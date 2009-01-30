@@ -2203,6 +2203,15 @@ static int isp_remove(struct platform_device *pdev)
 	struct isp_device *isp = platform_get_drvdata(pdev);
 	int i;
 
+	isp_csi2_cleanup();
+	isp_af_exit();
+	isp_resizer_cleanup();
+	isp_preview_cleanup();
+	ispmmu_cleanup();
+	isph3a_aewb_cleanup();
+	isp_hist_cleanup();
+	isp_ccdc_cleanup();
+
 	if (!isp)
 		return 0;
 
@@ -2321,6 +2330,28 @@ static int isp_probe(struct platform_device *pdev)
 		goto out_request_irq;
 	}
 
+	isp_obj.ref_count = 0;
+
+	mutex_init(&(isp_obj.isp_mutex));
+	spin_lock_init(&isp_obj.lock);
+	spin_lock_init(&isp_obj.bufs.lock);
+
+	ispmmu_init();
+	isp_ccdc_init();
+	isp_hist_init();
+	isph3a_aewb_init();
+	isp_preview_init();
+	isp_resizer_init();
+	isp_af_init();
+	isp_csi2_init();
+
+	isp_get();
+	isp_power_settings(1);
+	isp_put();
+
+	isph3a_notify(1);
+	isp_af_notify(1);
+
 	return 0;
 
 out_request_irq:
@@ -2347,35 +2378,7 @@ static struct platform_driver omap3isp_driver = {
  **/
 static int __init isp_init(void)
 {
-	int plat_ret;
-
-	isp_obj.ref_count = 0;
-
-	mutex_init(&(isp_obj.isp_mutex));
-	spin_lock_init(&isp_obj.lock);
-	spin_lock_init(&isp_obj.bufs.lock);
-
-	plat_ret = platform_driver_register(&omap3isp_driver);
-	if (plat_ret)
-		return plat_ret;
-
-	isp_ccdc_init();
-	isp_hist_init();
-	isph3a_aewb_init();
-	ispmmu_init();
-	isp_preview_init();
-	isp_resizer_init();
-	isp_af_init();
-	isp_csi2_init();
-
-	isp_get();
-	isp_power_settings(1);
-	isp_put();
-
-	isph3a_notify(1);
-	isp_af_notify(1);
-
-	return 0;
+	return platform_driver_register(&omap3isp_driver);
 }
 
 /**
@@ -2383,15 +2386,6 @@ static int __init isp_init(void)
  **/
 static void __exit isp_cleanup(void)
 {
-	isp_csi2_cleanup();
-	isp_af_exit();
-	isp_resizer_cleanup();
-	isp_preview_cleanup();
-	ispmmu_cleanup();
-	isph3a_aewb_cleanup();
-	isp_hist_cleanup();
-	isp_ccdc_cleanup();
-
 	platform_driver_unregister(&omap3isp_driver);
 }
 
