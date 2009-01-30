@@ -1337,6 +1337,9 @@ static int vidioc_default(struct file *file, void *fh, int cmd, void *arg)
 
 			data = (struct isph3a_aewb_data *) arg;
 			if (data->update & SET_EXPOSURE) {
+				dev_info(vdev->cam->dev, "using "
+					 "VIDIOC_PRIVATE_ISP_AEWB_REQ to set "
+					 "exposure is deprecated!\n");
 				vc.id = V4L2_CID_EXPOSURE;
 				vc.value = data->shutter;
 				mutex_lock(&vdev->mutex);
@@ -1347,6 +1350,9 @@ static int vidioc_default(struct file *file, void *fh, int cmd, void *arg)
 					goto out;
 			}
 			if (data->update & SET_ANALOG_GAIN) {
+				dev_info(vdev->cam->dev, "using "
+					 "VIDIOC_PRIVATE_ISP_AEWB_REQ to set "
+					 "gain is deprecated!\n");
 				vc.id = V4L2_CID_GAIN;
 				vc.value = data->gain;
 				mutex_lock(&vdev->mutex);
@@ -1369,6 +1375,9 @@ static int vidioc_default(struct file *file, void *fh, int cmd, void *arg)
 			}
 			data = (struct isp_af_data *) arg;
 			if (data->update & LENS_DESIRED_POSITION) {
+				dev_info(vdev->cam->dev, "using "
+					 "VIDIOC_PRIVATE_ISP_AF_REQ to set "
+					 "lens position is deprecated!\n");
 				vc.id = V4L2_CID_FOCUS_ABSOLUTE;
 				vc.value = data->desired_lens_direction;
 				mutex_lock(&vdev->mutex);
@@ -1378,6 +1387,9 @@ static int vidioc_default(struct file *file, void *fh, int cmd, void *arg)
 					goto out;
 			}
 			if (data->update & REQUEST_STATISTICS) {
+				dev_info(vdev->cam->dev, "using "
+					 "VIDIOC_PRIVATE_ISP_AF_REQ to set "
+					 "lens position is deprecated!\n");
 				vc.id = V4L2_CID_FOCUS_ABSOLUTE;
 				mutex_lock(&vdev->mutex);
 				rval = vidioc_int_g_ctrl(vdev->vdev_lens, &vc);
