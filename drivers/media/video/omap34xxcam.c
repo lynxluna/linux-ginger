@@ -1774,8 +1774,14 @@ static int omap34xxcam_device_register(struct v4l2_int_device *s)
 	vdev->slave[hwc.dev_type] = s;
 	vdev->slave_config[hwc.dev_type] = hwc;
 
-	if (hwc.dev_type == OMAP34XXCAM_SLAVE_SENSOR)
-		isp_get();
+	if (hwc.dev_type == OMAP34XXCAM_SLAVE_SENSOR) {
+		rval = isp_get();
+		if (rval < 0) {
+			dev_err(cam->dev,
+				"can't get ISP, sensor init failed\n");
+			goto err;
+		}
+	}
 	rval = omap34xxcam_slave_power_set(vdev, V4L2_POWER_ON,
 					   1 << hwc.dev_type);
 	if (rval)
