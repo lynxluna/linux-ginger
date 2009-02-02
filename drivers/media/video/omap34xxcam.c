@@ -530,7 +530,7 @@ do_it_now:
 
 	*wanted_pix_out = best_pix_out;
 
-	dev_info(vdev->cam->dev, "w %d, h %d -> w %d, h %d\n",
+	dev_info(&vdev->vfd->dev, "w %d, h %d -> w %d, h %d\n",
 		 best_pix_in->width, best_pix_in->height,
 		 best_pix_out.width, best_pix_out.height);
 
@@ -778,7 +778,7 @@ static int vidioc_streamon(struct file *file, void *fh, enum v4l2_buf_type i)
 	rval = omap34xxcam_slave_power_set(vdev, V4L2_POWER_ON,
 					   OMAP34XXCAM_SLAVE_POWER_SENSOR_LENS);
 	if (rval) {
-		dev_dbg(vdev->cam->dev, "omap34xxcam_slave_power_set failed\n");
+		dev_dbg(&vdev->vfd->dev, "omap34xxcam_slave_power_set failed\n");
 		goto out;
 	}
 
@@ -1342,7 +1342,7 @@ static int vidioc_default(struct file *file, void *fh, int cmd, void *arg)
 
 			data = (struct isph3a_aewb_data *) arg;
 			if (data->update & SET_EXPOSURE) {
-				dev_info(vdev->cam->dev, "using "
+				dev_info(&vdev->vfd->dev, "using "
 					 "VIDIOC_PRIVATE_ISP_AEWB_REQ to set "
 					 "exposure is deprecated!\n");
 				vc.id = V4L2_CID_EXPOSURE;
@@ -1355,7 +1355,7 @@ static int vidioc_default(struct file *file, void *fh, int cmd, void *arg)
 					goto out;
 			}
 			if (data->update & SET_ANALOG_GAIN) {
-				dev_info(vdev->cam->dev, "using "
+				dev_info(&vdev->vfd->dev, "using "
 					 "VIDIOC_PRIVATE_ISP_AEWB_REQ to set "
 					 "gain is deprecated!\n");
 				vc.id = V4L2_CID_GAIN;
@@ -1380,7 +1380,7 @@ static int vidioc_default(struct file *file, void *fh, int cmd, void *arg)
 			}
 			data = (struct isp_af_data *) arg;
 			if (data->update & LENS_DESIRED_POSITION) {
-				dev_info(vdev->cam->dev, "using "
+				dev_info(&vdev->vfd->dev, "using "
 					 "VIDIOC_PRIVATE_ISP_AF_REQ to set "
 					 "lens position is deprecated!\n");
 				vc.id = V4L2_CID_FOCUS_ABSOLUTE;
@@ -1392,7 +1392,7 @@ static int vidioc_default(struct file *file, void *fh, int cmd, void *arg)
 					goto out;
 			}
 			if (data->update & REQUEST_STATISTICS) {
-				dev_info(vdev->cam->dev, "using "
+				dev_info(&vdev->vfd->dev, "using "
 					 "VIDIOC_PRIVATE_ISP_AF_REQ to set "
 					 "lens position is deprecated!\n");
 				vc.id = V4L2_CID_FOCUS_ABSOLUTE;
@@ -1540,14 +1540,14 @@ static int omap34xxcam_open(struct inode *inode, struct file *file)
 	memset(&format, 0, sizeof(format));
 	if (vdev->vdev_sensor != v4l2_int_device_dummy()) {
 		if (vidioc_int_g_fmt_cap(vdev->vdev_sensor, &format)) {
-			dev_err(cam->dev,
+			dev_err(&vdev->vfd->dev,
 				"can't get current pix from sensor!\n");
 			goto out_slave_power_set_standby;
 		}
 		if (!vdev->vdev_sensor_config.sensor_isp) {
 			struct v4l2_pix_format pix = format.fmt.pix;
 			if (isp_s_fmt_cap(&pix, &format.fmt.pix)) {
-				dev_err(cam->dev,
+				dev_err(&vdev->vfd->dev,
 					"isp doesn't like the sensor!\n");
 				goto out_slave_power_set_standby;
 			}
@@ -1657,7 +1657,7 @@ static void omap34xxcam_vfd_name_update(struct omap34xxcam_videodev *vdev)
 			continue;
 		strlcat(vfd->name, vdev->slave[i]->name, sizeof(vfd->name));
 	}
-	dev_info(vdev->cam->dev, "video%d is now %s\n", vfd->minor, vfd->name);
+	dev_info(&vdev->vfd->dev, "video%d is now %s\n", vfd->minor, vfd->name);
 }
 
 /**
@@ -1744,7 +1744,6 @@ static const struct v4l2_ioctl_ops omap34xxcam_ioctl_ops = {
 static int omap34xxcam_device_register(struct v4l2_int_device *s)
 {
 	struct omap34xxcam_videodev *vdev = s->u.slave->master->priv;
-	struct omap34xxcam_device *cam = vdev->cam;
 	struct omap34xxcam_hw_config hwc;
 	struct video_device *vfd;
 	int rval;
@@ -1764,7 +1763,7 @@ static int omap34xxcam_device_register(struct v4l2_int_device *s)
 
 	mutex_lock(&vdev->mutex);
 	if (atomic_read(&vdev->users)) {
-		dev_err(cam->dev, "we're open (%d), can't register\n",
+		dev_err(&vfd->dev, "we're open (%d), can't register\n",
 			atomic_read(&vdev->users));
 		mutex_unlock(&vdev->mutex);
 		return -EBUSY;
@@ -1777,7 +1776,7 @@ static int omap34xxcam_device_register(struct v4l2_int_device *s)
 	if (hwc.dev_type == OMAP34XXCAM_SLAVE_SENSOR) {
 		rval = isp_get();
 		if (rval < 0) {
-			dev_err(cam->dev,
+			dev_err(&vfd->dev,
 				"can't get ISP, sensor init failed\n");
 			goto err;
 		}
@@ -1814,7 +1813,7 @@ static int omap34xxcam_device_register(struct v4l2_int_device *s)
 		vdev->vfd = video_device_alloc();
 		vfd = vdev->vfd;
 		if (!vfd) {
-			dev_err(cam->dev,
+			dev_err(&vfd->dev,
 				"could not allocate video device struct\n");
 			return -ENOMEM;
 		}
@@ -1826,7 +1825,7 @@ static int omap34xxcam_device_register(struct v4l2_int_device *s)
 
 		if (video_register_device(vfd, VFL_TYPE_GRABBER,
 					  hwc.dev_minor) < 0) {
-			dev_err(cam->dev,
+			dev_err(&vfd->dev,
 				"could not register V4L device\n");
 			vfd->minor = -1;
 			rval = -EBUSY;
@@ -1865,83 +1864,17 @@ static struct v4l2_int_master omap34xxcam_master = {
 
 /*
  *
- * Driver Suspend/Resume
+ * Module initialisation and deinitialisation
  *
  */
 
-#ifdef CONFIG_PM
-/**
- * omap34xxcam_suspend - platform driver PM suspend handler
- * @pdev: ptr. to platform level device information structure
- * @state: power state
- *
- * If applicable, stop capture and disable sensor.
- *
- * Returns 0 always
- */
-static int omap34xxcam_suspend(struct platform_device *pdev, pm_message_t state)
+static void __exit omap34xxcam_exit(void)
 {
-	struct omap34xxcam_videodev *vdev = platform_get_drvdata(pdev);
-
-	if (atomic_read(&vdev->users) == 0)
-		return 0;
-
-	if (vdev->streaming) {
-		isp_stop();
-		omap34xxcam_slave_power_set(vdev, V4L2_POWER_OFF,
-					    OMAP34XXCAM_SLAVE_POWER_ALL);
-	}
-
-	return 0;
-}
-
-/**
- * omap34xxcam_resume - platform driver PM resume handler
- * @pdev: ptr. to platform level device information structure
- *
- * If applicable, resume capture and enable sensor.
- *
- * Returns 0 always
- */
-static int omap34xxcam_resume(struct platform_device *pdev)
-{
-	struct omap34xxcam_videodev *vdev = platform_get_drvdata(pdev);
-
-	if (atomic_read(&vdev->users) == 0)
-		return 0;
-
-	if (vdev->streaming) {
-		omap34xxcam_slave_power_set(vdev, V4L2_POWER_ON,
-					    OMAP34XXCAM_SLAVE_POWER_ALL);
-		isp_start();
-	}
-
-	return 0;
-}
-#endif
-
-/*
- *
- * Driver initialisation and deinitialisation.
- *
- */
-
-/**
- * omap34xxcam_remove - platform driver remove handler
- * @pdev: ptr. to platform level device information structure
- *
- * Unregister device with V4L2, unmap camera registers, and
- * free camera device information structure (omap34xxcam_device).
- *
- * Returns 0 always.
- */
-static int omap34xxcam_remove(struct platform_device *pdev)
-{
-	struct omap34xxcam_device *cam = platform_get_drvdata(pdev);
+	struct omap34xxcam_device *cam = omap34xxcam;
 	int i;
 
 	if (!cam)
-		return 0;
+		return;
 
 	for (i = 0; i < OMAP34XXCAM_VIDEODEVS; i++) {
 		if (cam->vdevs[i].cam == NULL)
@@ -1954,34 +1887,18 @@ static int omap34xxcam_remove(struct platform_device *pdev)
 	omap34xxcam = NULL;
 
 	kfree(cam);
-
-	return 0;
 }
 
-/**
- * omap34xxcam_probe - platform driver probe handler
- * @pdev: ptr. to platform level device information structure
- *
- * Allocates and initializes camera device information structure
- * (omap34xxcam_device), maps the device registers and gets the
- * device IRQ.  Registers the device as a V4L2 client.
- *
- * Returns 0 on success or -ENODEV on failure.
- */
-static int omap34xxcam_probe(struct platform_device *pdev)
+static int __init omap34xxcam_init(void)
 {
 	struct omap34xxcam_device *cam;
 	int i;
 
 	cam = kzalloc(sizeof(*cam), GFP_KERNEL);
 	if (!cam) {
-		dev_err(&pdev->dev, "could not allocate memory\n");
+		printk(KERN_ERR "%s: could not allocate memory\n", __func__);
 		goto err;
 	}
-
-	platform_set_drvdata(pdev, cam);
-
-	cam->dev = &pdev->dev;
 
 	omap34xxcam = cam;
 
@@ -2014,50 +1931,8 @@ static int omap34xxcam_probe(struct platform_device *pdev)
 	return 0;
 
 err:
-	omap34xxcam_remove(pdev);
+	omap34xxcam_exit();
 	return -ENODEV;
-}
-
-static struct platform_driver omap34xxcam_driver = {
-	.probe = omap34xxcam_probe,
-	.remove = omap34xxcam_remove,
-#ifdef CONFIG_PM
-	.suspend = omap34xxcam_suspend,
-	.resume = omap34xxcam_resume,
-#endif
-	.driver = {
-		   .name = CAM_NAME,
-		   },
-};
-
-/*
- *
- * Module initialisation and deinitialisation
- *
- */
-
-/**
- * omap34xxcam_init - module_init function
- *
- * Calls platfrom driver to register probe, remove,
- * suspend and resume functions.
- *
- */
-static int __init omap34xxcam_init(void)
-{
-	return platform_driver_register(&omap34xxcam_driver);
-}
-
-/**
- * omap34xxcam_cleanup - module_exit function
- *
- * Calls platfrom driver to unregister probe, remove,
- * suspend and resume functions.
- *
- */
-static void __exit omap34xxcam_cleanup(void)
-{
-	platform_driver_unregister(&omap34xxcam_driver);
 }
 
 MODULE_AUTHOR("Sakari Ailus <sakari.ailus@nokia.com>");
@@ -2065,4 +1940,4 @@ MODULE_DESCRIPTION("OMAP34xx Video for Linux camera driver");
 MODULE_LICENSE("GPL");
 
 late_initcall(omap34xxcam_init);
-module_exit(omap34xxcam_cleanup);
+module_exit(omap34xxcam_exit);

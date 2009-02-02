@@ -181,7 +181,6 @@ struct omap34xxcam_device {
 	struct mutex mutex; /* serialises access to this structure */
 
 	/*** interfaces and device ***/
-	struct device *dev;
 	struct omap34xxcam_videodev vdevs[OMAP34XXCAM_VIDEODEVS];
 
 	/*** camera module clocks ***/
