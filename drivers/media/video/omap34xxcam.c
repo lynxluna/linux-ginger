@@ -1657,7 +1657,7 @@ static void omap34xxcam_vfd_name_update(struct omap34xxcam_videodev *vdev)
 			continue;
 		strlcat(vfd->name, vdev->slave[i]->name, sizeof(vfd->name));
 	}
-	dev_info(&vdev->vfd->dev, "video%d is now %s\n", vfd->minor, vfd->name);
+	dev_info(&vdev->vfd->dev, "video%d is now %s\n", vfd->num, vfd->name);
 }
 
 /**
@@ -1745,7 +1745,6 @@ static int omap34xxcam_device_register(struct v4l2_int_device *s)
 {
 	struct omap34xxcam_videodev *vdev = s->u.slave->master->priv;
 	struct omap34xxcam_hw_config hwc;
-	struct video_device *vfd;
 	int rval;
 
 	/* We need to check rval just once. The place is here. */
@@ -1763,7 +1762,7 @@ static int omap34xxcam_device_register(struct v4l2_int_device *s)
 
 	mutex_lock(&vdev->mutex);
 	if (atomic_read(&vdev->users)) {
-		dev_err(&vfd->dev, "we're open (%d), can't register\n",
+		dev_err(&vdev->vfd->dev, "we're open (%d), can't register\n",
 			atomic_read(&vdev->users));
 		mutex_unlock(&vdev->mutex);
 		return -EBUSY;
@@ -1776,7 +1775,7 @@ static int omap34xxcam_device_register(struct v4l2_int_device *s)
 	if (hwc.dev_type == OMAP34XXCAM_SLAVE_SENSOR) {
 		rval = isp_get();
 		if (rval < 0) {
-			dev_err(&vfd->dev,
+			dev_err(&vdev->vfd->dev,
 				"can't get ISP, sensor init failed\n");
 			goto err;
 		}
@@ -1811,28 +1810,25 @@ static int omap34xxcam_device_register(struct v4l2_int_device *s)
 	if (vdev->slaves == 1) {
 		/* initialize the video_device struct */
 		vdev->vfd = video_device_alloc();
-		vfd = vdev->vfd;
-		if (!vfd) {
-			dev_err(&vfd->dev,
+		if (!vdev->vfd) {
+			dev_err(&vdev->vfd->dev,
 				"could not allocate video device struct\n");
 			return -ENOMEM;
 		}
-		vfd->release	= video_device_release;
-		vfd->minor	= -1;
-		vfd->fops	= &omap34xxcam_fops;
-		vfd->ioctl_ops	= &omap34xxcam_ioctl_ops;
-		video_set_drvdata(vfd, vdev);
+		vdev->vfd->release	= video_device_release;
+		vdev->vfd->minor	= -1;
+		vdev->vfd->fops		= &omap34xxcam_fops;
+		vdev->vfd->ioctl_ops	= &omap34xxcam_ioctl_ops;
+		video_set_drvdata(vdev->vfd, vdev);
 
-		if (video_register_device(vfd, VFL_TYPE_GRABBER,
+		if (video_register_device(vdev->vfd, VFL_TYPE_GRABBER,
 					  hwc.dev_minor) < 0) {
-			dev_err(&vfd->dev,
+			dev_err(&vdev->vfd->dev,
 				"could not register V4L device\n");
-			vfd->minor = -1;
+			vdev->vfd->minor = -1;
 			rval = -EBUSY;
 			goto err;
 		}
-	} else {
-		vfd = vdev->vfd;
 	}
 
 	omap34xxcam_vfd_name_update(vdev);
