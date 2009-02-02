@@ -59,9 +59,6 @@ static void isp_restore_ctx(void);
 
 static void isp_buf_init(void);
 
-struct iommu *isp_iommu;
-EXPORT_SYMBOL_GPL(isp_iommu);
-
 /* List of image formats supported via OMAP ISP */
 const static struct v4l2_fmtdesc isp_formats[] = {
 	{
@@ -2097,6 +2094,9 @@ int isp_get(void)
 	static int has_context = 0;
 	int ret_err = 0;
 
+	if (omap3isp == NULL)
+		return -EBUSY;
+
 	DPRINTK_ISPCTRL("isp_get: old %d\n", isp_obj.ref_count);
 	mutex_lock(&(isp_obj.isp_mutex));
 	if (isp_obj.ref_count == 0) {
@@ -2149,6 +2149,9 @@ EXPORT_SYMBOL(isp_get);
  **/
 int isp_put(void)
 {
+	if (omap3isp == NULL)
+		return -EBUSY;
+
 	DPRINTK_ISPCTRL("isp_put: old %d\n", isp_obj.ref_count);
 	mutex_lock(&(isp_obj.isp_mutex));
 	if (isp_obj.ref_count) {
@@ -2219,7 +2222,7 @@ static int isp_remove(struct platform_device *pdev)
 	clk_put(isp_obj.cam_mclk);
 	clk_put(isp_obj.csi2_fck);
 
-	free_irq(isp->irq, &isp_obj.irq);
+	free_irq(isp->irq, &isp_obj);
 
 	for (i = 0; i <= OMAP3_ISP_IOMEM_CSI2PHY; i++) {
 		if (isp->mmio_base[i]) {
@@ -2245,14 +2248,12 @@ static int isp_probe(struct platform_device *pdev)
 {
 	struct isp_device *isp;
 	int ret_err = 0;
-	int irq;
 	int i;
 
 	isp = kzalloc(sizeof(*isp), GFP_KERNEL);
 	if (!isp) {
 		dev_err(&pdev->dev, "could not allocate memory\n");
-		ret_err = -ENODEV;
-		goto err;
+		return -ENODEV;
 	}
 
 	platform_set_drvdata(pdev, isp);
@@ -2265,16 +2266,14 @@ static int isp_probe(struct platform_device *pdev)
 		mem = platform_get_resource(pdev, IORESOURCE_MEM, i);
 		if (!mem) {
 			dev_err(isp->dev, "no mem resource?\n");
-			ret_err = -ENODEV;
-			goto err;
+			return -ENODEV;
 		}
 
 		if (!request_mem_region(mem->start, (mem->end - mem->start) + 1,
 					pdev->name)) {
 			dev_err(isp->dev,
 				"cannot reserve camera register I/O region\n");
-			ret_err = -ENODEV;
-			goto err;
+			return -ENODEV;
 
 		}
 		isp->mmio_base_phys[i] = mem->start;
@@ -2286,27 +2285,21 @@ static int isp_probe(struct platform_device *pdev)
 				isp->mmio_size[i]);
 		if (!isp->mmio_base[i]) {
 			dev_err(isp->dev, "cannot map camera register I/O region\n");
-			ret_err = -ENODEV;
-			goto err;
+			return -ENODEV;
 		}
 	}
 
-	irq = platform_get_irq(pdev, 0);
-	if (irq <= 0) {
+	isp->irq = platform_get_irq(pdev, 0);
+	if (isp->irq <= 0) {
 		dev_err(isp->dev, "no irq for camera?\n");
-		ret_err = -ENODEV;
-		goto err;
+		return -ENODEV;
 	}
-	isp->irq = irq;
-
-	omap3isp = isp;
 
 	isp_obj.cam_ick = clk_get(&camera_dev, "cam_ick");
 	if (IS_ERR(isp_obj.cam_ick)) {
 		DPRINTK_ISPCTRL("ISP_ERR: clk_get for "
 				"cam_ick failed\n");
-		ret_err = PTR_ERR(isp_obj.cam_ick);
-		goto err;
+		return PTR_ERR(isp_obj.cam_ick);
 	}
 	isp_obj.cam_mclk = clk_get(&camera_dev, "cam_mclk");
 	if (IS_ERR(isp_obj.cam_mclk)) {
@@ -2336,7 +2329,12 @@ static int isp_probe(struct platform_device *pdev)
 	spin_lock_init(&isp_obj.lock);
 	spin_lock_init(&isp_obj.bufs.lock);
 
-	ispmmu_init();
+	omap3isp = isp;
+
+	ret_err = ispmmu_init();
+	if (ret_err)
+		goto out_ispmmu_init;
+
 	isp_ccdc_init();
 	isp_hist_init();
 	isph3a_aewb_init();
@@ -2354,14 +2352,16 @@ static int isp_probe(struct platform_device *pdev)
 
 	return 0;
 
+out_ispmmu_init:
+	omap3isp = NULL;
+	free_irq(isp->irq, &isp_obj);
 out_request_irq:
 	clk_put(isp_obj.csi2_fck);
 out_clk_get_csi2_fclk:
 	clk_put(isp_obj.cam_mclk);
 out_clk_get_mclk:
 	clk_put(isp_obj.cam_ick);
-err:
-	isp_remove(pdev);
+
 	return ret_err;
 }
 
