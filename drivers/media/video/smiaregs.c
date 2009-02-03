@@ -244,22 +244,22 @@ int smia_reglist_import(struct smia_meta_reglist *meta)
 	sort(&meta->reglist[0].offset, nlists, sizeof(meta->reglist[0].offset),
 	     smia_reglist_cmp, NULL);
 
-/* 	nlists = 0; */
-/* 	while (meta->reglist[nlists].offset != 0) { */
-/* 		struct smia_reglist *list; */
+	nlists = 0;
+	while (meta->reglist[nlists].offset != 0) {
+		struct smia_reglist *list;
 
-/* 		list = meta->reglist[nlists].ptr; */
+		list = meta->reglist[nlists].ptr;
 
-/* 		printk(KERN_INFO "%s: offset %d type %d w %d h %d fmt
- * 		%x\n", */
-/* 		       __func__, */
-/* 		       offset, */
-/* 		       list->type, */
-/* 		       list->mode.window_width, list->mode.window_height, */
-/* 		       list->mode.pixel_format); */
+		printk(KERN_INFO "%s: type %d\tw %d\th %d\tfmt %x\tival %d/%d\tptr %p\n",
+		       __func__,
+		       list->type,
+		       list->mode.window_width, list->mode.window_height,
+		       list->mode.pixel_format,
+		       list->mode.timeperframe.numerator, list->mode.timeperframe.denominator,
+		       meta->reglist[nlists].offset);
 
-/* 		nlists++; */
-/* 	} */
+		nlists++;
+	}
 
 	return 0;
 }
@@ -360,10 +360,11 @@ int smia_reglist_enum_fmt(struct smia_meta_reglist *meta,
 
 		for (i = 0; i < npixelformat; i++) {
 			if (pixelformat[i] == mode->pixel_format)
-				continue;
+				break;
 		}
+		if (i != npixelformat)
+			continue;
 
-		pixelformat[npixelformat] = mode->pixel_format;
 		if (f->index == npixelformat) {
 			f->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 			f->pixelformat = mode->pixel_format;
@@ -371,6 +372,7 @@ int smia_reglist_enum_fmt(struct smia_meta_reglist *meta,
 			return 0;
 		}
 
+		pixelformat[npixelformat] = mode->pixel_format;
 		npixelformat++;
 	}
 
