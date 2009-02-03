@@ -402,126 +402,183 @@ static int try_pix_parm(struct omap34xxcam_videodev *vdev,
 			struct v4l2_fract *best_ival)
 {
 	int fps;
+	int fmtd_index;
 	int rval;
-	int size_index;
 	struct v4l2_pix_format best_pix_out;
 
 	if (best_ival->numerator == 0
 	    || best_ival->denominator == 0)
-		best_ival->denominator = 30, best_ival->numerator = 1;
+		*best_ival = vdev->vdev_sensor_config.ival_default;
 
 	fps = best_ival->denominator / best_ival->numerator;
 
 	best_ival->denominator = 0;
-	/* FIXME: this isn't good... */
-	best_pix_in->pixelformat = V4L2_PIX_FMT_SGRBG10;
-
 	best_pix_out.height = INT_MAX >> 1;
 	best_pix_out.width = best_pix_out.height;
 
-	/*
-	 * Get supported resolutions.
-	 */
-	for (size_index = 0; ; size_index++) {
-		struct v4l2_frmsizeenum frms;
-		struct v4l2_pix_format pix_tmp_in, pix_tmp_out;
-		int ival_index;
+	for (fmtd_index = 0; ; fmtd_index++) {
+		int size_index;
+		struct v4l2_fmtdesc fmtd;
 
-		frms.index = size_index;
-		frms.pixel_format = best_pix_in->pixelformat;
-
-		rval = vidioc_int_enum_framesizes(vdev->vdev_sensor, &frms);
-		if (rval) {
-			rval = 0;
-			break;
-		}
-
-		pix_tmp_in.pixelformat = frms.pixel_format;
-		pix_tmp_in.width = frms.discrete.width;
-		pix_tmp_in.height = frms.discrete.height;
-		pix_tmp_out = *wanted_pix_out;
-		/* Don't do upscaling. */
-		if (pix_tmp_out.width > pix_tmp_in.width)
-			pix_tmp_out.width = pix_tmp_in.width;
-		if (pix_tmp_out.height > pix_tmp_in.height)
-			pix_tmp_out.height = pix_tmp_in.height;
-		rval = isp_try_fmt_cap(&pix_tmp_in, &pix_tmp_out);
+		fmtd.index = fmtd_index;
+		fmtd.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+		rval = vidioc_int_enum_fmt_cap(vdev->vdev_sensor, &fmtd);
 		if (rval)
-			return rval;
-
-#define IS_SMALLER_OR_EQUAL(pix1, pix2)			\
-		((pix1)->width + (pix1)->height		\
-		 < (pix2)->width + (pix2)->height)
-#define SIZE_DIFF(pix1, pix2)					\
-		(abs((pix1)->width - (pix2)->width)		\
-		 + abs((pix1)->height - (pix2)->height))
-
+			break;
+		dev_info(&vdev->vfd->dev, "trying fmt %8.8x (%d)\n",
+			 fmtd.pixelformat, fmtd_index);
 		/*
-		 * Don't use modes that are farther from wanted size
-		 * that what we already got.
+		 * Get supported resolutions.
 		 */
-		if (SIZE_DIFF(&pix_tmp_out, wanted_pix_out)
-		    > SIZE_DIFF(&best_pix_out, wanted_pix_out))
-			continue;
+		for (size_index = 0; ; size_index++) {
+			struct v4l2_frmsizeenum frms;
+			struct v4l2_pix_format pix_tmp_in, pix_tmp_out;
+			int ival_index;
 
-		/*
-		 * There's an input mode that can provide output
-		 * closer to wanted.
-		 */
-		if (SIZE_DIFF(&pix_tmp_out, wanted_pix_out)
-		    < SIZE_DIFF(&best_pix_out, wanted_pix_out))
-			/* Force renegotation of fps etc. */
-			best_ival->denominator = 0;
+			frms.index = size_index;
+			frms.pixel_format = fmtd.pixelformat;
 
-		for (ival_index = 0; ; ival_index++) {
-			struct v4l2_frmivalenum frmi;
-
-			frmi.index = ival_index;
-			frmi.pixel_format = frms.pixel_format;
-			frmi.width = frms.discrete.width;
-			frmi.height = frms.discrete.height;
-			/* FIXME: try to fix standard... */
-			frmi.reserved[0] = 0xdeafbeef;
-
-			rval = vidioc_int_enum_frameintervals(vdev->vdev_sensor,
-							      &frmi);
-			if (rval) {
-				rval = 0;
+			rval = vidioc_int_enum_framesizes(vdev->vdev_sensor,
+							  &frms);
+			if (rval)
 				break;
+
+			pix_tmp_in.pixelformat = frms.pixel_format;
+			pix_tmp_in.width = frms.discrete.width;
+			pix_tmp_in.height = frms.discrete.height;
+			pix_tmp_out = *wanted_pix_out;
+			/* Don't do upscaling. */
+			if (pix_tmp_out.width > pix_tmp_in.width)
+				pix_tmp_out.width = pix_tmp_in.width;
+			if (pix_tmp_out.height > pix_tmp_in.height)
+				pix_tmp_out.height = pix_tmp_in.height;
+			rval = isp_try_fmt_cap(&pix_tmp_in, &pix_tmp_out);
+			if (rval)
+				return rval;
+
+			dev_info(&vdev->vfd->dev, "this w %d\th %d\tfmt %8.8x\t"
+				 "-> w %d\th %d\t fmt %8.8x"
+				 "\twanted w %d\th %d\t fmt %8.8x\n",
+				 pix_tmp_in.width, pix_tmp_in.height,
+				 pix_tmp_in.pixelformat,
+				 pix_tmp_out.width, pix_tmp_out.height,
+				 pix_tmp_out.pixelformat,
+				 wanted_pix_out->width, wanted_pix_out->height,
+				 wanted_pix_out->pixelformat);
+
+#define IS_SMALLER_OR_EQUAL(pix1, pix2)				\
+			((pix1)->width + (pix1)->height		\
+			 < (pix2)->width + (pix2)->height)
+#define SIZE_DIFF(pix1, pix2)						\
+			(abs((pix1)->width - (pix2)->width)		\
+			 + abs((pix1)->height - (pix2)->height))
+
+			/*
+			 * Don't use modes that are farther from wanted size
+			 * that what we already got.
+			 */
+			if (SIZE_DIFF(&pix_tmp_out, wanted_pix_out)
+			    > SIZE_DIFF(&best_pix_out, wanted_pix_out)) {
+				dev_info(&vdev->vfd->dev, "size diff bigger: "
+					 "w %d\th %d\tw %d\th %d\n",
+					 pix_tmp_out.width, pix_tmp_out.height,
+					 best_pix_out.width,
+					 best_pix_out.height);
+				continue;
 			}
 
-			if (best_ival->denominator == 0)
-				goto do_it_now;
-
 			/*
-			 * We aim to use maximum resolution from the
-			 * sensor, provided that the fps is at least
-			 * as close as on the current mode.
+			 * There's an input mode that can provide output
+			 * closer to wanted.
 			 */
+			if (SIZE_DIFF(&pix_tmp_out, wanted_pix_out)
+			    < SIZE_DIFF(&best_pix_out, wanted_pix_out)) {
+				/* Force renegotation of fps etc. */
+				best_ival->denominator = 0;
+				dev_info(&vdev->vfd->dev, "renegotiate: "
+					 "w %d\th %d\tw %d\th %d\n",
+					 pix_tmp_out.width, pix_tmp_out.height,
+					 best_pix_out.width,
+					 best_pix_out.height);
+			}
+
+			for (ival_index = 0; ; ival_index++) {
+				struct v4l2_frmivalenum frmi;
+
+				frmi.index = ival_index;
+				frmi.pixel_format = frms.pixel_format;
+				frmi.width = frms.discrete.width;
+				frmi.height = frms.discrete.height;
+				/* FIXME: try to fix standard... */
+				frmi.reserved[0] = 0xdeafbeef;
+
+				rval = vidioc_int_enum_frameintervals(
+					vdev->vdev_sensor, &frmi);
+				if (rval)
+					break;
+
+				dev_info(&vdev->vfd->dev, "fps %d\n",
+					 frmi.discrete.denominator
+					 / frmi.discrete.numerator);
+
+				if (best_ival->denominator == 0)
+					goto do_it_now;
+
+				/*
+				 * We aim to use maximum resolution
+				 * from the sensor, provided that the
+				 * fps is at least as close as on the
+				 * current mode.
+				 */
 #define FPS_ABS_DIFF(fps, ival) abs(fps - (ival).denominator / (ival).numerator)
 
-			/* Select mode with closest fps. */
-			if (FPS_ABS_DIFF(fps, frmi.discrete)
-			    < FPS_ABS_DIFF(fps, *best_ival))
-				goto do_it_now;
+				/* Select mode with closest fps. */
+				if (FPS_ABS_DIFF(fps, frmi.discrete)
+				    < FPS_ABS_DIFF(fps, *best_ival)) {
+					dev_info(&vdev->vfd->dev, "closer fps: "
+						 "fps %d\t fps %d\n",
+						 FPS_ABS_DIFF(fps, frmi.discrete),
+						 FPS_ABS_DIFF(fps, *best_ival));
+					goto do_it_now;
+				}
 
-			/*
-			 * Select bigger resolution if it's available
-			 * at same fps.
-			 */
-			if (frmi.width > best_pix_in->width
-			    && FPS_ABS_DIFF(fps, frmi.discrete)
-			    <= FPS_ABS_DIFF(fps, *best_ival))
-				goto do_it_now;
+				/*
+				 * Select bigger resolution if it's available
+				 * at same fps.
+				 */
+				if (frmi.width + frmi.height
+				    > best_pix_in->width + best_pix_in->height
+				    && FPS_ABS_DIFF(fps, frmi.discrete)
+				    <= FPS_ABS_DIFF(fps, *best_ival)) {
+					dev_info(&vdev->vfd->dev, "bigger res, "
+						 "same fps: "
+						 "w %d\th %d\tw %d\th %d\n",
+						 frmi.width, frmi.height,
+						 best_pix_in->width,
+						 best_pix_in->height);
+					goto do_it_now;
+				}
 
-			continue;
+				dev_info(&vdev->vfd->dev, "falling through\n");
 
-do_it_now:
-			*best_ival = frmi.discrete;
-			best_pix_out = pix_tmp_out;
-			best_pix_in->width = frmi.width;
-			best_pix_in->height = frmi.height;
-			best_pix_in->pixelformat = frmi.pixel_format;
+				continue;
+
+			do_it_now:
+				*best_ival = frmi.discrete;
+				best_pix_out = pix_tmp_out;
+				best_pix_in->width = frmi.width;
+				best_pix_in->height = frmi.height;
+				best_pix_in->pixelformat = frmi.pixel_format;
+
+				dev_info(&vdev->vfd->dev,
+					 "best_pix_in: w %d\th %d\tfmt %8.8x"
+					 "\tival %d/%d\n",
+					 best_pix_in->width,
+					 best_pix_in->height,
+					 best_pix_in->pixelformat,
+					 best_ival->numerator,
+					 best_ival->denominator);
+			}
 		}
 	}
 
@@ -530,8 +587,9 @@ do_it_now:
 
 	*wanted_pix_out = best_pix_out;
 
-	dev_info(&vdev->vfd->dev, "w %d, h %d -> w %d, h %d\n",
+	dev_info(&vdev->vfd->dev, "w %d, h %d, fmt %8.8x -> w %d, h %d\n",
 		 best_pix_in->width, best_pix_in->height,
+		 best_pix_in->pixelformat,
 		 best_pix_out.width, best_pix_out.height);
 
 	return isp_try_fmt_cap(best_pix_in, wanted_pix_out);
@@ -1786,18 +1844,13 @@ static int omap34xxcam_device_register(struct v4l2_int_device *s)
 		goto err_omap34xxcam_slave_power_set;
 	if (hwc.dev_type == OMAP34XXCAM_SLAVE_SENSOR) {
 		struct v4l2_format format;
-		struct v4l2_streamparm a;
 
 		format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 		rval = vidioc_int_g_fmt_cap(vdev->vdev_sensor, &format);
-
-		a.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-		rval |= vidioc_int_g_parm(vdev->vdev_sensor, &a);
 		if (rval)
 			rval = -EBUSY;
 
 		vdev->want_pix = format.fmt.pix;
-		vdev->want_timeperframe = a.parm.capture.timeperframe;
 	}
 	omap34xxcam_slave_power_set(vdev, V4L2_POWER_OFF, 1 << hwc.dev_type);
 	if (hwc.dev_type == OMAP34XXCAM_SLAVE_SENSOR)

@@ -70,6 +70,7 @@ struct omap34xxcam_sensor_config {
 	int xclk;
 	int sensor_isp;
 	u32 capture_mem;
+	struct v4l2_fract ival_default;
 };
 
 struct omap34xxcam_lens_config {
