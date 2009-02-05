@@ -270,7 +270,7 @@ struct smia_reglist *smia_reglist_find_type(struct smia_meta_reglist *meta,
 {
 	struct smia_reglist **next = &meta->reglist[0].ptr;
 
-	while (next) {
+	while (*next) {
 		if ((*next)->type == type)
 			return *next;
 
