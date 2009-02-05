@@ -1595,8 +1595,9 @@ static int omap34xxcam_open(struct inode *inode, struct file *file)
 
 	fh->vdev = vdev;
 
-	memset(&format, 0, sizeof(format));
-	if (vdev->vdev_sensor != v4l2_int_device_dummy()) {
+	if (!vdev->pix.width
+	    && vdev->vdev_sensor != v4l2_int_device_dummy()) {
+		memset(&format, 0, sizeof(format));
 		if (vidioc_int_g_fmt_cap(vdev->vdev_sensor, &format)) {
 			dev_err(&vdev->vfd->dev,
 				"can't get current pix from sensor!\n");
@@ -1610,8 +1611,8 @@ static int omap34xxcam_open(struct inode *inode, struct file *file)
 				goto out_slave_power_set_standby;
 			}
 		}
+		vdev->pix = format.fmt.pix;
 	}
-	vdev->pix = format.fmt.pix;
 
 	mutex_unlock(&vdev->mutex);
 
