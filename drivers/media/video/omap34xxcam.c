@@ -1907,7 +1907,7 @@ static struct v4l2_int_master omap34xxcam_master = {
  *
  */
 
-static void __exit omap34xxcam_exit(void)
+static void omap34xxcam_exit(void)
 {
 	struct omap34xxcam_device *cam = omap34xxcam;
 	int i;
