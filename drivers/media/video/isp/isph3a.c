@@ -811,7 +811,7 @@ int __init isph3a_aewb_init(void)
 /**
  * isph3a_aewb_cleanup - Module exit.
  **/
-void __exit isph3a_aewb_cleanup(void)
+void isph3a_aewb_cleanup(void)
 {
 	int i;
 

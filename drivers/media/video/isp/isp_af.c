@@ -732,7 +732,7 @@ err_nomem1:
 	return -ENOMEM;
 }
 
-void __exit isp_af_exit(void)
+void isp_af_exit(void)
 {
 	int i;
 

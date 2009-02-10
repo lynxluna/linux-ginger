@@ -511,7 +511,7 @@ int __init isp_hist_init(void)
 /**
  * isp_hist_cleanup - Module cleanup.
  **/
-void __exit isp_hist_cleanup(void)
+void isp_hist_cleanup(void)
 {
 	memset(&histstat, 0, sizeof(histstat));
 	memset(&hist_regs, 0, sizeof(hist_regs));

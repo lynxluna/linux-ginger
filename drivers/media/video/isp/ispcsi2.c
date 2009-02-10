@@ -2044,7 +2044,7 @@ void isp_csi2_regdump(void)
 /**
  * isp_csi2_cleanup - Routine for module driver cleanup
  **/
-void __exit isp_csi2_cleanup(void)
+void isp_csi2_cleanup(void)
 {
 	return;
 }

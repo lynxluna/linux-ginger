@@ -885,6 +885,6 @@ int __init isp_resizer_init(void)
 /**
  * isp_resizer_cleanup - Module Cleanup.
  **/
-void __exit isp_resizer_cleanup(void)
+void isp_resizer_cleanup(void)
 {
 }

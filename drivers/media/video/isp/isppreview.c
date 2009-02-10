@@ -1952,7 +1952,7 @@ int __init isp_preview_init(void)
 /**
  * isp_preview_cleanup - Module Cleanup.
  **/
-void __exit isp_preview_cleanup(void)
+void isp_preview_cleanup(void)
 {
 	kfree(prev_config_params);
 }
