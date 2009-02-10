@@ -1373,7 +1373,7 @@ out:
  * feedback. The request is then passed on to the ISP private IOCTL handler,
  * isp_handle_private()
  */
-static int vidioc_default(struct file *file, void *fh, int cmd, void *arg)
+static long vidioc_default(struct file *file, void *fh, int cmd, void *arg)
 {
 	struct omap34xxcam_fh *ofh = file->private_data;
 	struct omap34xxcam_videodev *vdev = ofh->vdev;
@@ -1383,12 +1383,6 @@ static int vidioc_default(struct file *file, void *fh, int cmd, void *arg)
 		rval = -EINVAL;
 	} else {
 		switch (cmd) {
-		case VIDIOC_ENUM_FRAMESIZES:
-			rval = vidioc_enum_framesizes(file, fh, arg);
-			goto out;
-		case VIDIOC_ENUM_FRAMEINTERVALS:
-			rval = vidioc_enum_frameintervals(file, fh, arg);
-			goto out;
 		case VIDIOC_ENUM_SLAVES:
 			rval = vidioc_enum_slaves(file, fh, arg);
 			goto out;
@@ -1479,12 +1473,6 @@ out:
  *
  */
 
-static long omap34xxcam_unlocked_ioctl(struct file *file, unsigned int cmd,
-				       unsigned long arg)
-{
-	return (long)video_ioctl2(file->f_dentry->d_inode, file, cmd, arg);
-}
-
 /**
  * omap34xxcam_poll - file operations poll handler
  * @file: ptr. to system file structure
@@ -1548,7 +1536,7 @@ static int omap34xxcam_mmap(struct file *file, struct vm_area_struct *vma)
  * for control only.
  * This function returns 0 upon success and -ENODEV upon error.
  */
-static int omap34xxcam_open(struct inode *inode, struct file *file)
+static int omap34xxcam_open(struct file *file)
 {
 	struct omap34xxcam_videodev *vdev = NULL;
 	struct omap34xxcam_device *cam = omap34xxcam;
@@ -1558,7 +1546,7 @@ static int omap34xxcam_open(struct inode *inode, struct file *file)
 
 	for (i = 0; i < OMAP34XXCAM_VIDEODEVS; i++) {
 		if (cam->vdevs[i].vfd
-		    && cam->vdevs[i].vfd->minor == iminor(inode)) {
+		    && cam->vdevs[i].vfd->minor == iminor(file->f_dentry->d_inode)) {
 			vdev = &cam->vdevs[i];
 			break;
 		}
@@ -1657,7 +1645,7 @@ out_try_module_get:
  * sensor when the last open file handle (by count) is closed.
  * This function returns 0.
  */
-static int omap34xxcam_release(struct inode *inode, struct file *file)
+static int omap34xxcam_release(struct file *file)
 {
 	struct omap34xxcam_fh *fh = file->private_data;
 	struct omap34xxcam_videodev *vdev = fh->vdev;
@@ -1694,10 +1682,9 @@ static int omap34xxcam_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static struct file_operations omap34xxcam_fops = {
+static struct v4l2_file_operations omap34xxcam_fops = {
 	.owner = THIS_MODULE,
-	.llseek = no_llseek,
-	.unlocked_ioctl = omap34xxcam_unlocked_ioctl,
+	.unlocked_ioctl = video_ioctl2,
 	.poll = omap34xxcam_poll,
 	.mmap = omap34xxcam_mmap,
 	.open = omap34xxcam_open,
@@ -1762,30 +1749,32 @@ static void omap34xxcam_device_unregister(struct v4l2_int_device *s)
 }
 
 static const struct v4l2_ioctl_ops omap34xxcam_ioctl_ops = {
-	.vidioc_querycap	 = vidioc_querycap,
-	.vidioc_enum_fmt_vid_cap = vidioc_enum_fmt_vid_cap,
-	.vidioc_g_fmt_vid_cap	 = vidioc_g_fmt_vid_cap,
-	.vidioc_s_fmt_vid_cap	 = vidioc_s_fmt_vid_cap,
-	.vidioc_try_fmt_vid_cap	 = vidioc_try_fmt_vid_cap,
-	.vidioc_reqbufs		 = vidioc_reqbufs,
-	.vidioc_querybuf	 = vidioc_querybuf,
-	.vidioc_qbuf		 = vidioc_qbuf,
-	.vidioc_dqbuf		 = vidioc_dqbuf,
-	.vidioc_streamon	 = vidioc_streamon,
-	.vidioc_streamoff	 = vidioc_streamoff,
-	.vidioc_enum_input	 = vidioc_enum_input,
-	.vidioc_g_input		 = vidioc_g_input,
-	.vidioc_s_input		 = vidioc_s_input,
-	.vidioc_queryctrl	 = vidioc_queryctrl,
-	.vidioc_querymenu	 = vidioc_querymenu,
-	.vidioc_g_ext_ctrls	 = vidioc_g_ext_ctrls,
-	.vidioc_s_ext_ctrls	 = vidioc_s_ext_ctrls,
-	.vidioc_g_parm		 = vidioc_g_parm,
-	.vidioc_s_parm		 = vidioc_s_parm,
-	.vidioc_cropcap		 = vidioc_cropcap,
-	.vidioc_g_crop		 = vidioc_g_crop,
-	.vidioc_s_crop		 = vidioc_s_crop,
-	.vidioc_default		 = vidioc_default,
+	.vidioc_querycap		= vidioc_querycap,
+	.vidioc_enum_fmt_vid_cap	= vidioc_enum_fmt_vid_cap,
+	.vidioc_g_fmt_vid_cap		= vidioc_g_fmt_vid_cap,
+	.vidioc_s_fmt_vid_cap		= vidioc_s_fmt_vid_cap,
+	.vidioc_try_fmt_vid_cap		= vidioc_try_fmt_vid_cap,
+	.vidioc_reqbufs			= vidioc_reqbufs,
+	.vidioc_querybuf		= vidioc_querybuf,
+	.vidioc_qbuf			= vidioc_qbuf,
+	.vidioc_dqbuf			= vidioc_dqbuf,
+	.vidioc_streamon		= vidioc_streamon,
+	.vidioc_streamoff		= vidioc_streamoff,
+	.vidioc_enum_input		= vidioc_enum_input,
+	.vidioc_g_input			= vidioc_g_input,
+	.vidioc_s_input			= vidioc_s_input,
+	.vidioc_queryctrl		= vidioc_queryctrl,
+	.vidioc_querymenu		= vidioc_querymenu,
+	.vidioc_g_ext_ctrls		= vidioc_g_ext_ctrls,
+	.vidioc_s_ext_ctrls		= vidioc_s_ext_ctrls,
+	.vidioc_g_parm			= vidioc_g_parm,
+	.vidioc_s_parm			= vidioc_s_parm,
+	.vidioc_cropcap			= vidioc_cropcap,
+	.vidioc_g_crop			= vidioc_g_crop,
+	.vidioc_s_crop			= vidioc_s_crop,
+	.vidioc_enum_framesizes		= vidioc_enum_framesizes,
+	.vidioc_enum_frameintervals	= vidioc_enum_frameintervals,
+	.vidioc_default			= vidioc_default,
 };
 
 /**
