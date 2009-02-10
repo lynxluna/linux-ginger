@@ -155,7 +155,7 @@ static int __init rx51_camera_base_init(void)
 {
 	int err;
 
-	if (!(machine_is_nokia_rx51() || machine_is_nokia_rx71()))
+	if (!machine_is_nokia_rx51())
 		return 0;
 
 	/* I2C */
