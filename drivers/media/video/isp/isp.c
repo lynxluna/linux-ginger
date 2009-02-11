@@ -1220,7 +1220,8 @@ static u32 isp_calc_pipeline(struct v4l2_pix_format *pix_input,
 	} else {
 		isp_obj.module.isp_pipeline = OMAP_ISP_CCDC;
 		ispccdc_request();
-		if (pix_input->pixelformat == V4L2_PIX_FMT_SGRBG10)
+		if (pix_input->pixelformat == V4L2_PIX_FMT_SGRBG10
+		    || pix_input->pixelformat == V4L2_PIX_FMT_SGRBG10DPCM8)
 			ispccdc_config_datapath(CCDC_RAW, CCDC_OTHERS_VP_MEM);
 		else
 			ispccdc_config_datapath(CCDC_YUV_SYNC,
