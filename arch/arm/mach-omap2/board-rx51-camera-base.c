@@ -33,9 +33,7 @@
 #if defined CONFIG_VIDEO_MACH_RX51 || defined CONFIG_VIDEO_MACH_RX51_MODULE
 
 #include "../../../drivers/media/video/et8ek8.h"
-#include "../../../drivers/media/video/mt9p012.h"
 #include "../../../drivers/media/video/vs6555.h"
-#include "../../../drivers/media/video/tcm8330md.h"
 
 #include <media/ad5820.h>
 #include <media/adp1653.h>
@@ -54,11 +52,6 @@ struct et8ek8_platform_data rx51_et8ek8_platform_data = {
 };
 EXPORT_SYMBOL(rx51_et8ek8_platform_data);
 
-struct mt9p012_platform_data rx51_mt9p012_platform_data = {
-	.g_priv	= fake_rx51_camera_g_priv,
-};
-EXPORT_SYMBOL(rx51_mt9p012_platform_data);
-
 struct ad5820_platform_data rx51_ad5820_platform_data = {
 	.g_priv	= fake_rx51_camera_g_priv,
 };
@@ -74,23 +67,12 @@ struct vs6555_platform_data rx51_vs6555_platform_data = {
 };
 EXPORT_SYMBOL(rx51_vs6555_platform_data);
 
-struct tcm8330md_platform_data rx51_tcm8330md_platform_data = {
-	.g_priv	= fake_rx51_camera_g_priv,
-};
-EXPORT_SYMBOL(rx51_tcm8330md_platform_data);
-
 static struct i2c_board_info rx51_camera_board_info_2[] __initdata = {
 #ifdef CONFIG_VIDEO_MACH_RX51_OLD_I2C
 #if defined (CONFIG_VIDEO_ET8EK8) || defined (CONFIG_VIDEO_ET8EK8_MODULE)
 	{
 		I2C_BOARD_INFO(ET8EK8_NAME, ET8EK8_I2C_ADDR),
 		.platform_data = &rx51_et8ek8_platform_data,
-	},
-#endif
-#if defined (CONFIG_VIDEO_MT9P012) || defined (CONFIG_VIDEO_MT9P012_MODULE)
-	{
-		I2C_BOARD_INFO(MT9P012_NAME, MT9P012_I2C_ADDR),
-		.platform_data = &rx51_mt9p012_platform_data,
 	},
 #endif
 #if defined (CONFIG_VIDEO_AD5820) || defined (CONFIG_VIDEO_AD5820_MODULE)
@@ -113,12 +95,6 @@ static struct i2c_board_info rx51_camera_board_info_2[] __initdata = {
 		.platform_data = &rx51_vs6555_platform_data,
 	},
 #endif
-#if defined(CONFIG_VIDEO_TCM8330MD) || defined(CONFIG_VIDEO_TCM8330MD_MODULE)
-	{
-		I2C_BOARD_INFO(TCM8330MD_NAME, TCM8330MD_I2C_ADDR),
-		.platform_data = &rx51_tcm8330md_platform_data,
-	},
-#endif
 };
 
 static struct i2c_board_info rx51_camera_board_info_3[] __initdata = {
@@ -134,12 +110,6 @@ static struct i2c_board_info rx51_camera_board_info_3[] __initdata = {
 	{
 		I2C_BOARD_INFO(ET8EK8_NAME, ET8EK8_I2C_ADDR),
 		.platform_data = &rx51_et8ek8_platform_data,
-	},
-#endif
-#if defined (CONFIG_VIDEO_MT9P012) || defined (CONFIG_VIDEO_MT9P012_MODULE)
-	{
-		I2C_BOARD_INFO(MT9P012_NAME, MT9P012_I2C_ADDR),
-		.platform_data = &rx51_mt9p012_platform_data,
 	},
 #endif
 #if defined (CONFIG_VIDEO_AD5820) || defined (CONFIG_VIDEO_AD5820_MODULE)

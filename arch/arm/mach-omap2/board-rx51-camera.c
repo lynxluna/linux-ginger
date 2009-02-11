@@ -34,9 +34,7 @@
 #include "../../../drivers/media/video/omap34xxcam.h"
 #include "../../../drivers/media/video/isp/ispreg.h"
 #include "../../../drivers/media/video/et8ek8.h"
-#include "../../../drivers/media/video/mt9p012.h"
 #include "../../../drivers/media/video/vs6555.h"
-#include "../../../drivers/media/video/tcm8330md.h"
 
 #include <media/ad5820.h>
 #include <media/adp1653.h>
@@ -457,16 +455,6 @@ static struct et8ek8_platform_data et8ek8_my_platform_data = {
 	.power_off		= rx51_stingray_power_off,
 };
 
-static struct mt9p012_platform_data mt9p012_tmp_platform_data;
-
-static struct mt9p012_platform_data mt9p012_my_platform_data = {
-	.g_priv			= rx51_stingray_g_priv,
-	.configure_interface	= rx51_stingray_configure_interface,
-	.set_xclk		= rx51_stingray_set_xclk,
-	.power_on		= rx51_stingray_power_on,
-	.power_off		= rx51_stingray_power_off,
-};
-
 /*
  *
  * AD5820
@@ -652,16 +640,6 @@ static struct vs6555_platform_data vs6555_my_platform_data = {
 	.power_off		= rx51_acmelite_power_off,
 };
 
-static struct tcm8330md_platform_data tcm8330md_tmp_platform_data;
-
-static struct tcm8330md_platform_data tcm8330md_my_platform_data = {
-	.g_priv			= rx51_acmelite_g_priv,
-	.configure_interface	= rx51_acmelite_configure_interface,
-	.set_xclk		= rx51_acmelite_set_xclk,
-	.power_on		= rx51_acmelite_power_on,
-	.power_off		= rx51_acmelite_power_off,
-};
-
 /*
  *
  * Init it all
@@ -683,9 +661,6 @@ static int __init rx51_camera_init(void) {
 	et8ek8_tmp_platform_data = rx51_et8ek8_platform_data;
 	rx51_et8ek8_platform_data = et8ek8_my_platform_data;
 
-	mt9p012_tmp_platform_data = rx51_mt9p012_platform_data;
-	rx51_mt9p012_platform_data = mt9p012_my_platform_data;
-
 	/* AD5820 */
 	ad5820_tmp_platform_data = rx51_ad5820_platform_data;
 	rx51_ad5820_platform_data = ad5820_my_platform_data;
@@ -693,9 +668,6 @@ static int __init rx51_camera_init(void) {
 	/* Acmelite */
 	vs6555_tmp_platform_data = rx51_vs6555_platform_data;
 	rx51_vs6555_platform_data = vs6555_my_platform_data;
-
-	tcm8330md_tmp_platform_data = rx51_tcm8330md_platform_data;
-	rx51_tcm8330md_platform_data = tcm8330md_my_platform_data;
 
 	/* FIXME: can't unload yet. */
 	__module_get(THIS_MODULE);
@@ -708,11 +680,9 @@ static int __init rx51_camera_init(void) {
 
 static void __exit rx51_camera_exit(void) {
 	rx51_et8ek8_platform_data = et8ek8_tmp_platform_data;
-	rx51_mt9p012_platform_data = mt9p012_tmp_platform_data;
 	rx51_ad5820_platform_data = ad5820_tmp_platform_data;
 	rx51_adp1653_platform_data = adp1653_tmp_platform_data;
 	rx51_vs6555_platform_data = vs6555_tmp_platform_data;
-	rx51_tcm8330md_platform_data = tcm8330md_tmp_platform_data;
 
 	gpio_free(ADP1653_GPIO_ENABLE);
 	gpio_free(ADP1653_GPIO_INT);
