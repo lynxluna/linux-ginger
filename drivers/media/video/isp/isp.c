@@ -902,23 +902,14 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *_isp)
 	if (irqstatus & HS_VS && bufs->wait_hs_vs)
 		bufs->wait_hs_vs--;
 	spin_unlock_irqrestore(&bufs->lock, flags);
+
+	spin_lock_irqsave(&isp_obj.lock, irqflags);
 	/*
 	 * We need to wait for the first HS_VS interrupt from CCDC. 
 	 * Otherwise our frame (and everything else) might be bad.
 	 */
 	if (wait_hs_vs)
-		goto out_no_unlock;
-
-	spin_lock_irqsave(&isp_obj.lock, irqflags);
-
-	if (irqstatus & LSC_PRE_ERR) {
-		struct isp_buf *buf = ISP_BUF_DONE(bufs);
-		ispccdc_enable_lsc(0);
-		ispccdc_enable_lsc(1);
-		/* Mark buffer faulty. */
-		buf->vb_state = VIDEOBUF_ERROR;
-		printk(KERN_ERR "%s: lsc prefetch error\n", __func__);
-	}
+		goto out_ignore_buff;
 
 	if ((irqstatus & CCDC_VD0) == CCDC_VD0) {
 		if (RAW_CAPTURE(&isp_obj))
@@ -982,8 +973,21 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *_isp)
 				irqdis->isp_callbk_arg2[CBK_H3A_AF_DONE]);
 	}
 
+
+out_ignore_buff:
+	if (irqstatus & LSC_PRE_ERR) {
+		struct isp_buf *buf = ISP_BUF_DONE(bufs);
+		ispccdc_enable_lsc(0);
+		ispccdc_enable_lsc(1);
+		/* Mark buffer faulty. */
+		buf->vb_state = VIDEOBUF_ERROR;
+		printk(KERN_ERR "%s: lsc prefetch error\n", __func__);
+	}
+
 	if ((irqstatus & CSIA) == CSIA) {
+		struct isp_buf *buf = ISP_BUF_DONE(bufs);
 		isp_csi2_isr();
+		buf->vb_state = VIDEOBUF_ERROR;
 	}
 
 	if (irqstatus & IRQ0STATUS_CSIB_IRQ) {
@@ -1001,7 +1005,6 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *_isp)
 
 	spin_unlock_irqrestore(&isp_obj.lock, irqflags);
 
-out_no_unlock:
 #if 1
 	{    
 		static const struct {
