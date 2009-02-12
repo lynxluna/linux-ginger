@@ -28,7 +28,6 @@ extern struct et8ek8_platform_data rx51_et8ek8_platform_data;
 extern struct mt9p012_platform_data rx51_mt9p012_platform_data;
 extern struct ad5820_platform_data rx51_ad5820_platform_data;
 extern struct adp1653_platform_data rx51_adp1653_platform_data;
-extern struct vs6555_platform_data rx51_vs6555_platform_data;
-extern struct tcm8330md_platform_data rx51_tcm8330md_platform_data;
+extern struct smia_sensor_platform_data rx51_smia_sensor_platform_data;
 
 #endif

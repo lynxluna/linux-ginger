@@ -33,7 +33,7 @@
 #if defined CONFIG_VIDEO_MACH_RX51 || defined CONFIG_VIDEO_MACH_RX51_MODULE
 
 #include "../../../drivers/media/video/et8ek8.h"
-#include "../../../drivers/media/video/vs6555.h"
+#include "../../../drivers/media/video/smia-sensor.h"
 
 #include <media/ad5820.h>
 #include <media/adp1653.h>
@@ -62,10 +62,10 @@ struct adp1653_platform_data rx51_adp1653_platform_data = {
 };
 EXPORT_SYMBOL(rx51_adp1653_platform_data);
 
-struct vs6555_platform_data rx51_vs6555_platform_data = {
+struct smia_sensor_platform_data rx51_smia_sensor_platform_data = {
 	.g_priv	= fake_rx51_camera_g_priv,
 };
-EXPORT_SYMBOL(rx51_vs6555_platform_data);
+EXPORT_SYMBOL(rx51_smia_sensor_platform_data);
 
 static struct i2c_board_info rx51_camera_board_info_2[] __initdata = {
 #ifdef CONFIG_VIDEO_MACH_RX51_OLD_I2C
@@ -89,10 +89,10 @@ static struct i2c_board_info rx51_camera_board_info_2[] __initdata = {
 	},
 #endif
 #endif
-#if defined(CONFIG_VIDEO_VS6555) || defined(CONFIG_VIDEO_VS6555_MODULE)
+#if defined(CONFIG_VIDEO_SMIA_SENSOR) || defined(CONFIG_VIDEO_SMIA_SENSOR_MODULE)
 	{
-		I2C_BOARD_INFO(VS6555_NAME, VS6555_I2C_ADDR),
-		.platform_data = &rx51_vs6555_platform_data,
+		I2C_BOARD_INFO(SMIA_SENSOR_NAME, SMIA_SENSOR_I2C_ADDR),
+		.platform_data = &rx51_smia_sensor_platform_data,
 	},
 #endif
 };
