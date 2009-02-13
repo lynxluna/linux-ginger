@@ -393,6 +393,11 @@ int smia_reglist_enum_framesizes(struct smia_meta_reglist *meta,
 		if ((*list)->type != SMIA_REGLIST_MODE)
 			continue;
 
+		/* Ignore modes that do cropping on sensor */
+		if (mode->sensor_window_width + 8 < mode->sensor_width ||
+		    mode->sensor_window_height + 8 < mode->sensor_height)
+			continue;
+
 		if (frm->pixel_format != mode->pixel_format
 		    && frm->pixel_format != -1)
 			continue;
@@ -431,6 +436,11 @@ int smia_reglist_enum_frameintervals(struct smia_meta_reglist *meta,
 		struct smia_mode *mode = &(*list)->mode;
 
 		if ((*list)->type != SMIA_REGLIST_MODE)
+			continue;
+
+		/* Ignore modes that do cropping on sensor */
+		if (mode->sensor_window_width + 8 < mode->sensor_width ||
+		    mode->sensor_window_height + 8 < mode->sensor_height)
 			continue;
 
 		if (frm->pixel_format != mode->pixel_format
