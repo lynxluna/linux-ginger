@@ -1301,15 +1301,18 @@ static int vidioc_enum_framesizes(struct file *file, void *fh,
 	u32 pixel_format;
 	int rval;
 
-	pixel_format = frms->pixel_format;
-	frms->pixel_format = V4L2_PIX_FMT_SGRBG10; /* We can accept any. */
-
 	mutex_lock(&vdev->mutex);
-	rval = vidioc_int_enum_framesizes(vdev->vdev_sensor, frms);
+
+	if (vdev->vdev_sensor_config.sensor_isp) {
+		rval = vidioc_int_enum_framesizes(vdev->vdev_sensor, frms);
+	} else {
+		pixel_format = frms->pixel_format;
+		frms->pixel_format = -1;	/* ISP does format conversion */
+		rval = vidioc_int_enum_framesizes(vdev->vdev_sensor, frms);
+		frms->pixel_format = pixel_format;
+	}
+out:
 	mutex_unlock(&vdev->mutex);
-
-	frms->pixel_format = pixel_format;
-
 	return rval;
 }
 
@@ -1321,15 +1324,18 @@ static int vidioc_enum_frameintervals(struct file *file, void *fh,
 	u32 pixel_format;
 	int rval;
 
-	pixel_format = frmi->pixel_format;
-	frmi->pixel_format = V4L2_PIX_FMT_SGRBG10; /* We can accept any. */
-
 	mutex_lock(&vdev->mutex);
-	rval = vidioc_int_enum_frameintervals(vdev->vdev_sensor, frmi);
+
+	if (vdev->vdev_sensor_config.sensor_isp) {
+		rval = vidioc_int_enum_frameintervals(vdev->vdev_sensor, frmi);
+	} else {
+		pixel_format = frmi->pixel_format;
+		frmi->pixel_format = -1;	/* ISP does format conversion */
+		rval = vidioc_int_enum_frameintervals(vdev->vdev_sensor, frmi);
+		frmi->pixel_format = pixel_format;
+	}
+out:
 	mutex_unlock(&vdev->mutex);
-
-	frmi->pixel_format = pixel_format;
-
 	return rval;
 }
 
