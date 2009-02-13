@@ -29,15 +29,25 @@
 #include <linux/types.h>
 #include <linux/videodev2.h>
 
-#define SMIA_MAGIC			0x53140001
+#define SMIA_MAGIC			0x531A0002
 
 struct smia_mode {
+	/* Physical sensor resolution and current image window */
+	__u16 sensor_width;
+	__u16 sensor_height;
+	__u16 sensor_window_origin_x;
+	__u16 sensor_window_origin_y;
+	__u16 sensor_window_width;
+	__u16 sensor_window_height;
+
+	/* Image data coming from sensor (after scaling) */
 	__u16 width;
 	__u16 height;
 	__u16 window_origin_x;
 	__u16 window_origin_y;
 	__u16 window_width;
 	__u16 window_height;
+
 	__u32 pixel_clock;		/* in Hz */
 	__u32 ext_clock;		/* in Hz */
 	struct v4l2_fract timeperframe;
