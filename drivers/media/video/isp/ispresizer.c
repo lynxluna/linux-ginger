@@ -105,6 +105,7 @@ static struct isp_res {
 	u32 ipwd_crop;
 	u32 cropwidth;
 	u32 cropheight;
+	dma_addr_t tmp_buf;
 	enum ispresizer_input resinput;
 	struct isprsz_coef coeflist;
 	struct mutex ispres_mutex; /* For checking/modifying res_inuse */
@@ -510,6 +511,15 @@ int ispresizer_config_size(u32 input_w, u32 input_h, u32 output_w,
 			(ispres_obj.v_startphase << ISPRSZ_CNT_VSTPH_SHIFT),
 			OMAP3_ISP_IOMEM_RESZ,
 			ISPRSZ_CNT);
+	/* Set start address for cropping */
+	isp_reg_writel(ispres_obj.tmp_buf + 2 * (ispres_obj.ipht_crop * ispres_obj.inputwidth +
+						(ispres_obj.ipwd_crop & ~15)),
+						OMAP3_ISP_IOMEM_RESZ, ISPRSZ_SDR_INADD);
+
+	isp_reg_writel(((ispres_obj.ipwd_crop & 15) << ISPRSZ_IN_START_HORZ_ST_SHIFT) |
+			(0x00 << ISPRSZ_IN_START_VERT_ST_SHIFT),
+			OMAP3_ISP_IOMEM_RESZ, ISPRSZ_IN_START);
+
 	isp_reg_writel((0x00 << ISPRSZ_IN_START_HORZ_ST_SHIFT) |
 					(0x00 << ISPRSZ_IN_START_VERT_ST_SHIFT),
 					OMAP3_ISP_IOMEM_RESZ,
@@ -772,6 +782,7 @@ int ispresizer_set_inaddr(u32 addr)
 		return -EINVAL;
 	isp_reg_writel(addr << ISPRSZ_SDR_INADD_ADDR_SHIFT,
 				OMAP3_ISP_IOMEM_RESZ, ISPRSZ_SDR_INADD);
+	ispres_obj.tmp_buf = addr;
 	DPRINTK_ISPRESZ("ispresizer_set_inaddr()-\n");
 	return 0;
 }
