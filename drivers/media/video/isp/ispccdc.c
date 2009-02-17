@@ -610,7 +610,8 @@ int ispccdc_config_datapath(enum ccdc_input input, enum ccdc_output output)
 		syn_mode &= ~ISPCCDC_SYN_MODE_VP2SDR;
 		syn_mode &= ~ISPCCDC_SYN_MODE_SDR2RSZ;
 		syn_mode |= ISPCCDC_SYN_MODE_WEN;
-		syn_mode |= ISPCCDC_SYN_MODE_EXWEN;
+		syn_mode &= ~ISPCCDC_SYN_MODE_EXWEN;
+
 		isp_reg_and_or(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_CFG,
 							~ISPCCDC_CFG_WENLOG,
 							ispccdc_obj.wenlog);
