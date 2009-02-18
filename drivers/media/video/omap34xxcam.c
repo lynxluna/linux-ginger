@@ -1311,7 +1311,7 @@ static int vidioc_enum_framesizes(struct file *file, void *fh,
 		rval = vidioc_int_enum_framesizes(vdev->vdev_sensor, frms);
 		frms->pixel_format = pixel_format;
 	}
-out:
+
 	mutex_unlock(&vdev->mutex);
 	return rval;
 }
@@ -1334,7 +1334,7 @@ static int vidioc_enum_frameintervals(struct file *file, void *fh,
 		rval = vidioc_int_enum_frameintervals(vdev->vdev_sensor, frmi);
 		frmi->pixel_format = pixel_format;
 	}
-out:
+
 	mutex_unlock(&vdev->mutex);
 	return rval;
 }
