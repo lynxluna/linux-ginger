@@ -208,19 +208,18 @@ EXPORT_SYMBOL(isph3a_aewb_setxtrastats);
  **/
 void isph3a_aewb_enable(u8 enable)
 {
-	isp_reg_writel(IRQ0STATUS_H3A_AWB_DONE_IRQ, OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0STATUS);
+	isp_reg_writel(IRQ0STATUS_H3A_AWB_DONE_IRQ, OMAP3_ISP_IOMEM_MAIN,
+							ISP_IRQ0STATUS);
 
 	if (enable) {
 		aewb_regs.reg_pcr |= ISPH3A_PCR_AEW_EN;
-		isp_reg_writel(isp_reg_readl(OMAP3_ISP_IOMEM_H3A, ISPH3A_PCR) | ISPH3A_PCR_AEW_EN,
-					OMAP3_ISP_IOMEM_H3A, ISPH3A_PCR);
 		DPRINTK_ISPH3A("    H3A enabled \n");
 	} else {
 		aewb_regs.reg_pcr &= ~ISPH3A_PCR_AEW_EN;
-		isp_reg_writel(isp_reg_readl(OMAP3_ISP_IOMEM_H3A, ISPH3A_PCR) & ~ISPH3A_PCR_AEW_EN,
-					OMAP3_ISP_IOMEM_H3A, ISPH3A_PCR);
 		DPRINTK_ISPH3A("    H3A disabled \n");
 	}
+	isp_reg_and_or(OMAP3_ISP_IOMEM_H3A, ISPH3A_PCR, ~ISPH3A_PCR_AEW_EN,
+					(enable ? ISPH3A_PCR_AEW_EN : 0));
 	aewb_config_local.aewb_enable = enable;
 }
 
@@ -252,9 +251,11 @@ static void isph3a_aewb_update_regs(void)
 {
 	isp_reg_writel(aewb_regs.reg_pcr, OMAP3_ISP_IOMEM_H3A, ISPH3A_PCR);
 	isp_reg_writel(aewb_regs.reg_win1, OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWWIN1);
-	isp_reg_writel(aewb_regs.reg_start, OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWINSTART);
+	isp_reg_writel(aewb_regs.reg_start, OMAP3_ISP_IOMEM_H3A,
+							ISPH3A_AEWINSTART);
 	isp_reg_writel(aewb_regs.reg_blk, OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWINBLK);
-	isp_reg_writel(aewb_regs.reg_subwin, OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWSUBWIN);
+	isp_reg_writel(aewb_regs.reg_subwin, OMAP3_ISP_IOMEM_H3A,
+							ISPH3A_AEWSUBWIN);
 
 	aewbstat.update = 0;
 	aewbstat.frame_count = 1;
@@ -289,8 +290,10 @@ static int isph3a_aewb_stats_available(struct isph3a_aewb_data *aewbdata)
 		DPRINTK_ISPH3A("Checking Stats buff[%d] (%d) for %d\n",
 				i, aewbstat.h3a_buff[i].frame_num,
 				aewbdata->frame_number);
-		if ((aewbdata->frame_number != aewbstat.h3a_buff[i].frame_num) ||
-			(aewbstat.h3a_buff[i].frame_num == active_buff->frame_num))
+		if ((aewbdata->frame_number !=
+				aewbstat.h3a_buff[i].frame_num) ||
+			(aewbstat.h3a_buff[i].frame_num ==
+				active_buff->frame_num))
 			continue;
 		aewbstat.h3a_buff[i].locked = 1;
 		spin_unlock_irqrestore(&aewbstat.buffer_lock, irqflags);
@@ -365,7 +368,8 @@ static void isph3a_aewb_isr(unsigned long status, isp_vbq_callback_ptr arg1,
 	active_buff = active_buff->next;
 	if (active_buff->locked == 1)
 		active_buff = active_buff->next;
-	isp_reg_writel(active_buff->ispmmu_addr, OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWBUFST);
+	isp_reg_writel(active_buff->ispmmu_addr, OMAP3_ISP_IOMEM_H3A,
+							ISPH3A_AEWBUFST);
 
 	aewbstat.frame_count++;
 	frame_align = aewbstat.frame_count;
@@ -494,7 +498,8 @@ static int isph3a_aewb_set_params(struct isph3a_aewb_config *user_cfg)
 						user_cfg->blk_ver_win_start);
 		return -EINVAL;
 	}
-	if (aewb_config_local.blk_ver_win_start != user_cfg->blk_ver_win_start) {
+	if (aewb_config_local.blk_ver_win_start !=
+						user_cfg->blk_ver_win_start) {
 		WRITE_BLK_VER_WIN_ST(aewb_regs.reg_blk,
 						user_cfg->blk_ver_win_start);
 		aewb_config_local.blk_ver_win_start =
@@ -522,7 +527,8 @@ static int isph3a_aewb_set_params(struct isph3a_aewb_config *user_cfg)
 						user_cfg->subsample_ver_inc);
 		return -EINVAL;
 	}
-	if (aewb_config_local.subsample_ver_inc != user_cfg->subsample_ver_inc) {
+	if (aewb_config_local.subsample_ver_inc !=
+						user_cfg->subsample_ver_inc) {
 		WRITE_SUB_VER_INC(aewb_regs.reg_subwin,
 						user_cfg->subsample_ver_inc);
 		aewb_config_local.subsample_ver_inc =
@@ -537,7 +543,8 @@ static int isph3a_aewb_set_params(struct isph3a_aewb_config *user_cfg)
 						user_cfg->subsample_hor_inc);
 		return -EINVAL;
 	}
-	if (aewb_config_local.subsample_hor_inc != user_cfg->subsample_hor_inc) {
+	if (aewb_config_local.subsample_hor_inc !=
+						user_cfg->subsample_hor_inc) {
 		WRITE_SUB_HOR_INC(aewb_regs.reg_subwin,
 						user_cfg->subsample_hor_inc);
 		aewb_config_local.subsample_hor_inc =
@@ -645,7 +652,8 @@ int isph3a_aewb_configure(struct isph3a_aewb_config *aewbcfg)
 		if (active_buff == NULL)
 			active_buff = &aewbstat.h3a_buff[0];
 
-		isp_reg_writel(active_buff->ispmmu_addr, OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWBUFST);
+		isp_reg_writel(active_buff->ispmmu_addr, OMAP3_ISP_IOMEM_H3A,
+							ISPH3A_AEWBUFST);
 	}
 	for (i = 0; i < H3A_MAX_BUFF; i++) {
 		DPRINTK_ISPH3A("buff[%d] addr is:\n    virt    0x%lX\n"
@@ -780,7 +788,8 @@ int isph3a_aewb_request_statistics(struct isph3a_aewb_data *aewbdata)
 	DPRINTK_ISPH3A("ISP AEWB request status interrupt raised\n");
 	ret = isph3a_aewb_stats_available(aewbdata);
 	if (ret) {
-		DPRINTK_ISPH3A("After waiting for stats, stats not available!!\n");
+		DPRINTK_ISPH3A("After waiting for stats,"
+						" stats not available!!\n");
 		aewbdata->h3a_aewb_statistics_buf = NULL;
 	}
 out:
@@ -834,17 +843,18 @@ void isph3a_aewb_cleanup(void)
  **/
 static void isph3a_print_status(void)
 {
-	DPRINTK_ISPH3A("ISPH3A_PCR = 0x%08x\n", isp_reg_readl(OMAP3_ISP_IOMEM_H3A, ISPH3A_PCR));
+	DPRINTK_ISPH3A("ISPH3A_PCR = 0x%08x\n",
+			isp_reg_readl(OMAP3_ISP_IOMEM_H3A, ISPH3A_PCR));
 	DPRINTK_ISPH3A("ISPH3A_AEWWIN1 = 0x%08x\n",
-						isp_reg_readl(OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWWIN1));
+			isp_reg_readl(OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWWIN1));
 	DPRINTK_ISPH3A("ISPH3A_AEWINSTART = 0x%08x\n",
-						isp_reg_readl(OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWINSTART));
+			isp_reg_readl(OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWINSTART));
 	DPRINTK_ISPH3A("ISPH3A_AEWINBLK = 0x%08x\n",
-						isp_reg_readl(OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWINBLK));
+			isp_reg_readl(OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWINBLK));
 	DPRINTK_ISPH3A("ISPH3A_AEWSUBWIN = 0x%08x\n",
-						isp_reg_readl(OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWSUBWIN));
+			isp_reg_readl(OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWSUBWIN));
 	DPRINTK_ISPH3A("ISPH3A_AEWBUFST = 0x%08x\n",
-						isp_reg_readl(OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWBUFST));
+			isp_reg_readl(OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWBUFST));
 	DPRINTK_ISPH3A("stats windows = %d\n", aewbstat.win_count);
 	DPRINTK_ISPH3A("stats buff size = %d\n", aewbstat.stats_buf_size);
 	DPRINTK_ISPH3A("currently configured stats buff size = %d\n",
