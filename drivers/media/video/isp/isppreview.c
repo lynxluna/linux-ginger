@@ -1184,7 +1184,8 @@ void isppreview_config_whitebalance2(struct prev_white_balance prev_wbal)
 			(prev_wbal.wb_gain[3] << ISPPRV_WBGAIN_COEF3_SHIFT),
 			OMAP3_ISP_IOMEM_PREV, ISPPRV_WBGAIN);
 
-	isp_reg_writel(prev_wbal.wb_coefmatrix[0][0] << ISPPRV_WBSEL_N0_0_SHIFT |
+	isp_reg_writel(
+		prev_wbal.wb_coefmatrix[0][0] << ISPPRV_WBSEL_N0_0_SHIFT |
 		prev_wbal.wb_coefmatrix[0][1] << ISPPRV_WBSEL_N0_1_SHIFT |
 		prev_wbal.wb_coefmatrix[0][2] << ISPPRV_WBSEL_N0_2_SHIFT |
 		prev_wbal.wb_coefmatrix[0][3] << ISPPRV_WBSEL_N0_3_SHIFT |
@@ -1621,7 +1622,8 @@ int isppreview_config_outlineoffset(u32 offset)
 								"boundary\n");
 		return -EINVAL;
 	}
-	isp_reg_writel(offset & 0xFFFF, OMAP3_ISP_IOMEM_PREV, ISPPRV_WADD_OFFSET);
+	isp_reg_writel(offset & 0xFFFF, OMAP3_ISP_IOMEM_PREV,
+							ISPPRV_WADD_OFFSET);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(isppreview_config_outlineoffset);
@@ -1655,7 +1657,8 @@ int isppreview_config_darklineoffset(u32 offset)
 								"boundary\n");
 		return -EINVAL;
 	}
-	isp_reg_writel(offset & 0xFFFF, OMAP3_ISP_IOMEM_PREV, ISPPRV_DRKF_OFFSET);
+	isp_reg_writel(offset & 0xFFFF, OMAP3_ISP_IOMEM_PREV,
+							ISPPRV_DRKF_OFFSET);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(isppreview_config_darklineoffset);
@@ -1696,7 +1699,8 @@ EXPORT_SYMBOL_GPL(isppreview_enable);
  **/
 int isppreview_busy(void)
 {
-	return isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR) & ISPPRV_PCR_BUSY;
+	return isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR) &
+							ISPPRV_PCR_BUSY;
 }
 EXPORT_SYMBOL_GPL(isppreview_busy);
 
@@ -1736,8 +1740,7 @@ EXPORT_SYMBOL_GPL(isppreview_restore_context);
  **/
 void isppreview_print_status(void)
 {
-#ifdef OMAP_ISPPREV_DEBUG
-	printk("Module in use =%d\n", ispprev_obj.prev_inuse);
+	DPRINTK_ISPPREV("Module in use =%d\n", ispprev_obj.prev_inuse);
 	DPRINTK_ISPPREV("Preview Input format =%d, Output Format =%d\n",
 						ispprev_obj.prev_inpfmt,
 						ispprev_obj.prev_outfmt);
@@ -1748,66 +1751,65 @@ void isppreview_print_status(void)
 						ispprev_obj.prevout_w,
 						ispprev_obj.prevout_h);
 	DPRINTK_ISPPREV("###ISP_CTRL in preview =0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_CTRL));
+		isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_CTRL));
 	DPRINTK_ISPPREV("###ISP_IRQ0ENABLE in preview =0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE));
+		isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE));
 	DPRINTK_ISPPREV("###ISP_IRQ0STATUS in preview =0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0STATUS));
+		isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0STATUS));
 	DPRINTK_ISPPREV("###PRV PCR =0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR));
+		isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR));
 	DPRINTK_ISPPREV("###PRV HORZ_INFO =0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_HORZ_INFO));
+		isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_HORZ_INFO));
 	DPRINTK_ISPPREV("###PRV VERT_INFO =0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_VERT_INFO));
+		isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_VERT_INFO));
 	DPRINTK_ISPPREV("###PRV WSDR_ADDR =0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_WSDR_ADDR));
+		isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_WSDR_ADDR));
 	DPRINTK_ISPPREV("###PRV WADD_OFFSET =0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_WADD_OFFSET));
+		isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_WADD_OFFSET));
 	DPRINTK_ISPPREV("###PRV AVE =0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_AVE));
+		isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_AVE));
 	DPRINTK_ISPPREV("###PRV HMED =0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_HMED));
+		isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_HMED));
 	DPRINTK_ISPPREV("###PRV NF =0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_NF));
+		isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_NF));
 	DPRINTK_ISPPREV("###PRV WB_DGAIN =0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_WB_DGAIN));
+		isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_WB_DGAIN));
 	DPRINTK_ISPPREV("###PRV WBGAIN =0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_WBGAIN));
+		isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_WBGAIN));
 	DPRINTK_ISPPREV("###PRV WBSEL =0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_WBSEL));
+		isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_WBSEL));
 	DPRINTK_ISPPREV("###PRV CFA =0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_CFA));
+		isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_CFA));
 	DPRINTK_ISPPREV("###PRV BLKADJOFF =0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_BLKADJOFF));
+		isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_BLKADJOFF));
 	DPRINTK_ISPPREV("###PRV RGB_MAT1 =0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_RGB_MAT1));
+		isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_RGB_MAT1));
 	DPRINTK_ISPPREV("###PRV RGB_MAT2 =0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_RGB_MAT2));
+		isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_RGB_MAT2));
 	DPRINTK_ISPPREV("###PRV RGB_MAT3 =0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_RGB_MAT3));
+		isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_RGB_MAT3));
 	DPRINTK_ISPPREV("###PRV RGB_MAT4 =0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_RGB_MAT4));
+		isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_RGB_MAT4));
 	DPRINTK_ISPPREV("###PRV RGB_MAT5 =0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_RGB_MAT5));
+		isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_RGB_MAT5));
 	DPRINTK_ISPPREV("###PRV RGB_OFF1 =0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_RGB_OFF1));
+		isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_RGB_OFF1));
 	DPRINTK_ISPPREV("###PRV RGB_OFF2 =0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_RGB_OFF2));
+		isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_RGB_OFF2));
 	DPRINTK_ISPPREV("###PRV CSC0 =0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_CSC0));
+		isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_CSC0));
 	DPRINTK_ISPPREV("###PRV CSC1 =0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_CSC1));
+		isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_CSC1));
 	DPRINTK_ISPPREV("###PRV CSC2 =0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_CSC2));
+		isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_CSC2));
 	DPRINTK_ISPPREV("###PRV CSC_OFFSET =0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_CSC_OFFSET));
+		isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_CSC_OFFSET));
 	DPRINTK_ISPPREV("###PRV CNT_BRT =0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_CNT_BRT));
+		isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_CNT_BRT));
 	DPRINTK_ISPPREV("###PRV CSUP =0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_CSUP));
+		isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_CSUP));
 	DPRINTK_ISPPREV("###PRV SETUP_YC =0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_SETUP_YC));
-#endif
+		isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_SETUP_YC));
 }
 EXPORT_SYMBOL_GPL(isppreview_print_status);
 
@@ -1880,7 +1882,8 @@ int __init isp_preview_init(void)
 						PREV_DARK_FRAME_SUBTRACT |
 						PREV_LENS_SHADING |
 						PREV_DARK_FRAME_CAPTURE |
-						PREV_CHROMA_SUPPRESS | PREV_LUMA_ENHANCE);
+						PREV_CHROMA_SUPPRESS |
+						PREV_LUMA_ENHANCE);
 	return 0;
 }
 
