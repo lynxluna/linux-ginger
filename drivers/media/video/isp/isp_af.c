@@ -397,8 +397,8 @@ int isp_af_register_setup(struct af_device *af_dev)
 	int index;
 
 	/* Configure Hardware Registers */
-	/* Set PCR Register */
-	pcr = isp_reg_readl(OMAP3_ISP_IOMEM_H3A, ISPH3A_PCR);	/* Read PCR Register */
+	/* Read PCR Register */
+	pcr = isp_reg_readl(OMAP3_ISP_IOMEM_H3A, ISPH3A_PCR);
 
 	/* Set Accumulator Mode */
 	if (af_dev->config->mode == ACCUMULATOR_PEAK)
@@ -429,6 +429,7 @@ int isp_af_register_setup(struct af_device *af_dev)
 	} else
 		pcr &= ~AF_MED_EN;
 
+	/* Set PCR Register */
 	isp_reg_writel(pcr, OMAP3_ISP_IOMEM_H3A, ISPH3A_PCR);
 
 	pax1 &= ~PAXW;
@@ -464,7 +465,7 @@ int isp_af_register_setup(struct af_device *af_dev)
 
 	/*SetIIRSH Register */
 	isp_reg_writel(af_dev->config->iir_config.hz_start_pos,
-						OMAP3_ISP_IOMEM_H3A, ISPH3A_AFIIRSH);
+					OMAP3_ISP_IOMEM_H3A, ISPH3A_AFIIRSH);
 
 	/*Set IIR Filter0 Coefficients */
 	base_coef_set0 = ISPH3A_AFCOEF010;
@@ -480,7 +481,7 @@ int isp_af_register_setup(struct af_device *af_dev)
 
 	/* set AFCOEF0010 Register */
 	isp_reg_writel(af_dev->config->iir_config.coeff_set0[10],
-						OMAP3_ISP_IOMEM_H3A, ISPH3A_AFCOEF010);
+				OMAP3_ISP_IOMEM_H3A, ISPH3A_AFCOEF010);
 
 	/*Set IIR Filter1 Coefficients */
 
@@ -496,7 +497,7 @@ int isp_af_register_setup(struct af_device *af_dev)
 		base_coef_set1 = base_coef_set1 + AFCOEF_OFFSET;
 	}
 	isp_reg_writel(af_dev->config->iir_config.coeff_set1[10],
-						OMAP3_ISP_IOMEM_H3A, ISPH3A_AFCOEF1010);
+				OMAP3_ISP_IOMEM_H3A, ISPH3A_AFCOEF1010);
 
 	return 0;
 }
@@ -742,7 +743,7 @@ void isp_af_exit(void)
 			continue;
 
 		ispmmu_kunmap(afstat.af_buff[i].ispmmu_addr);
-		
+
 		dma_free_coherent(NULL,
 				  afstat.min_buf_size,
 				  (void *)afstat.af_buff[i].virt_addr,
