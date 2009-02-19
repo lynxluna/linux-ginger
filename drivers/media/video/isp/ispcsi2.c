@@ -1484,7 +1484,7 @@ int isp_csi2_timings_config_forcerxmode(u8 io, bool force_rx_mode)
 	struct isp_csi2_timings_cfg *currtimings;
 	struct isp_csi2_timings_cfg_update *currtimings_u;
 
-	if (io > 2) {
+	if (io < 1 || io > 2) {
 		printk(KERN_ERR "CSI2 - Timings config: Invalid IO number\n");
 		return -EINVAL;
 	}
@@ -1510,7 +1510,7 @@ int isp_csi2_timings_config_stopstate_16x(u8 io, bool stop_state_16x)
 	struct isp_csi2_timings_cfg *currtimings;
 	struct isp_csi2_timings_cfg_update *currtimings_u;
 
-	if (io > 2) {
+	if (io < 1 || io > 2) {
 		printk(KERN_ERR "CSI2 - Timings config: Invalid IO number\n");
 		return -EINVAL;
 	}
@@ -1536,7 +1536,7 @@ int isp_csi2_timings_config_stopstate_4x(u8 io, bool stop_state_4x)
 	struct isp_csi2_timings_cfg *currtimings;
 	struct isp_csi2_timings_cfg_update *currtimings_u;
 
-	if (io > 2) {
+	if (io < 1 || io > 2) {
 		printk(KERN_ERR "CSI2 - Timings config: Invalid IO number\n");
 		return -EINVAL;
 	}
@@ -1562,7 +1562,7 @@ int isp_csi2_timings_config_stopstate_cnt(u8 io, u16 stop_state_counter)
 	struct isp_csi2_timings_cfg *currtimings;
 	struct isp_csi2_timings_cfg_update *currtimings_u;
 
-	if (io > 2) {
+	if (io < 1 || io > 2) {
 		printk(KERN_ERR "CSI2 - Timings config: Invalid IO number\n");
 		return -EINVAL;
 	}
@@ -1594,7 +1594,7 @@ int isp_csi2_timings_update(u8 io, bool force_update)
 	struct isp_csi2_timings_cfg_update *currtimings_u;
 	u32 reg;
 
-	if (io > 2) {
+	if (io < 1 || io > 2) {
 		printk(KERN_ERR "CSI2 - Timings config: Invalid IO number\n");
 		return -EINVAL;
 	}
@@ -1660,7 +1660,7 @@ int isp_csi2_timings_get(u8 io)
 	struct isp_csi2_timings_cfg_update *currtimings_u;
 	u32 reg;
 
-	if (io > 2) {
+	if (io < 1 || io > 2) {
 		printk(KERN_ERR "CSI2 - Timings config: Invalid IO number\n");
 		return -EINVAL;
 	}
@@ -1712,7 +1712,7 @@ int isp_csi2_timings_update_all(bool force_update)
 {
 	int i;
 
-	for (i = 0; i < 2; i++)
+	for (i = 1; i < 3; i++)
 		isp_csi2_timings_update(i, force_update);
 	return 0;
 }
@@ -1726,7 +1726,7 @@ int isp_csi2_timings_get_all(void)
 {
 	int i;
 
-	for (i = 0; i < 2; i++)
+	for (i = 1; i < 3; i++)
 		isp_csi2_timings_get(i);
 	return 0;
 }
