@@ -129,22 +129,20 @@ static void isp_hist_print_status(void);
  **/
 void isp_hist_enable(u8 enable)
 {
-	if (enable) {
-		isp_reg_writel(isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_PCR) | (ISPHIST_PCR_EN),
-					OMAP3_ISP_IOMEM_HIST, ISPHIST_PCR);
+	if (enable)
 		DPRINTK_ISPHIST("   histogram enabled \n");
-	} else {
-		isp_reg_writel(isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_PCR) & ~ISPHIST_PCR_EN,
-					OMAP3_ISP_IOMEM_HIST, ISPHIST_PCR);
+	else
 		DPRINTK_ISPHIST("   histogram disabled \n");
-	}
 
+	isp_reg_and_or(OMAP3_ISP_IOMEM_HIST, ISPHIST_PCR, ~ISPHIST_PCR_EN,
+						(enable ? ISPHIST_PCR_EN : 0));
 	histstat.hist_enable = enable;
 }
 
 int isp_hist_busy(void)
 {
-	return isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_PCR) & ISPHIST_PCR_BUSY;
+	return isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_PCR) &
+							ISPHIST_PCR_BUSY;
 }
 
 
@@ -155,20 +153,34 @@ static void isp_hist_update_regs(void)
 {
 	isp_reg_writel(hist_regs.reg_pcr, OMAP3_ISP_IOMEM_HIST, ISPHIST_PCR);
 	isp_reg_writel(hist_regs.reg_cnt, OMAP3_ISP_IOMEM_HIST, ISPHIST_CNT);
-	isp_reg_writel(hist_regs.reg_wb_gain, OMAP3_ISP_IOMEM_HIST, ISPHIST_WB_GAIN);
-	isp_reg_writel(hist_regs.reg_r0_h, OMAP3_ISP_IOMEM_HIST, ISPHIST_R0_HORZ);
-	isp_reg_writel(hist_regs.reg_r0_v, OMAP3_ISP_IOMEM_HIST, ISPHIST_R0_VERT);
-	isp_reg_writel(hist_regs.reg_r1_h, OMAP3_ISP_IOMEM_HIST, ISPHIST_R1_HORZ);
-	isp_reg_writel(hist_regs.reg_r1_v, OMAP3_ISP_IOMEM_HIST, ISPHIST_R1_VERT);
-	isp_reg_writel(hist_regs.reg_r2_h, OMAP3_ISP_IOMEM_HIST, ISPHIST_R2_HORZ);
-	isp_reg_writel(hist_regs.reg_r2_v, OMAP3_ISP_IOMEM_HIST, ISPHIST_R2_VERT);
-	isp_reg_writel(hist_regs.reg_r3_h, OMAP3_ISP_IOMEM_HIST, ISPHIST_R3_HORZ);
-	isp_reg_writel(hist_regs.reg_r3_v, OMAP3_ISP_IOMEM_HIST, ISPHIST_R3_VERT);
-	isp_reg_writel(hist_regs.reg_hist_addr, OMAP3_ISP_IOMEM_HIST, ISPHIST_ADDR);
-	isp_reg_writel(hist_regs.reg_hist_data, OMAP3_ISP_IOMEM_HIST, ISPHIST_DATA);
-	isp_reg_writel(hist_regs.reg_hist_radd, OMAP3_ISP_IOMEM_HIST, ISPHIST_RADD);
-	isp_reg_writel(hist_regs.reg_hist_radd_off, OMAP3_ISP_IOMEM_HIST, ISPHIST_RADD_OFF);
-	isp_reg_writel(hist_regs.reg_h_v_info, OMAP3_ISP_IOMEM_HIST, ISPHIST_H_V_INFO);
+	isp_reg_writel(hist_regs.reg_wb_gain, OMAP3_ISP_IOMEM_HIST,
+							ISPHIST_WB_GAIN);
+	isp_reg_writel(hist_regs.reg_r0_h, OMAP3_ISP_IOMEM_HIST,
+							ISPHIST_R0_HORZ);
+	isp_reg_writel(hist_regs.reg_r0_v, OMAP3_ISP_IOMEM_HIST,
+							ISPHIST_R0_VERT);
+	isp_reg_writel(hist_regs.reg_r1_h, OMAP3_ISP_IOMEM_HIST,
+							ISPHIST_R1_HORZ);
+	isp_reg_writel(hist_regs.reg_r1_v, OMAP3_ISP_IOMEM_HIST,
+							ISPHIST_R1_VERT);
+	isp_reg_writel(hist_regs.reg_r2_h, OMAP3_ISP_IOMEM_HIST,
+							ISPHIST_R2_HORZ);
+	isp_reg_writel(hist_regs.reg_r2_v, OMAP3_ISP_IOMEM_HIST,
+							ISPHIST_R2_VERT);
+	isp_reg_writel(hist_regs.reg_r3_h, OMAP3_ISP_IOMEM_HIST,
+							ISPHIST_R3_HORZ);
+	isp_reg_writel(hist_regs.reg_r3_v, OMAP3_ISP_IOMEM_HIST,
+							ISPHIST_R3_VERT);
+	isp_reg_writel(hist_regs.reg_hist_addr, OMAP3_ISP_IOMEM_HIST,
+							ISPHIST_ADDR);
+	isp_reg_writel(hist_regs.reg_hist_data, OMAP3_ISP_IOMEM_HIST,
+							ISPHIST_DATA);
+	isp_reg_writel(hist_regs.reg_hist_radd, OMAP3_ISP_IOMEM_HIST,
+							ISPHIST_RADD);
+	isp_reg_writel(hist_regs.reg_hist_radd_off, OMAP3_ISP_IOMEM_HIST,
+							ISPHIST_RADD_OFF);
+	isp_reg_writel(hist_regs.reg_h_v_info, OMAP3_ISP_IOMEM_HIST,
+							ISPHIST_H_V_INFO);
 }
 
 /**
@@ -205,14 +217,12 @@ static int isp_hist_reset_mem(void)
 {
 	int i;
 
-	isp_reg_writel((isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_CNT)) | ISPHIST_CNT_CLR_EN,
-					OMAP3_ISP_IOMEM_HIST, ISPHIST_CNT);
+	isp_reg_or(OMAP3_ISP_IOMEM_HIST, ISPHIST_CNT, ISPHIST_CNT_CLR_EN);
 
 	for (i = 0; i < HIST_MEM_SIZE; i++)
 		isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_DATA);
 
-	isp_reg_writel((isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_CNT)) & ~ISPHIST_CNT_CLR_EN,
-					OMAP3_ISP_IOMEM_HIST, ISPHIST_CNT);
+	isp_reg_and(OMAP3_ISP_IOMEM_HIST, ISPHIST_CNT, ~ISPHIST_CNT_CLR_EN);
 
 	return 0;
 }
@@ -476,8 +486,7 @@ int isp_hist_request_statistics(struct isp_hist_data *histdata)
 	if (!histstat.completed && histstat.initialized)
 		return -EINVAL;
 
-	isp_reg_writel((isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_CNT)) | ISPHIST_CNT_CLR_EN,
-		       OMAP3_ISP_IOMEM_HIST, ISPHIST_CNT);
+	isp_reg_or(OMAP3_ISP_IOMEM_HIST, ISPHIST_CNT, ISPHIST_CNT_CLR_EN);
 
 	for (i = 0; i < HIST_MEM_SIZE; i++) {
 		curr = isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_DATA);
@@ -488,8 +497,8 @@ int isp_hist_request_statistics(struct isp_hist_data *histdata)
 		}
 	}
 
-	isp_reg_writel((isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_CNT)) & ~ISPHIST_CNT_CLR_EN,
-					OMAP3_ISP_IOMEM_HIST, ISPHIST_CNT);
+	isp_reg_and(OMAP3_ISP_IOMEM_HIST, ISPHIST_CNT,
+						~ISPHIST_CNT_CLR_EN);
 	histstat.completed = 0;
 	return 0;
 }
@@ -542,30 +551,34 @@ EXPORT_SYMBOL(isphist_restore_context);
  **/
 static void isp_hist_print_status(void)
 {
-	DPRINTK_ISPHIST("ISPHIST_PCR = 0x%08x\n", isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_PCR));
-	DPRINTK_ISPHIST("ISPHIST_CNT = 0x%08x\n", isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_CNT));
+	DPRINTK_ISPHIST("ISPHIST_PCR = 0x%08x\n",
+		isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_PCR));
+	DPRINTK_ISPHIST("ISPHIST_CNT = 0x%08x\n",
+		isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_CNT));
 	DPRINTK_ISPHIST("ISPHIST_WB_GAIN = 0x%08x\n",
-						isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_WB_GAIN));
+		isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_WB_GAIN));
 	DPRINTK_ISPHIST("ISPHIST_R0_HORZ = 0x%08x\n",
-						isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_R0_HORZ));
+		isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_R0_HORZ));
 	DPRINTK_ISPHIST("ISPHIST_R0_VERT = 0x%08x\n",
-						isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_R0_VERT));
+		isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_R0_VERT));
 	DPRINTK_ISPHIST("ISPHIST_R1_HORZ = 0x%08x\n",
-						isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_R1_HORZ));
+		isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_R1_HORZ));
 	DPRINTK_ISPHIST("ISPHIST_R1_VERT = 0x%08x\n",
-						isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_R1_VERT));
+		isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_R1_VERT));
 	DPRINTK_ISPHIST("ISPHIST_R2_HORZ = 0x%08x\n",
-						isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_R2_HORZ));
+		isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_R2_HORZ));
 	DPRINTK_ISPHIST("ISPHIST_R2_VERT = 0x%08x\n",
-						isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_R2_VERT));
+		isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_R2_VERT));
 	DPRINTK_ISPHIST("ISPHIST_R3_HORZ = 0x%08x\n",
-						isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_R3_HORZ));
+		isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_R3_HORZ));
 	DPRINTK_ISPHIST("ISPHIST_R3_VERT = 0x%08x\n",
-						isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_R3_VERT));
-	DPRINTK_ISPHIST("ISPHIST_ADDR = 0x%08x\n", isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_ADDR));
-	DPRINTK_ISPHIST("ISPHIST_RADD = 0x%08x\n", isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_RADD));
+		isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_R3_VERT));
+	DPRINTK_ISPHIST("ISPHIST_ADDR = 0x%08x\n",
+		isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_ADDR));
+	DPRINTK_ISPHIST("ISPHIST_RADD = 0x%08x\n",
+		isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_RADD));
 	DPRINTK_ISPHIST("ISPHIST_RADD_OFF = 0x%08x\n",
-						isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_RADD_OFF));
+		isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_RADD_OFF));
 	DPRINTK_ISPHIST("ISPHIST_H_V_INFO = 0x%08x\n",
-						isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_H_V_INFO));
+		isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_H_V_INFO));
 }
