@@ -208,23 +208,26 @@ struct isp_interface_config {
 u32 isp_reg_readl(enum isp_mem_resources isp_mmio_range, u32 reg_offset);
 
 void isp_reg_writel(u32 reg_value, enum isp_mem_resources isp_mmio_range,
-								u32 reg_offset);
+						u32 reg_offset);
 
-static void inline isp_reg_and(enum isp_mem_resources mmio_range, u32 reg, u32 and_bits)
+static inline void isp_reg_and(enum isp_mem_resources mmio_range, u32 reg,
+						u32 and_bits)
 {
 	u32 v = isp_reg_readl(mmio_range, reg);
 
 	isp_reg_writel(v & and_bits, mmio_range, reg);
 }
 
-static void inline isp_reg_or(enum isp_mem_resources mmio_range, u32 reg, u32 or_bits)
+static inline void isp_reg_or(enum isp_mem_resources mmio_range, u32 reg,
+						u32 or_bits)
 {
 	u32 v = isp_reg_readl(mmio_range, reg);
 
 	isp_reg_writel(v | or_bits, mmio_range, reg);
 }
 
-static void inline isp_reg_and_or(enum isp_mem_resources mmio_range, u32 reg, u32 and_bits, u32 or_bits)
+static inline void isp_reg_and_or(enum isp_mem_resources mmio_range, u32 reg,
+						u32 and_bits, u32 or_bits)
 {
 	u32 v = isp_reg_readl(mmio_range, reg);
 

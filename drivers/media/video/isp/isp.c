@@ -33,7 +33,6 @@
 #include <linux/vmalloc.h>
 #include <linux/platform_device.h>
 
-
 #include "isp.h"
 #include "ispmmu.h"
 #include "ispreg.h"
@@ -46,9 +45,6 @@
 #include "ispcsi2.h"
 
 static struct isp_device *omap3isp;
-
-//#define PRINTK(...) printk(__VA_ARGS__)
-#define PRINTK(...) do { } while (0)
 
 static int isp_try_size(struct v4l2_pix_format *pix_input,
 					struct v4l2_pix_format *pix_output);
@@ -305,7 +301,8 @@ EXPORT_SYMBOL(isp_reg_readl);
 void isp_reg_writel(u32 reg_value, enum isp_mem_resources isp_mmio_range,
 								u32 reg_offset)
 {
-	__raw_writel(reg_value, omap3isp->mmio_base[isp_mmio_range] + reg_offset);
+	__raw_writel(reg_value,
+			omap3isp->mmio_base[isp_mmio_range] + reg_offset);
 }
 EXPORT_SYMBOL(isp_reg_writel);
 
@@ -360,7 +357,7 @@ static int find_next_vctrl(int id)
 }
 
 /**
- * find_vmenu - Returns the index of the menu array of the requested ctrl option
+ * find_vmenu - Returns index of the menu array of the requested ctrl option.
  * @id: Requested control ID.
  * @index: Requested menu option index.
  *
@@ -416,7 +413,7 @@ static int isp_wait(int (*busy)(void), int wait_for_busy, int max_wait)
 			return -EBUSY;
 		}
 	}
-	PRINTK(KERN_ALERT "%s: wait %d\n", __func__, wait);
+	DPRINTK_ISPCTRL(KERN_ALERT "%s: wait %d\n", __func__, wait);
 
 	return 0;
 }
@@ -485,32 +482,28 @@ int isp_set_callback(enum isp_callback_type type, isp_callback_t callback,
 
 	switch (type) {
 	case CBK_H3A_AWB_DONE:
-		isp_reg_writel(IRQ0ENABLE_H3A_AWB_DONE_IRQ, OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0STATUS);
-		isp_reg_writel(isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE) |
-					IRQ0ENABLE_H3A_AWB_DONE_IRQ,
-					OMAP3_ISP_IOMEM_MAIN,
-					ISP_IRQ0ENABLE);
+		isp_reg_writel(IRQ0ENABLE_H3A_AWB_DONE_IRQ,
+					OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0STATUS);
+		isp_reg_or(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE,
+						IRQ0ENABLE_H3A_AWB_DONE_IRQ);
 		break;
 	case CBK_H3A_AF_DONE:
-		isp_reg_writel(IRQ0ENABLE_H3A_AF_DONE_IRQ, OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0STATUS);
-		isp_reg_writel(isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE)|
-					IRQ0ENABLE_H3A_AF_DONE_IRQ,
-					OMAP3_ISP_IOMEM_MAIN,
-					ISP_IRQ0ENABLE);
+		isp_reg_writel(IRQ0ENABLE_H3A_AF_DONE_IRQ,
+					OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0STATUS);
+		isp_reg_or(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE,
+						IRQ0ENABLE_H3A_AF_DONE_IRQ);
 		break;
 	case CBK_HIST_DONE:
-		isp_reg_writel(IRQ0ENABLE_HIST_DONE_IRQ, OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0STATUS);
-		isp_reg_writel(isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE) |
-					IRQ0ENABLE_HIST_DONE_IRQ,
-					OMAP3_ISP_IOMEM_MAIN,
-					ISP_IRQ0ENABLE);
+		isp_reg_writel(IRQ0ENABLE_HIST_DONE_IRQ,
+					OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0STATUS);
+		isp_reg_or(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE,
+						IRQ0ENABLE_HIST_DONE_IRQ);
 		break;
 	case CBK_PREV_DONE:
-		isp_reg_writel(IRQ0ENABLE_PRV_DONE_IRQ, OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0STATUS);
-		isp_reg_writel(isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE) |
-					IRQ0ENABLE_PRV_DONE_IRQ,
-					OMAP3_ISP_IOMEM_MAIN,
-					ISP_IRQ0ENABLE);
+		isp_reg_writel(IRQ0ENABLE_PRV_DONE_IRQ,
+					OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0STATUS);
+		isp_reg_or(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE,
+						IRQ0ENABLE_PRV_DONE_IRQ);
 		break;
 	default:
 		break;
@@ -539,38 +532,29 @@ int isp_unset_callback(enum isp_callback_type type)
 
 	switch (type) {
 	case CBK_H3A_AWB_DONE:
-		isp_reg_writel((isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE)) &
-						~IRQ0ENABLE_H3A_AWB_DONE_IRQ,
-						OMAP3_ISP_IOMEM_MAIN,
-						ISP_IRQ0ENABLE);
+		isp_reg_and(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE,
+						~IRQ0ENABLE_H3A_AWB_DONE_IRQ);
 		break;
 	case CBK_H3A_AF_DONE:
-		isp_reg_writel((isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE))&
-						~IRQ0ENABLE_H3A_AF_DONE_IRQ,
-						OMAP3_ISP_IOMEM_MAIN,
-						ISP_IRQ0ENABLE);
+		isp_reg_and(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE,
+						~IRQ0ENABLE_H3A_AF_DONE_IRQ);
 		break;
 	case CBK_HIST_DONE:
-		isp_reg_writel((isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE)) &
-						~IRQ0ENABLE_HIST_DONE_IRQ,
-						OMAP3_ISP_IOMEM_MAIN,
-						ISP_IRQ0ENABLE);
+		isp_reg_and(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE,
+						~IRQ0ENABLE_HIST_DONE_IRQ);
 		break;
 	case CBK_CSIA:
 		isp_csi2_irq_set(0);
 		break;
 	case CBK_CSIB:
-		isp_reg_writel(IRQ0ENABLE_CSIB_IRQ, OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0STATUS);
-		isp_reg_writel(isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE) |
-					IRQ0ENABLE_CSIB_IRQ,
-					OMAP3_ISP_IOMEM_MAIN,
-					ISP_IRQ0ENABLE);
+		isp_reg_writel(IRQ0ENABLE_CSIB_IRQ, OMAP3_ISP_IOMEM_MAIN,
+							ISP_IRQ0STATUS);
+		isp_reg_or(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE,
+						IRQ0ENABLE_CSIB_IRQ);
 		break;
 	case CBK_PREV_DONE:
-		isp_reg_writel((isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE)) &
-						~IRQ0ENABLE_PRV_DONE_IRQ,
-						OMAP3_ISP_IOMEM_MAIN,
-						ISP_IRQ0ENABLE);
+		isp_reg_and(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE,
+						~IRQ0ENABLE_PRV_DONE_IRQ);
 		break;
 	default:
 		break;
@@ -612,20 +596,16 @@ u32 isp_set_xclk(u32 xclk, u8 xclksel)
 
 	switch (xclksel) {
 	case 0:
-		isp_reg_writel((isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_TCTRL_CTRL) &
-				~ISPTCTRL_CTRL_DIVA_MASK) |
-				(divisor << ISPTCTRL_CTRL_DIVA_SHIFT),
-				OMAP3_ISP_IOMEM_MAIN,
-				ISP_TCTRL_CTRL);
+		isp_reg_and_or(OMAP3_ISP_IOMEM_MAIN, ISP_TCTRL_CTRL,
+					~ISPTCTRL_CTRL_DIVA_MASK,
+					divisor << ISPTCTRL_CTRL_DIVA_SHIFT);
 		DPRINTK_ISPCTRL("isp_set_xclk(): cam_xclka set to %d Hz\n",
 								currentxclk);
 		break;
 	case 1:
-		isp_reg_writel((isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_TCTRL_CTRL) &
-				~ISPTCTRL_CTRL_DIVB_MASK) |
-				(divisor << ISPTCTRL_CTRL_DIVB_SHIFT),
-				OMAP3_ISP_IOMEM_MAIN,
-				ISP_TCTRL_CTRL);
+		isp_reg_and_or(OMAP3_ISP_IOMEM_MAIN, ISP_TCTRL_CTRL,
+					~ISPTCTRL_CTRL_DIVB_MASK,
+					divisor << ISPTCTRL_CTRL_DIVB_SHIFT);
 		DPRINTK_ISPCTRL("isp_set_xclk(): cam_xclkb set to %d Hz\n",
 								currentxclk);
 		break;
@@ -666,7 +646,8 @@ static void isp_power_settings(int idle)
 					OMAP3_ISP_IOMEM_CCP2,
 					ISP_CSIB_SYSCONFIG);
 		}
-		isp_reg_writel(ISPCTRL_SBL_AUTOIDLE, OMAP3_ISP_IOMEM_MAIN, ISP_CTRL);
+		isp_reg_writel(ISPCTRL_SBL_AUTOIDLE, OMAP3_ISP_IOMEM_MAIN,
+								ISP_CTRL);
 
 	} else {
 		isp_reg_writel(ISP_SYSCONFIG_AUTOIDLE |
@@ -688,7 +669,8 @@ static void isp_power_settings(int idle)
 					ISP_CSIB_SYSCONFIG);
 		}
 
-		isp_reg_writel(ISPCTRL_SBL_AUTOIDLE, OMAP3_ISP_IOMEM_MAIN, ISP_CTRL);
+		isp_reg_writel(ISPCTRL_SBL_AUTOIDLE, OMAP3_ISP_IOMEM_MAIN,
+								ISP_CTRL);
 	}
 }
 
@@ -716,15 +698,18 @@ static int isp_init_csi(struct isp_interface_config *config)
 	}
 
 	/* Reset the CSI and wait for reset to complete */
-	isp_reg_writel(isp_reg_readl(OMAP3_ISP_IOMEM_CCP2, ISPCSI1_SYSCONFIG) | BIT(1),
+	isp_reg_writel(isp_reg_readl(OMAP3_ISP_IOMEM_CCP2, ISPCSI1_SYSCONFIG) |
+							BIT(1),
 							OMAP3_ISP_IOMEM_CCP2,
 							ISPCSI1_SYSCONFIG);
-	while (!(isp_reg_readl(OMAP3_ISP_IOMEM_CCP2, ISPCSI1_SYSSTATUS) & BIT(0))) {
+	while (!(isp_reg_readl(OMAP3_ISP_IOMEM_CCP2, ISPCSI1_SYSSTATUS) &
+								BIT(0))) {
 		udelay(10);
 		if (i++ > 10)
 			break;
 	}
-	if (!(isp_reg_readl(OMAP3_ISP_IOMEM_CCP2, ISPCSI1_SYSSTATUS) & BIT(0))) {
+	if (!(isp_reg_readl(OMAP3_ISP_IOMEM_CCP2, ISPCSI1_SYSSTATUS) &
+								BIT(0))) {
 		printk(KERN_WARNING
 			"omap3_isp: timeout waiting for csi reset\n");
 	}
@@ -770,7 +755,8 @@ static int isp_init_csi(struct isp_interface_config *config)
 	isp_reg_writel(val, OMAP3_ISP_IOMEM_CCP2, reg);
 
 	/* Clear status bits for logical channel #0 */
-	isp_reg_writel(0xFFF & ~BIT(6), OMAP3_ISP_IOMEM_CCP2, ISPCSI1_LC01_IRQSTATUS);
+	isp_reg_writel(0xFFF & ~BIT(6), OMAP3_ISP_IOMEM_CCP2,
+						ISPCSI1_LC01_IRQSTATUS);
 
 	/* Enable CSI1 */
 	val = isp_reg_readl(OMAP3_ISP_IOMEM_CCP2, ISPCSI1_CTRL);
@@ -905,7 +891,7 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *_isp)
 
 	spin_lock_irqsave(&isp_obj.lock, irqflags);
 	/*
-	 * We need to wait for the first HS_VS interrupt from CCDC. 
+	 * We need to wait for the first HS_VS interrupt from CCDC.
 	 * Otherwise our frame (and everything else) might be bad.
 	 */
 	if (wait_hs_vs)
@@ -993,7 +979,8 @@ out_ignore_buff:
 	if (irqstatus & IRQ0STATUS_CSIB_IRQ) {
 		u32 ispcsi1_irqstatus;
 
-		ispcsi1_irqstatus = isp_reg_readl(OMAP3_ISP_IOMEM_CCP2, ISPCSI1_LC01_IRQSTATUS);
+		ispcsi1_irqstatus = isp_reg_readl(OMAP3_ISP_IOMEM_CCP2,
+						ISPCSI1_LC01_IRQSTATUS);
 		DPRINTK_ISPCTRL("%x\n", ispcsi1_irqstatus);
 	}
 
@@ -1006,7 +993,7 @@ out_ignore_buff:
 	spin_unlock_irqrestore(&isp_obj.lock, irqflags);
 
 #if 1
-	{    
+	{
 		static const struct {
 			int num;
 			char *name;
@@ -1045,11 +1032,11 @@ out_ignore_buff:
 			{  0, "CSIA_IRQ" },
 		};
 		int i;
-		for (i=0; i<ARRAY_SIZE(bits); i++) {
-			if ((1<<bits[i].num) & irqstatus)
-				PRINTK("%s ", bits[i].name);
+		for (i = 0; i < ARRAY_SIZE(bits); i++) {
+			if ((1 << bits[i].num) & irqstatus)
+				DPRINTK_ISPCTRL("%s ", bits[i].name);
 		}
-		PRINTK("\n");
+		DPRINTK_ISPCTRL("\n");
 	}
 #endif
 
@@ -1170,7 +1157,7 @@ void isp_stop()
 	}
 
 	isp_buf_init();
-	
+
 	if (!reset)
 		return;
 
@@ -1366,7 +1353,7 @@ static int isp_buf_process(struct isp_bufs *bufs)
 	/* Mark the current buffer as done. */
 	ISP_BUF_MARK_DONE(bufs);
 
-	PRINTK(KERN_ALERT "%s: finish %d mmu %p\n", __func__,
+	DPRINTK_ISPCTRL(KERN_ALERT "%s: finish %d mmu %p\n", __func__,
 	       (bufs->done - 1 + NUM_BUFS) % NUM_BUFS,
 	       (bufs->buf+((bufs->done - 1 + NUM_BUFS) % NUM_BUFS))->isp_addr);
 
@@ -1424,7 +1411,7 @@ int isp_buf_queue(struct videobuf_buffer *vb,
 
 	spin_unlock_irqrestore(&bufs->lock, flags);
 
-	PRINTK(KERN_ALERT "%s: queue %d vb %d, mmu %p\n", __func__,
+	DPRINTK_ISPCTRL(KERN_ALERT "%s: queue %d vb %d, mmu %p\n", __func__,
 	       (bufs->queue - 1 + NUM_BUFS) % NUM_BUFS, vb->i,
 	       buf->isp_addr);
 
@@ -2289,7 +2276,8 @@ static int isp_probe(struct platform_device *pdev)
 				ioremap_nocache(isp->mmio_base_phys[i],
 				isp->mmio_size[i]);
 		if (!isp->mmio_base[i]) {
-			dev_err(isp->dev, "cannot map camera register I/O region\n");
+			dev_err(isp->dev,
+				"cannot map camera register I/O region\n");
 			return -ENODEV;
 		}
 	}
@@ -2404,12 +2392,18 @@ void isp_print_status(void)
 	if (!is_ispctrl_debug_enabled())
 		return;
 
-	DPRINTK_ISPCTRL("###ISP_CTRL=0x%x\n", isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_CTRL));
-	DPRINTK_ISPCTRL("###ISP_TCTRL_CTRL=0x%x\n", isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_TCTRL_CTRL));
-	DPRINTK_ISPCTRL("###ISP_SYSCONFIG=0x%x\n", isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_SYSCONFIG));
-	DPRINTK_ISPCTRL("###ISP_SYSSTATUS=0x%x\n", isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_SYSSTATUS));
-	DPRINTK_ISPCTRL("###ISP_IRQ0ENABLE=0x%x\n", isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE));
-	DPRINTK_ISPCTRL("###ISP_IRQ0STATUS=0x%x\n", isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0STATUS));
+	DPRINTK_ISPCTRL("###ISP_CTRL=0x%x\n",
+			isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_CTRL));
+	DPRINTK_ISPCTRL("###ISP_TCTRL_CTRL=0x%x\n",
+			isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_TCTRL_CTRL));
+	DPRINTK_ISPCTRL("###ISP_SYSCONFIG=0x%x\n",
+			isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_SYSCONFIG));
+	DPRINTK_ISPCTRL("###ISP_SYSSTATUS=0x%x\n",
+			isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_SYSSTATUS));
+	DPRINTK_ISPCTRL("###ISP_IRQ0ENABLE=0x%x\n",
+			isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE));
+	DPRINTK_ISPCTRL("###ISP_IRQ0STATUS=0x%x\n",
+			isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0STATUS));
 }
 EXPORT_SYMBOL(isp_print_status);
 
