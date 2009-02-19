@@ -1024,7 +1024,8 @@ int isp_csi2_ctx_update(u8 ctxnum, bool force_update)
 	selected_ctx_u = &current_csi2_cfg_update.contexts[ctxnum];
 
 	if (update_ctx_ctrl1[ctxnum] || force_update) {
-		reg = isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_CTX_CTRL1(ctxnum));
+		reg = isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A,
+						ISPCSI2_CTX_CTRL1(ctxnum));
 		if (selected_ctx_u->frame_count || force_update) {
 			reg &= ~(ISPCSI2_CTX_CTRL1_COUNT_MASK);
 			reg |= selected_ctx->frame_count <<
@@ -1063,12 +1064,14 @@ int isp_csi2_ctx_update(u8 ctxnum, bool force_update)
 				reg |= ISPCSI2_CTX_CTRL1_CTX_EN_DISABLE;
 			selected_ctx_u->enabled = false;
 		}
-		isp_reg_writel(reg, OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_CTX_CTRL1(ctxnum));
+		isp_reg_writel(reg, OMAP3_ISP_IOMEM_CSI2A,
+						ISPCSI2_CTX_CTRL1(ctxnum));
 		update_ctx_ctrl1[ctxnum] = false;
 	}
 
 	if (update_ctx_ctrl2[ctxnum] || force_update) {
-		reg = isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_CTX_CTRL2(ctxnum));
+		reg = isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A,
+						ISPCSI2_CTX_CTRL2(ctxnum));
 		if (selected_ctx_u->virtual_id || force_update) {
 			reg &= ~(ISPCSI2_CTX_CTRL2_VIRTUAL_ID_MASK);
 			reg |= selected_ctx->virtual_id <<
@@ -1108,40 +1111,47 @@ int isp_csi2_ctx_update(u8 ctxnum, bool force_update)
 			reg |= (new_format << ISPCSI2_CTX_CTRL2_FORMAT_SHIFT);
 			selected_ctx_u->format = false;
 		}
-		isp_reg_writel(reg, OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_CTX_CTRL2(ctxnum));
+		isp_reg_writel(reg, OMAP3_ISP_IOMEM_CSI2A,
+						ISPCSI2_CTX_CTRL2(ctxnum));
 		update_ctx_ctrl2[ctxnum] = false;
 	}
 
 	if (update_ctx_ctrl3[ctxnum] || force_update) {
-		reg = isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_CTX_CTRL3(ctxnum));
+		reg = isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A,
+						ISPCSI2_CTX_CTRL3(ctxnum));
 		if (selected_ctx_u->alpha || force_update) {
 			reg &= ~(ISPCSI2_CTX_CTRL3_ALPHA_MASK);
 			reg |= (selected_ctx->alpha <<
 						ISPCSI2_CTX_CTRL3_ALPHA_SHIFT);
 			selected_ctx_u->alpha = false;
 		}
-		isp_reg_writel(reg, OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_CTX_CTRL3(ctxnum));
+		isp_reg_writel(reg, OMAP3_ISP_IOMEM_CSI2A,
+					ISPCSI2_CTX_CTRL3(ctxnum));
 		update_ctx_ctrl3[ctxnum] = false;
 	}
 
 	if (selected_ctx_u->data_offset) {
-		reg = isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_CTX_DAT_OFST(ctxnum));
+		reg = isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A,
+					ISPCSI2_CTX_DAT_OFST(ctxnum));
 		reg &= ~ISPCSI2_CTX_DAT_OFST_OFST_MASK;
 		reg |= selected_ctx->data_offset <<
-						ISPCSI2_CTX_DAT_OFST_OFST_SHIFT;
-		isp_reg_writel(reg, OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_CTX_DAT_OFST(ctxnum));
+					ISPCSI2_CTX_DAT_OFST_OFST_SHIFT;
+		isp_reg_writel(reg, OMAP3_ISP_IOMEM_CSI2A,
+					ISPCSI2_CTX_DAT_OFST(ctxnum));
 		selected_ctx_u->data_offset = false;
 	}
 
 	if (selected_ctx_u->ping_addr) {
 		reg = selected_ctx->ping_addr;
-		isp_reg_writel(reg, OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_CTX_DAT_PING_ADDR(ctxnum));
+		isp_reg_writel(reg, OMAP3_ISP_IOMEM_CSI2A,
+					ISPCSI2_CTX_DAT_PING_ADDR(ctxnum));
 		selected_ctx_u->ping_addr = false;
 	}
 
 	if (selected_ctx_u->pong_addr) {
 		reg = selected_ctx->pong_addr;
-		isp_reg_writel(reg, OMAP3_ISP_IOMEM_CSI2A,ISPCSI2_CTX_DAT_PONG_ADDR(ctxnum));
+		isp_reg_writel(reg, OMAP3_ISP_IOMEM_CSI2A,
+					ISPCSI2_CTX_DAT_PONG_ADDR(ctxnum));
 		selected_ctx_u->pong_addr = false;
 	}
 	return 0;
@@ -1224,21 +1234,25 @@ int isp_csi2_ctx_get(u8 ctxnum)
 	selected_ctx_u->format = false;
 	update_ctx_ctrl2[ctxnum] = false;
 
-	selected_ctx->alpha = (isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_CTX_CTRL3(ctxnum)) &
+	selected_ctx->alpha = (isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A,
+					ISPCSI2_CTX_CTRL3(ctxnum)) &
 					ISPCSI2_CTX_CTRL3_ALPHA_MASK) >>
 					ISPCSI2_CTX_CTRL3_ALPHA_SHIFT;
 	selected_ctx_u->alpha = false;
 	update_ctx_ctrl3[ctxnum] = false;
 
-	selected_ctx->data_offset = (isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_CTX_DAT_OFST(ctxnum)) &
-				ISPCSI2_CTX_DAT_OFST_OFST_MASK) >>
-				ISPCSI2_CTX_DAT_OFST_OFST_SHIFT;
+	selected_ctx->data_offset = (isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A,
+					ISPCSI2_CTX_DAT_OFST(ctxnum)) &
+					ISPCSI2_CTX_DAT_OFST_OFST_MASK) >>
+					ISPCSI2_CTX_DAT_OFST_OFST_SHIFT;
 	selected_ctx_u->data_offset = false;
 
-	selected_ctx->ping_addr = isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_CTX_DAT_PING_ADDR(ctxnum));
+	selected_ctx->ping_addr = isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A,
+					ISPCSI2_CTX_DAT_PING_ADDR(ctxnum));
 	selected_ctx_u->ping_addr = false;
 
-	selected_ctx->pong_addr = isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_CTX_DAT_PONG_ADDR(ctxnum));
+	selected_ctx->pong_addr = isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A,
+					ISPCSI2_CTX_DAT_PONG_ADDR(ctxnum));
 	selected_ctx_u->pong_addr = false;
 	return 0;
 }
@@ -1724,19 +1738,25 @@ void isp_csi2_isr(void)
 {
 	u32 csi2_irqstatus, cpxio1_irqstatus, ctxirqstatus;
 
-	csi2_irqstatus = isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_IRQSTATUS);
-	isp_reg_writel(csi2_irqstatus, OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_IRQSTATUS);
+	csi2_irqstatus = isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A,
+						ISPCSI2_IRQSTATUS);
+	isp_reg_writel(csi2_irqstatus, OMAP3_ISP_IOMEM_CSI2A,
+						ISPCSI2_IRQSTATUS);
 
 	if (csi2_irqstatus & ISPCSI2_IRQSTATUS_COMPLEXIO1_ERR_IRQ) {
-		cpxio1_irqstatus = isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_COMPLEXIO1_IRQSTATUS);
-		isp_reg_writel(cpxio1_irqstatus, OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_COMPLEXIO1_IRQSTATUS);
+		cpxio1_irqstatus = isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A,
+						ISPCSI2_COMPLEXIO1_IRQSTATUS);
+		isp_reg_writel(cpxio1_irqstatus, OMAP3_ISP_IOMEM_CSI2A,
+						ISPCSI2_COMPLEXIO1_IRQSTATUS);
 		printk(KERN_ERR "CSI2: ComplexIO Error IRQ %x\n",
 							cpxio1_irqstatus);
 	}
 
 	if (csi2_irqstatus & ISPCSI2_IRQSTATUS_CONTEXT(0)) {
-		ctxirqstatus = isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_CTX_IRQSTATUS(0));
-		isp_reg_writel(ctxirqstatus, OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_CTX_IRQSTATUS(0));
+		ctxirqstatus = isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A,
+						ISPCSI2_CTX_IRQSTATUS(0));
+		isp_reg_writel(ctxirqstatus, OMAP3_ISP_IOMEM_CSI2A,
+						ISPCSI2_CTX_IRQSTATUS(0));
 	}
 
 	if (csi2_irqstatus & ISPCSI2_IRQSTATUS_OCP_ERR_IRQ)
@@ -1795,12 +1815,15 @@ void isp_csi2_irq_complexio1_set(int enable)
 				ISPCSI2_COMPLEXIO1_IRQENABLE_ERRESC1 |
 				ISPCSI2_COMPLEXIO1_IRQENABLE_ERRSOTSYNCHS1 |
 				ISPCSI2_COMPLEXIO1_IRQENABLE_ERRSOTHS1;
-	isp_reg_writel(reg, OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_COMPLEXIO1_IRQSTATUS);
-	if (enable)
-		reg |= isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_COMPLEXIO1_IRQENABLE);
-	else
+	isp_reg_writel(reg, OMAP3_ISP_IOMEM_CSI2A,
+						ISPCSI2_COMPLEXIO1_IRQSTATUS);
+	if (enable) {
+		reg |= isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A,
+						ISPCSI2_COMPLEXIO1_IRQENABLE);
+	} else
 		reg = 0;
-	isp_reg_writel(reg, OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_COMPLEXIO1_IRQENABLE);
+	isp_reg_writel(reg, OMAP3_ISP_IOMEM_CSI2A,
+						ISPCSI2_COMPLEXIO1_IRQENABLE);
 }
 EXPORT_SYMBOL(isp_csi2_irq_complexio1_set);
 
@@ -1815,12 +1838,15 @@ void isp_csi2_irq_ctx_set(int enable)
 
 	reg = ISPCSI2_CTX_IRQSTATUS_FS_IRQ | ISPCSI2_CTX_IRQSTATUS_FE_IRQ;
 	for (i = 0; i < 8; i++) {
-		isp_reg_writel(reg, OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_CTX_IRQSTATUS(i));
+		isp_reg_writel(reg, OMAP3_ISP_IOMEM_CSI2A,
+						ISPCSI2_CTX_IRQSTATUS(i));
 		if (enable) {
-			isp_reg_writel(isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_CTX_IRQENABLE(i)) | reg,
-						OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_CTX_IRQENABLE(i));
-		} else
-			isp_reg_writel(0, OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_CTX_IRQENABLE(i));
+			isp_reg_or(OMAP3_ISP_IOMEM_CSI2A,
+						ISPCSI2_CTX_IRQENABLE(i), reg);
+		} else {
+			isp_reg_writel(0, OMAP3_ISP_IOMEM_CSI2A,
+						ISPCSI2_CTX_IRQENABLE(i));
+		}
 	}
 
 }
@@ -1857,15 +1883,11 @@ EXPORT_SYMBOL(isp_csi2_irq_status_set);
  **/
 void isp_csi2_irq_set(int enable)
 {
-	if (enable) {
-		isp_reg_writel(IRQ0STATUS_CSIA_IRQ, OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0STATUS);
-		isp_reg_writel(isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE) | IRQ0ENABLE_CSIA_IRQ,
-								OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE);
-	} else {
-		isp_reg_writel(IRQ0STATUS_CSIA_IRQ, OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0STATUS);
-		isp_reg_writel(isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE) & ~IRQ0ENABLE_CSIA_IRQ,
-								OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE);
-	}
+	isp_reg_writel(IRQ0STATUS_CSIA_IRQ, OMAP3_ISP_IOMEM_MAIN,
+					ISP_IRQ0STATUS);
+	isp_reg_and_or(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE,
+					~IRQ0ENABLE_CSIA_IRQ,
+					(enable ? IRQ0ENABLE_CSIA_IRQ : 0));
 }
 EXPORT_SYMBOL(isp_csi2_irq_set);
 
@@ -1989,55 +2011,80 @@ void isp_csi2_regdump(void)
 {
 	printk(KERN_DEBUG "-------------Register dump-------------\n");
 
-	printk(KERN_DEBUG "ISP_CTRL: %x\n", isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_CTRL));
-	printk(KERN_DEBUG "ISP_TCTRL_CTRL: %x\n", isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_TCTRL_CTRL));
+	printk(KERN_DEBUG "ISP_CTRL: %x\n",
+			isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_CTRL));
+	printk(KERN_DEBUG "ISP_TCTRL_CTRL: %x\n",
+			isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_TCTRL_CTRL));
 
 	printk(KERN_DEBUG "ISPCCDC_SDR_ADDR: %x\n",
-						isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_SDR_ADDR));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_SDR_ADDR));
 	printk(KERN_DEBUG "ISPCCDC_SYN_MODE: %x\n",
-						isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_SYN_MODE));
-	printk(KERN_DEBUG "ISPCCDC_CFG: %x\n", isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_CFG));
-	printk(KERN_DEBUG "ISPCCDC_FMTCFG: %x\n", isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMTCFG));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_SYN_MODE));
+	printk(KERN_DEBUG "ISPCCDC_CFG: %x\n",
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_CFG));
+	printk(KERN_DEBUG "ISPCCDC_FMTCFG: %x\n",
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMTCFG));
 	printk(KERN_DEBUG "ISPCCDC_HSIZE_OFF: %x\n",
-						isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_HSIZE_OFF));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_HSIZE_OFF));
 	printk(KERN_DEBUG "ISPCCDC_HORZ_INFO: %x\n",
-						isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_HORZ_INFO));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_HORZ_INFO));
 	printk(KERN_DEBUG "ISPCCDC_VERT_START: %x\n",
-						isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_VERT_START));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC,
+				ISPCCDC_VERT_START));
 	printk(KERN_DEBUG "ISPCCDC_VERT_LINES: %x\n",
-						isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_VERT_LINES));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC,
+				ISPCCDC_VERT_LINES));
 
 	printk(KERN_DEBUG "ISPCSI2_COMPLEXIO_CFG1: %x\n",
-					isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_COMPLEXIO_CFG1));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A,
+				ISPCSI2_COMPLEXIO_CFG1));
 	printk(KERN_DEBUG "ISPCSI2_SYSSTATUS: %x\n",
-						isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_SYSSTATUS));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A,
+				ISPCSI2_SYSSTATUS));
 	printk(KERN_DEBUG "ISPCSI2_SYSCONFIG: %x\n",
-						isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_SYSCONFIG));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A,
+				ISPCSI2_SYSCONFIG));
 	printk(KERN_DEBUG "ISPCSI2_IRQENABLE: %x\n",
-						isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_IRQENABLE));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A,
+				ISPCSI2_IRQENABLE));
 	printk(KERN_DEBUG "ISPCSI2_IRQSTATUS: %x\n",
-						isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_IRQSTATUS));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A,
+				ISPCSI2_IRQSTATUS));
 
 	printk(KERN_DEBUG "ISPCSI2_CTX_IRQENABLE(0): %x\n",
-					isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_CTX_IRQENABLE(0)));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A,
+				ISPCSI2_CTX_IRQENABLE(0)));
 	printk(KERN_DEBUG "ISPCSI2_CTX_IRQSTATUS(0): %x\n",
-					isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_CTX_IRQSTATUS(0)));
-	printk(KERN_DEBUG "ISPCSI2_TIMING: %x\n", isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_TIMING));
-	printk(KERN_DEBUG "ISPCSI2PHY_CFG0: %x\n", isp_reg_readl(OMAP3_ISP_IOMEM_CSI2PHY, ISPCSI2PHY_CFG0));
-	printk(KERN_DEBUG "ISPCSI2PHY_CFG1: %x\n", isp_reg_readl(OMAP3_ISP_IOMEM_CSI2PHY, ISPCSI2PHY_CFG1));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A,
+				ISPCSI2_CTX_IRQSTATUS(0)));
+	printk(KERN_DEBUG "ISPCSI2_TIMING: %x\n",
+			isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_TIMING));
+	printk(KERN_DEBUG "ISPCSI2PHY_CFG0: %x\n",
+			isp_reg_readl(OMAP3_ISP_IOMEM_CSI2PHY,
+				ISPCSI2PHY_CFG0));
+	printk(KERN_DEBUG "ISPCSI2PHY_CFG1: %x\n",
+			isp_reg_readl(OMAP3_ISP_IOMEM_CSI2PHY,
+				ISPCSI2PHY_CFG1));
 	printk(KERN_DEBUG "ISPCSI2_CTX_CTRL1(0): %x\n",
-					isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_CTX_CTRL1(0)));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A,
+				ISPCSI2_CTX_CTRL1(0)));
 	printk(KERN_DEBUG "ISPCSI2_CTX_CTRL2(0): %x\n",
-					isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_CTX_CTRL2(0)));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A,
+				ISPCSI2_CTX_CTRL2(0)));
 	printk(KERN_DEBUG "ISPCSI2_CTX_CTRL3(0): %x\n",
-					isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_CTX_CTRL3(0)));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A,
+				ISPCSI2_CTX_CTRL3(0)));
 	printk(KERN_DEBUG "ISPCSI2_CTX_DAT_OFST(0): %x\n",
-					isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_CTX_DAT_OFST(0)));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A,
+				ISPCSI2_CTX_DAT_OFST(0)));
 	printk(KERN_DEBUG "ISPCSI2_CTX_DAT_PING_ADDR(0): %x\n",
-				isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_CTX_DAT_PING_ADDR(0)));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A,
+				ISPCSI2_CTX_DAT_PING_ADDR(0)));
 	printk(KERN_DEBUG "ISPCSI2_CTX_DAT_PONG_ADDR(0): %x\n",
-				isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_CTX_DAT_PONG_ADDR(0)));
-	printk(KERN_DEBUG "ISPCSI2_CTRL: %x\n", isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_CTRL));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A,
+				ISPCSI2_CTX_DAT_PONG_ADDR(0)));
+	printk(KERN_DEBUG "ISPCSI2_CTRL: %x\n",
+			isp_reg_readl(OMAP3_ISP_IOMEM_CSI2A, ISPCSI2_CTRL));
 	printk(KERN_DEBUG "---------------------------------------\n");
 }
 
