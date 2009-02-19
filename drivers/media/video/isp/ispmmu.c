@@ -30,19 +30,19 @@ static struct iommu *isp_iommu;
 
 dma_addr_t ispmmu_vmalloc(size_t bytes)
 {
-	return (dma_addr_t)iommu_vmalloc(isp_iommu, NULL, bytes, IOMMU_FLAG);
+	return (dma_addr_t)iommu_vmalloc(isp_iommu, 0, bytes, IOMMU_FLAG);
 }
 
 void ispmmu_vfree(const dma_addr_t da)
 {
-	iommu_vfree(isp_iommu, (void *)da);
+	iommu_vfree(isp_iommu, (u32)da);
 }
 
 dma_addr_t ispmmu_kmap(u32 pa, int size)
 {
 	void *da;
 
-	da = iommu_kmap(isp_iommu, NULL, pa, size, IOMMU_FLAG);
+	da = (void *)iommu_kmap(isp_iommu, 0, pa, size, IOMMU_FLAG);
 	if (IS_ERR(da))
 		return PTR_ERR(da);
 
@@ -51,7 +51,7 @@ dma_addr_t ispmmu_kmap(u32 pa, int size)
 
 void ispmmu_kunmap(dma_addr_t da)
 {
-	iommu_kunmap(isp_iommu, (void *)da);
+	iommu_kunmap(isp_iommu, (u32)da);
 }
 
 dma_addr_t ispmmu_vmap(const struct scatterlist *sglist,
@@ -78,7 +78,7 @@ dma_addr_t ispmmu_vmap(const struct scatterlist *sglist,
 		sg_set_buf(sg, phys_to_virt(sg_dma_address(src + i)),
 			   sg_dma_len(src + i));
 
-	da = iommu_vmap(isp_iommu, NULL, sgt, IOMMU_FLAG);
+	da = (void *)iommu_vmap(isp_iommu, 0, sgt, IOMMU_FLAG);
 	if (IS_ERR(da))
 		goto err_vmap;
 
@@ -96,7 +96,7 @@ void ispmmu_vunmap(dma_addr_t da)
 {
 	struct sg_table *sgt;
 
-	sgt = iommu_vunmap(isp_iommu, (void *)da);
+	sgt = iommu_vunmap(isp_iommu, (u32)da);
 	if (!sgt)
 		return;
 	sg_free_table(sgt);
