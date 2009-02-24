@@ -657,8 +657,8 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *fh,
 	timeperframe = vdev->want_timeperframe;
 
 	rval = s_pix_parm(vdev, &pix_tmp, &f->fmt.pix, &timeperframe);
- 	if (!rval)
- 		vdev->pix = f->fmt.pix;
+	if (!rval)
+		vdev->pix = f->fmt.pix;
 
 out:
 	mutex_unlock(&vdev->mutex);
