@@ -1450,9 +1450,6 @@ static long vidioc_default(struct file *file, void *fh, int cmd, void *arg)
 					goto out;
 			}
 			if (data->update & REQUEST_STATISTICS) {
-				dev_info(&vdev->vfd->dev, "using "
-					 "VIDIOC_PRIVATE_ISP_AF_REQ to set "
-					 "lens position is deprecated!\n");
 				vc.id = V4L2_CID_FOCUS_ABSOLUTE;
 				mutex_lock(&vdev->mutex);
 				rval = vidioc_int_g_ctrl(vdev->vdev_lens, &vc);
