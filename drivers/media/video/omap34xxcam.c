@@ -1449,15 +1449,6 @@ static long vidioc_default(struct file *file, void *fh, int cmd, void *arg)
 				if (rval)
 					goto out;
 			}
-			if (data->update & REQUEST_STATISTICS) {
-				vc.id = V4L2_CID_FOCUS_ABSOLUTE;
-				mutex_lock(&vdev->mutex);
-				rval = vidioc_int_g_ctrl(vdev->vdev_lens, &vc);
-				mutex_unlock(&vdev->mutex);
-				if (rval)
-					goto out;
-				data->xtrastats.lens_position = vc.value;
-			}
 		}
 			break;
 		}
