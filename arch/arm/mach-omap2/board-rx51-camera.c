@@ -69,8 +69,8 @@
 #define VAUX3_1V8		0x01
 #define VAUX4_2V8		0x09
 
-/* Newer boards work w/o separate VDIG. */
-#define VDIG_FROM_VIO		0
+/* Earlier rx51 builds require VAUX3. */
+#define NEEDS_VAUX3		(system_rev >= 100 && system_rev < 900)
 
 static struct rx51_camera {
 	int okay;
@@ -149,21 +149,24 @@ static int rx51_camera_power_on_nolock(int camera)
 	if (rval)
 		goto out;
 
-#if !VDIG_FROM_VIO
-	/* VAUX3=1.8 V (camera VDIG) */
-	rval = twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
-				    VAUX3_1V8, TWL4030_VAUX3_DEDICATED);
-	if (rval)
-		goto out;
-	rval = twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
-				    CAMERA_DEV_GRP, TWL4030_VAUX3_DEV_GRP);
-	if (rval)
-		goto out;
-	rval = twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
-				    0xEE, TWL4030_VAUX3_REMAP);
-	if (rval)
-		goto out;
-#endif
+	if (NEEDS_VAUX3) {
+		/* VAUX3=1.8 V (camera VDIG) */
+		printk(KERN_INFO "%s: VAUX3 on for old board\n", __func__);
+		rval = twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
+					    VAUX3_1V8,
+					    TWL4030_VAUX3_DEDICATED);
+		if (rval)
+			goto out;
+		rval = twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
+					    CAMERA_DEV_GRP,
+					    TWL4030_VAUX3_DEV_GRP);
+		if (rval)
+			goto out;
+		rval = twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
+					    0xEE, TWL4030_VAUX3_REMAP);
+		if (rval)
+			goto out;
+	}
 
 	/* Let the voltages stabilize */
 	udelay(15);
@@ -243,17 +246,18 @@ static void rx51_camera_power_off_nolock(int camera)
 	if (rval)
 		goto out;
 
-#if !VDIG_FROM_VIO
-	/* VAUX3 (camera VDIG) off */
-	rval = twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
-				    0, TWL4030_VAUX3_DEV_GRP);
-	if (rval)
-		goto out;
-	rval = twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
-				    0x00, TWL4030_VAUX3_REMAP);
-	if (rval)
-		goto out;
-#endif
+	if (NEEDS_VAUX3) {
+		printk(KERN_INFO "%s: VAUX3 off for old board\n", __func__);
+		/* VAUX3 (camera VDIG) off */
+		rval = twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
+					    0, TWL4030_VAUX3_DEV_GRP);
+		if (rval)
+			goto out;
+		rval = twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
+					    0x00, TWL4030_VAUX3_REMAP);
+		if (rval)
+			goto out;
+	}
 
 	return;
 
