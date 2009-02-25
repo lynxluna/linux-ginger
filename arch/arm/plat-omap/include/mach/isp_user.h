@@ -212,7 +212,7 @@ struct isp_hist_data {
 struct isp_af_xtrastats {
 	struct timeval ts;
 	unsigned long field_count;
-	__u16 lens_position;
+	__u16 lens_position; /* deprecated */
 };
 
 /**
@@ -227,8 +227,8 @@ struct isp_af_xtrastats {
  */
 struct isp_af_data {
 	void *af_statistics_buf;
-	__u16 lens_current_position;
-	__u16 desired_lens_direction;
+	__u16 lens_current_position; /* deprecated */
+	__u16 desired_lens_direction; /* deprecated */
 	__u16 update;
 	__u16 frame_number;
 	__u16 curr_frame;
