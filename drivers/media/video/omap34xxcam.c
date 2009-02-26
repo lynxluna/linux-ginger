@@ -1532,6 +1532,7 @@ static int omap34xxcam_mmap(struct file *file, struct vm_area_struct *vma)
  */
 static int omap34xxcam_open(struct file *file)
 {
+	int rval = 0;
 	struct omap34xxcam_videodev *vdev = NULL;
 	struct omap34xxcam_device *cam = omap34xxcam;
 	struct omap34xxcam_fh *fh;
@@ -1558,15 +1559,25 @@ static int omap34xxcam_open(struct file *file)
 		if (vdev->slave[i] != v4l2_int_device_dummy()
 		    && !try_module_get(vdev->slave[i]->module)) {
 			mutex_unlock(&vdev->mutex);
+			dev_err(&vdev->vfd->dev, "can't try_module_get %s\n",
+				vdev->slave[i]->name);
+			rval = -ENODEV;
 			goto out_try_module_get;
 		}
 	}
 
 	if (atomic_inc_return(&vdev->users) == 1) {
-		isp_get();
+		rval = isp_get();
+		if (rval < 0) {
+			dev_err(&vdev->vfd->dev, "can't get isp\n");
+			goto out_isp_get;
+		}
 		if (omap34xxcam_slave_power_set(vdev, V4L2_POWER_ON,
-						OMAP34XXCAM_SLAVE_POWER_ALL))
+						OMAP34XXCAM_SLAVE_POWER_ALL)) {
+			dev_err(&vdev->vfd->dev, "can't power up slaves\n");
+			rval = -EBUSY;
 			goto out_slave_power_set_standby;
+		}
 		omap34xxcam_slave_power_set(
 			vdev, V4L2_POWER_STANDBY,
 			OMAP34XXCAM_SLAVE_POWER_SENSOR);
@@ -1583,14 +1594,14 @@ static int omap34xxcam_open(struct file *file)
 		if (vidioc_int_g_fmt_cap(vdev->vdev_sensor, &format)) {
 			dev_err(&vdev->vfd->dev,
 				"can't get current pix from sensor!\n");
-			goto out_slave_power_set_standby;
+			goto out_vidioc_int_g_fmt_cap;
 		}
 		if (!vdev->vdev_sensor_config.sensor_isp) {
 			struct v4l2_pix_format pix = format.fmt.pix;
 			if (isp_s_fmt_cap(&pix, &format.fmt.pix)) {
 				dev_err(&vdev->vfd->dev,
 					"isp doesn't like the sensor!\n");
-				goto out_slave_power_set_standby;
+				goto out_isp_s_fmt_cap;
 			}
 		}
 		vdev->pix = format.fmt.pix;
@@ -1609,13 +1620,17 @@ static int omap34xxcam_open(struct file *file)
 
 	return 0;
 
-out_slave_power_set_standby:
+out_isp_s_fmt_cap:
+out_vidioc_int_g_fmt_cap:
 	omap34xxcam_slave_power_set(vdev, V4L2_POWER_OFF,
 				    OMAP34XXCAM_SLAVE_POWER_ALL);
+out_slave_power_set_standby:
 	isp_put();
+
+out_isp_get:
 	atomic_dec(&vdev->users);
 	mutex_unlock(&vdev->mutex);
-
+	
 out_try_module_get:
 	for (i--; i >= 0; i--)
 		if (vdev->slave[i] != v4l2_int_device_dummy())
@@ -1623,7 +1638,7 @@ out_try_module_get:
 
 	kfree(fh);
 
-	return -ENODEV;
+	return rval;
 }
 
 /**
