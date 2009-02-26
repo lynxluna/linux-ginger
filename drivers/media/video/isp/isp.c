@@ -2114,6 +2114,9 @@ int isp_get(void)
 			isp_restore_ctx();
 		else
 			has_context = 1;
+	} else {
+		mutex_unlock(&isp_obj.isp_mutex);
+		return -EBUSY;
 	}
 	isp_obj.ref_count++;
 
