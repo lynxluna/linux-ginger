@@ -214,6 +214,10 @@ static int rx51_camera_power_on(int camera, int which)
 
 	mutex_unlock(&rx51_camera_mutex);
 
+	if (rval < 0)
+		printk(KERN_INFO "%s: power_on camera %d which %d failed\n",
+		       __func__, camera, which);
+
 	return rval;
 }
 
