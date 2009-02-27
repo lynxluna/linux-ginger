@@ -1630,7 +1630,7 @@ out_slave_power_set_standby:
 out_isp_get:
 	atomic_dec(&vdev->users);
 	mutex_unlock(&vdev->mutex);
-	
+
 out_try_module_get:
 	for (i--; i >= 0; i--)
 		if (vdev->slave[i] != v4l2_int_device_dummy())
