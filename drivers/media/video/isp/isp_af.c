@@ -323,13 +323,14 @@ int isp_af_configure(struct af_configuration *afconfig)
 
 	afstat.curr_cfg_buf_size = buff_size;
 	/* Deallocate the previous buffers */
-	if (afstat.stats_buf_size && (buff_size	> afstat.stats_buf_size)) {
+	if (afstat.stats_buf_size && buff_size > afstat.stats_buf_size) {
 		isp_af_enable(0);
 		for (i = 0; i < H3A_MAX_BUFF; i++) {
 			ispmmu_kunmap(afstat.af_buff[i].ispmmu_addr);
-			dma_free_coherent(NULL, afstat.min_buf_size,
-					  (void *)afstat.af_buff[i].virt_addr,
-					  (dma_addr_t)afstat.af_buff[i].phy_addr);
+			dma_free_coherent(
+				NULL, afstat.min_buf_size,
+				(void *)afstat.af_buff[i].virt_addr,
+				(dma_addr_t)afstat.af_buff[i].phy_addr);
 			afstat.af_buff[i].virt_addr = 0;
 		}
 		afstat.stats_buf_size = 0;
@@ -341,11 +342,12 @@ int isp_af_configure(struct af_configuration *afconfig)
 
 		for (i = 0; i < H3A_MAX_BUFF; i++) {
 			afstat.af_buff[i].virt_addr =
-				(unsigned long)dma_alloc_coherent(NULL,
-								  afstat.min_buf_size,
-								  (dma_addr_t *)
-								  &afstat.af_buff[i].phy_addr,
-								  GFP_KERNEL | GFP_DMA);
+				(unsigned long)dma_alloc_coherent(
+					NULL,
+					afstat.min_buf_size,
+					(dma_addr_t *)
+					&afstat.af_buff[i].phy_addr,
+					GFP_KERNEL | GFP_DMA);
 			if (afstat.af_buff[i].virt_addr == 0) {
 				printk(KERN_ERR "Can't acquire memory for "
 				       "buffer[%d]\n", i);
@@ -414,7 +416,7 @@ int isp_af_register_setup(struct af_device *af_dev)
 
 	/* Set RGB Position */
 	pcr &= ~RGBPOS;
-	pcr |= (af_dev->config->rgb_pos) << AF_RGBPOS_SHIFT;
+	pcr |= af_dev->config->rgb_pos << AF_RGBPOS_SHIFT;
 
 	/* HMF Configurations */
 	if (af_dev->config->hmf_config.enable == H3A_AF_HMF_ENABLE) {
@@ -424,8 +426,7 @@ int isp_af_register_setup(struct af_device *af_dev)
 
 		/* Set Median Threshold */
 		pcr &= ~MED_TH;
-		pcr |= (af_dev->config->hmf_config.threshold) <<
-			AF_MED_TH_SHIFT;
+		pcr |= af_dev->config->hmf_config.threshold << AF_MED_TH_SHIFT;
 	} else
 		pcr &= ~AF_MED_EN;
 
@@ -433,7 +434,7 @@ int isp_af_register_setup(struct af_device *af_dev)
 	isp_reg_writel(pcr, OMAP3_ISP_IOMEM_H3A, ISPH3A_PCR);
 
 	pax1 &= ~PAXW;
-	pax1 |= (af_dev->config->paxel_config.width) << AF_PAXW_SHIFT;
+	pax1 |= af_dev->config->paxel_config.width << AF_PAXW_SHIFT;
 
 	/* Set height in AFPAX1 */
 	pax1 &= ~PAXH;
@@ -444,10 +445,10 @@ int isp_af_register_setup(struct af_device *af_dev)
 	/* Configure AFPAX2 Register */
 	/* Set Line Increment in AFPAX2 Register */
 	pax2 &= ~AFINCV;
-	pax2 |= (af_dev->config->paxel_config.line_incr) << AF_LINE_INCR_SHIFT;
+	pax2 |= af_dev->config->paxel_config.line_incr << AF_LINE_INCR_SHIFT;
 	/* Set Vertical Count */
 	pax2 &= ~PAXVC;
-	pax2 |= (af_dev->config->paxel_config.vt_cnt) << AF_VT_COUNT_SHIFT;
+	pax2 |= af_dev->config->paxel_config.vt_cnt << AF_VT_COUNT_SHIFT;
 	/* Set Horizontal Count */
 	pax2 &= ~PAXHC;
 	pax2 |= af_dev->config->paxel_config.hz_cnt;
@@ -456,8 +457,7 @@ int isp_af_register_setup(struct af_device *af_dev)
 	/* Configure PAXSTART Register */
 	/*Configure Horizontal Start */
 	paxstart &= ~PAXSH;
-	paxstart |= (af_dev->config->paxel_config.hz_start) <<
-		AF_HZ_START_SHIFT;
+	paxstart |= af_dev->config->paxel_config.hz_start << AF_HZ_START_SHIFT;
 	/* Configure Vertical Start */
 	paxstart &= ~PAXSV;
 	paxstart |= af_dev->config->paxel_config.vt_start;
@@ -473,7 +473,7 @@ int isp_af_register_setup(struct af_device *af_dev)
 		coef &= ~COEF_MASK0;
 		coef |= af_dev->config->iir_config.coeff_set0[index];
 		coef &= ~COEF_MASK1;
-		coef |= (af_dev->config->iir_config.coeff_set0[index + 1]) <<
+		coef |= af_dev->config->iir_config.coeff_set0[index + 1] <<
 			AF_COEF_SHIFT;
 		isp_reg_writel(coef, OMAP3_ISP_IOMEM_H3A, base_coef_set0);
 		base_coef_set0 = base_coef_set0 + AFCOEF_OFFSET;
@@ -490,7 +490,7 @@ int isp_af_register_setup(struct af_device *af_dev)
 		coef &= ~COEF_MASK0;
 		coef |= af_dev->config->iir_config.coeff_set1[index];
 		coef &= ~COEF_MASK1;
-		coef |= (af_dev->config->iir_config.coeff_set1[index + 1]) <<
+		coef |= af_dev->config->iir_config.coeff_set1[index + 1] <<
 			AF_COEF_SHIFT;
 		isp_reg_writel(coef, OMAP3_ISP_IOMEM_H3A, base_coef_set1);
 
@@ -518,9 +518,8 @@ static int isp_af_stats_available(struct isp_af_data *afdata)
 		DPRINTK_ISP_AF("Checking Stats buff[%d] (%d) for %d\n",
 			       i, afstat.af_buff[i].frame_num,
 			       afdata->frame_number);
-		if ((afdata->frame_number == afstat.af_buff[i].frame_num) &&
-		    (afstat.af_buff[i].frame_num !=
-		     active_buff->frame_num)) {
+		if (afdata->frame_number == afstat.af_buff[i].frame_num
+		    && afstat.af_buff[i].frame_num != active_buff->frame_num) {
 			afstat.af_buff[i].locked = 1;
 			spin_unlock_irqrestore(&afstat.buffer_lock, irqflags);
 			isp_af_update_req_buffer(&afstat.af_buff[i]);
@@ -589,8 +588,8 @@ int isp_af_request_statistics(struct isp_af_data *afdata)
 	if (afdata->frame_number > frame_cnt)
 		frame_diff = afdata->frame_number - frame_cnt;
 	else if (afdata->frame_number < frame_cnt) {
-		if ((frame_cnt > (MAX_FRAME_COUNT - MAX_FUTURE_FRAMES)) &&
-		    (afdata->frame_number < MAX_FRAME_COUNT)) {
+		if (frame_cnt > MAX_FRAME_COUNT - MAX_FUTURE_FRAMES
+		    && afdata->frame_number < MAX_FRAME_COUNT) {
 			frame_diff = afdata->frame_number + MAX_FRAME_COUNT -
 				frame_cnt;
 		} else {
@@ -665,7 +664,7 @@ static void isp_af_isr(unsigned long status, isp_vbq_callback_ptr arg1,
 	/* Future Stats requested? */
 	if (afstat.stats_req) {
 		/* Is the frame we want already done? */
-		if (frame_align >= (afstat.frame_req + 1)) {
+		if (frame_align >= afstat.frame_req + 1) {
 			afstat.stats_req = 0;
 			afstat.stats_done = 1;
 			wake_up_interruptible(&afstat.stats_wait);

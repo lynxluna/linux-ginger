@@ -372,7 +372,7 @@ static int find_vmenu(int id, int index)
 		return -EDOM;
 
 	for (i = (ARRAY_SIZE(video_menu) - 1); i >= 0; i--) {
-		if ((video_menu[i].id != id) || (video_menu[i].index != index))
+		if (video_menu[i].id != id || video_menu[i].index != index)
 			continue;
 		return i;
 	}
@@ -793,21 +793,21 @@ int isp_configure_interface(struct isp_interface_config *config)
 	isp_obj.config = config;
 
 	ispctrl_val &= ISPCTRL_SHIFT_MASK;
-	ispctrl_val |= (config->dataline_shift << ISPCTRL_SHIFT_SHIFT);
+	ispctrl_val |= config->dataline_shift << ISPCTRL_SHIFT_SHIFT;
 	ispctrl_val &= ~ISPCTRL_PAR_CLK_POL_INV;
 
-	ispctrl_val &= (ISPCTRL_PAR_SER_CLK_SEL_MASK);
+	ispctrl_val &= ISPCTRL_PAR_SER_CLK_SEL_MASK;
 
 	isp_buf_init();
 
 	switch (config->ccdc_par_ser) {
 	case ISP_PARLL:
 		ispctrl_val |= ISPCTRL_PAR_SER_CLK_SEL_PARALLEL;
-		ispctrl_val |= (config->u.par.par_clk_pol
-				<< ISPCTRL_PAR_CLK_POL_SHIFT);
+		ispctrl_val |= config->u.par.par_clk_pol
+			<< ISPCTRL_PAR_CLK_POL_SHIFT;
 		ispctrl_val &= ~ISPCTRL_PAR_BRIDGE_BENDIAN;
-		ispctrl_val |= (config->u.par.par_bridge
-				<< ISPCTRL_PAR_BRIDGE_SHIFT);
+		ispctrl_val |= config->u.par.par_bridge
+			<< ISPCTRL_PAR_BRIDGE_SHIFT;
 		break;
 	case ISP_CSIA:
 		ispctrl_val |= ISPCTRL_PAR_SER_CLK_SEL_CSIA;
@@ -843,8 +843,8 @@ int isp_configure_interface(struct isp_interface_config *config)
 		return -EINVAL;
 	}
 
-	ispctrl_val &= ~(ISPCTRL_SYNC_DETECT_VSRISE);
-	ispctrl_val |= (config->hsvs_syncdetect);
+	ispctrl_val &= ~ISPCTRL_SYNC_DETECT_VSRISE;
+	ispctrl_val |= config->hsvs_syncdetect;
 
 	isp_reg_writel(ispctrl_val, OMAP3_ISP_IOMEM_MAIN, ISP_CTRL);
 
@@ -897,16 +897,17 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *_isp)
 	if (wait_hs_vs)
 		goto out_ignore_buff;
 
-	if ((irqstatus & CCDC_VD0) == CCDC_VD0) {
+	if (irqstatus & CCDC_VD0) {
 		if (RAW_CAPTURE(&isp_obj))
 			isp_buf_process(bufs);
 	}
 
-	if ((irqstatus & PREV_DONE) == PREV_DONE) {
+	if (irqstatus & PREV_DONE) {
 		if (irqdis->isp_callbk[CBK_PREV_DONE])
-			irqdis->isp_callbk[CBK_PREV_DONE](PREV_DONE,
-							  irqdis->isp_callbk_arg1[CBK_PREV_DONE],
-							  irqdis->isp_callbk_arg2[CBK_PREV_DONE]);
+			irqdis->isp_callbk[CBK_PREV_DONE](
+				PREV_DONE,
+				irqdis->isp_callbk_arg1[CBK_PREV_DONE],
+				irqdis->isp_callbk_arg2[CBK_PREV_DONE]);
 		else if (!RAW_CAPTURE(&isp_obj) && !ispresizer_busy()) {
 			if (isp_obj.module.applyCrop) {
 				ispresizer_applycrop();
@@ -930,7 +931,7 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *_isp)
 		}
 	}
 
-	if ((irqstatus & RESZ_DONE) == RESZ_DONE) {
+	if (irqstatus & RESZ_DONE) {
 		if (!RAW_CAPTURE(&isp_obj)) {
 			if (!ispresizer_busy())
 				ispresizer_config_shadow_registers();
@@ -938,25 +939,28 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *_isp)
 		}
 	}
 
-	if ((irqstatus & H3A_AWB_DONE) == H3A_AWB_DONE) {
+	if (irqstatus & H3A_AWB_DONE) {
 		if (irqdis->isp_callbk[CBK_H3A_AWB_DONE])
-			irqdis->isp_callbk[CBK_H3A_AWB_DONE](H3A_AWB_DONE,
-							     irqdis->isp_callbk_arg1[CBK_H3A_AWB_DONE],
-							     irqdis->isp_callbk_arg2[CBK_H3A_AWB_DONE]);
+			irqdis->isp_callbk[CBK_H3A_AWB_DONE](
+				H3A_AWB_DONE,
+				irqdis->isp_callbk_arg1[CBK_H3A_AWB_DONE],
+				irqdis->isp_callbk_arg2[CBK_H3A_AWB_DONE]);
 	}
 
-	if ((irqstatus & HIST_DONE) == HIST_DONE) {
+	if (irqstatus & HIST_DONE) {
 		if (irqdis->isp_callbk[CBK_HIST_DONE])
-			irqdis->isp_callbk[CBK_HIST_DONE](HIST_DONE,
-							  irqdis->isp_callbk_arg1[CBK_HIST_DONE],
-							  irqdis->isp_callbk_arg2[CBK_HIST_DONE]);
+			irqdis->isp_callbk[CBK_HIST_DONE](
+				HIST_DONE,
+				irqdis->isp_callbk_arg1[CBK_HIST_DONE],
+				irqdis->isp_callbk_arg2[CBK_HIST_DONE]);
 	}
 
-	if ((irqstatus & H3A_AF_DONE) == H3A_AF_DONE) {
+	if (irqstatus & H3A_AF_DONE) {
 		if (irqdis->isp_callbk[CBK_H3A_AF_DONE])
-			irqdis->isp_callbk[CBK_H3A_AF_DONE](H3A_AF_DONE,
-							    irqdis->isp_callbk_arg1[CBK_H3A_AF_DONE],
-							    irqdis->isp_callbk_arg2[CBK_H3A_AF_DONE]);
+			irqdis->isp_callbk[CBK_H3A_AF_DONE](
+				H3A_AF_DONE,
+				irqdis->isp_callbk_arg1[CBK_H3A_AF_DONE],
+				irqdis->isp_callbk_arg2[CBK_H3A_AF_DONE]);
 	}
 
 
@@ -970,7 +974,7 @@ out_ignore_buff:
 		printk(KERN_ERR "%s: lsc prefetch error\n", __func__);
 	}
 
-	if ((irqstatus & CSIA) == CSIA) {
+	if (irqstatus & CSIA) {
 		struct isp_buf *buf = ISP_BUF_DONE(bufs);
 		isp_csi2_isr();
 		buf->vb_state = VIDEOBUF_ERROR;
@@ -985,9 +989,10 @@ out_ignore_buff:
 	}
 
 	if (irqdis->isp_callbk[CBK_CATCHALL]) {
-		irqdis->isp_callbk[CBK_CATCHALL](irqstatus,
-						 irqdis->isp_callbk_arg1[CBK_CATCHALL],
-						 irqdis->isp_callbk_arg2[CBK_CATCHALL]);
+		irqdis->isp_callbk[CBK_CATCHALL](
+			irqstatus,
+			irqdis->isp_callbk_arg1[CBK_CATCHALL],
+			irqdis->isp_callbk_arg2[CBK_CATCHALL]);
 	}
 
 	spin_unlock_irqrestore(&isp_obj.lock, irqflags);
@@ -1096,8 +1101,8 @@ static u32 isp_tmp_buf_alloc(size_t size)
  **/
 void isp_start(void)
 {
-	if ((isp_obj.module.isp_pipeline & OMAP_ISP_PREVIEW) &&
-	    is_isppreview_enabled())
+	if (isp_obj.module.isp_pipeline & OMAP_ISP_PREVIEW
+	    && is_isppreview_enabled())
 		isppreview_enable(1);
 
 	return;
@@ -1179,8 +1184,8 @@ EXPORT_SYMBOL(isp_stop);
 
 static void isp_set_buf(struct isp_buf *buf)
 {
-	if ((isp_obj.module.isp_pipeline & OMAP_ISP_RESIZER) &&
-	    is_ispresizer_enabled())
+	if (isp_obj.module.isp_pipeline & OMAP_ISP_RESIZER
+	    && is_ispresizer_enabled())
 		ispresizer_set_outaddr(buf->isp_addr);
 	else if (isp_obj.module.isp_pipeline & OMAP_ISP_CCDC)
 		ispccdc_set_outaddr(buf->isp_addr);
@@ -1199,8 +1204,8 @@ static u32 isp_calc_pipeline(struct v4l2_pix_format *pix_input,
 	if ((pix_input->pixelformat == V4L2_PIX_FMT_SGRBG10
 	     || pix_input->pixelformat == V4L2_PIX_FMT_SGRBG10DPCM8)
 	    && pix_output->pixelformat != V4L2_PIX_FMT_SGRBG10) {
-		isp_obj.module.isp_pipeline = OMAP_ISP_CCDC | OMAP_ISP_PREVIEW |
-			OMAP_ISP_RESIZER;
+		isp_obj.module.isp_pipeline =
+			OMAP_ISP_CCDC | OMAP_ISP_PREVIEW | OMAP_ISP_RESIZER;
 		ispccdc_request();
 		isppreview_request();
 		ispresizer_request();
@@ -1355,7 +1360,8 @@ static int isp_buf_process(struct isp_bufs *bufs)
 
 	DPRINTK_ISPCTRL(KERN_ALERT "%s: finish %d mmu %p\n", __func__,
 			(bufs->done - 1 + NUM_BUFS) % NUM_BUFS,
-			(bufs->buf+((bufs->done - 1 + NUM_BUFS) % NUM_BUFS))->isp_addr);
+			(bufs->buf+((bufs->done - 1 + NUM_BUFS)
+				    % NUM_BUFS))->isp_addr);
 
 out:
 	spin_unlock_irqrestore(&bufs->lock, flags);
@@ -1765,8 +1771,8 @@ int isp_s_fmt_cap(struct v4l2_pix_format *pix_input,
 
 	isp_config_pipeline(pix_input, pix_output);
 
-	if ((isp_obj.module.isp_pipeline & OMAP_ISP_RESIZER) &&
-	    (crop_scaling_h || crop_scaling_w))
+	if (isp_obj.module.isp_pipeline & OMAP_ISP_RESIZER
+	    && (crop_scaling_h || crop_scaling_w))
 		isp_config_crop(pix_output);
 
 out:
@@ -1809,8 +1815,9 @@ void isp_config_crop(struct v4l2_pix_format *croppix)
 	while (((int)cur_rect.width & 0xFFFFFFF0) != (int)cur_rect.width)
 		(int)cur_rect.width--;
 
-	isp_obj.tmp_buf_offset = ((cur_rect.left * 2) +
-				  ((isp_obj.module.preview_output_width) * 2 * cur_rect.top));
+	isp_obj.tmp_buf_offset =
+		cur_rect.left * 2 +
+		isp_obj.module.preview_output_width * 2 * cur_rect.top;
 
 	ispresizer_trycrop(cur_rect.left, cur_rect.top, cur_rect.width,
 			   cur_rect.height,
@@ -1832,6 +1839,7 @@ int isp_g_crop(struct v4l2_crop *a)
 	struct v4l2_crop *crop = a;
 
 	crop->c = ispcroprect;
+
 	return 0;
 }
 EXPORT_SYMBOL(isp_g_crop);
@@ -1927,12 +1935,12 @@ static int isp_try_size(struct v4l2_pix_format *pix_input,
 {
 	int rval = 0;
 
-	if ((pix_output->width <= ISPRSZ_MIN_OUTPUT) ||
-	    (pix_output->height <= ISPRSZ_MIN_OUTPUT))
+	if (pix_output->width <= ISPRSZ_MIN_OUTPUT
+	    || pix_output->height <= ISPRSZ_MIN_OUTPUT)
 		return -EINVAL;
 
-	if ((pix_output->width >= ISPRSZ_MAX_OUTPUT) ||
-	    (pix_output->height > ISPRSZ_MAX_OUTPUT))
+	if (pix_output->width >= ISPRSZ_MAX_OUTPUT
+	    || pix_output->height > ISPRSZ_MAX_OUTPUT)
 		return -EINVAL;
 
 	isp_obj.module.ccdc_input_width = pix_input->width;
@@ -1960,10 +1968,11 @@ static int isp_try_size(struct v4l2_pix_format *pix_input,
 			isp_obj.module.ccdc_output_width;
 		isp_obj.module.preview_input_height =
 			isp_obj.module.ccdc_output_height;
-		rval = isppreview_try_size(isp_obj.module.preview_input_width,
-					   isp_obj.module.preview_input_height,
-					   &isp_obj.module.preview_output_width,
-					   &isp_obj.module.preview_output_height);
+		rval = isppreview_try_size(
+			isp_obj.module.preview_input_width,
+			isp_obj.module.preview_input_height,
+			&isp_obj.module.preview_output_width,
+			&isp_obj.module.preview_output_height);
 		if (rval) {
 			printk(KERN_ERR "ISP_ERR: The dimensions %dx%d are not"
 			       " supported\n", pix_input->width,
@@ -1979,10 +1988,11 @@ static int isp_try_size(struct v4l2_pix_format *pix_input,
 			isp_obj.module.preview_output_width;
 		isp_obj.module.resizer_input_height =
 			isp_obj.module.preview_output_height;
-		rval = ispresizer_try_size(&isp_obj.module.resizer_input_width,
-					   &isp_obj.module.resizer_input_height,
-					   &isp_obj.module.resizer_output_width,
-					   &isp_obj.module.resizer_output_height);
+		rval = ispresizer_try_size(
+			&isp_obj.module.resizer_input_width,
+			&isp_obj.module.resizer_input_height,
+			&isp_obj.module.resizer_output_width,
+			&isp_obj.module.resizer_output_height);
 		if (rval) {
 			printk(KERN_ERR "ISP_ERR: The dimensions %dx%d are not"
 			       " supported\n", pix_input->width,
@@ -2083,7 +2093,7 @@ static void isp_restore_ctx(void)
  **/
 int isp_get(void)
 {
-	static int has_context = 0;
+	static int has_context;
 	int ret_err = 0;
 
 	if (omap3isp == NULL)
@@ -2264,7 +2274,7 @@ static int isp_probe(struct platform_device *pdev)
 			return -ENODEV;
 		}
 
-		if (!request_mem_region(mem->start, (mem->end - mem->start) + 1,
+		if (!request_mem_region(mem->start, mem->end - mem->start + 1,
 					pdev->name)) {
 			dev_err(isp->dev,
 				"cannot reserve camera register I/O region\n");
@@ -2272,7 +2282,7 @@ static int isp_probe(struct platform_device *pdev)
 
 		}
 		isp->mmio_base_phys[i] = mem->start;
-		isp->mmio_size[i] = (mem->end - mem->start) + 1;
+		isp->mmio_size[i] = mem->end - mem->start + 1;
 
 		/* map the region */
 		isp->mmio_base[i] = (unsigned long)

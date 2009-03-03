@@ -135,7 +135,7 @@ void isp_hist_enable(u8 enable)
 		DPRINTK_ISPHIST("   histogram disabled \n");
 
 	isp_reg_and_or(OMAP3_ISP_IOMEM_HIST, ISPHIST_PCR, ~ISPHIST_PCR_EN,
-		       (enable ? ISPHIST_PCR_EN : 0));
+		       enable ? ISPHIST_PCR_EN : 0);
 	histstat.hist_enable = enable;
 }
 
@@ -193,7 +193,7 @@ static void isp_hist_isr(unsigned long status, isp_vbq_callback_ptr arg1,
 {
 	isp_hist_enable(0);
 
-	if ((HIST_DONE & status) != HIST_DONE)
+	if (!(status & HIST_DONE))
 		return;
 
 	if (!histstat.completed) {
@@ -279,10 +279,10 @@ static int isp_hist_set_params(struct isp_hist_config *user_cfg)
 	DPRINTK_ISPHIST("ISPHIST: Memory Cleared\n");
 	histstat.frame_req = user_cfg->hist_frames;
 
-	if (unlikely((user_cfg->wb_gain_R > MAX_WB_GAIN) ||
-		     (user_cfg->wb_gain_RG > MAX_WB_GAIN) ||
-		     (user_cfg->wb_gain_B > MAX_WB_GAIN) ||
-		     (user_cfg->wb_gain_BG > MAX_WB_GAIN))) {
+	if (unlikely(user_cfg->wb_gain_R > MAX_WB_GAIN ||
+		     user_cfg->wb_gain_RG > MAX_WB_GAIN ||
+		     user_cfg->wb_gain_B > MAX_WB_GAIN ||
+		     user_cfg->wb_gain_BG > MAX_WB_GAIN)) {
 		printk(KERN_ERR "Invalid WB gain\n");
 		return -EINVAL;
 	} else {
@@ -298,8 +298,7 @@ static int isp_hist_set_params(struct isp_hist_config *user_cfg)
 		return -EINVAL;
 
 	if (likely((user_cfg->reg0_hor & ISPHIST_REGHORIZ_HEND_MASK) -
-		   ((user_cfg->reg0_hor &
-		     ISPHIST_REGHORIZ_HSTART_MASK) >>
+		   ((user_cfg->reg0_hor & ISPHIST_REGHORIZ_HSTART_MASK) >>
 		    ISPHIST_REGHORIZ_HSTART_SHIFT))) {
 		WRITE_REG_HORIZ(hist_regs.reg_r0_h, user_cfg->reg0_hor);
 		reg_num++;
@@ -395,8 +394,8 @@ static int isp_hist_set_params(struct isp_hist_config *user_cfg)
 		WRITE_NUM_BINS(hist_regs.reg_cnt, user_cfg->hist_bins);
 	}
 
-	if ((user_cfg->input_bit_width > MAX_BIT_WIDTH) ||
-	    (user_cfg->input_bit_width < MIN_BIT_WIDTH)) {
+	if (user_cfg->input_bit_width > MAX_BIT_WIDTH ||
+	    user_cfg->input_bit_width < MIN_BIT_WIDTH) {
 		printk(KERN_ERR "Invalid Bit Width: %d\n",
 		       user_cfg->input_bit_width);
 		return -EINVAL;
@@ -490,7 +489,7 @@ int isp_hist_request_statistics(struct isp_hist_data *histdata)
 
 	for (i = 0; i < HIST_MEM_SIZE; i++) {
 		curr = isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_DATA);
-		ret = put_user(curr, (histdata->hist_statistics_buf + i));
+		ret = put_user(curr, histdata->hist_statistics_buf + i);
 		if (ret) {
 			printk(KERN_ERR "Failed copy_to_user for "
 			       "HIST stats buff, %d\n", ret);

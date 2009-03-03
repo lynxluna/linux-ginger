@@ -167,7 +167,7 @@ int omap34xx_isp_ccdc_config(void *userspace_add)
 	if (ISP_ABS_CCDC_BLCLAMP & ccdc_struct->flag) {
 		if (ISP_ABS_CCDC_BLCLAMP & ccdc_struct->update) {
 			if (copy_from_user(&bclamp_t, (struct ispccdc_bclamp *)
-					   (ccdc_struct->bclamp),
+					   ccdc_struct->bclamp,
 					   sizeof(struct ispccdc_bclamp)))
 				goto copy_from_user_err;
 
@@ -178,7 +178,7 @@ int omap34xx_isp_ccdc_config(void *userspace_add)
 	} else {
 		if (ISP_ABS_CCDC_BLCLAMP & ccdc_struct->update) {
 			if (copy_from_user(&bclamp_t, (struct ispccdc_bclamp *)
-					   (ccdc_struct->bclamp),
+					   ccdc_struct->bclamp,
 					   sizeof(struct ispccdc_bclamp)))
 				goto copy_from_user_err;
 
@@ -189,7 +189,7 @@ int omap34xx_isp_ccdc_config(void *userspace_add)
 
 	if (ISP_ABS_CCDC_BCOMP & ccdc_struct->update) {
 		if (copy_from_user(&blcomp_t, (struct ispccdc_blcomp *)
-				   (ccdc_struct->blcomp),
+				   ccdc_struct->blcomp,
 				   sizeof(blcomp_t)))
 			goto copy_from_user_err;
 
@@ -199,23 +199,23 @@ int omap34xx_isp_ccdc_config(void *userspace_add)
 	if (ISP_ABS_CCDC_FPC & ccdc_struct->flag) {
 		if (ISP_ABS_CCDC_FPC & ccdc_struct->update) {
 			if (copy_from_user(&fpc_t, (struct ispccdc_fpc *)
-					   (ccdc_struct->fpc),
+					   ccdc_struct->fpc,
 					   sizeof(fpc_t)))
 				goto copy_from_user_err;
-			fpc_table_add = kmalloc((64 + (fpc_t.fpnum * 4)),
+			fpc_table_add = kmalloc(64 + fpc_t.fpnum * 4,
 						GFP_KERNEL | GFP_DMA);
 			if (!fpc_table_add) {
 				printk(KERN_ERR "Cannot allocate memory for"
 				       " FPC table");
 				return -ENOMEM;
 			}
-			while (((int)fpc_table_add & 0xFFFFFFC0) !=
-			       (int)fpc_table_add)
+			while (((unsigned long)fpc_table_add & 0xFFFFFFC0)
+			       != (unsigned long)fpc_table_add)
 				fpc_table_add++;
 
 			fpc_table_add_m = ispmmu_kmap(virt_to_phys
 						      (fpc_table_add),
-						      (fpc_t.fpnum) * 4);
+						      fpc_t.fpnum * 4);
 
 			if (copy_from_user(fpc_table_add, (u32 *)fpc_t.fpcaddr,
 					   fpc_t.fpnum * 4))
@@ -230,7 +230,7 @@ int omap34xx_isp_ccdc_config(void *userspace_add)
 
 	if (ISP_ABS_CCDC_CULL & ccdc_struct->update) {
 		if (copy_from_user(&cull_t, (struct ispccdc_culling *)
-				   (ccdc_struct->cull),
+				   ccdc_struct->cull,
 				   sizeof(cull_t)))
 			goto copy_from_user_err;
 		ispccdc_config_culling(cull_t);
@@ -239,11 +239,11 @@ int omap34xx_isp_ccdc_config(void *userspace_add)
 	if (is_isplsc_activated()) {
 		if (ISP_ABS_CCDC_CONFIG_LSC & ccdc_struct->flag) {
 			if (ISP_ABS_CCDC_CONFIG_LSC & ccdc_struct->update) {
-				if (copy_from_user(&lsc_config,
-						   (struct ispccdc_lsc_config *)
-						   (ccdc_struct->lsc_cfg),
-						   sizeof(struct
-							  ispccdc_lsc_config)))
+				if (copy_from_user(
+					    &lsc_config,
+					    (struct ispccdc_lsc_config *)
+					    ccdc_struct->lsc_cfg,
+					    sizeof(struct ispccdc_lsc_config)))
 					goto copy_from_user_err;
 				ispccdc_config_lsc(&lsc_config);
 			}
@@ -254,7 +254,7 @@ int omap34xx_isp_ccdc_config(void *userspace_add)
 		}
 		if (ISP_ABS_TBL_LSC & ccdc_struct->update) {
 			if (copy_from_user(lsc_gain_table,
-					   (ccdc_struct->lsc), lsc_config.size))
+					   ccdc_struct->lsc, lsc_config.size))
 				goto copy_from_user_err;
 			ispccdc_load_lsc(lsc_gain_table, lsc_config.size);
 		}
@@ -453,16 +453,16 @@ void ispccdc_config_lsc(struct ispccdc_lsc_config *lsc_cfg)
 		       ISPCCDC_LSC_TABLE_OFFSET);
 
 	reg = 0;
-	reg |= (lsc_cfg->gain_mode_n << ISPCCDC_LSC_GAIN_MODE_N_SHIFT);
-	reg |= (lsc_cfg->gain_mode_m << ISPCCDC_LSC_GAIN_MODE_M_SHIFT);
-	reg |= (lsc_cfg->gain_format << ISPCCDC_LSC_GAIN_FORMAT_SHIFT);
+	reg |= lsc_cfg->gain_mode_n << ISPCCDC_LSC_GAIN_MODE_N_SHIFT;
+	reg |= lsc_cfg->gain_mode_m << ISPCCDC_LSC_GAIN_MODE_M_SHIFT;
+	reg |= lsc_cfg->gain_format << ISPCCDC_LSC_GAIN_FORMAT_SHIFT;
 	isp_reg_writel(reg, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_LSC_CONFIG);
 
 	reg = 0;
 	reg &= ~ISPCCDC_LSC_INITIAL_X_MASK;
-	reg |= (lsc_cfg->initial_x << ISPCCDC_LSC_INITIAL_X_SHIFT);
+	reg |= lsc_cfg->initial_x << ISPCCDC_LSC_INITIAL_X_SHIFT;
 	reg &= ~ISPCCDC_LSC_INITIAL_Y_MASK;
-	reg |= (lsc_cfg->initial_y << ISPCCDC_LSC_INITIAL_Y_SHIFT);
+	reg |= lsc_cfg->initial_y << ISPCCDC_LSC_INITIAL_Y_SHIFT;
 	isp_reg_writel(reg, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_LSC_INITIAL);
 }
 EXPORT_SYMBOL(ispccdc_config_lsc);
@@ -545,26 +545,26 @@ int ispccdc_config_datapath(enum ccdc_input input, enum ccdc_output output)
 	struct ispccdc_syncif syncif;
 	struct ispccdc_bclamp blkcfg;
 
-	u32 colptn = (ISPCCDC_COLPTN_Gr_Cy << ISPCCDC_COLPTN_CP0PLC0_SHIFT) |
-		(ISPCCDC_COLPTN_R_Ye << ISPCCDC_COLPTN_CP0PLC1_SHIFT) |
-		(ISPCCDC_COLPTN_Gr_Cy << ISPCCDC_COLPTN_CP0PLC2_SHIFT) |
-		(ISPCCDC_COLPTN_R_Ye << ISPCCDC_COLPTN_CP0PLC3_SHIFT) |
-		(ISPCCDC_COLPTN_B_Mg << ISPCCDC_COLPTN_CP1PLC0_SHIFT) |
-		(ISPCCDC_COLPTN_Gb_G << ISPCCDC_COLPTN_CP1PLC1_SHIFT) |
-		(ISPCCDC_COLPTN_B_Mg << ISPCCDC_COLPTN_CP1PLC2_SHIFT) |
-		(ISPCCDC_COLPTN_Gb_G << ISPCCDC_COLPTN_CP1PLC3_SHIFT) |
-		(ISPCCDC_COLPTN_Gr_Cy << ISPCCDC_COLPTN_CP2PLC0_SHIFT) |
-		(ISPCCDC_COLPTN_R_Ye << ISPCCDC_COLPTN_CP2PLC1_SHIFT) |
-		(ISPCCDC_COLPTN_Gr_Cy << ISPCCDC_COLPTN_CP2PLC2_SHIFT) |
-		(ISPCCDC_COLPTN_R_Ye << ISPCCDC_COLPTN_CP2PLC3_SHIFT) |
-		(ISPCCDC_COLPTN_B_Mg << ISPCCDC_COLPTN_CP3PLC0_SHIFT) |
-		(ISPCCDC_COLPTN_Gb_G << ISPCCDC_COLPTN_CP3PLC1_SHIFT) |
-		(ISPCCDC_COLPTN_B_Mg << ISPCCDC_COLPTN_CP3PLC2_SHIFT) |
-		(ISPCCDC_COLPTN_Gb_G << ISPCCDC_COLPTN_CP3PLC3_SHIFT);
+	u32 colptn = ISPCCDC_COLPTN_Gr_Cy << ISPCCDC_COLPTN_CP0PLC0_SHIFT |
+		ISPCCDC_COLPTN_R_Ye << ISPCCDC_COLPTN_CP0PLC1_SHIFT |
+		ISPCCDC_COLPTN_Gr_Cy << ISPCCDC_COLPTN_CP0PLC2_SHIFT |
+		ISPCCDC_COLPTN_R_Ye << ISPCCDC_COLPTN_CP0PLC3_SHIFT |
+		ISPCCDC_COLPTN_B_Mg << ISPCCDC_COLPTN_CP1PLC0_SHIFT |
+		ISPCCDC_COLPTN_Gb_G << ISPCCDC_COLPTN_CP1PLC1_SHIFT |
+		ISPCCDC_COLPTN_B_Mg << ISPCCDC_COLPTN_CP1PLC2_SHIFT |
+		ISPCCDC_COLPTN_Gb_G << ISPCCDC_COLPTN_CP1PLC3_SHIFT |
+		ISPCCDC_COLPTN_Gr_Cy << ISPCCDC_COLPTN_CP2PLC0_SHIFT |
+		ISPCCDC_COLPTN_R_Ye << ISPCCDC_COLPTN_CP2PLC1_SHIFT |
+		ISPCCDC_COLPTN_Gr_Cy << ISPCCDC_COLPTN_CP2PLC2_SHIFT |
+		ISPCCDC_COLPTN_R_Ye << ISPCCDC_COLPTN_CP2PLC3_SHIFT |
+		ISPCCDC_COLPTN_B_Mg << ISPCCDC_COLPTN_CP3PLC0_SHIFT |
+		ISPCCDC_COLPTN_Gb_G << ISPCCDC_COLPTN_CP3PLC1_SHIFT |
+		ISPCCDC_COLPTN_B_Mg << ISPCCDC_COLPTN_CP3PLC2_SHIFT |
+		ISPCCDC_COLPTN_Gb_G << ISPCCDC_COLPTN_CP3PLC3_SHIFT;
 
 	/* CCDC does not convert the image format */
-	if (((input == CCDC_RAW) || (input == CCDC_OTHERS)) &&
-	    (output == CCDC_YUV_RSZ)) {
+	if ((input == CCDC_RAW || input == CCDC_OTHERS) &&
+	    output == CCDC_YUV_RSZ) {
 		DPRINTK_ISPCCDC("ISP_ERR: Wrong CCDC I/O Combination\n");
 		return -EINVAL;
 	}
@@ -757,9 +757,8 @@ void ispccdc_config_sync_if(struct ispccdc_syncif syncif)
 
 	if (syncif.ccdc_mastermode) {
 		syn_mode |= ISPCCDC_SYN_MODE_FLDOUT | ISPCCDC_SYN_MODE_VDHDOUT;
-		isp_reg_writel((syncif.hs_width << ISPCCDC_HD_VD_WID_HDW_SHIFT)
-			       | (syncif.vs_width <<
-				  ISPCCDC_HD_VD_WID_VDW_SHIFT),
+		isp_reg_writel(syncif.hs_width << ISPCCDC_HD_VD_WID_HDW_SHIFT
+			       | syncif.vs_width << ISPCCDC_HD_VD_WID_VDW_SHIFT,
 			       OMAP3_ISP_IOMEM_CCDC,
 			       ISPCCDC_HD_VD_WID);
 
@@ -804,11 +803,11 @@ int ispccdc_config_black_clamp(struct ispccdc_bclamp bclamp)
 			       ISPCCDC_CLAMP);
 	} else {
 		if (omap_rev() < OMAP3430_REV_ES2_0)
-			if ((ispccdc_obj.syncif_ipmod == YUV16) ||
-			    (ispccdc_obj.syncif_ipmod == YUV8) ||
-			    (isp_reg_readl(OMAP3_ISP_IOMEM_CCDC,
-					   ISPCCDC_REC656IF) &
-			     ISPCCDC_REC656IF_R656ON))
+			if (ispccdc_obj.syncif_ipmod == YUV16 ||
+			    ispccdc_obj.syncif_ipmod == YUV8 ||
+			    isp_reg_readl(OMAP3_ISP_IOMEM_CCDC,
+					  ISPCCDC_REC656IF) &
+			    ISPCCDC_REC656IF_R656ON)
 				bclamp.dcsubval = 0;
 		isp_reg_writel(bclamp.dcsubval, OMAP3_ISP_IOMEM_CCDC,
 			       ISPCCDC_DCSUB);
@@ -1118,14 +1117,13 @@ int ispccdc_try_size(u32 input_w, u32 input_h, u32 *output_w, u32 *output_h)
 	else
 		*output_h = input_h;
 
-	if ((!ispccdc_obj.refmt_en) && ((ispccdc_obj.ccdc_outfmt !=
-					 CCDC_OTHERS_MEM) && ispccdc_obj.ccdc_outfmt !=
-					CCDC_OTHERS_VP_MEM))
+	if (!ispccdc_obj.refmt_en
+	    && ispccdc_obj.ccdc_outfmt != CCDC_OTHERS_MEM
+	    && ispccdc_obj.ccdc_outfmt != CCDC_OTHERS_VP_MEM)
 		*output_h -= 1;
 
-	if ((ispccdc_obj.ccdc_outfmt == CCDC_OTHERS_MEM) ||
-	    (ispccdc_obj.ccdc_outfmt ==
-	     CCDC_OTHERS_VP_MEM)) {
+	if (ispccdc_obj.ccdc_outfmt == CCDC_OTHERS_MEM
+	    || ispccdc_obj.ccdc_outfmt == CCDC_OTHERS_VP_MEM) {
 		if (*output_w % 16) {
 			*output_w -= (*output_w % 16);
 			*output_w += 16;
@@ -1168,8 +1166,8 @@ int ispccdc_config_size(u32 input_w, u32 input_h, u32 output_w, u32 output_h)
 			" output_h=%u\n",
 			input_w, input_h,
 			output_w, output_h);
-	if ((output_w != ispccdc_obj.ccdcout_w) || (output_h !=
-						    ispccdc_obj.ccdcout_h)) {
+	if (output_w != ispccdc_obj.ccdcout_w
+	    || output_h != ispccdc_obj.ccdcout_h) {
 		DPRINTK_ISPCCDC("ISP_ERR : ispccdc_try_size should"
 				" be called before config size\n");
 		return -EINVAL;
@@ -1371,9 +1369,8 @@ EXPORT_SYMBOL(ispccdc_set_outaddr);
  **/
 void ispccdc_enable(u8 enable)
 {
-	if (ccdc_use_lsc && !ispccdc_obj.lsc_en &&
-	    (ispccdc_obj.ccdc_inpfmt == CCDC_RAW) &&
-	    enable)
+	if (ccdc_use_lsc && !ispccdc_obj.lsc_en
+	    && ispccdc_obj.ccdc_inpfmt == CCDC_RAW && enable)
 		ispccdc_enable_lsc(1);
 
 	isp_reg_and_or(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_PCR, ~ISPCCDC_PCR_EN,
@@ -1485,9 +1482,11 @@ void ispccdc_print_status(void)
 	DPRINTK_ISPCCDC("###CCDC HORZ_INFO=0x%x\n",
 			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_HORZ_INFO));
 	DPRINTK_ISPCCDC("###CCDC VERT_START=0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_VERT_START));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC,
+				      ISPCCDC_VERT_START));
 	DPRINTK_ISPCCDC("###CCDC VERT_LINES=0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_VERT_LINES));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC,
+				      ISPCCDC_VERT_LINES));
 	DPRINTK_ISPCCDC("###CCDC CULLING=0x%x\n",
 			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_CULLING));
 	DPRINTK_ISPCCDC("###CCDC HSIZE_OFF=0x%x\n",
@@ -1513,13 +1512,17 @@ void ispccdc_print_status(void)
 	DPRINTK_ISPCCDC("###CCDC FMT_VERT=0x%x\n",
 			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMT_VERT));
 	DPRINTK_ISPCCDC("###CCDC LSC_CONFIG=0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_LSC_CONFIG));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC,
+				      ISPCCDC_LSC_CONFIG));
 	DPRINTK_ISPCCDC("###CCDC LSC_INIT=0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_LSC_INITIAL));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC,
+				      ISPCCDC_LSC_INITIAL));
 	DPRINTK_ISPCCDC("###CCDC LSC_TABLE BASE=0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_LSC_TABLE_BASE));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC,
+				      ISPCCDC_LSC_TABLE_BASE));
 	DPRINTK_ISPCCDC("###CCDC LSC TABLE OFFSET=0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_LSC_TABLE_OFFSET));
+			isp_reg_readl(OMAP3_ISP_IOMEM_CCDC,
+				      ISPCCDC_LSC_TABLE_OFFSET));
 }
 EXPORT_SYMBOL(ispccdc_print_status);
 

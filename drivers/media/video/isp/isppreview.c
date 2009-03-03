@@ -522,7 +522,8 @@ void isppreview_config_shadow_registers()
 
 		for (ctr = 0; ctr < ISP_GAMMA_TABLE_SIZE; ctr++) {
 			isp_reg_writel(greengamma_table[ctr],
-				       OMAP3_ISP_IOMEM_PREV, ISPPRV_SET_TBL_DATA);
+				       OMAP3_ISP_IOMEM_PREV,
+				       ISPPRV_SET_TBL_DATA);
 		}
 		gg_update = 0;
 	}
@@ -533,7 +534,8 @@ void isppreview_config_shadow_registers()
 
 		for (ctr = 0; ctr < ISP_GAMMA_TABLE_SIZE; ctr++) {
 			isp_reg_writel(redgamma_table[ctr],
-				       OMAP3_ISP_IOMEM_PREV, ISPPRV_SET_TBL_DATA);
+				       OMAP3_ISP_IOMEM_PREV,
+				       ISPPRV_SET_TBL_DATA);
 		}
 		rg_update = 0;
 	}
@@ -544,7 +546,8 @@ void isppreview_config_shadow_registers()
 
 		for (ctr = 0; ctr < ISP_GAMMA_TABLE_SIZE; ctr++) {
 			isp_reg_writel(bluegamma_table[ctr],
-				       OMAP3_ISP_IOMEM_PREV, ISPPRV_SET_TBL_DATA);
+				       OMAP3_ISP_IOMEM_PREV,
+				       ISPPRV_SET_TBL_DATA);
 		}
 		bg_update = 0;
 	}
@@ -556,7 +559,8 @@ void isppreview_config_shadow_registers()
 			       OMAP3_ISP_IOMEM_PREV, ISPPRV_NF);
 		for (ctr = 0; ctr < ISPPRV_NF_TBL_SIZE; ctr++) {
 			isp_reg_writel(prev_nf_t.table[ctr],
-				       OMAP3_ISP_IOMEM_PREV, ISPPRV_SET_TBL_DATA);
+				       OMAP3_ISP_IOMEM_PREV,
+				       ISPPRV_SET_TBL_DATA);
 		}
 		isppreview_enable_noisefilter(1);
 		nf_update = 0;
@@ -1141,28 +1145,28 @@ void isppreview_config_whitebalance(struct ispprev_wbal prev_wbal)
 
 	isp_reg_writel(prev_wbal.dgain, OMAP3_ISP_IOMEM_PREV, ISPPRV_WB_DGAIN);
 
-	val = (prev_wbal.coef0 << ISPPRV_WBGAIN_COEF0_SHIFT);
-	val |= (prev_wbal.coef1 << ISPPRV_WBGAIN_COEF1_SHIFT);
-	val |= (prev_wbal.coef2 << ISPPRV_WBGAIN_COEF2_SHIFT);
-	val |= (prev_wbal.coef3 << ISPPRV_WBGAIN_COEF3_SHIFT);
+	val = prev_wbal.coef0 << ISPPRV_WBGAIN_COEF0_SHIFT;
+	val |= prev_wbal.coef1 << ISPPRV_WBGAIN_COEF1_SHIFT;
+	val |= prev_wbal.coef2 << ISPPRV_WBGAIN_COEF2_SHIFT;
+	val |= prev_wbal.coef3 << ISPPRV_WBGAIN_COEF3_SHIFT;
 	isp_reg_writel(val, OMAP3_ISP_IOMEM_PREV, ISPPRV_WBGAIN);
 
-	isp_reg_writel((ISPPRV_WBSEL_COEF0 << ISPPRV_WBSEL_N0_0_SHIFT) |
-		       (ISPPRV_WBSEL_COEF1 << ISPPRV_WBSEL_N0_1_SHIFT) |
-		       (ISPPRV_WBSEL_COEF0 << ISPPRV_WBSEL_N0_2_SHIFT) |
-		       (ISPPRV_WBSEL_COEF1 << ISPPRV_WBSEL_N0_3_SHIFT) |
-		       (ISPPRV_WBSEL_COEF2 << ISPPRV_WBSEL_N1_0_SHIFT) |
-		       (ISPPRV_WBSEL_COEF3 << ISPPRV_WBSEL_N1_1_SHIFT) |
-		       (ISPPRV_WBSEL_COEF2 << ISPPRV_WBSEL_N1_2_SHIFT) |
-		       (ISPPRV_WBSEL_COEF3 << ISPPRV_WBSEL_N1_3_SHIFT) |
-		       (ISPPRV_WBSEL_COEF0 << ISPPRV_WBSEL_N2_0_SHIFT) |
-		       (ISPPRV_WBSEL_COEF1 << ISPPRV_WBSEL_N2_1_SHIFT) |
-		       (ISPPRV_WBSEL_COEF0 << ISPPRV_WBSEL_N2_2_SHIFT) |
-		       (ISPPRV_WBSEL_COEF1 << ISPPRV_WBSEL_N2_3_SHIFT) |
-		       (ISPPRV_WBSEL_COEF2 << ISPPRV_WBSEL_N3_0_SHIFT) |
-		       (ISPPRV_WBSEL_COEF3 << ISPPRV_WBSEL_N3_1_SHIFT) |
-		       (ISPPRV_WBSEL_COEF2 << ISPPRV_WBSEL_N3_2_SHIFT) |
-		       (ISPPRV_WBSEL_COEF3 << ISPPRV_WBSEL_N3_3_SHIFT),
+	isp_reg_writel(ISPPRV_WBSEL_COEF0 << ISPPRV_WBSEL_N0_0_SHIFT |
+		       ISPPRV_WBSEL_COEF1 << ISPPRV_WBSEL_N0_1_SHIFT |
+		       ISPPRV_WBSEL_COEF0 << ISPPRV_WBSEL_N0_2_SHIFT |
+		       ISPPRV_WBSEL_COEF1 << ISPPRV_WBSEL_N0_3_SHIFT |
+		       ISPPRV_WBSEL_COEF2 << ISPPRV_WBSEL_N1_0_SHIFT |
+		       ISPPRV_WBSEL_COEF3 << ISPPRV_WBSEL_N1_1_SHIFT |
+		       ISPPRV_WBSEL_COEF2 << ISPPRV_WBSEL_N1_2_SHIFT |
+		       ISPPRV_WBSEL_COEF3 << ISPPRV_WBSEL_N1_3_SHIFT |
+		       ISPPRV_WBSEL_COEF0 << ISPPRV_WBSEL_N2_0_SHIFT |
+		       ISPPRV_WBSEL_COEF1 << ISPPRV_WBSEL_N2_1_SHIFT |
+		       ISPPRV_WBSEL_COEF0 << ISPPRV_WBSEL_N2_2_SHIFT |
+		       ISPPRV_WBSEL_COEF1 << ISPPRV_WBSEL_N2_3_SHIFT |
+		       ISPPRV_WBSEL_COEF2 << ISPPRV_WBSEL_N3_0_SHIFT |
+		       ISPPRV_WBSEL_COEF3 << ISPPRV_WBSEL_N3_1_SHIFT |
+		       ISPPRV_WBSEL_COEF2 << ISPPRV_WBSEL_N3_2_SHIFT |
+		       ISPPRV_WBSEL_COEF3 << ISPPRV_WBSEL_N3_3_SHIFT,
 		       OMAP3_ISP_IOMEM_PREV, ISPPRV_WBSEL);
 }
 EXPORT_SYMBOL_GPL(isppreview_config_whitebalance);
@@ -1179,9 +1183,9 @@ void isppreview_config_whitebalance2(struct prev_white_balance prev_wbal)
 	isp_reg_writel(prev_wbal.wb_dgain,
 		       OMAP3_ISP_IOMEM_PREV, ISPPRV_WB_DGAIN);
 	isp_reg_writel(prev_wbal.wb_gain[0] |
-		       (prev_wbal.wb_gain[1] << ISPPRV_WBGAIN_COEF1_SHIFT) |
-		       (prev_wbal.wb_gain[2] << ISPPRV_WBGAIN_COEF2_SHIFT) |
-		       (prev_wbal.wb_gain[3] << ISPPRV_WBGAIN_COEF3_SHIFT),
+		       prev_wbal.wb_gain[1] << ISPPRV_WBGAIN_COEF1_SHIFT |
+		       prev_wbal.wb_gain[2] << ISPPRV_WBGAIN_COEF2_SHIFT |
+		       prev_wbal.wb_gain[3] << ISPPRV_WBGAIN_COEF3_SHIFT,
 		       OMAP3_ISP_IOMEM_PREV, ISPPRV_WBGAIN);
 
 	isp_reg_writel(
@@ -1296,7 +1300,7 @@ void isppreview_query_contrast(u8 *contrast)
 	u32 brt_cnt_val = 0;
 
 	brt_cnt_val = isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_CNT_BRT);
-	*contrast = (brt_cnt_val >> ISPPRV_CNT_BRT_CNT_SHIFT) & 0xFF;
+	*contrast = (brt_cnt_val >> ISPPRV_CNT_BRT_CNT_SHIFT) & 0xff;
 	DPRINTK_ISPPREV(" Current brt cnt value in hw is %x\n", brt_cnt_val);
 }
 EXPORT_SYMBOL_GPL(isppreview_query_contrast);
@@ -1324,9 +1328,9 @@ void isppreview_config_contrast(u8 contrast)
 	u32 brt_cnt_val = 0;
 
 	brt_cnt_val = isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_CNT_BRT);
-	brt_cnt_val &= ~(0xFF << ISPPRV_CNT_BRT_CNT_SHIFT);
-	contrast &= 0xFF;
-	isp_reg_writel(brt_cnt_val | (contrast << ISPPRV_CNT_BRT_CNT_SHIFT),
+	brt_cnt_val &= ~(0xff << ISPPRV_CNT_BRT_CNT_SHIFT);
+	contrast &= 0xff;
+	isp_reg_writel(brt_cnt_val | contrast << ISPPRV_CNT_BRT_CNT_SHIFT,
 		       OMAP3_ISP_IOMEM_PREV, ISPPRV_CNT_BRT);
 }
 EXPORT_SYMBOL_GPL(isppreview_config_contrast);
@@ -1364,9 +1368,9 @@ void isppreview_config_brightness(u8 brightness)
 
 	DPRINTK_ISPPREV("\tConfiguring brightness in ISP: %d\n", brightness);
 	brt_cnt_val = isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_CNT_BRT);
-	brt_cnt_val &= ~(0xFF << ISPPRV_CNT_BRT_BRT_SHIFT);
-	brightness &= 0xFF;
-	isp_reg_writel(brt_cnt_val | (brightness << ISPPRV_CNT_BRT_BRT_SHIFT),
+	brt_cnt_val &= ~(0xff << ISPPRV_CNT_BRT_BRT_SHIFT);
+	brightness &= 0xff;
+	isp_reg_writel(brt_cnt_val | brightness << ISPPRV_CNT_BRT_BRT_SHIFT,
 		       OMAP3_ISP_IOMEM_PREV, ISPPRV_CNT_BRT);
 }
 EXPORT_SYMBOL_GPL(isppreview_config_brightness);
@@ -1420,10 +1424,10 @@ EXPORT_SYMBOL_GPL(isppreview_get_color);
  **/
 void isppreview_config_yc_range(struct ispprev_yclimit yclimit)
 {
-	isp_reg_writel(((yclimit.maxC << ISPPRV_SETUP_YC_MAXC_SHIFT) |
-			(yclimit.maxY << ISPPRV_SETUP_YC_MAXY_SHIFT) |
-			(yclimit.minC << ISPPRV_SETUP_YC_MINC_SHIFT) |
-			(yclimit.minY << ISPPRV_SETUP_YC_MINY_SHIFT)),
+	isp_reg_writel(yclimit.maxC << ISPPRV_SETUP_YC_MAXC_SHIFT |
+		       yclimit.maxY << ISPPRV_SETUP_YC_MAXY_SHIFT |
+		       yclimit.minC << ISPPRV_SETUP_YC_MINC_SHIFT |
+		       yclimit.minY << ISPPRV_SETUP_YC_MINY_SHIFT,
 		       OMAP3_ISP_IOMEM_PREV, ISPPRV_SETUP_YC);
 }
 EXPORT_SYMBOL_GPL(isppreview_config_yc_range);
@@ -1581,7 +1585,7 @@ EXPORT_SYMBOL_GPL(isppreview_config_size);
 int isppreview_config_inlineoffset(u32 offset)
 {
 	if ((offset & ISP_32B_BOUNDARY_OFFSET) == offset) {
-		isp_reg_writel(offset & 0xFFFF,
+		isp_reg_writel(offset & 0xffff,
 			       OMAP3_ISP_IOMEM_PREV, ISPPRV_RADR_OFFSET);
 	} else {
 		printk(KERN_ERR "ISP_ERR : Offset should be in 32 byte "
@@ -1622,7 +1626,7 @@ int isppreview_config_outlineoffset(u32 offset)
 		       "boundary\n");
 		return -EINVAL;
 	}
-	isp_reg_writel(offset & 0xFFFF, OMAP3_ISP_IOMEM_PREV,
+	isp_reg_writel(offset & 0xffff, OMAP3_ISP_IOMEM_PREV,
 		       ISPPRV_WADD_OFFSET);
 	return 0;
 }
@@ -1657,7 +1661,7 @@ int isppreview_config_darklineoffset(u32 offset)
 		       "boundary\n");
 		return -EINVAL;
 	}
-	isp_reg_writel(offset & 0xFFFF, OMAP3_ISP_IOMEM_PREV,
+	isp_reg_writel(offset & 0xffff, OMAP3_ISP_IOMEM_PREV,
 		       ISPPRV_DRKF_OFFSET);
 	return 0;
 }
@@ -1765,7 +1769,8 @@ void isppreview_print_status(void)
 	DPRINTK_ISPPREV("###PRV WSDR_ADDR =0x%x\n",
 			isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_WSDR_ADDR));
 	DPRINTK_ISPPREV("###PRV WADD_OFFSET =0x%x\n",
-			isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_WADD_OFFSET));
+			isp_reg_readl(OMAP3_ISP_IOMEM_PREV,
+				      ISPPRV_WADD_OFFSET));
 	DPRINTK_ISPPREV("###PRV AVE =0x%x\n",
 			isp_reg_readl(OMAP3_ISP_IOMEM_PREV, ISPPRV_AVE));
 	DPRINTK_ISPPREV("###PRV HMED =0x%x\n",

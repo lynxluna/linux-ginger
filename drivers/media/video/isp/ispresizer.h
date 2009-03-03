@@ -50,7 +50,7 @@
 #define SHIFTER7TAPMODE			1
 #define DEFAULTOFFSET			7
 #define OFFSETVERT4TAPMODE		4
-#define OPWDALIGNCONSTANT		0xFFFFFFF0
+#define OPWDALIGNCONSTANT		0xfffffff0
 
 /*
  * The client is supposed to call resizer API in the following sequence:
