@@ -139,7 +139,7 @@ void isp_af_setxtrastats(struct isp_af_xtrastats *xtrastats, u8 updateflag)
 
 	if (updateflag & AF_UPDATEXS_FIELDCOUNT)
 		afstat.af_buff[past_i].xtrastats.field_count =
-							xtrastats->field_count;
+			xtrastats->field_count;
 }
 EXPORT_SYMBOL(isp_af_setxtrastats);
 
@@ -153,10 +153,10 @@ static void isp_af_update_req_buffer(struct isp_af_buffer *buffer)
 	size = PAGE_ALIGN(size);
 	/* Update the kernel pages of the requested buffer */
 	dmac_inv_range((void *)buffer->addr_align, (void *)buffer->addr_align +
-									size);
+		       size);
 }
 
-#define IS_OUT_OF_BOUNDS(value, min, max) \
+#define IS_OUT_OF_BOUNDS(value, min, max)		\
 	(((value) < (min)) || ((value) > (max)))
 
 /* Function to check paxel parameters */
@@ -167,51 +167,51 @@ int isp_af_check_paxel(void)
 
 	/* Check horizontal Count */
 	if (IS_OUT_OF_BOUNDS(paxel_cfg->hz_cnt, AF_PAXEL_HORIZONTAL_COUNT_MIN,
-					AF_PAXEL_HORIZONTAL_COUNT_MAX)) {
+			     AF_PAXEL_HORIZONTAL_COUNT_MAX)) {
 		DPRINTK_ISP_AF("Error : Horizontal Count is incorrect");
 		return -AF_ERR_HZ_COUNT;
 	}
 
 	/*Check Vertical Count */
 	if (IS_OUT_OF_BOUNDS(paxel_cfg->vt_cnt, AF_PAXEL_VERTICAL_COUNT_MIN,
-					AF_PAXEL_VERTICAL_COUNT_MAX)) {
+			     AF_PAXEL_VERTICAL_COUNT_MAX)) {
 		DPRINTK_ISP_AF("Error : Vertical Count is incorrect");
 		return -AF_ERR_VT_COUNT;
 	}
 
 	/*Check Height */
 	if (IS_OUT_OF_BOUNDS(paxel_cfg->height, AF_PAXEL_HEIGHT_MIN,
-					AF_PAXEL_HEIGHT_MAX)) {
+			     AF_PAXEL_HEIGHT_MAX)) {
 		DPRINTK_ISP_AF("Error : Height is incorrect");
 		return -AF_ERR_HEIGHT;
 	}
 
 	/*Check width */
 	if (IS_OUT_OF_BOUNDS(paxel_cfg->width, AF_PAXEL_WIDTH_MIN,
-					AF_PAXEL_WIDTH_MAX)) {
+			     AF_PAXEL_WIDTH_MAX)) {
 		DPRINTK_ISP_AF("Error : Width is incorrect");
 		return -AF_ERR_WIDTH;
 	}
 
 	/*Check Line Increment */
 	if (IS_OUT_OF_BOUNDS(paxel_cfg->line_incr, AF_PAXEL_INCREMENT_MIN,
-					AF_PAXEL_INCREMENT_MAX)) {
+			     AF_PAXEL_INCREMENT_MAX)) {
 		DPRINTK_ISP_AF("Error : Line Increment is incorrect");
 		return -AF_ERR_INCR;
 	}
 
 	/*Check Horizontal Start */
 	if ((paxel_cfg->hz_start % 2 != 0) ||
-			(paxel_cfg->hz_start < (iir_cfg->hz_start_pos + 2)) ||
-			IS_OUT_OF_BOUNDS(paxel_cfg->hz_start,
-			AF_PAXEL_HZSTART_MIN, AF_PAXEL_HZSTART_MAX)) {
+	    (paxel_cfg->hz_start < (iir_cfg->hz_start_pos + 2)) ||
+	    IS_OUT_OF_BOUNDS(paxel_cfg->hz_start,
+			     AF_PAXEL_HZSTART_MIN, AF_PAXEL_HZSTART_MAX)) {
 		DPRINTK_ISP_AF("Error : Horizontal Start is incorrect");
 		return -AF_ERR_HZ_START;
 	}
 
 	/*Check Vertical Start */
 	if (IS_OUT_OF_BOUNDS(paxel_cfg->vt_start, AF_PAXEL_VTSTART_MIN,
-					AF_PAXEL_VTSTART_MAX)) {
+			     AF_PAXEL_VTSTART_MAX)) {
 		DPRINTK_ISP_AF("Error : Vertical Start is incorrect");
 		return -AF_ERR_VT_START;
 	}
@@ -229,19 +229,19 @@ int isp_af_check_iir(void)
 	for (index = 0; index < AF_NUMBER_OF_COEF; index++) {
 		if ((iir_cfg->coeff_set0[index]) > AF_COEF_MAX) {
 			DPRINTK_ISP_AF("Error : Coefficient for set 0 is "
-								"incorrect");
+				       "incorrect");
 			return -AF_ERR_IIR_COEF;
 		}
 
 		if ((iir_cfg->coeff_set1[index]) > AF_COEF_MAX) {
 			DPRINTK_ISP_AF("Error : Coefficient for set 1 is "
-								"incorrect");
+				       "incorrect");
 			return -AF_ERR_IIR_COEF;
 		}
 	}
 
 	if (IS_OUT_OF_BOUNDS(iir_cfg->hz_start_pos, AF_IIRSH_MIN,
-								AF_IIRSH_MAX)) {
+			     AF_IIRSH_MAX)) {
 		DPRINTK_ISP_AF("Error : IIRSH is incorrect");
 		return -AF_ERR_IIRSH;
 	}
@@ -319,7 +319,7 @@ int isp_af_configure(struct af_configuration *afconfig)
 
 	/* Compute buffer size */
 	buff_size = (af_curr_cfg->paxel_config.hz_cnt + 1) *
-			(af_curr_cfg->paxel_config.vt_cnt + 1) * AF_PAXEL_SIZE;
+		(af_curr_cfg->paxel_config.vt_cnt + 1) * AF_PAXEL_SIZE;
 
 	afstat.curr_cfg_buf_size = buff_size;
 	/* Deallocate the previous buffers */
@@ -328,8 +328,8 @@ int isp_af_configure(struct af_configuration *afconfig)
 		for (i = 0; i < H3A_MAX_BUFF; i++) {
 			ispmmu_kunmap(afstat.af_buff[i].ispmmu_addr);
 			dma_free_coherent(NULL, afstat.min_buf_size,
-					(void *)afstat.af_buff[i].virt_addr,
-					(dma_addr_t)afstat.af_buff[i].phy_addr);
+					  (void *)afstat.af_buff[i].virt_addr,
+					  (dma_addr_t)afstat.af_buff[i].phy_addr);
 			afstat.af_buff[i].virt_addr = 0;
 		}
 		afstat.stats_buf_size = 0;
@@ -341,24 +341,24 @@ int isp_af_configure(struct af_configuration *afconfig)
 
 		for (i = 0; i < H3A_MAX_BUFF; i++) {
 			afstat.af_buff[i].virt_addr =
-					(unsigned long)dma_alloc_coherent(NULL,
-					afstat.min_buf_size,
-					(dma_addr_t *)
-					&afstat.af_buff[i].phy_addr,
-					GFP_KERNEL | GFP_DMA);
+				(unsigned long)dma_alloc_coherent(NULL,
+								  afstat.min_buf_size,
+								  (dma_addr_t *)
+								  &afstat.af_buff[i].phy_addr,
+								  GFP_KERNEL | GFP_DMA);
 			if (afstat.af_buff[i].virt_addr == 0) {
 				printk(KERN_ERR "Can't acquire memory for "
-							"buffer[%d]\n", i);
+				       "buffer[%d]\n", i);
 				return -ENOMEM;
 			}
 			afstat.af_buff[i].addr_align =
-						afstat.af_buff[i].virt_addr;
+				afstat.af_buff[i].virt_addr;
 			while ((afstat.af_buff[i].addr_align & 0xFFFFFFC0) !=
-						afstat.af_buff[i].addr_align)
+			       afstat.af_buff[i].addr_align)
 				afstat.af_buff[i].addr_align++;
 			afstat.af_buff[i].ispmmu_addr =
 				ispmmu_kmap(afstat.af_buff[i].phy_addr,
-							afstat.min_buf_size);
+					    afstat.min_buf_size);
 		}
 		isp_af_unlock_buffers();
 		isp_af_link_buffers();
@@ -425,7 +425,7 @@ int isp_af_register_setup(struct af_device *af_dev)
 		/* Set Median Threshold */
 		pcr &= ~MED_TH;
 		pcr |= (af_dev->config->hmf_config.threshold) <<
-							AF_MED_TH_SHIFT;
+			AF_MED_TH_SHIFT;
 	} else
 		pcr &= ~AF_MED_EN;
 
@@ -457,7 +457,7 @@ int isp_af_register_setup(struct af_device *af_dev)
 	/*Configure Horizontal Start */
 	paxstart &= ~PAXSH;
 	paxstart |= (af_dev->config->paxel_config.hz_start) <<
-							AF_HZ_START_SHIFT;
+		AF_HZ_START_SHIFT;
 	/* Configure Vertical Start */
 	paxstart &= ~PAXSV;
 	paxstart |= af_dev->config->paxel_config.vt_start;
@@ -465,7 +465,7 @@ int isp_af_register_setup(struct af_device *af_dev)
 
 	/*SetIIRSH Register */
 	isp_reg_writel(af_dev->config->iir_config.hz_start_pos,
-					OMAP3_ISP_IOMEM_H3A, ISPH3A_AFIIRSH);
+		       OMAP3_ISP_IOMEM_H3A, ISPH3A_AFIIRSH);
 
 	/*Set IIR Filter0 Coefficients */
 	base_coef_set0 = ISPH3A_AFCOEF010;
@@ -474,14 +474,14 @@ int isp_af_register_setup(struct af_device *af_dev)
 		coef |= af_dev->config->iir_config.coeff_set0[index];
 		coef &= ~COEF_MASK1;
 		coef |= (af_dev->config->iir_config.coeff_set0[index + 1]) <<
-								AF_COEF_SHIFT;
+			AF_COEF_SHIFT;
 		isp_reg_writel(coef, OMAP3_ISP_IOMEM_H3A, base_coef_set0);
 		base_coef_set0 = base_coef_set0 + AFCOEF_OFFSET;
 	}
 
 	/* set AFCOEF0010 Register */
 	isp_reg_writel(af_dev->config->iir_config.coeff_set0[10],
-				OMAP3_ISP_IOMEM_H3A, ISPH3A_AFCOEF010);
+		       OMAP3_ISP_IOMEM_H3A, ISPH3A_AFCOEF010);
 
 	/*Set IIR Filter1 Coefficients */
 
@@ -491,13 +491,13 @@ int isp_af_register_setup(struct af_device *af_dev)
 		coef |= af_dev->config->iir_config.coeff_set1[index];
 		coef &= ~COEF_MASK1;
 		coef |= (af_dev->config->iir_config.coeff_set1[index + 1]) <<
-								AF_COEF_SHIFT;
+			AF_COEF_SHIFT;
 		isp_reg_writel(coef, OMAP3_ISP_IOMEM_H3A, base_coef_set1);
 
 		base_coef_set1 = base_coef_set1 + AFCOEF_OFFSET;
 	}
 	isp_reg_writel(af_dev->config->iir_config.coeff_set1[10],
-				OMAP3_ISP_IOMEM_H3A, ISPH3A_AFCOEF1010);
+		       OMAP3_ISP_IOMEM_H3A, ISPH3A_AFCOEF1010);
 
 	return 0;
 }
@@ -516,25 +516,25 @@ static int isp_af_stats_available(struct isp_af_data *afdata)
 	spin_lock_irqsave(&afstat.buffer_lock, irqflags);
 	for (i = 0; i < H3A_MAX_BUFF; i++) {
 		DPRINTK_ISP_AF("Checking Stats buff[%d] (%d) for %d\n",
-				i, afstat.af_buff[i].frame_num,
-				afdata->frame_number);
+			       i, afstat.af_buff[i].frame_num,
+			       afdata->frame_number);
 		if ((afdata->frame_number == afstat.af_buff[i].frame_num) &&
-						(afstat.af_buff[i].frame_num !=
-						active_buff->frame_num)) {
+		    (afstat.af_buff[i].frame_num !=
+		     active_buff->frame_num)) {
 			afstat.af_buff[i].locked = 1;
 			spin_unlock_irqrestore(&afstat.buffer_lock, irqflags);
 			isp_af_update_req_buffer(&afstat.af_buff[i]);
 			afstat.af_buff[i].frame_num = 0;
 			ret = copy_to_user((void *)afdata->af_statistics_buf,
-					(void *)afstat.af_buff[i].virt_addr,
-					afstat.curr_cfg_buf_size);
+					   (void *)afstat.af_buff[i].virt_addr,
+					   afstat.curr_cfg_buf_size);
 			if (ret) {
 				printk(KERN_ERR "Failed copy_to_user for "
-					"H3A stats buff, %d\n", ret);
+				       "H3A stats buff, %d\n", ret);
 			}
 			afdata->xtrastats.ts = afstat.af_buff[i].xtrastats.ts;
 			afdata->xtrastats.field_count =
-					afstat.af_buff[i].xtrastats.field_count;
+				afstat.af_buff[i].xtrastats.field_count;
 			return 0;
 		}
 	}
@@ -590,9 +590,9 @@ int isp_af_request_statistics(struct isp_af_data *afdata)
 		frame_diff = afdata->frame_number - frame_cnt;
 	else if (afdata->frame_number < frame_cnt) {
 		if ((frame_cnt > (MAX_FRAME_COUNT - MAX_FUTURE_FRAMES)) &&
-				(afdata->frame_number < MAX_FRAME_COUNT)) {
+		    (afdata->frame_number < MAX_FRAME_COUNT)) {
 			frame_diff = afdata->frame_number + MAX_FRAME_COUNT -
-								frame_cnt;
+				frame_cnt;
 		} else {
 			/* Frame unavailable */
 			frame_diff = MAX_FUTURE_FRAMES + 1;
@@ -601,7 +601,7 @@ int isp_af_request_statistics(struct isp_af_data *afdata)
 
 	if (frame_diff > MAX_FUTURE_FRAMES) {
 		printk(KERN_ERR "Invalid frame requested, returning current"
-							" frame stats\n");
+		       " frame stats\n");
 		afdata->frame_number = frame_cnt;
 	}
 	if (!camnotify) {
@@ -611,7 +611,7 @@ int isp_af_request_statistics(struct isp_af_data *afdata)
 		afstat.stats_done = 0;
 		init_waitqueue_entry(&wqt, current);
 		ret = wait_event_interruptible(afstat.stats_wait,
-							afstat.stats_done == 1);
+					       afstat.stats_done == 1);
 		if (ret < 0) {
 			afdata->af_statistics_buf = NULL;
 			return ret;
@@ -622,7 +622,7 @@ int isp_af_request_statistics(struct isp_af_data *afdata)
 		ret = isp_af_stats_available(afdata);
 		if (ret) {
 			printk(KERN_ERR "After waiting for stats, stats not"
-							" available!!\n");
+			       " available!!\n");
 			afdata->af_statistics_buf = NULL;
 		}
 	}
@@ -636,7 +636,7 @@ EXPORT_SYMBOL(isp_af_request_statistics);
 
 /* This function will handle the H3A interrupt. */
 static void isp_af_isr(unsigned long status, isp_vbq_callback_ptr arg1,
-								void *arg2)
+		       void *arg2)
 {
 	u16 frame_align;
 
@@ -683,7 +683,7 @@ int isp_af_enable(int enable)
 	/* Set AF_EN bit in PCR Register */
 	if (enable) {
 		if (isp_set_callback(CBK_H3A_AF_DONE, isp_af_isr,
-						(void *)NULL, (void *)NULL)) {
+				     (void *)NULL, (void *)NULL)) {
 			printk(KERN_ERR "No callback for AF\n");
 			return -EINVAL;
 		}
@@ -714,7 +714,7 @@ int __init isp_af_init(void)
 	active_buff = NULL;
 
 	af_dev_configptr->config = (struct af_configuration *)
-			kzalloc(sizeof(struct af_configuration), GFP_KERNEL);
+		kzalloc(sizeof(struct af_configuration), GFP_KERNEL);
 
 	if (af_dev_configptr->config == NULL)
 		goto err_nomem2;

@@ -156,8 +156,8 @@ struct prev_rgb2ycbcr_coeffs {
  */
 struct prev_darkfrm_params {
 	u32 addr;
-	u32 offset;
-};
+	 u32 offset;
+ };
 
 /**
  * struct prev_params - Structure for all configuration
@@ -230,7 +230,7 @@ int isppreview_request(void);
 int isppreview_free(void);
 
 int isppreview_config_datapath(enum preview_input input,
-					enum preview_output output);
+			       enum preview_output output);
 
 void isppreview_config_ycpos(enum preview_ycpos_mode mode);
 
@@ -304,10 +304,10 @@ void isppreview_query_brightness(u8 *brightness);
 void isppreview_config_yc_range(struct ispprev_yclimit yclimit);
 
 int isppreview_try_size(u32 input_w, u32 input_h, u32 *output_w,
-				u32 *output_h);
+			u32 *output_h);
 
 int isppreview_config_size(u32 input_w, u32 input_h, u32 output_w,
-			u32 output_h);
+			   u32 output_h);
 
 int isppreview_config_inlineoffset(u32 offset);
 

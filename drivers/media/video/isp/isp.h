@@ -52,11 +52,11 @@
 #endif
 
 #define ISP_BYTES_PER_PIXEL		2
-#define NUM_ISP_CAPTURE_FORMATS 	(sizeof(isp_formats) /\
-							sizeof(isp_formats[0]))
+#define NUM_ISP_CAPTURE_FORMATS 	(sizeof(isp_formats) /		\
+					 sizeof(isp_formats[0]))
 typedef int (*isp_vbq_callback_ptr) (struct videobuf_buffer *vb);
 typedef void (*isp_callback_t) (unsigned long status,
-					isp_vbq_callback_ptr arg1, void *arg2);
+				isp_vbq_callback_ptr arg1, void *arg2);
 
 enum isp_mem_resources {
 	OMAP3_ISP_IOMEM_MAIN,
@@ -208,10 +208,10 @@ struct isp_interface_config {
 u32 isp_reg_readl(enum isp_mem_resources isp_mmio_range, u32 reg_offset);
 
 void isp_reg_writel(u32 reg_value, enum isp_mem_resources isp_mmio_range,
-						u32 reg_offset);
+		    u32 reg_offset);
 
 static inline void isp_reg_and(enum isp_mem_resources mmio_range, u32 reg,
-						u32 and_bits)
+			       u32 and_bits)
 {
 	u32 v = isp_reg_readl(mmio_range, reg);
 
@@ -219,7 +219,7 @@ static inline void isp_reg_and(enum isp_mem_resources mmio_range, u32 reg,
 }
 
 static inline void isp_reg_or(enum isp_mem_resources mmio_range, u32 reg,
-						u32 or_bits)
+			      u32 or_bits)
 {
 	u32 v = isp_reg_readl(mmio_range, reg);
 
@@ -227,7 +227,7 @@ static inline void isp_reg_or(enum isp_mem_resources mmio_range, u32 reg,
 }
 
 static inline void isp_reg_and_or(enum isp_mem_resources mmio_range, u32 reg,
-						u32 and_bits, u32 or_bits)
+				  u32 and_bits, u32 or_bits)
 {
 	u32 v = isp_reg_readl(mmio_range, reg);
 
@@ -246,12 +246,12 @@ int isp_vbq_setup(struct videobuf_queue *vbq, unsigned int *cnt,
 		  unsigned int *size);
 
 int isp_vbq_prepare(struct videobuf_queue *vbq, struct videobuf_buffer *vb,
-							enum v4l2_field field);
+		    enum v4l2_field field);
 
 void isp_vbq_release(struct videobuf_queue *vbq, struct videobuf_buffer *vb);
 
 int isp_set_callback(enum isp_callback_type type, isp_callback_t callback,
-					isp_vbq_callback_ptr arg1, void *arg2);
+		     isp_vbq_callback_ptr arg1, void *arg2);
 
 int isp_unset_callback(enum isp_callback_type type);
 
@@ -274,12 +274,12 @@ int isp_s_ctrl(struct v4l2_control *a);
 int isp_enum_fmt_cap(struct v4l2_fmtdesc *f);
 
 int isp_try_fmt_cap(struct v4l2_pix_format *pix_input,
-					struct v4l2_pix_format *pix_output);
+		    struct v4l2_pix_format *pix_output);
 
 void isp_g_fmt_cap(struct v4l2_pix_format *pix);
 
 int isp_s_fmt_cap(struct v4l2_pix_format *pix_input,
-					struct v4l2_pix_format *pix_output);
+		  struct v4l2_pix_format *pix_output);
 
 int isp_g_crop(struct v4l2_crop *a);
 
@@ -288,7 +288,7 @@ int isp_s_crop(struct v4l2_crop *a, struct v4l2_pix_format *pix);
 void isp_config_crop(struct v4l2_pix_format *pix);
 
 int isp_try_fmt(struct v4l2_pix_format *pix_input,
-					struct v4l2_pix_format *pix_output);
+		struct v4l2_pix_format *pix_output);
 
 int isp_handle_private(int cmd, void *arg);
 

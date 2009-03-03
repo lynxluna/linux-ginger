@@ -206,7 +206,7 @@ int isp_csi2_ctx_update_all(bool force_update);
 int isp_csi2_ctx_get_all(void);
 int isp_csi2_phy_config(struct isp_csi2_phy_cfg *desiredphyconfig);
 int isp_csi2_calc_phy_cfg0(u32 mipiclk, u32 lbound_hs_settle,
-							u32 ubound_hs_settle);
+			   u32 ubound_hs_settle);
 int isp_csi2_phy_update(bool force_update);
 int isp_csi2_phy_get(void);
 int isp_csi2_timings_config_forcerxmode(u8 io, bool force_rx_mode);

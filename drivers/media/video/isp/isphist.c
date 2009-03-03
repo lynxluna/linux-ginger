@@ -135,14 +135,14 @@ void isp_hist_enable(u8 enable)
 		DPRINTK_ISPHIST("   histogram disabled \n");
 
 	isp_reg_and_or(OMAP3_ISP_IOMEM_HIST, ISPHIST_PCR, ~ISPHIST_PCR_EN,
-						(enable ? ISPHIST_PCR_EN : 0));
+		       (enable ? ISPHIST_PCR_EN : 0));
 	histstat.hist_enable = enable;
 }
 
 int isp_hist_busy(void)
 {
 	return isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_PCR) &
-							ISPHIST_PCR_BUSY;
+		ISPHIST_PCR_BUSY;
 }
 
 
@@ -154,33 +154,33 @@ static void isp_hist_update_regs(void)
 	isp_reg_writel(hist_regs.reg_pcr, OMAP3_ISP_IOMEM_HIST, ISPHIST_PCR);
 	isp_reg_writel(hist_regs.reg_cnt, OMAP3_ISP_IOMEM_HIST, ISPHIST_CNT);
 	isp_reg_writel(hist_regs.reg_wb_gain, OMAP3_ISP_IOMEM_HIST,
-							ISPHIST_WB_GAIN);
+		       ISPHIST_WB_GAIN);
 	isp_reg_writel(hist_regs.reg_r0_h, OMAP3_ISP_IOMEM_HIST,
-							ISPHIST_R0_HORZ);
+		       ISPHIST_R0_HORZ);
 	isp_reg_writel(hist_regs.reg_r0_v, OMAP3_ISP_IOMEM_HIST,
-							ISPHIST_R0_VERT);
+		       ISPHIST_R0_VERT);
 	isp_reg_writel(hist_regs.reg_r1_h, OMAP3_ISP_IOMEM_HIST,
-							ISPHIST_R1_HORZ);
+		       ISPHIST_R1_HORZ);
 	isp_reg_writel(hist_regs.reg_r1_v, OMAP3_ISP_IOMEM_HIST,
-							ISPHIST_R1_VERT);
+		       ISPHIST_R1_VERT);
 	isp_reg_writel(hist_regs.reg_r2_h, OMAP3_ISP_IOMEM_HIST,
-							ISPHIST_R2_HORZ);
+		       ISPHIST_R2_HORZ);
 	isp_reg_writel(hist_regs.reg_r2_v, OMAP3_ISP_IOMEM_HIST,
-							ISPHIST_R2_VERT);
+		       ISPHIST_R2_VERT);
 	isp_reg_writel(hist_regs.reg_r3_h, OMAP3_ISP_IOMEM_HIST,
-							ISPHIST_R3_HORZ);
+		       ISPHIST_R3_HORZ);
 	isp_reg_writel(hist_regs.reg_r3_v, OMAP3_ISP_IOMEM_HIST,
-							ISPHIST_R3_VERT);
+		       ISPHIST_R3_VERT);
 	isp_reg_writel(hist_regs.reg_hist_addr, OMAP3_ISP_IOMEM_HIST,
-							ISPHIST_ADDR);
+		       ISPHIST_ADDR);
 	isp_reg_writel(hist_regs.reg_hist_data, OMAP3_ISP_IOMEM_HIST,
-							ISPHIST_DATA);
+		       ISPHIST_DATA);
 	isp_reg_writel(hist_regs.reg_hist_radd, OMAP3_ISP_IOMEM_HIST,
-							ISPHIST_RADD);
+		       ISPHIST_RADD);
 	isp_reg_writel(hist_regs.reg_hist_radd_off, OMAP3_ISP_IOMEM_HIST,
-							ISPHIST_RADD_OFF);
+		       ISPHIST_RADD_OFF);
 	isp_reg_writel(hist_regs.reg_h_v_info, OMAP3_ISP_IOMEM_HIST,
-							ISPHIST_H_V_INFO);
+		       ISPHIST_H_V_INFO);
 }
 
 /**
@@ -189,7 +189,7 @@ static void isp_hist_update_regs(void)
  *          arg1 and arg2 Not used as of now.
  **/
 static void isp_hist_isr(unsigned long status, isp_vbq_callback_ptr arg1,
-								void *arg2)
+			 void *arg2)
 {
 	isp_hist_enable(0);
 
@@ -254,22 +254,22 @@ static int isp_hist_set_params(struct isp_hist_config *user_cfg)
 		WRITE_HV_INFO(hist_regs.reg_h_v_info, user_cfg->hist_h_v_info);
 
 		if ((user_cfg->hist_radd & ISP_32B_BOUNDARY_BUF) ==
-							user_cfg->hist_radd) {
+		    user_cfg->hist_radd) {
 			WRITE_RADD(hist_regs.reg_hist_radd,
-							user_cfg->hist_radd);
+				   user_cfg->hist_radd);
 		} else {
 			printk(KERN_ERR "Address should be in 32 byte boundary"
-									"\n");
+			       "\n");
 			return -EINVAL;
 		}
 
 		if ((user_cfg->hist_radd_off & ISP_32B_BOUNDARY_OFFSET) ==
-						user_cfg->hist_radd_off) {
+		    user_cfg->hist_radd_off) {
 			WRITE_RADD_OFF(hist_regs.reg_hist_radd_off,
-						user_cfg->hist_radd_off);
+				       user_cfg->hist_radd_off);
 		} else {
 			printk(KERN_ERR "Offset should be in 32 byte boundary"
-									"\n");
+			       "\n");
 			return -EINVAL;
 		}
 
@@ -280,9 +280,9 @@ static int isp_hist_set_params(struct isp_hist_config *user_cfg)
 	histstat.frame_req = user_cfg->hist_frames;
 
 	if (unlikely((user_cfg->wb_gain_R > MAX_WB_GAIN) ||
-				(user_cfg->wb_gain_RG > MAX_WB_GAIN) ||
-				(user_cfg->wb_gain_B > MAX_WB_GAIN) ||
-				(user_cfg->wb_gain_BG > MAX_WB_GAIN))) {
+		     (user_cfg->wb_gain_RG > MAX_WB_GAIN) ||
+		     (user_cfg->wb_gain_B > MAX_WB_GAIN) ||
+		     (user_cfg->wb_gain_BG > MAX_WB_GAIN))) {
 		printk(KERN_ERR "Invalid WB gain\n");
 		return -EINVAL;
 	} else {
@@ -298,9 +298,9 @@ static int isp_hist_set_params(struct isp_hist_config *user_cfg)
 		return -EINVAL;
 
 	if (likely((user_cfg->reg0_hor & ISPHIST_REGHORIZ_HEND_MASK) -
-					((user_cfg->reg0_hor &
-					ISPHIST_REGHORIZ_HSTART_MASK) >>
-					ISPHIST_REGHORIZ_HSTART_SHIFT))) {
+		   ((user_cfg->reg0_hor &
+		     ISPHIST_REGHORIZ_HSTART_MASK) >>
+		    ISPHIST_REGHORIZ_HSTART_SHIFT))) {
 		WRITE_REG_HORIZ(hist_regs.reg_r0_h, user_cfg->reg0_hor);
 		reg_num++;
 	} else {
@@ -309,8 +309,8 @@ static int isp_hist_set_params(struct isp_hist_config *user_cfg)
 	}
 
 	if (likely((user_cfg->reg0_ver & ISPHIST_REGVERT_VEND_MASK) -
-			((user_cfg->reg0_ver & ISPHIST_REGVERT_VSTART_MASK) >>
-			ISPHIST_REGVERT_VSTART_SHIFT))) {
+		   ((user_cfg->reg0_ver & ISPHIST_REGVERT_VSTART_MASK) >>
+		    ISPHIST_REGVERT_VSTART_SHIFT))) {
 		WRITE_REG_VERT(hist_regs.reg_r0_v, user_cfg->reg0_ver);
 	} else {
 		printk(KERN_ERR "Invalid Region parameters\n");
@@ -319,9 +319,9 @@ static int isp_hist_set_params(struct isp_hist_config *user_cfg)
 
 	if (user_cfg->num_regions >= 1) {
 		if (likely((user_cfg->reg1_hor & ISPHIST_REGHORIZ_HEND_MASK) -
-					((user_cfg->reg1_hor &
-					ISPHIST_REGHORIZ_HSTART_MASK) >>
-					ISPHIST_REGHORIZ_HSTART_SHIFT))) {
+			   ((user_cfg->reg1_hor &
+			     ISPHIST_REGHORIZ_HSTART_MASK) >>
+			    ISPHIST_REGHORIZ_HSTART_SHIFT))) {
 			WRITE_REG_HORIZ(hist_regs.reg_r1_h, user_cfg->reg1_hor);
 		} else {
 			printk(KERN_ERR "Invalid Region parameters\n");
@@ -329,9 +329,9 @@ static int isp_hist_set_params(struct isp_hist_config *user_cfg)
 		}
 
 		if (likely((user_cfg->reg1_ver & ISPHIST_REGVERT_VEND_MASK) -
-					((user_cfg->reg1_ver &
-					ISPHIST_REGVERT_VSTART_MASK) >>
-					ISPHIST_REGVERT_VSTART_SHIFT))) {
+			   ((user_cfg->reg1_ver &
+			     ISPHIST_REGVERT_VSTART_MASK) >>
+			    ISPHIST_REGVERT_VSTART_SHIFT))) {
 			WRITE_REG_VERT(hist_regs.reg_r1_v, user_cfg->reg1_ver);
 		} else {
 			printk(KERN_ERR "Invalid Region parameters\n");
@@ -341,9 +341,9 @@ static int isp_hist_set_params(struct isp_hist_config *user_cfg)
 
 	if (user_cfg->num_regions >= 2) {
 		if (likely((user_cfg->reg2_hor & ISPHIST_REGHORIZ_HEND_MASK) -
-					((user_cfg->reg2_hor &
-					ISPHIST_REGHORIZ_HSTART_MASK) >>
-					ISPHIST_REGHORIZ_HSTART_SHIFT))) {
+			   ((user_cfg->reg2_hor &
+			     ISPHIST_REGHORIZ_HSTART_MASK) >>
+			    ISPHIST_REGHORIZ_HSTART_SHIFT))) {
 			WRITE_REG_HORIZ(hist_regs.reg_r2_h, user_cfg->reg2_hor);
 		} else {
 			printk(KERN_ERR "Invalid Region parameters\n");
@@ -351,9 +351,9 @@ static int isp_hist_set_params(struct isp_hist_config *user_cfg)
 		}
 
 		if (likely((user_cfg->reg2_ver & ISPHIST_REGVERT_VEND_MASK) -
-					((user_cfg->reg2_ver &
-					ISPHIST_REGVERT_VSTART_MASK) >>
-					ISPHIST_REGVERT_VSTART_SHIFT))) {
+			   ((user_cfg->reg2_ver &
+			     ISPHIST_REGVERT_VSTART_MASK) >>
+			    ISPHIST_REGVERT_VSTART_SHIFT))) {
 			WRITE_REG_VERT(hist_regs.reg_r2_v, user_cfg->reg2_ver);
 		} else {
 			printk(KERN_ERR "Invalid Region parameters\n");
@@ -363,9 +363,9 @@ static int isp_hist_set_params(struct isp_hist_config *user_cfg)
 
 	if (user_cfg->num_regions >= 3) {
 		if (likely((user_cfg->reg3_hor & ISPHIST_REGHORIZ_HEND_MASK) -
-					((user_cfg->reg3_hor &
-					ISPHIST_REGHORIZ_HSTART_MASK) >>
-					ISPHIST_REGHORIZ_HSTART_SHIFT))) {
+			   ((user_cfg->reg3_hor &
+			     ISPHIST_REGHORIZ_HSTART_MASK) >>
+			    ISPHIST_REGHORIZ_HSTART_SHIFT))) {
 			WRITE_REG_HORIZ(hist_regs.reg_r3_h, user_cfg->reg3_hor);
 		} else {
 			printk(KERN_ERR "Invalid Region parameters\n");
@@ -373,9 +373,9 @@ static int isp_hist_set_params(struct isp_hist_config *user_cfg)
 		}
 
 		if (likely((user_cfg->reg3_ver & ISPHIST_REGVERT_VEND_MASK) -
-					((user_cfg->reg3_ver &
-					ISPHIST_REGVERT_VSTART_MASK) >>
-					ISPHIST_REGVERT_VSTART_SHIFT))) {
+			   ((user_cfg->reg3_ver &
+			     ISPHIST_REGVERT_VSTART_MASK) >>
+			    ISPHIST_REGVERT_VSTART_SHIFT))) {
 			WRITE_REG_VERT(hist_regs.reg_r3_v, user_cfg->reg3_ver);
 		} else {
 			printk(KERN_ERR "Invalid Region parameters\n");
@@ -384,21 +384,21 @@ static int isp_hist_set_params(struct isp_hist_config *user_cfg)
 	}
 	reg_num = user_cfg->num_regions;
 	if (unlikely(((user_cfg->hist_bins > BINS_256) &&
-				(user_cfg->hist_bins != BINS_32)) ||
-				((user_cfg->hist_bins == BINS_256) &&
-				reg_num != 0) || ((user_cfg->hist_bins ==
-				BINS_128) && reg_num >= 2))) {
+		      (user_cfg->hist_bins != BINS_32)) ||
+		     ((user_cfg->hist_bins == BINS_256) &&
+		      reg_num != 0) || ((user_cfg->hist_bins ==
+					 BINS_128) && reg_num >= 2))) {
 		printk(KERN_ERR "Invalid Bins Number: %d\n",
-							user_cfg->hist_bins);
+		       user_cfg->hist_bins);
 		return -EINVAL;
 	} else {
 		WRITE_NUM_BINS(hist_regs.reg_cnt, user_cfg->hist_bins);
 	}
 
 	if ((user_cfg->input_bit_width > MAX_BIT_WIDTH) ||
-				(user_cfg->input_bit_width < MIN_BIT_WIDTH)) {
+	    (user_cfg->input_bit_width < MIN_BIT_WIDTH)) {
 		printk(KERN_ERR "Invalid Bit Width: %d\n",
-						user_cfg->input_bit_width);
+		       user_cfg->input_bit_width);
 		return -EINVAL;
 	} else {
 		switch (user_cfg->hist_bins) {
@@ -445,7 +445,7 @@ int isp_hist_configure(struct isp_hist_config *histcfg)
 	if (!histstat.initialized) {
 		DPRINTK_ISPHIST("Setting callback for HISTOGRAM\n");
 		ret = isp_set_callback(CBK_HIST_DONE, isp_hist_isr,
-						(void *)NULL, (void *)NULL);
+				       (void *)NULL, (void *)NULL);
 		if (ret) {
 			printk(KERN_ERR "No callback for HIST\n");
 			return ret;
@@ -493,12 +493,12 @@ int isp_hist_request_statistics(struct isp_hist_data *histdata)
 		ret = put_user(curr, (histdata->hist_statistics_buf + i));
 		if (ret) {
 			printk(KERN_ERR "Failed copy_to_user for "
-						"HIST stats buff, %d\n", ret);
+			       "HIST stats buff, %d\n", ret);
 		}
 	}
 
 	isp_reg_and(OMAP3_ISP_IOMEM_HIST, ISPHIST_CNT,
-						~ISPHIST_CNT_CLR_EN);
+		    ~ISPHIST_CNT_CLR_EN);
 	histstat.completed = 0;
 	return 0;
 }
@@ -552,33 +552,33 @@ EXPORT_SYMBOL(isphist_restore_context);
 static void isp_hist_print_status(void)
 {
 	DPRINTK_ISPHIST("ISPHIST_PCR = 0x%08x\n",
-		isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_PCR));
+			isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_PCR));
 	DPRINTK_ISPHIST("ISPHIST_CNT = 0x%08x\n",
-		isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_CNT));
+			isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_CNT));
 	DPRINTK_ISPHIST("ISPHIST_WB_GAIN = 0x%08x\n",
-		isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_WB_GAIN));
+			isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_WB_GAIN));
 	DPRINTK_ISPHIST("ISPHIST_R0_HORZ = 0x%08x\n",
-		isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_R0_HORZ));
+			isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_R0_HORZ));
 	DPRINTK_ISPHIST("ISPHIST_R0_VERT = 0x%08x\n",
-		isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_R0_VERT));
+			isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_R0_VERT));
 	DPRINTK_ISPHIST("ISPHIST_R1_HORZ = 0x%08x\n",
-		isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_R1_HORZ));
+			isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_R1_HORZ));
 	DPRINTK_ISPHIST("ISPHIST_R1_VERT = 0x%08x\n",
-		isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_R1_VERT));
+			isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_R1_VERT));
 	DPRINTK_ISPHIST("ISPHIST_R2_HORZ = 0x%08x\n",
-		isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_R2_HORZ));
+			isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_R2_HORZ));
 	DPRINTK_ISPHIST("ISPHIST_R2_VERT = 0x%08x\n",
-		isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_R2_VERT));
+			isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_R2_VERT));
 	DPRINTK_ISPHIST("ISPHIST_R3_HORZ = 0x%08x\n",
-		isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_R3_HORZ));
+			isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_R3_HORZ));
 	DPRINTK_ISPHIST("ISPHIST_R3_VERT = 0x%08x\n",
-		isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_R3_VERT));
+			isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_R3_VERT));
 	DPRINTK_ISPHIST("ISPHIST_ADDR = 0x%08x\n",
-		isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_ADDR));
+			isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_ADDR));
 	DPRINTK_ISPHIST("ISPHIST_RADD = 0x%08x\n",
-		isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_RADD));
+			isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_RADD));
 	DPRINTK_ISPHIST("ISPHIST_RADD_OFF = 0x%08x\n",
-		isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_RADD_OFF));
+			isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_RADD_OFF));
 	DPRINTK_ISPHIST("ISPHIST_H_V_INFO = 0x%08x\n",
-		isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_H_V_INFO));
+			isp_reg_readl(OMAP3_ISP_IOMEM_HIST, ISPHIST_H_V_INFO));
 }

@@ -44,54 +44,54 @@
 #define ISPH3A_PCR_AEW_ALAW_EN	(1 << 17)
 #define ISPH3A_PCR_AEW_BUSY	(1 << 18)
 
-#define WRITE_SAT_LIM(reg, sat_limit)	\
-		(reg = (reg & (~(ISPH3A_PCR_AEW_AVE2LMT_MASK))) \
-			| (sat_limit << ISPH3A_PCR_AEW_AVE2LMT_SHIFT))
+#define WRITE_SAT_LIM(reg, sat_limit)			\
+	(reg = (reg & (~(ISPH3A_PCR_AEW_AVE2LMT_MASK))) \
+	 | (sat_limit << ISPH3A_PCR_AEW_AVE2LMT_SHIFT))
 
-#define WRITE_ALAW(reg, alaw_en) \
-		(reg = (reg & (~(ISPH3A_PCR_AEW_ALAW_EN))) \
-			| ((alaw_en & ISPH3A_PCR_AF_ALAW_EN) \
-			<< ISPH3A_PCR_AEW_ALAW_EN_SHIFT))
+#define WRITE_ALAW(reg, alaw_en)			\
+	(reg = (reg & (~(ISPH3A_PCR_AEW_ALAW_EN)))	\
+	 | ((alaw_en & ISPH3A_PCR_AF_ALAW_EN)		\
+	    << ISPH3A_PCR_AEW_ALAW_EN_SHIFT))
 
-#define WRITE_WIN_H(reg, height) \
-		(reg = (reg & (~(ISPH3A_AEWWIN1_WINH_MASK))) \
-			| (((height >> 1) - 1) << ISPH3A_AEWWIN1_WINH_SHIFT))
+#define WRITE_WIN_H(reg, height)				\
+	(reg = (reg & (~(ISPH3A_AEWWIN1_WINH_MASK)))		\
+	 | (((height >> 1) - 1) << ISPH3A_AEWWIN1_WINH_SHIFT))
 
-#define WRITE_WIN_W(reg, width) \
-		(reg = (reg & (~(ISPH3A_AEWWIN1_WINW_MASK))) \
-			| (((width >> 1) - 1) << ISPH3A_AEWWIN1_WINW_SHIFT))
+#define WRITE_WIN_W(reg, width)					\
+	(reg = (reg & (~(ISPH3A_AEWWIN1_WINW_MASK)))		\
+	 | (((width >> 1) - 1) << ISPH3A_AEWWIN1_WINW_SHIFT))
 
-#define WRITE_VER_C(reg, ver_count) \
-		(reg = (reg & ~(ISPH3A_AEWWIN1_WINVC_MASK)) \
-			| ((ver_count - 1) << ISPH3A_AEWWIN1_WINVC_SHIFT))
+#define WRITE_VER_C(reg, ver_count)				\
+	(reg = (reg & ~(ISPH3A_AEWWIN1_WINVC_MASK))		\
+	 | ((ver_count - 1) << ISPH3A_AEWWIN1_WINVC_SHIFT))
 
-#define WRITE_HOR_C(reg, hor_count) \
-		(reg = (reg & ~(ISPH3A_AEWWIN1_WINHC_MASK)) \
-			| ((hor_count - 1) << ISPH3A_AEWWIN1_WINHC_SHIFT))
+#define WRITE_HOR_C(reg, hor_count)				\
+	(reg = (reg & ~(ISPH3A_AEWWIN1_WINHC_MASK))		\
+	 | ((hor_count - 1) << ISPH3A_AEWWIN1_WINHC_SHIFT))
 
-#define WRITE_VER_WIN_ST(reg, ver_win_st) \
-		(reg = (reg & ~(ISPH3A_AEWINSTART_WINSV_MASK)) \
-			| (ver_win_st << ISPH3A_AEWINSTART_WINSV_SHIFT))
+#define WRITE_VER_WIN_ST(reg, ver_win_st)			\
+	(reg = (reg & ~(ISPH3A_AEWINSTART_WINSV_MASK))		\
+	 | (ver_win_st << ISPH3A_AEWINSTART_WINSV_SHIFT))
 
-#define WRITE_HOR_WIN_ST(reg, hor_win_st) \
-		(reg = (reg & ~(ISPH3A_AEWINSTART_WINSH_MASK)) \
-			| (hor_win_st << ISPH3A_AEWINSTART_WINSH_SHIFT))
+#define WRITE_HOR_WIN_ST(reg, hor_win_st)			\
+	(reg = (reg & ~(ISPH3A_AEWINSTART_WINSH_MASK))		\
+	 | (hor_win_st << ISPH3A_AEWINSTART_WINSH_SHIFT))
 
-#define WRITE_BLK_VER_WIN_ST(reg, blk_win_st) \
-		(reg = (reg & ~(ISPH3A_AEWINBLK_WINSV_MASK)) \
-			| (blk_win_st << ISPH3A_AEWINBLK_WINSV_SHIFT))
+#define WRITE_BLK_VER_WIN_ST(reg, blk_win_st)		\
+	(reg = (reg & ~(ISPH3A_AEWINBLK_WINSV_MASK))	\
+	 | (blk_win_st << ISPH3A_AEWINBLK_WINSV_SHIFT))
 
-#define WRITE_BLK_WIN_H(reg, height) \
-		(reg = (reg & ~(ISPH3A_AEWINBLK_WINH_MASK)) \
-			| (((height >> 1) - 1) << ISPH3A_AEWINBLK_WINH_SHIFT))
+#define WRITE_BLK_WIN_H(reg, height)				\
+	(reg = (reg & ~(ISPH3A_AEWINBLK_WINH_MASK))		\
+	 | (((height >> 1) - 1) << ISPH3A_AEWINBLK_WINH_SHIFT))
 
-#define WRITE_SUB_VER_INC(reg, sub_ver_inc) \
-		(reg = (reg & ~(ISPH3A_AEWSUBWIN_AEWINCV_MASK)) \
-		| (((sub_ver_inc >> 1) - 1) << ISPH3A_AEWSUBWIN_AEWINCV_SHIFT))
+#define WRITE_SUB_VER_INC(reg, sub_ver_inc)				\
+	(reg = (reg & ~(ISPH3A_AEWSUBWIN_AEWINCV_MASK))			\
+	 | (((sub_ver_inc >> 1) - 1) << ISPH3A_AEWSUBWIN_AEWINCV_SHIFT))
 
-#define WRITE_SUB_HOR_INC(reg, sub_hor_inc) \
-		(reg = (reg & ~(ISPH3A_AEWSUBWIN_AEWINCH_MASK)) \
-		| (((sub_hor_inc >> 1) - 1) << ISPH3A_AEWSUBWIN_AEWINCH_SHIFT))
+#define WRITE_SUB_HOR_INC(reg, sub_hor_inc)				\
+	(reg = (reg & ~(ISPH3A_AEWSUBWIN_AEWINCH_MASK))			\
+	 | (((sub_hor_inc >> 1) - 1) << ISPH3A_AEWSUBWIN_AEWINCH_SHIFT))
 
 /**
  * struct isph3a_aewb_xtrastats - Structure with extra statistics sent by cam.
