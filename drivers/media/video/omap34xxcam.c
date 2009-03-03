@@ -161,7 +161,7 @@ static void omap34xxcam_slave_power_suggest(struct omap34xxcam_videodev *vdev,
 	mod_timer(&vdev->poweroff_timer, jiffies + OMAP34XXCAM_POWEROFF_DELAY);
 }
 #else /* OMAP34XXCAM_POWEROFF_DELAY */
-#define omap34xxcam_slave_power_suggest(a, b, c) do {} while(0)
+#define omap34xxcam_slave_power_suggest(a, b, c) do {} while (0)
 #endif /* OMAP34XXCAM_POWEROFF_DELAY */
 
 /**
@@ -537,7 +537,8 @@ static int try_pix_parm(struct omap34xxcam_videodev *vdev,
 				    < FPS_ABS_DIFF(fps, *best_ival)) {
 					dev_info(&vdev->vfd->dev, "closer fps: "
 						 "fps %d\t fps %d\n",
-						 FPS_ABS_DIFF(fps, frmi.discrete),
+						 FPS_ABS_DIFF(fps,
+							      frmi.discrete),
 						 FPS_ABS_DIFF(fps, *best_ival));
 					goto do_it_now;
 				}
@@ -563,7 +564,7 @@ static int try_pix_parm(struct omap34xxcam_videodev *vdev,
 
 				continue;
 
-			do_it_now:
+do_it_now:
 				*best_ival = frmi.discrete;
 				best_pix_out = pix_tmp_out;
 				best_pix_in->width = frmi.width;
@@ -836,7 +837,8 @@ static int vidioc_streamon(struct file *file, void *fh, enum v4l2_buf_type i)
 	rval = omap34xxcam_slave_power_set(vdev, V4L2_POWER_ON,
 					   OMAP34XXCAM_SLAVE_POWER_SENSOR_LENS);
 	if (rval) {
-		dev_dbg(&vdev->vfd->dev, "omap34xxcam_slave_power_set failed\n");
+		dev_dbg(&vdev->vfd->dev,
+			"omap34xxcam_slave_power_set failed\n");
 		goto out;
 	}
 
@@ -1512,7 +1514,8 @@ static int omap34xxcam_open(struct file *file)
 
 	for (i = 0; i < OMAP34XXCAM_VIDEODEVS; i++) {
 		if (cam->vdevs[i].vfd
-		    && cam->vdevs[i].vfd->minor == iminor(file->f_dentry->d_inode)) {
+		    && cam->vdevs[i].vfd->minor ==
+		    iminor(file->f_dentry->d_inode)) {
 			vdev = &cam->vdevs[i];
 			break;
 		}
