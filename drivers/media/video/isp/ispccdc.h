@@ -188,6 +188,10 @@ int ispccdc_set_outaddr(u32 addr);
 
 void ispccdc_enable(u8 enable);
 
+void ispccdc_suspend(void);
+
+void ispccdc_resume(void);
+
 int ispccdc_sbl_busy(void);
 
 int ispccdc_busy(void);

@@ -74,6 +74,7 @@ static struct isp_ccdc {
 	u8 ccdcslave;
 	u8 syncif_ipmod;
 	u8 obclamp_en;
+	u8 pm_state;
 	u8 lsc_enable;
 	int lsc_state;
 	struct mutex mutexlock; /* For checking/modifying ccdc_inuse */
@@ -466,14 +467,10 @@ void ispccdc_config_lsc(struct ispccdc_lsc_config *lsc_cfg)
 }
 EXPORT_SYMBOL(ispccdc_config_lsc);
 
-/**
- * ispccdc_enable_lsc - Enables/Disables the Lens Shading Compensation module.
- * @enable: 0 Disables LSC, 1 Enables LSC.
- **/
-void ispccdc_enable_lsc(u8 enable)
+int __ispccdc_enable_lsc(u8 enable)
 {
 	if (!is_isplsc_activated())
-		return;
+		return -ENODEV;
 
 	if (enable) {
 		if (!ispccdc_busy()) {
@@ -488,12 +485,30 @@ void ispccdc_enable_lsc(u8 enable)
 		} else {
 			/* Postpone enabling LSC */
 			ispccdc_obj.lsc_enable = 1;
+			return -EBUSY;
 		}
 	} else {
 		isp_reg_and(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_LSC_CONFIG, 0xFFFE);
 		ispccdc_obj.lsc_state = ispccdc_obj.lsc_enable = 0;
 	}
+
+	return 0;
 }
+
+/**
+ * ispccdc_enable_lsc - Enables/Disables the Lens Shading Compensation module.
+ * @enable: 0 Disables LSC, 1 Enables LSC.
+ **/
+void ispccdc_enable_lsc(u8 enable)
+{
+	if (__ispccdc_enable_lsc(enable)) {
+	       if (enable)
+			ispccdc_obj.lsc_state = 1;
+		else
+			ispccdc_obj.lsc_state = ispccdc_obj.lsc_enable = 0;
+	}
+}
+
 EXPORT_SYMBOL(ispccdc_enable_lsc);
 
 void ispccdc_lsc_error_handler(void)
@@ -1373,13 +1388,7 @@ int ispccdc_set_outaddr(u32 addr)
 }
 EXPORT_SYMBOL(ispccdc_set_outaddr);
 
-/**
- * ispccdc_enable - Enables the CCDC module.
- * @enable: 0 Disables CCDC, 1 Enables CCDC
- *
- * Client should configure all the sub modules in CCDC before this.
- **/
-void ispccdc_enable(u8 enable)
+void __ispccdc_enable(u8 enable)
 {
 	if (enable) {
 		if (ispccdc_obj.lsc_enable
@@ -1393,7 +1402,49 @@ void ispccdc_enable(u8 enable)
 	isp_reg_and_or(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_PCR, ~ISPCCDC_PCR_EN,
 		       enable ? ISPCCDC_PCR_EN : 0);
 }
+
+/**
+ * ispccdc_enable - Enables the CCDC module.
+ * @enable: 0 Disables CCDC, 1 Enables CCDC
+ *
+ * Client should configure all the sub modules in CCDC before this.
+ **/
+void ispccdc_enable(u8 enable)
+{
+	__ispccdc_enable(enable);
+	ispccdc_obj.pm_state = enable;
+}
 EXPORT_SYMBOL(ispccdc_enable);
+
+/**
+ * ispccdc_suspend - Suspend the CCDC module.
+ **/
+void ispccdc_suspend(void)
+{
+	if (ispccdc_obj.pm_state) {
+		if (ispccdc_obj.lsc_state)
+			__ispccdc_enable_lsc(0);
+		else if (ispccdc_obj.lsc_enable) {
+			ispccdc_obj.lsc_state = 1;
+			ispccdc_obj.lsc_enable = 0;
+		}
+		__ispccdc_enable(0);
+	}
+}
+EXPORT_SYMBOL(ispccdc_suspend);
+
+/**
+ * ispccdc_resume - Resume the CCDC module.
+ **/
+void ispccdc_resume(void)
+{
+	if (ispccdc_obj.pm_state) {
+		if (ispccdc_obj.lsc_state)
+			__ispccdc_enable_lsc(1);
+		__ispccdc_enable(1);
+	}
+}
+EXPORT_SYMBOL(ispccdc_resume);
 
 /*
  * Returns zero if the CCDC is idle and the image has been written to
