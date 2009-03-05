@@ -74,7 +74,8 @@ static struct isp_ccdc {
 	u8 ccdcslave;
 	u8 syncif_ipmod;
 	u8 obclamp_en;
-	u8 lsc_en;
+	u8 lsc_enable;
+	int lsc_state;
 	struct mutex mutexlock; /* For checking/modifying ccdc_inuse */
 	u32 wenlog;
 } ispccdc_obj;
@@ -83,7 +84,6 @@ static struct ispccdc_lsc_config lsc_config;
 static u8 *lsc_gain_table;
 static unsigned long lsc_ispmmu_addr;
 static int lsc_initialized;
-static u8 ccdc_use_lsc;
 static u8 *lsc_gain_table_tmp;
 
 /* Structure for saving/restoring CCDC module registers*/
@@ -247,10 +247,9 @@ int omap34xx_isp_ccdc_config(void *userspace_add)
 					goto copy_from_user_err;
 				ispccdc_config_lsc(&lsc_config);
 			}
-			ccdc_use_lsc = 1;
+			ispccdc_enable_lsc(1);
 		} else if (ISP_ABS_CCDC_CONFIG_LSC & ccdc_struct->update) {
 			ispccdc_enable_lsc(0);
-			ccdc_use_lsc = 0;
 		}
 		if (ISP_ABS_TBL_LSC & ccdc_struct->update) {
 			if (copy_from_user(lsc_gain_table,
@@ -477,19 +476,34 @@ void ispccdc_enable_lsc(u8 enable)
 		return;
 
 	if (enable) {
-		isp_reg_or(OMAP3_ISP_IOMEM_MAIN, ISP_CTRL,
-			   ISPCTRL_SBL_SHARED_RPORTB | ISPCTRL_SBL_RD_RAM_EN);
+		if (!ispccdc_busy()) {
+			isp_reg_or(OMAP3_ISP_IOMEM_MAIN, ISP_CTRL,
+				   ISPCTRL_SBL_SHARED_RPORTB
+				   | ISPCTRL_SBL_RD_RAM_EN);
 
-		isp_reg_or(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_LSC_CONFIG, 0x1);
+			isp_reg_or(OMAP3_ISP_IOMEM_CCDC,
+				   ISPCCDC_LSC_CONFIG, 0x1);
 
-		ispccdc_obj.lsc_en = 1;
+			ispccdc_obj.lsc_state = 1;
+		} else {
+			/* Postpone enabling LSC */
+			ispccdc_obj.lsc_enable = 1;
+		}
 	} else {
 		isp_reg_and(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_LSC_CONFIG, 0xFFFE);
-		ispccdc_obj.lsc_en = 0;
+		ispccdc_obj.lsc_state = ispccdc_obj.lsc_enable = 0;
 	}
 }
 EXPORT_SYMBOL(ispccdc_enable_lsc);
 
+void ispccdc_lsc_error_handler(void)
+{
+	int lsc_enable = ispccdc_obj.lsc_state;
+		
+	ispccdc_enable_lsc(0);
+
+	ispccdc_obj.lsc_enable = lsc_enable;
+}
 
 /**
  * ispccdc_config_crop - Configures crop parameters for the ISP CCDC.
@@ -1077,15 +1091,13 @@ void ispccdc_config_imgattr(u32 colptn)
 }
 EXPORT_SYMBOL(ispccdc_config_imgattr);
 
-/**
- * ispccdc_config_shadow_registers - Programs the shadow registers for CCDC.
- * Currently nothing to program in shadow, but kept for future use.
- **/
 void ispccdc_config_shadow_registers(void)
 {
-	return;
+	if (ispccdc_obj.lsc_enable) {
+		ispccdc_enable_lsc(1);
+		ispccdc_obj.lsc_enable = 0;
+	}
 }
-EXPORT_SYMBOL(ispccdc_config_shadow_registers);
 
 /**
  * ispccdc_try_size - Checks if requested Input/output dimensions are valid
@@ -1369,9 +1381,14 @@ EXPORT_SYMBOL(ispccdc_set_outaddr);
  **/
 void ispccdc_enable(u8 enable)
 {
-	if (ccdc_use_lsc && !ispccdc_obj.lsc_en
-	    && ispccdc_obj.ccdc_inpfmt == CCDC_RAW && enable)
-		ispccdc_enable_lsc(1);
+	if (enable) {
+		if (ispccdc_obj.lsc_enable
+		    && ispccdc_obj.ccdc_inpfmt == CCDC_RAW)
+			ispccdc_enable_lsc(1);
+
+	} else {
+		ispccdc_obj.lsc_enable = ispccdc_obj.lsc_state;
+	}
 
 	isp_reg_and_or(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_PCR, ~ISPCCDC_PCR_EN,
 		       enable ? ISPCCDC_PCR_EN : 0);
@@ -1548,7 +1565,7 @@ int __init isp_ccdc_init(void)
 		lsc_config.gain_format = 0x4;
 		lsc_config.offset = 0x60;
 		lsc_config.size = LSC_TABLE_INIT_SIZE;
-		ccdc_use_lsc = 1;
+		ispccdc_obj.lsc_enable = 1;
 	}
 
 	return 0;

@@ -900,6 +900,8 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *_isp)
 	if (irqstatus & CCDC_VD0) {
 		if (RAW_CAPTURE(&isp_obj))
 			isp_buf_process(bufs);
+		if (!ispccdc_busy())
+			ispccdc_config_shadow_registers();
 	}
 
 	if (irqstatus & PREV_DONE) {
@@ -967,10 +969,9 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *_isp)
 out_ignore_buff:
 	if (irqstatus & LSC_PRE_ERR) {
 		struct isp_buf *buf = ISP_BUF_DONE(bufs);
-		ispccdc_enable_lsc(0);
-		ispccdc_enable_lsc(1);
 		/* Mark buffer faulty. */
 		buf->vb_state = VIDEOBUF_ERROR;
+		ispccdc_lsc_error_handler();
 		printk(KERN_ERR "%s: lsc prefetch error\n", __func__);
 	}
 
