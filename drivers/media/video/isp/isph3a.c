@@ -75,6 +75,7 @@ static struct isph3a_aewb_status {
 	u8 stats_req;
 	u8 stats_done;
 	u16 frame_req;
+	int pm_state;
 
 	struct isph3a_aewb_buffer h3a_buff[H3A_MAX_BUFF];
 	unsigned int stats_buf_size;
@@ -123,6 +124,7 @@ static struct isph3a_aewb_config aewb_config_local = {
 
 /* Structure for saving/restoring h3a module registers */
 static struct isp_reg isph3a_reg_list[] = {
+	{OMAP3_ISP_IOMEM_H3A, ISPH3A_PCR, 0}, /* Should be the first one */
 	{OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWWIN1, 0},
 	{OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWINSTART, 0},
 	{OMAP3_ISP_IOMEM_H3A, ISPH3A_AEWINBLK, 0},
@@ -199,13 +201,7 @@ void isph3a_aewb_setxtrastats(struct isph3a_aewb_xtrastats *xtrastats)
 }
 EXPORT_SYMBOL(isph3a_aewb_setxtrastats);
 
-/**
- * isph3a_aewb_enable - Enables AE, AWB engine in the H3A module.
- * @enable: 1 - Enables the AE & AWB engine.
- *
- * Client should configure all the AE & AWB registers in H3A before this.
- **/
-void isph3a_aewb_enable(u8 enable)
+void __isph3a_aewb_enable(u8 enable)
 {
 	isp_reg_writel(IRQ0STATUS_H3A_AWB_DONE_IRQ, OMAP3_ISP_IOMEM_MAIN,
 		       ISP_IRQ0STATUS);
@@ -220,6 +216,36 @@ void isph3a_aewb_enable(u8 enable)
 	isp_reg_and_or(OMAP3_ISP_IOMEM_H3A, ISPH3A_PCR, ~ISPH3A_PCR_AEW_EN,
 		       (enable ? ISPH3A_PCR_AEW_EN : 0));
 	aewb_config_local.aewb_enable = enable;
+}
+
+/**
+ * isph3a_aewb_enable - Enables AE, AWB engine in the H3A module.
+ * @enable: 1 - Enables the AE & AWB engine.
+ *
+ * Client should configure all the AE & AWB registers in H3A before this.
+ **/
+void isph3a_aewb_enable(u8 enable)
+{
+	__isph3a_aewb_enable(enable);
+	aewbstat.pm_state = enable;
+}
+
+/**
+ * isph3a_aewb_suspend - Suspend AE, AWB engine in the H3A module.
+ **/
+void isph3a_aewb_suspend(void)
+{
+	if (aewbstat.pm_state)
+		__isph3a_aewb_enable(0);
+}
+
+/**
+ * isph3a_aewb_resume - Resume AE, AWB engine in the H3A module.
+ **/
+void isph3a_aewb_resume(void)
+{
+	if (aewbstat.pm_state)
+		__isph3a_aewb_enable(1);
 }
 
 int isph3a_aewb_busy(void)
@@ -890,6 +916,8 @@ void isph3a_save_context(void)
 {
 	DPRINTK_ISPH3A(" Saving context\n");
 	isp_save_context(isph3a_reg_list);
+	/* Avoid enable during restore ctx */
+	isph3a_reg_list[0].val &= ~ISPH3A_PCR_AEW_EN;
 }
 EXPORT_SYMBOL(isph3a_save_context);
 

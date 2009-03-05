@@ -117,6 +117,10 @@ void isph3a_aewb_enable(u8 enable);
 
 int isph3a_aewb_busy(void);
 
+void isph3a_aewb_suspend(void);
+
+void isph3a_aewb_resume(void);
+
 void isph3a_update_wb(void);
 
 void isph3a_notify(int notify);
