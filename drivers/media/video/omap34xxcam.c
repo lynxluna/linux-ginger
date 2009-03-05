@@ -1793,8 +1793,8 @@ static int omap34xxcam_device_register(struct v4l2_int_device *s)
 
 	mutex_lock(&vdev->mutex);
 	if (atomic_read(&vdev->users)) {
-		dev_err(&vdev->vfd->dev, "we're open (%d), can't register\n",
-			atomic_read(&vdev->users));
+		printk(KERN_ERR "%s: we're open (%d), can't register\n",
+		       __func__, atomic_read(&vdev->users));
 		mutex_unlock(&vdev->mutex);
 		return -EBUSY;
 	}
@@ -1806,8 +1806,8 @@ static int omap34xxcam_device_register(struct v4l2_int_device *s)
 	if (hwc.dev_type == OMAP34XXCAM_SLAVE_SENSOR) {
 		rval = isp_get();
 		if (rval < 0) {
-			dev_err(&vdev->vfd->dev,
-				"can't get ISP, sensor init failed\n");
+			printk(KERN_ERR "%s: can't get ISP, "
+			       "sensor init failed\n", __func__);
 			goto err;
 		}
 	}
@@ -1837,9 +1837,10 @@ static int omap34xxcam_device_register(struct v4l2_int_device *s)
 		/* initialize the video_device struct */
 		vdev->vfd = video_device_alloc();
 		if (!vdev->vfd) {
-			dev_err(&vdev->vfd->dev,
-				"could not allocate video device struct\n");
-			return -ENOMEM;
+			printk(KERN_ERR "%s: could not allocate "
+			       "video device struct\n", __func__);
+			rval = -ENOMEM;
+			goto err;
 		}
 		vdev->vfd->release	= video_device_release;
 		vdev->vfd->minor	= -1;
@@ -1849,8 +1850,8 @@ static int omap34xxcam_device_register(struct v4l2_int_device *s)
 
 		if (video_register_device(vdev->vfd, VFL_TYPE_GRABBER,
 					  hwc.dev_minor) < 0) {
-			dev_err(&vdev->vfd->dev,
-				"could not register V4L device\n");
+			printk(KERN_ERR "%s: could not register V4L device\n",
+				__func__);
 			vdev->vfd->minor = -1;
 			rval = -EBUSY;
 			goto err;
@@ -1919,7 +1920,7 @@ static int __init omap34xxcam_init(void)
 	cam = kzalloc(sizeof(*cam), GFP_KERNEL);
 	if (!cam) {
 		printk(KERN_ERR "%s: could not allocate memory\n", __func__);
-		goto err;
+		return -ENOMEM;
 	}
 
 	omap34xxcam = cam;
