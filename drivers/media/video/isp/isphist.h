@@ -96,6 +96,10 @@ int isp_hist_request_statistics(struct isp_hist_data *histdata);
 
 void isphist_save_context(void);
 
+void isp_hist_suspend(void);
+
+void isp_hist_resume(void);
+
 void isphist_restore_context(void);
 
 #endif				/* OMAP_ISP_HIST */

@@ -39,6 +39,7 @@
  */
 struct isp_hist_status {
 	u8 hist_enable;
+	u8 pm_state;
 	u8 initialized;
 	u8 frame_cnt;
 	u8 frame_req;
@@ -120,6 +121,18 @@ struct isp_reg isphist_reg_list[] = {
 
 static void isp_hist_print_status(void);
 
+void __isp_hist_enable(u8 enable)
+{
+	if (enable)
+		DPRINTK_ISPHIST("   histogram enabled \n");
+	else
+		DPRINTK_ISPHIST("   histogram disabled \n");
+
+	isp_reg_and_or(OMAP3_ISP_IOMEM_HIST, ISPHIST_PCR, ~ISPHIST_PCR_EN,
+						(enable ? ISPHIST_PCR_EN : 0));
+	histstat.hist_enable = enable;
+}
+
 /**
  * isp_hist_enable - Enables ISP Histogram submodule operation.
  * @enable: 1 - Enables the histogram submodule.
@@ -129,14 +142,26 @@ static void isp_hist_print_status(void);
  **/
 void isp_hist_enable(u8 enable)
 {
-	if (enable)
-		DPRINTK_ISPHIST("   histogram enabled \n");
-	else
-		DPRINTK_ISPHIST("   histogram disabled \n");
+	__isp_hist_enable(enable);
+	histstat.pm_state = enable;
+}
 
-	isp_reg_and_or(OMAP3_ISP_IOMEM_HIST, ISPHIST_PCR, ~ISPHIST_PCR_EN,
-		       enable ? ISPHIST_PCR_EN : 0);
-	histstat.hist_enable = enable;
+/**
+ * isp_hist_suspend - Suspend ISP Histogram submodule.
+ **/
+void isp_hist_suspend(void)
+{
+	if (histstat.pm_state)
+		__isp_hist_enable(0);
+}
+
+/**
+ * isp_hist_resume - Resume ISP Histogram submodule.
+ **/
+void isp_hist_resume(void)
+{
+	if (histstat.pm_state)
+		__isp_hist_enable(1);
 }
 
 int isp_hist_busy(void)
