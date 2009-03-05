@@ -293,7 +293,7 @@ int ispccdc_request(void)
 	mutex_lock(&ispccdc_obj.mutexlock);
 	if (ispccdc_obj.ccdc_inuse) {
 		mutex_unlock(&ispccdc_obj.mutexlock);
-		DPRINTK_ISPCCDC("ISP_ERR : CCDC Module Busy");
+		DPRINTK_ISPCCDC("ISP_ERR : CCDC Module Busy\n");
 		return -EBUSY;
 	}
 
@@ -621,7 +621,7 @@ int ispccdc_config_datapath(enum ccdc_input input, enum ccdc_output output)
 		ispccdc_enable_vp(1);
 		break;
 	default:
-		DPRINTK_ISPCCDC("ISP_ERR: Wrong CCDC Output");
+		DPRINTK_ISPCCDC("ISP_ERR: Wrong CCDC Output\n");
 		return -EINVAL;
 	};
 
@@ -671,7 +671,7 @@ int ispccdc_config_datapath(enum ccdc_input input, enum ccdc_output output)
 	case CCDC_OTHERS:
 		break;
 	default:
-		DPRINTK_ISPCCDC("ISP_ERR: Wrong CCDC Input");
+		DPRINTK_ISPCCDC("ISP_ERR: Wrong CCDC Input\n");
 		return -EINVAL;
 	}
 
@@ -1304,7 +1304,7 @@ int ispccdc_config_outlineoffset(u32 offset, u8 oddeven, u8 numlines)
 			       ISPCCDC_HSIZE_OFF);
 	} else {
 		DPRINTK_ISPCCDC("ISP_ERR : Offset should be in 32 byte"
-				" boundary");
+				" boundary\n");
 		return -EINVAL;
 	}
 
@@ -1354,7 +1354,7 @@ int ispccdc_set_outaddr(u32 addr)
 		return 0;
 	} else {
 		DPRINTK_ISPCCDC("ISP_ERR : Address should be in 32 byte"
-				" boundary");
+				" boundary\n");
 		return -EINVAL;
 	}
 

@@ -2258,7 +2258,7 @@ static int isp_probe(struct platform_device *pdev)
 	isp = kzalloc(sizeof(*isp), GFP_KERNEL);
 	if (!isp) {
 		dev_err(&pdev->dev, "could not allocate memory\n");
-		return -ENODEV;
+		return -ENOMEM;
 	}
 
 	platform_set_drvdata(pdev, isp);

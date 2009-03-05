@@ -411,7 +411,7 @@ int omap34xx_isp_preview_config(void *userspace_add)
 	return 0;
 
 err_copy_from_user:
-	printk(KERN_ERR "Preview Config: Copy From User Error");
+	printk(KERN_ERR "Preview Config: Copy From User Error\n");
 	return -EFAULT;
 }
 EXPORT_SYMBOL_GPL(omap34xx_isp_preview_config);
@@ -476,7 +476,7 @@ int omap34xx_isp_tables_update(struct isptables_update *isptables_struct)
 	return 0;
 
 err_copy_from_user:
-	printk(KERN_ERR "Preview Tables:Copy From User Error");
+	printk(KERN_ERR "Preview Tables:Copy From User Error\n");
 	return -EFAULT;
 }
 
