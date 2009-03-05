@@ -468,6 +468,36 @@ static struct v4l2_int_device adp1653_int_device = {
 	},
 };
 
+#ifdef CONFIG_PM
+
+static int adp1653_suspend(struct i2c_client *client, pm_message_t mesg)
+{
+	struct adp1653_flash *flash = i2c_get_clientdata(client);
+
+	return flash->platform_data->power_off(flash->v4l2_int_device);
+}
+
+static int adp1653_resume(struct i2c_client *client)
+{
+	struct adp1653_flash *flash = i2c_get_clientdata(client);
+	enum v4l2_power resume_power;
+
+	if (flash->power == V4L2_POWER_OFF)
+		return 0;
+
+	resume_power = flash->power;
+	flash->power = V4L2_POWER_OFF;
+
+	return adp1653_ioctl_s_power(flash->v4l2_int_device, resume_power);
+}
+
+#else
+
+#define adp1653_suspend	NULL
+#define adp1653_resume	NULL
+
+#endif /* CONFIG_PM */
+
 static int adp1653_probe(struct i2c_client *client,
 			 const struct i2c_device_id *devid)
 {
@@ -521,6 +551,8 @@ static struct i2c_driver adp1653_i2c_driver = {
 	},
 	.probe		= adp1653_probe,
 	.remove		= __exit_p(adp1653_remove),
+	.suspend	= adp1653_suspend,
+	.resume		= adp1653_resume,
 	.id_table	= adp1653_id_table,
 };
 
