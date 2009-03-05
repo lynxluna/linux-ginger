@@ -84,6 +84,7 @@ static struct isp_af_status {
 	unsigned int min_buf_size;
 	unsigned int curr_cfg_buf_size;
 
+	int pm_state;
 	u32 frame_count;
 	wait_queue_head_t stats_wait;
 	atomic_t config_counter;
@@ -672,8 +673,7 @@ static void isp_af_isr(unsigned long status, isp_vbq_callback_ptr arg1,
 	}
 }
 
-/* Function to Enable/Disable AF Engine */
-int isp_af_enable(int enable)
+int __isp_af_enable(int enable)
 {
 	unsigned int pcr;
 
@@ -694,6 +694,33 @@ int isp_af_enable(int enable)
 	}
 	isp_reg_writel(pcr, OMAP3_ISP_IOMEM_H3A, ISPH3A_PCR);
 	return 0;
+}
+
+/* Function to Enable/Disable AF Engine */
+int isp_af_enable(int enable)
+{
+	int rval;
+
+	rval = __isp_af_enable(enable);
+
+	if (!rval)
+		afstat.pm_state = enable;
+
+	return rval;
+}
+
+/* Function to Suspend AF Engine */
+void isp_af_suspend(void)
+{
+	if (afstat.pm_state)
+		__isp_af_enable(0);
+}
+
+/* Function to Resume AF Engine */
+void isp_af_resume(void)
+{
+	if (afstat.pm_state)
+		__isp_af_enable(1);
 }
 
 int isp_af_busy(void)
