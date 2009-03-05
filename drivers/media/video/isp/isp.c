@@ -1113,25 +1113,28 @@ EXPORT_SYMBOL(isp_start);
 #define ISP_STATISTICS_BUSY			\
 	()
 #define ISP_STOP_TIMEOUT	msecs_to_jiffies(1000)
-/**
- * isp_stop - Stops isp submodules
- **/
-void isp_stop()
+static int __isp_disable_modules(int suspend)
 {
 	unsigned long timeout = jiffies + ISP_STOP_TIMEOUT;
 	int reset = 0;
-
-	isp_disable_interrupts();
 
 	/*
 	 * We need to stop all the modules after CCDC first or they'll
 	 * never stop since they may not get a full frame from CCDC.
 	 */
-	isp_af_enable(0);
-	isph3a_aewb_enable(0);
-	isp_hist_enable(0);
-	isppreview_enable(0);
-	ispresizer_enable(0);
+	if (suspend) {
+		isp_af_suspend();
+		isph3a_aewb_suspend();
+		isp_hist_suspend();
+		isppreview_suspend();
+		ispresizer_suspend();
+	} else {
+		isp_af_enable(0);
+		isph3a_aewb_enable(0);
+		isp_hist_enable(0);
+		isppreview_enable(0);
+		ispresizer_enable(0);
+	}
 
 	timeout = jiffies + ISP_STOP_TIMEOUT;
 	while (isp_af_busy()
@@ -1149,8 +1152,13 @@ void isp_stop()
 	}
 
 	/* Let's stop CCDC now. */
-	ispccdc_enable_lsc(0);
-	ispccdc_enable(0);
+	if (suspend)
+		/* This function supends lsc too */
+		ispccdc_suspend();
+	else {
+		ispccdc_enable_lsc(0);
+		ispccdc_enable(0);
+	}
 
 	timeout = jiffies + ISP_STOP_TIMEOUT;
 	while (ispccdc_busy()) {
@@ -1162,16 +1170,36 @@ void isp_stop()
 		msleep(1);
 	}
 
-	isp_buf_init();
+	return reset;
+}
 
-	if (!reset)
-		return;
+static int isp_stop_modules(void)
+{
+	return __isp_disable_modules(0);
+}
 
-	isp_save_ctx();
+static int isp_suspend_modules(void)
+{
+	return __isp_disable_modules(1);
+}
+
+static void isp_resume_modules(void)
+{
+	ispresizer_resume();
+	isppreview_resume();
+	isp_hist_resume();
+	isph3a_aewb_resume();
+	isp_af_resume();
+	ispccdc_resume();
+}
+
+static void isp_reset(void)
+{
+	unsigned long timeout = 0;
+
 	isp_reg_writel(isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_SYSCONFIG)
 		       | ISP_SYSCONFIG_SOFTRESET,
 		       OMAP3_ISP_IOMEM_MAIN, ISP_SYSCONFIG);
-	timeout = 0;
 	while (!(isp_reg_readl(OMAP3_ISP_IOMEM_MAIN, ISP_SYSSTATUS) & 0x1)) {
 		if (timeout++ > 10000) {
 			printk(KERN_ALERT "%s: cannot reset ISP\n", __func__);
@@ -1179,6 +1207,23 @@ void isp_stop()
 		}
 		udelay(1);
 	}
+}
+
+/**
+ * isp_stop - Stops isp submodules
+ **/
+void isp_stop()
+{
+	int reset;
+
+	isp_disable_interrupts();
+	reset = isp_stop_modules();
+	isp_buf_init();
+	if (!reset)
+		return;
+
+	isp_save_ctx();
+	isp_reset();
 	isp_restore_ctx();
 }
 EXPORT_SYMBOL(isp_stop);
@@ -2087,6 +2132,43 @@ static void isp_restore_ctx(void)
 	ispresizer_restore_context();
 }
 
+static int isp_enable_clocks(void)
+{
+	int r;
+
+	r = clk_enable(isp_obj.cam_ick);
+	if (r) {
+		DPRINTK_ISPCTRL("ISP_ERR: clk_en for ick failed\n");
+		goto out_clk_enable_ick;
+	}
+	r = clk_enable(isp_obj.cam_mclk);
+	if (r) {
+		DPRINTK_ISPCTRL("ISP_ERR: clk_en for mclk failed\n");
+		goto out_clk_enable_mclk;
+	}
+	r = clk_enable(isp_obj.csi2_fck);
+	if (r) {
+		DPRINTK_ISPCTRL("ISP_ERR: clk_en for csi2_fclk"
+				" failed\n");
+		goto out_clk_enable_csi2_fclk;
+	}
+	return 0;
+
+out_clk_enable_csi2_fclk:
+	clk_disable(isp_obj.cam_mclk);
+out_clk_enable_mclk:
+	clk_disable(isp_obj.cam_ick);
+out_clk_enable_ick:
+	return r;
+}
+
+static void isp_disable_clocks(void)
+{
+	clk_disable(isp_obj.cam_ick);
+	clk_disable(isp_obj.cam_mclk);
+	clk_disable(isp_obj.csi2_fck);
+}
+
 /**
  * isp_get - Adquires the ISP resource.
  *
@@ -2103,23 +2185,9 @@ int isp_get(void)
 	DPRINTK_ISPCTRL("isp_get: old %d\n", isp_obj.ref_count);
 	mutex_lock(&(isp_obj.isp_mutex));
 	if (isp_obj.ref_count == 0) {
-		ret_err = clk_enable(isp_obj.cam_ick);
-		if (ret_err) {
-			DPRINTK_ISPCTRL("ISP_ERR: clk_en for ick failed\n");
-			goto out_clk_enable_ick;
-		}
-		ret_err = clk_enable(isp_obj.cam_mclk);
-		if (ret_err) {
-			DPRINTK_ISPCTRL("ISP_ERR: clk_en for mclk failed\n");
-			goto out_clk_enable_mclk;
-		}
-		ret_err = clk_enable(isp_obj.csi2_fck);
-		if (ret_err) {
-			DPRINTK_ISPCTRL("ISP_ERR: clk_en for csi2_fclk"
-					" failed\n");
-			goto out_clk_enable_csi2_fclk;
-		}
-
+		ret_err = isp_enable_clocks();
+		if (ret_err)
+			goto out_err;
 		/* We don't want to restore context before saving it! */
 		if (has_context)
 			isp_restore_ctx();
@@ -2130,20 +2198,13 @@ int isp_get(void)
 		return -EBUSY;
 	}
 	isp_obj.ref_count++;
-
 	mutex_unlock(&(isp_obj.isp_mutex));
 
 	DPRINTK_ISPCTRL("isp_get: new %d\n", isp_obj.ref_count);
 	return isp_obj.ref_count;
 
-out_clk_enable_csi2_fclk:
-	clk_disable(isp_obj.cam_mclk);
-out_clk_enable_mclk:
-	clk_disable(isp_obj.cam_ick);
-out_clk_enable_ick:
-
+out_err:
 	mutex_unlock(&(isp_obj.isp_mutex));
-
 	return ret_err;
 }
 EXPORT_SYMBOL(isp_get);
@@ -2166,9 +2227,7 @@ int isp_put(void)
 			isp_tmp_buf_free();
 			isp_release_resources();
 			isp_obj.module.isp_pipeline = 0;
-			clk_disable(isp_obj.cam_ick);
-			clk_disable(isp_obj.cam_mclk);
-			clk_disable(isp_obj.csi2_fck);
+			isp_disable_clocks();
 			memset(&ispcroprect, 0, sizeof(ispcroprect));
 			memset(&cur_rect, 0, sizeof(cur_rect));
 		}
@@ -2249,6 +2308,63 @@ static int isp_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#ifdef CONFIG_PM
+
+static int isp_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	int reset;
+
+	mutex_lock(&(isp_obj.isp_mutex));
+	DPRINTK_ISPCTRL("isp_suspend: starting\n");
+	if (isp_obj.ref_count == 0)
+		goto out;
+
+	isp_disable_interrupts();
+	reset = isp_suspend_modules();
+	isp_save_ctx();
+	if (reset)
+		isp_reset();
+
+	isp_disable_clocks();
+
+out:
+	DPRINTK_ISPCTRL("isp_suspend: done\n");
+	mutex_unlock(&(isp_obj.isp_mutex));
+	return 0;
+}
+
+static int isp_resume(struct platform_device *pdev)
+{
+	int ret_err = 0;
+
+	DPRINTK_ISPCTRL("isp_resume: starting\n");
+
+	if (omap3isp == NULL)
+		goto out;
+
+	if (isp_obj.ref_count >= 0) {
+		ret_err = isp_enable_clocks();
+		if (ret_err)
+			goto out;
+		isp_restore_ctx();
+		isp_resume_modules();
+		isp_enable_interrupts(RAW_CAPTURE(&isp_obj));
+		isp_start();
+	}
+
+out:
+	DPRINTK_ISPCTRL("isp_resume: done \n");
+	return ret_err;
+}
+
+#else
+
+#define isp_suspend	NULL
+#define isp_resume	NULL
+
+#endif /* CONFIG_PM */
+
 
 static int isp_probe(struct platform_device *pdev)
 {
@@ -2375,6 +2491,8 @@ out_clk_get_mclk:
 static struct platform_driver omap3isp_driver = {
 	.probe = isp_probe,
 	.remove = isp_remove,
+	.suspend = isp_suspend,
+	.resume = isp_resume,
 	.driver = {
 		.name = "omap3isp",
 	},
