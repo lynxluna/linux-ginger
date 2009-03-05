@@ -877,6 +877,36 @@ static struct v4l2_int_device et8ek8_int_device = {
 	},
 };
 
+#ifdef CONFIG_PM
+
+static int et8ek8_suspend(struct i2c_client *client, pm_message_t mesg)
+{
+	struct et8ek8_sensor *sensor = dev_get_drvdata(&client->dev);
+
+	return et8ek8_power_off(sensor->v4l2_int_device);
+}
+
+static int et8ek8_resume(struct i2c_client *client)
+{
+	struct et8ek8_sensor *sensor = dev_get_drvdata(&client->dev);
+	enum v4l2_power resume_state;
+
+	if (sensor->power == V4L2_POWER_OFF)
+		return 0;
+
+	resume_state = sensor->power;
+	sensor->power = V4L2_POWER_OFF;
+
+	return et8ek8_ioctl_s_power(sensor->v4l2_int_device, resume_state);
+}
+
+#else
+
+#define et8ek8_suspend	NULL
+#define et8ek8_resume	NULL
+
+#endif /* CONFIG_PM */
+
 static int et8ek8_probe(struct i2c_client *client,
 			const struct i2c_device_id *devid)
 {
@@ -964,6 +994,8 @@ static struct i2c_driver et8ek8_i2c_driver = {
 	},
 	.probe		= et8ek8_probe,
 	.remove		= __exit_p(et8ek8_remove),
+	.suspend	= et8ek8_suspend,
+	.resume		= et8ek8_resume,
 	.id_table	= et8ek8_id_table,
 };
 
