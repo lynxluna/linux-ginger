@@ -591,6 +591,36 @@ static struct v4l2_int_device smia_int_device = {
 	},
 };
 
+#ifdef CONFIG_PM
+
+static int smia_suspend(struct i2c_client *client, pm_message_t mesg)
+{
+	struct smia_sensor *sensor = i2c_get_clientdata(client);
+
+	return smia_power_off(sensor->v4l2_int_device);
+}
+
+static int smia_resume(struct i2c_client *client)
+{
+	struct smia_sensor *sensor = i2c_get_clientdata(client);
+	enum v4l2_power resume_power;
+
+	if (sensor->power == V4L2_POWER_OFF)
+		return 0;
+
+	resume_power = sensor->power;
+	sensor->power = V4L2_POWER_OFF;
+
+	return smia_ioctl_s_power(sensor->v4l2_int_device, resume_power);
+}
+
+#else
+
+#define smia_suspend	NULL
+#define smia_resume	NULL
+
+#endif /* CONFIG_PM */
+
 static int smia_probe(struct i2c_client *client,
 			const struct i2c_device_id *devid)
 {
@@ -645,6 +675,8 @@ static struct i2c_driver smia_i2c_driver = {
 	},
 	.probe		= smia_probe,
 	.remove		= __exit_p(smia_remove),
+	.suspend	= smia_suspend,
+	.resume		= smia_resume,
 	.id_table	= smia_id_table,
 };
 
