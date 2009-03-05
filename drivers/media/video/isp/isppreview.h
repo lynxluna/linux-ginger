@@ -321,7 +321,11 @@ int isppreview_config_darklineoffset(u32 offset);
 
 int isppreview_set_darkaddr(u32 addr);
 
-void isppreview_enable(u8 enable);
+void isppreview_enable(int enable);
+
+void isppreview_suspend(void);
+
+void isppreview_resume(void);
 
 int isppreview_busy(void);
 

@@ -167,6 +167,7 @@ static int update_color_matrix;
  * This structure is used to store the OMAP ISP Preview module Information.
  */
 static struct isp_prev {
+	int pm_state;
 	u8 prev_inuse;
 	u32 prevout_w;
 	u32 prevout_h;
@@ -1683,20 +1684,47 @@ int isppreview_set_darkaddr(u32 addr)
 }
 EXPORT_SYMBOL_GPL(isppreview_set_darkaddr);
 
-/**
- * isppreview_enable - Enables the Preview module.
- * @enable: 1 - Enables the preview module.
- *
- * Client should configure all the sub modules in Preview before this.
- **/
-void isppreview_enable(u8 enable)
+void __isppreview_enable(int enable)
 {
 	if (enable)
 		isp_reg_or(OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR, ISPPRV_PCR_EN);
 	else
 		isp_reg_and(OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR, ~ISPPRV_PCR_EN);
 }
+
+/**
+ * isppreview_enable - Enables the Preview module.
+ * @enable: 1 - Enables the preview module.
+ *
+ * Client should configure all the sub modules in Preview before this.
+ **/
+void isppreview_enable(int enable)
+{
+	__isppreview_enable(enable);
+	ispprev_obj.pm_state = enable;
+}
 EXPORT_SYMBOL_GPL(isppreview_enable);
+
+/**
+ * isppreview_suspend - Suspend Preview module.
+ **/
+void isppreview_suspend(void)
+{
+	if (ispprev_obj.pm_state)
+		__isppreview_enable(0);
+}
+EXPORT_SYMBOL_GPL(isppreview_suspend);
+
+/**
+ * isppreview_resume - Resume Preview module.
+ **/
+void isppreview_resume(void)
+{
+	if (ispprev_obj.pm_state)
+		__isppreview_enable(1);
+}
+EXPORT_SYMBOL_GPL(isppreview_resume);
+
 
 /**
  * isppreview_busy - Gets busy state of preview module.
