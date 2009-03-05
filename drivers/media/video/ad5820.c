@@ -345,6 +345,36 @@ static struct v4l2_int_device ad5820_int_device = {
 	},
 };
 
+#ifdef CONFIG_PM
+
+static int ad5820_suspend(struct i2c_client *client, pm_message_t mesg)
+{
+	struct ad5820_device *coil = i2c_get_clientdata(client);
+
+	return coil->platform_data->s_power(coil->v4l2_int_device, V4L2_POWER_OFF);
+}
+
+static int ad5820_resume(struct i2c_client *client)
+{
+	struct ad5820_device *coil = i2c_get_clientdata(client);
+	enum v4l2_power resume_power;
+
+	if (coil->power == V4L2_POWER_OFF)
+		return 0;
+
+	resume_power = coil->power;
+	coil->power = V4L2_POWER_OFF;
+
+	return ad5820_ioctl_s_power(coil->v4l2_int_device, resume_power);
+}
+
+#else
+
+#define ad5820_suspend	NULL
+#define ad5820_resume	NULL
+
+#endif /* CONFIG_PM */
+
 static int ad5820_probe(struct i2c_client *client,
 			const struct i2c_device_id *devid)
 {
@@ -404,6 +434,8 @@ static struct i2c_driver ad5820_i2c_driver = {
 	},
 	.probe		= ad5820_probe,
 	.remove		= __exit_p(ad5820_remove),
+	.suspend	= ad5820_suspend,
+	.resume		= ad5820_resume,
 	.id_table	= ad5820_id_table,
 };
 
