@@ -91,6 +91,7 @@ static struct isprsz_coef ispreszdefcoef = {
  * @ispres_mutex: Mutex for isp resizer.
  */
 static struct isp_res {
+	int pm_state;
 	u8 res_inuse;
 	u8 h_startphase;
 	u8 v_startphase;
@@ -630,13 +631,7 @@ int ispresizer_config_size(u32 input_w, u32 input_h, u32 output_w,
 }
 EXPORT_SYMBOL(ispresizer_config_size);
 
-/**
- * ispresizer_enable - Enables the resizer module.
- * @enable: 1 - Enable, 0 - Disable
- *
- * Client should configure all the sub modules in resizer before this.
- **/
-void ispresizer_enable(u8 enable)
+void __ispresizer_enable(int enable)
 {
 	int val;
 	DPRINTK_ISPRESZ("+ispresizer_enable()+\n");
@@ -650,7 +645,39 @@ void ispresizer_enable(u8 enable)
 	isp_reg_writel(val, OMAP3_ISP_IOMEM_RESZ, ISPRSZ_PCR);
 	DPRINTK_ISPRESZ("+ispresizer_enable()-\n");
 }
+
+/**
+ * ispresizer_enable - Enables the resizer module.
+ * @enable: 1 - Enable, 0 - Disable
+ *
+ * Client should configure all the sub modules in resizer before this.
+ **/
+void ispresizer_enable(int enable)
+{
+	__ispresizer_enable(enable);
+	ispres_obj.pm_state = enable;
+}
 EXPORT_SYMBOL(ispresizer_enable);
+
+/**
+ * ispresizer_suspend - Suspend resizer module.
+ **/
+void ispresizer_suspend(void)
+{
+	if (ispres_obj.pm_state)
+		__ispresizer_enable(0);
+}
+EXPORT_SYMBOL(ispresizer_suspend);
+
+/**
+ * ispresizer_resume - Resume resizer module.
+ **/
+void ispresizer_resume(void)
+{
+	if (ispres_obj.pm_state)
+		__ispresizer_enable(1);
+}
+EXPORT_SYMBOL(ispresizer_resume);
 
 /**
  * ispresizer_busy - Checks if ISP resizer is busy.
@@ -889,6 +916,7 @@ EXPORT_SYMBOL(ispresizer_print_status);
 int __init isp_resizer_init(void)
 {
 	mutex_init(&ispres_obj.ispres_mutex);
+	ispres_obj.pm_state = 0;
 	return 0;
 }
 

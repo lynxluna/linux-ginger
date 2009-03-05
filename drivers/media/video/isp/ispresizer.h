@@ -141,7 +141,11 @@ int ispresizer_config_outlineoffset(u32 offset);
 
 int ispresizer_set_outaddr(u32 addr);
 
-void ispresizer_enable(u8 enable);
+void ispresizer_enable(int enable);
+
+void ispresizer_suspend(void);
+
+void ispresizer_resume(void);
 
 int ispresizer_busy(void);
 
