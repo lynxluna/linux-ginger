@@ -502,19 +502,18 @@ int __ispccdc_enable_lsc(u8 enable)
 void ispccdc_enable_lsc(u8 enable)
 {
 	if (__ispccdc_enable_lsc(enable)) {
-	       if (enable)
+		if (enable)
 			ispccdc_obj.lsc_state = 1;
 		else
 			ispccdc_obj.lsc_state = ispccdc_obj.lsc_enable = 0;
 	}
 }
-
 EXPORT_SYMBOL(ispccdc_enable_lsc);
 
 void ispccdc_lsc_error_handler(void)
 {
 	int lsc_enable = ispccdc_obj.lsc_state;
-		
+
 	ispccdc_enable_lsc(0);
 
 	ispccdc_obj.lsc_enable = lsc_enable;
