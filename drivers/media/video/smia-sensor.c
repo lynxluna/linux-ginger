@@ -53,6 +53,88 @@
 #define REG_COARSE_EXPOSURE	0x0202
 #define REG_ANALOG_GAIN		0x0204
 
+static int smia_ioctl_queryctrl(struct v4l2_int_device *s,
+				struct v4l2_queryctrl *a);
+static int smia_ioctl_g_ctrl(struct v4l2_int_device *s,
+			     struct v4l2_control *vc);
+static int smia_ioctl_s_ctrl(struct v4l2_int_device *s,
+			     struct v4l2_control *vc);
+static int smia_ioctl_enum_fmt_cap(struct v4l2_int_device *s,
+				   struct v4l2_fmtdesc *fmt);
+static int smia_ioctl_g_fmt_cap(struct v4l2_int_device *s,
+				struct v4l2_format *f);
+static int smia_ioctl_s_fmt_cap(struct v4l2_int_device *s,
+				struct v4l2_format *f);
+static int smia_ioctl_g_parm(struct v4l2_int_device *s,
+			     struct v4l2_streamparm *a);
+static int smia_ioctl_s_parm(struct v4l2_int_device *s,
+			     struct v4l2_streamparm *a);
+static int smia_ioctl_s_power(struct v4l2_int_device *s, enum v4l2_power state);
+static int smia_ioctl_g_priv(struct v4l2_int_device *s, void *priv);
+static int smia_ioctl_enum_framesizes(struct v4l2_int_device *s,
+				      struct v4l2_frmsizeenum *frm);
+static int smia_ioctl_enum_frameintervals(struct v4l2_int_device *s,
+					  struct v4l2_frmivalenum *frm);
+static int smia_ioctl_enum_slaves(struct v4l2_int_device *s,
+				  struct v4l2_slave_info *si);
+
+static struct v4l2_int_ioctl_desc smia_ioctl_desc[] = {
+	{ vidioc_int_enum_fmt_cap_num,
+	  (v4l2_int_ioctl_func *)smia_ioctl_enum_fmt_cap },
+	{ vidioc_int_try_fmt_cap_num,
+	  (v4l2_int_ioctl_func *)smia_ioctl_g_fmt_cap },
+	{ vidioc_int_g_fmt_cap_num,
+	  (v4l2_int_ioctl_func *)smia_ioctl_g_fmt_cap },
+	{ vidioc_int_s_fmt_cap_num,
+	  (v4l2_int_ioctl_func *)smia_ioctl_s_fmt_cap },
+	{ vidioc_int_queryctrl_num,
+	  (v4l2_int_ioctl_func *)smia_ioctl_queryctrl },
+	{ vidioc_int_g_ctrl_num,
+	  (v4l2_int_ioctl_func *)smia_ioctl_g_ctrl },
+	{ vidioc_int_s_ctrl_num,
+	  (v4l2_int_ioctl_func *)smia_ioctl_s_ctrl },
+	{ vidioc_int_g_parm_num,
+	  (v4l2_int_ioctl_func *)smia_ioctl_g_parm },
+	{ vidioc_int_s_parm_num,
+	  (v4l2_int_ioctl_func *)smia_ioctl_s_parm },
+	{ vidioc_int_s_power_num,
+	  (v4l2_int_ioctl_func *)smia_ioctl_s_power },
+	{ vidioc_int_g_priv_num,
+	  (v4l2_int_ioctl_func *)smia_ioctl_g_priv },
+	{ vidioc_int_enum_framesizes_num,
+	  (v4l2_int_ioctl_func *)smia_ioctl_enum_framesizes },
+	{ vidioc_int_enum_frameintervals_num,
+	  (v4l2_int_ioctl_func *)smia_ioctl_enum_frameintervals },
+	{ vidioc_int_enum_slaves_num,
+	  (v4l2_int_ioctl_func *)smia_ioctl_enum_slaves },
+};
+
+static struct v4l2_int_slave smia_slave = {
+	.ioctls = smia_ioctl_desc,
+	.num_ioctls = ARRAY_SIZE(smia_ioctl_desc),
+};
+
+static struct smia_sensor smia;
+
+static struct v4l2_int_device smia_int_device = {
+	.module = THIS_MODULE,
+	.name = SMIA_SENSOR_NAME,
+	.priv = &smia,
+	.type = v4l2_int_type_slave,
+	.u = {
+		.slave = &smia_slave,
+	},
+};
+
+static struct {
+	u8 manufacturer_id;
+	u16 model_id;
+	char *name;
+} smia_sensors[] = {
+	{ 0x01, 0x022b, "vs6555" },
+	{ 0x0c, 0x208a, "tcm8330md" },
+};
+
 static const __u32 smia_mode_ctrls[] = {
 	V4L2_CID_MODE_FRAME_WIDTH,
 	V4L2_CID_MODE_FRAME_HEIGHT,
@@ -396,8 +478,9 @@ static int smia_dev_init(struct v4l2_int_device *s)
 	struct smia_sensor *sensor = s->priv;
 	char name[FIRMWARE_NAME_MAX];
 	int model_id, revision_number, manufacturer_id, smia_version;
-	int rval;
+	int i, rval;
 
+	/* Read and check sensor identification registers */
 	if (smia_i2c_read_reg(sensor->i2c_client, SMIA_REG_16BIT,
 			      REG_MODEL_ID, &model_id)
 	    || smia_i2c_read_reg(sensor->i2c_client, SMIA_REG_8BIT,
@@ -423,6 +506,17 @@ static int smia_dev_init(struct v4l2_int_device *s)
 		return -ENODEV;
 	}
 
+	/* Update identification string */
+	for (i = 0; i < ARRAY_SIZE(smia_sensors); i++) {
+		if (smia_sensors[i].manufacturer_id == sensor->manufacturer_id
+		    && smia_sensors[i].model_id == sensor->model_id)
+			break;
+	}
+	if (i < ARRAY_SIZE(smia_sensors))
+		strncpy(s->name, smia_sensors[i].name, V4L2NAMESIZE);
+	s->name[V4L2NAMESIZE-1] = 0;	/* Ensure NULL terminated string */
+
+	/* Import firmware */
 	snprintf(name, FIRMWARE_NAME_MAX, "%s-%02x-%04x-%02x.bin",
 		 SMIA_SENSOR_NAME, sensor->manufacturer_id,
 		 sensor->model_id, sensor->revision_number);
@@ -445,6 +539,7 @@ static int smia_dev_init(struct v4l2_int_device *s)
 		goto out_release;
 	}
 
+	/* Select initial mode */
 	sensor->current_reglist =
 		smia_reglist_find_type(sensor->meta_reglist,
 				       SMIA_REGLIST_MODE);
@@ -542,54 +637,6 @@ static int smia_ioctl_enum_slaves(struct v4l2_int_device *s,
 
 	return 0;
 }
-
-static struct v4l2_int_ioctl_desc smia_ioctl_desc[] = {
-	{ vidioc_int_enum_fmt_cap_num,
-	  (v4l2_int_ioctl_func *)smia_ioctl_enum_fmt_cap },
-	{ vidioc_int_try_fmt_cap_num,
-	  (v4l2_int_ioctl_func *)smia_ioctl_g_fmt_cap },
-	{ vidioc_int_g_fmt_cap_num,
-	  (v4l2_int_ioctl_func *)smia_ioctl_g_fmt_cap },
-	{ vidioc_int_s_fmt_cap_num,
-	  (v4l2_int_ioctl_func *)smia_ioctl_s_fmt_cap },
-	{ vidioc_int_queryctrl_num,
-	  (v4l2_int_ioctl_func *)smia_ioctl_queryctrl },
-	{ vidioc_int_g_ctrl_num,
-	  (v4l2_int_ioctl_func *)smia_ioctl_g_ctrl },
-	{ vidioc_int_s_ctrl_num,
-	  (v4l2_int_ioctl_func *)smia_ioctl_s_ctrl },
-	{ vidioc_int_g_parm_num,
-	  (v4l2_int_ioctl_func *)smia_ioctl_g_parm },
-	{ vidioc_int_s_parm_num,
-	  (v4l2_int_ioctl_func *)smia_ioctl_s_parm },
-	{ vidioc_int_s_power_num,
-	  (v4l2_int_ioctl_func *)smia_ioctl_s_power },
-	{ vidioc_int_g_priv_num,
-	  (v4l2_int_ioctl_func *)smia_ioctl_g_priv },
-	{ vidioc_int_enum_framesizes_num,
-	  (v4l2_int_ioctl_func *)smia_ioctl_enum_framesizes },
-	{ vidioc_int_enum_frameintervals_num,
-	  (v4l2_int_ioctl_func *)smia_ioctl_enum_frameintervals },
-	{ vidioc_int_enum_slaves_num,
-	  (v4l2_int_ioctl_func *)smia_ioctl_enum_slaves },
-};
-
-static struct v4l2_int_slave smia_slave = {
-	.ioctls = smia_ioctl_desc,
-	.num_ioctls = ARRAY_SIZE(smia_ioctl_desc),
-};
-
-static struct smia_sensor smia;
-
-static struct v4l2_int_device smia_int_device = {
-	.module = THIS_MODULE,
-	.name = SMIA_SENSOR_NAME,
-	.priv = &smia,
-	.type = v4l2_int_type_slave,
-	.u = {
-		.slave = &smia_slave,
-	},
-};
 
 #ifdef CONFIG_PM
 
