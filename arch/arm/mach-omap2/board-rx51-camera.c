@@ -559,7 +559,8 @@ static struct adp1653_platform_data adp1653_my_platform_data = {
 	.power_on		 = rx51_adp1653_power_on,
 	.power_off		 = rx51_adp1653_power_off,
 	.max_flash_timeout	 = 820000,		/* us */
-	.max_flash_intensity	 = ADP1653_REG_OUT_SEL_HPLED_MAX,
+	/* Must be limited to 320 mA in RX-51 B3 and newer hardware */
+	.max_flash_intensity	 = 21,
 	.max_torch_intensity	 = ADP1653_TORCH_INTENSITY_MAX,
 	.max_indicator_intensity = ADP1653_REG_OUT_SEL_ILED_MAX,
 };
