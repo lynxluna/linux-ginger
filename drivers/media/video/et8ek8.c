@@ -342,10 +342,7 @@ static int et8ek8_setup_if(struct v4l2_int_device *s)
 
 	if (sensor->current_reglist) {
 		rval = sensor->platform_data->configure_interface(
-			s,
-			sensor->current_reglist->mode.window_width,
-			sensor->current_reglist->mode.window_height,
-			sensor->current_reglist->mode.pixel_format);
+			s, &sensor->current_reglist->mode);
 		if (rval)
 			return rval;
 		hz = sensor->current_reglist->mode.ext_clock;

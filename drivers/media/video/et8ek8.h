@@ -37,7 +37,7 @@
 struct et8ek8_platform_data {
 	int (*g_priv)(struct v4l2_int_device *s, void *priv);
 	int (*configure_interface)(struct v4l2_int_device *s,
-				   int width, int height, u32 format);
+				   struct smia_mode *mode);
 	int (*set_xclk)(struct v4l2_int_device *s, int hz);
 	int (*power_on)(struct v4l2_int_device *s);
 	int (*power_off)(struct v4l2_int_device *s);
