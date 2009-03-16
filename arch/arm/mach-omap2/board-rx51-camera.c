@@ -38,6 +38,7 @@
 
 #include <media/ad5820.h>
 #include <media/adp1653.h>
+#include <media/smiaregs.h>
 
 #include "board-rx51-camera.h"
 
@@ -416,12 +417,20 @@ static struct omap34xxcam_hw_config rx51_stingray_omap34xxcam_hw_config = {
 };
 
 static int rx51_stingray_configure_interface(struct v4l2_int_device *s,
-					     int width, int height, __u32 format)
+					     struct smia_mode *mode)
 {
-	/* Configure sensor interface. */
-	rx51_stingray_config.u.csi.format = format;
-	rx51_stingray_config.u.csi.data_size = height;
+	static const int S = 8;
 
+	/* Configure sensor interface. */
+	rx51_stingray_config.u.csi.format = mode->pixel_format;
+	rx51_stingray_config.u.csi.data_size = mode->window_height;
+	/* Calculate average pixel clock per line. Assume buffers can spread
+	 * the data over horizontal blanking time. Rounding upwards. */
+	rx51_stingray_config.pixelclk =
+		mode->window_width
+		* (((mode->pixel_clock + (1<<S) - 1) >> S) + mode->width - 1)
+		/ mode->width;
+	rx51_stingray_config.pixelclk <<= S;
 	return isp_configure_interface(&rx51_stingray_config);
 }
 
