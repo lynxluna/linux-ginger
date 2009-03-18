@@ -351,6 +351,9 @@ static int ad5820_suspend(struct i2c_client *client, pm_message_t mesg)
 {
 	struct ad5820_device *coil = i2c_get_clientdata(client);
 
+	if (coil->power == V4L2_POWER_OFF)
+		return 0;
+
 	return coil->platform_data->s_power(coil->v4l2_int_device, V4L2_POWER_OFF);
 }
 
