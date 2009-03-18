@@ -644,6 +644,9 @@ static int smia_suspend(struct i2c_client *client, pm_message_t mesg)
 {
 	struct smia_sensor *sensor = i2c_get_clientdata(client);
 
+	if (sensor->power == V4L2_POWER_OFF)
+		return 0;
+
 	return smia_power_off(sensor->v4l2_int_device);
 }
 
