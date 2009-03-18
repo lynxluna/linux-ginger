@@ -1395,7 +1395,10 @@ void __ispccdc_enable(u8 enable)
 			ispccdc_enable_lsc(1);
 
 	} else {
-		ispccdc_obj.lsc_enable = ispccdc_obj.lsc_state;
+		int lsc_enable = ispccdc_obj.lsc_state;
+
+		ispccdc_enable_lsc(0);
+		ispccdc_obj.lsc_enable = lsc_enable;
 	}
 
 	isp_reg_and_or(OMAP3_ISP_IOMEM_CCDC, ISPCCDC_PCR, ~ISPCCDC_PCR_EN,
