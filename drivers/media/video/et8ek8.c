@@ -880,6 +880,9 @@ static int et8ek8_suspend(struct i2c_client *client, pm_message_t mesg)
 {
 	struct et8ek8_sensor *sensor = dev_get_drvdata(&client->dev);
 
+	if (sensor->power == V4L2_POWER_OFF)
+		return 0;
+
 	return et8ek8_power_off(sensor->v4l2_int_device);
 }
 
