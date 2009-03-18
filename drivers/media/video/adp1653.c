@@ -474,6 +474,9 @@ static int adp1653_suspend(struct i2c_client *client, pm_message_t mesg)
 {
 	struct adp1653_flash *flash = i2c_get_clientdata(client);
 
+	if (flash->power == V4L2_POWER_OFF)
+		return 0;
+
 	return flash->platform_data->power_off(flash->v4l2_int_device);
 }
 
