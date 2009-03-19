@@ -334,15 +334,15 @@ struct prev_params *isppreview_get_config(void);
 void isppreview_print_status(void);
 
 #ifndef CONFIG_ARCH_OMAP3410
-void isppreview_save_context(void);
+void isppreview_save_context(struct device *dev);
 #else
-static inline void isppreview_save_context(void) {}
+static inline void isppreview_save_context(struct device *dev) {}
 #endif
 
 #ifndef CONFIG_ARCH_OMAP3410
-void isppreview_restore_context(void);
+void isppreview_restore_context(struct device *dev);
 #else
-static inline void isppreview_restore_context(void) {}
+static inline void isppreview_restore_context(struct device *dev) {}
 #endif
 
 int omap34xx_isp_preview_config(void *userspace_add);

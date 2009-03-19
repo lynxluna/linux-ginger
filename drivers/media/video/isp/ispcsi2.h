@@ -163,6 +163,7 @@ struct isp_csi2_cfg {
 	struct isp_csi2_ctx_cfg contexts[8];
 	struct isp_csi2_timings_cfg timings[2];
 	struct isp_csi2_ctrl_cfg ctrl;
+	struct device *dev;
 };
 
 struct isp_csi2_cfg_update {
