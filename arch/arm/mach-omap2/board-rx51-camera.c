@@ -27,6 +27,7 @@
 #include <linux/delay.h>
 #include <linux/mm.h>
 #include <linux/videodev2.h>
+#include <linux/device.h>
 
 #include <asm/gpio.h>
 #include <mach/control.h>
@@ -419,6 +420,7 @@ static struct omap34xxcam_hw_config rx51_stingray_omap34xxcam_hw_config = {
 static int rx51_stingray_configure_interface(struct v4l2_int_device *s,
 					     struct smia_mode *mode)
 {
+	struct omap34xxcam_videodev *vdev = s->u.slave->master->priv;
 	static const int S = 8;
 
 	/* Configure sensor interface. */
@@ -431,12 +433,14 @@ static int rx51_stingray_configure_interface(struct v4l2_int_device *s,
 		* (((mode->pixel_clock + (1<<S) - 1) >> S) + mode->width - 1)
 		/ mode->width;
 	rx51_stingray_config.pixelclk <<= S;
-	return isp_configure_interface(&rx51_stingray_config);
+	return isp_configure_interface(vdev->cam->isp, &rx51_stingray_config);
 }
 
 static int rx51_stingray_set_xclk(struct v4l2_int_device *s, int hz)
 {
-	isp_set_xclk(hz, STINGRAY_XCLK);
+	struct omap34xxcam_videodev *vdev = s->u.slave->master->priv;
+
+	isp_set_xclk(vdev->cam->isp, hz, STINGRAY_XCLK);
 
 	return 0;
 }
@@ -592,7 +596,7 @@ static struct isp_interface_config rx51_acmelite_config = {
 			 .channel	=	0,
 			 .vpclk		=	2,
 			 .data_start	=	4,
-			 .format		=	V4L2_PIX_FMT_SGRBG10,
+			 .format	=	V4L2_PIX_FMT_SGRBG10,
 		 },
 	},
 };
@@ -613,15 +617,19 @@ static struct omap34xxcam_hw_config rx51_acmelite_omap34xxcam_hw_config = {
 static int rx51_acmelite_configure_interface(struct v4l2_int_device *s,
 					     int width, int height)
 {
+	struct omap34xxcam_videodev *vdev = s->u.slave->master->priv;
+
 	/* Configure sensor interface. */
 	rx51_acmelite_config.u.csi.data_size = height;
 
-	return isp_configure_interface(&rx51_acmelite_config);
+	return isp_configure_interface(vdev->cam->isp, &rx51_acmelite_config);
 }
 
 static int rx51_acmelite_set_xclk(struct v4l2_int_device *s, int hz)
 {
-	isp_set_xclk(hz, ACMELITE_XCLK);
+	struct omap34xxcam_videodev *vdev = s->u.slave->master->priv;
+
+	isp_set_xclk(vdev->cam->isp, hz, ACMELITE_XCLK);
 
 	return 0;
 }
