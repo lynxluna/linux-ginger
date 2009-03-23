@@ -1074,11 +1074,11 @@ static int __isp_disable_modules(struct device *dev, int suspend)
 	if (suspend) {
 		isp_af_suspend(&isp->isp_af);
 		isph3a_aewb_suspend();
-		isp_hist_suspend();
+		isp_hist_suspend(&isp->isp_hist);
 	} else {
 		isp_af_enable(&isp->isp_af, 0);
 		isph3a_aewb_enable(0);
-		isp_hist_enable(0);
+		isp_hist_enable(&isp->isp_hist, 0);
 	}
 	isppreview_enable(0);
 	ispresizer_enable(0);
@@ -1086,7 +1086,7 @@ static int __isp_disable_modules(struct device *dev, int suspend)
 	timeout = jiffies + ISP_STOP_TIMEOUT;
 	while (isp_af_busy(&isp->isp_af)
 	       || isph3a_aewb_busy()
-	       || isp_hist_busy()
+	       || isp_hist_busy(&isp->isp_hist)
 	       || isppreview_busy()
 	       || ispresizer_busy()) {
 		if (time_after(jiffies, timeout)) {
@@ -1130,7 +1130,7 @@ static void isp_resume_modules(struct device *dev)
 {
 	struct isp_device *isp = dev_get_drvdata(dev);
 
-	isp_hist_resume();
+	isp_hist_resume(&isp->isp_hist);
 	isph3a_aewb_resume();
 	isp_af_resume(&isp->isp_af);
 }
@@ -1665,13 +1665,13 @@ int isp_handle_private(struct device *dev, int cmd, void *arg)
 	case VIDIOC_PRIVATE_ISP_HIST_CFG: {
 		struct isp_hist_config *params;
 		params = (struct isp_hist_config *)arg;
-		rval = isp_hist_configure(params);
+		rval = isp_hist_configure(&isp->isp_hist, params);
 	}
 		break;
 	case VIDIOC_PRIVATE_ISP_HIST_REQ: {
 		struct isp_hist_data *data;
 		data = (struct isp_hist_data *)arg;
-		rval = isp_hist_request_statistics(data);
+		rval = isp_hist_request_statistics(&isp->isp_hist, data);
 	}
 		break;
 	case VIDIOC_PRIVATE_ISP_AF_CFG: {
