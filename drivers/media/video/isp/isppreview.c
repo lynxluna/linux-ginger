@@ -140,6 +140,7 @@ static struct ispprev_csc flr_prev_csc[] = {
 #define FLR_BLKADJ_RED		0x0
 
 static int update_color_matrix;
+static int update_rgb_blending;
 
 /**
  * struct isp_prev - Structure for storing ISP Preview module information
@@ -255,7 +256,6 @@ int omap34xx_isp_preview_config(void *userspace_add)
 	struct ispprev_csup csup_t;
 	struct ispprev_wbal prev_wbal_t;
 	struct ispprev_blkadj prev_blkadj_t;
-	struct ispprev_rgbtorgb rgb2rgb_t;
 	struct ispprev_csc prev_csc_t;
 	struct ispprev_yclimit yclimit_t;
 	struct ispprev_dcor prev_dcor_t;
@@ -353,11 +353,13 @@ int omap34xx_isp_preview_config(void *userspace_add)
 	}
 
 	if (ISP_ABS_PREV_RGB2RGB & preview_struct->update) {
-		if (copy_from_user(&rgb2rgb_t, (struct ispprev_rgbtorgb *)
+		if (copy_from_user(&params->rgb2rgb, (struct ispprev_rgbtorgb *)
 				   preview_struct->rgb2rgb,
 				   sizeof(struct ispprev_rgbtorgb)))
 			goto err_copy_from_user;
-		isppreview_config_rgb_blending(rgb2rgb_t);
+		isppreview_config_rgb_blending(params->rgb2rgb);
+		wmb();
+		update_rgb_blending = 1;
 	}
 
 	if (ISP_ABS_PREV_COLOR_CONV & preview_struct->update) {
@@ -512,6 +514,11 @@ void isppreview_config_shadow_registers()
 	if (update_color_matrix) {
 		isppreview_config_rgb_to_ycbcr(flr_prev_csc[ispprev_obj.color]);
 		update_color_matrix = 0;
+	}
+	if (update_rgb_blending) {
+		update_rgb_blending = 0;
+		wmb();
+		isppreview_config_rgb_blending(params->rgb2rgb);
 	}
 	if (gg_update || rg_update || bg_update || nf_update) {
 		isppreview_enable(0);
