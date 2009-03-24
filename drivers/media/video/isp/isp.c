@@ -299,7 +299,7 @@ static void isp_release_resources(struct device *dev)
 		isppreview_free();
 
 	if (isp->module.isp_pipeline & OMAP_ISP_RESIZER)
-		ispresizer_free();
+		ispresizer_free(&isp->isp_res);
 	return;
 }
 
@@ -834,14 +834,14 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *_pdev)
 				PREV_DONE,
 				irqdis->isp_callbk_arg1[CBK_PREV_DONE],
 				irqdis->isp_callbk_arg2[CBK_PREV_DONE]);
-		else if (!RAW_CAPTURE(isp) && !ispresizer_busy()) {
+		else if (!RAW_CAPTURE(isp) && !ispresizer_busy(&isp->isp_res)) {
 			if (isp->module.applyCrop) {
-				ispresizer_applycrop();
-				if (!ispresizer_busy())
+				ispresizer_applycrop(&isp->isp_res);
+				if (!ispresizer_busy(&isp->isp_res))
 					isp->module.applyCrop = 0;
 			}
 			if (!isppreview_busy()) {
-				ispresizer_enable(1);
+				ispresizer_enable(&isp->isp_res, 1);
 				if (isppreview_busy()) {
 					/* FIXME: locking! */
 					ISP_BUF_DONE(bufs)->vb_state =
@@ -859,8 +859,9 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *_pdev)
 
 	if (irqstatus & RESZ_DONE) {
 		if (!RAW_CAPTURE(isp)) {
-			if (!ispresizer_busy())
-				ispresizer_config_shadow_registers();
+			if (!ispresizer_busy(&isp->isp_res))
+				ispresizer_config_shadow_registers(
+								&isp->isp_res);
 			isp_buf_process(dev, bufs);
 		}
 	}
@@ -1035,7 +1036,7 @@ static u32 isp_tmp_buf_alloc(struct device *dev, size_t size)
 	isp->tmp_buf_size = size;
 
 	isppreview_set_outaddr(isp->tmp_buf);
-	ispresizer_set_inaddr(isp->tmp_buf);
+	ispresizer_set_inaddr(&isp->isp_res, isp->tmp_buf);
 
 	return 0;
 }
@@ -1081,14 +1082,14 @@ static int __isp_disable_modules(struct device *dev, int suspend)
 		isp_hist_enable(&isp->isp_hist, 0);
 	}
 	isppreview_enable(0);
-	ispresizer_enable(0);
+	ispresizer_enable(&isp->isp_res, 0);
 
 	timeout = jiffies + ISP_STOP_TIMEOUT;
 	while (isp_af_busy(&isp->isp_af)
 	       || isph3a_aewb_busy(&isp->isp_h3a)
 	       || isp_hist_busy(&isp->isp_hist)
 	       || isppreview_busy()
-	       || ispresizer_busy()) {
+	       || ispresizer_busy(&isp->isp_res)) {
 		if (time_after(jiffies, timeout)) {
 			printk(KERN_ERR "%s: can't stop non-ccdc modules\n",
 			       __func__);
@@ -1177,7 +1178,7 @@ static void isp_set_buf(struct device *dev, struct isp_buf *buf)
 
 	if (isp->module.isp_pipeline & OMAP_ISP_RESIZER
 	    && is_ispresizer_enabled())
-		ispresizer_set_outaddr(buf->isp_addr);
+		ispresizer_set_outaddr(&isp->isp_res, buf->isp_addr);
 	else if (isp->module.isp_pipeline & OMAP_ISP_CCDC)
 		ispccdc_set_outaddr(buf->isp_addr);
 
@@ -1202,10 +1203,10 @@ static u32 isp_calc_pipeline(struct device *dev,
 			OMAP_ISP_CCDC | OMAP_ISP_PREVIEW | OMAP_ISP_RESIZER;
 		ispccdc_request();
 		isppreview_request();
-		ispresizer_request();
+		ispresizer_request(&isp->isp_res);
 		ispccdc_config_datapath(CCDC_RAW, CCDC_OTHERS_VP);
 		isppreview_config_datapath(PRV_RAW_CCDC, PREVIEW_MEM);
-		ispresizer_config_datapath(RSZ_MEM_YUV);
+		ispresizer_config_datapath(&isp->isp_res, RSZ_MEM_YUV);
 	} else {
 		isp->module.isp_pipeline = OMAP_ISP_CCDC;
 		ispccdc_request();
@@ -1245,7 +1246,8 @@ static void isp_config_pipeline(struct device *dev,
 	}
 
 	if (isp->module.isp_pipeline & OMAP_ISP_RESIZER) {
-		ispresizer_config_size(isp->module.resizer_input_width,
+		ispresizer_config_size(&isp->isp_res,
+				       isp->module.resizer_input_width,
 				       isp->module.resizer_input_height,
 				       isp->module.resizer_output_width,
 				       isp->module.resizer_output_height);
@@ -1254,11 +1256,11 @@ static void isp_config_pipeline(struct device *dev,
 	if (pix_output->pixelformat == V4L2_PIX_FMT_UYVY) {
 		isppreview_config_ycpos(YCPOS_YCrYCb);
 		if (is_ispresizer_enabled())
-			ispresizer_config_ycpos(0);
+			ispresizer_config_ycpos(&isp->isp_res, 0);
 	} else {
 		isppreview_config_ycpos(YCPOS_CrYCbY);
 		if (is_ispresizer_enabled())
-			ispresizer_config_ycpos(1);
+			ispresizer_config_ycpos(&isp->isp_res, 1);
 	}
 
 	return;
@@ -1328,7 +1330,7 @@ static int isp_buf_process(struct device *dev, struct isp_bufs *bufs)
 		if (RAW_CAPTURE(isp))
 			ispccdc_enable(0);
 		else
-			ispresizer_enable(0);
+			ispresizer_enable(&isp->isp_res, 0);
 		/*
 		 * We must wait for the HS_VS since before that the
 		 * CCDC may trigger interrupts even if it's not
@@ -1337,7 +1339,7 @@ static int isp_buf_process(struct device *dev, struct isp_bufs *bufs)
 		bufs->wait_hs_vs = isp->config->wait_hs_vs;
 	}
 	if ((RAW_CAPTURE(isp) && ispccdc_busy())
-	    || (!RAW_CAPTURE(isp) && ispresizer_busy())) {
+	    || (!RAW_CAPTURE(isp) && ispresizer_busy(&isp->isp_res))) {
 		/*
 		 * Next buffer available: for the transfer to succeed, the
 		 * CCDC (RAW capture) or resizer (YUV capture) must be idle
@@ -1836,7 +1838,8 @@ void isp_config_crop(struct device *dev, struct v4l2_pix_format *croppix)
 		isp->cur_rect.left * 2 +
 		isp->module.preview_output_width * 2 * isp->cur_rect.top;
 
-	ispresizer_trycrop(isp->cur_rect.left, isp->cur_rect.top,
+	ispresizer_trycrop(&isp->isp_res,
+			   isp->cur_rect.left, isp->cur_rect.top,
 			   isp->cur_rect.width, isp->cur_rect.height,
 			   isp->module.resizer_output_width,
 			   isp->module.resizer_output_height);
@@ -2006,7 +2009,8 @@ static int isp_try_size(struct device *dev, struct v4l2_pix_format *pix_input,
 			isp->module.preview_output_width;
 		isp->module.resizer_input_height =
 			isp->module.preview_output_height;
-		rval = ispresizer_try_size(&isp->module.resizer_input_width,
+		rval = ispresizer_try_size(&isp->isp_res,
+					   &isp->module.resizer_input_width,
 					   &isp->module.resizer_input_height,
 					   &isp->module.resizer_output_width,
 					   &isp->module.resizer_output_height);
