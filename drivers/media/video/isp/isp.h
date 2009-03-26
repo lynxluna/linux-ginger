@@ -350,6 +350,7 @@ struct isp_device {
 	struct isp_h3a_device isp_h3a;
 	struct isp_res_device isp_res;
 	struct isp_prev_device isp_prev;
+	struct isp_ccdc_device isp_ccdc;
 };
 
 u32 isp_reg_readl(struct device *dev, enum isp_mem_resources isp_mmio_range,

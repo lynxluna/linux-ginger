@@ -293,7 +293,7 @@ static void isp_release_resources(struct device *dev)
 	struct isp_device *isp = dev_get_drvdata(dev);
 
 	if (isp->module.isp_pipeline & OMAP_ISP_CCDC)
-		ispccdc_free();
+		ispccdc_free(&isp->isp_ccdc);
 
 	if (isp->module.isp_pipeline & OMAP_ISP_PREVIEW)
 		isppreview_free(&isp->isp_prev);
@@ -326,9 +326,9 @@ static int isp_wait(int (*busy)(void *), int wait_for_busy, int max_wait,
 	return 0;
 }
 
-static int ispccdc_sbl_wait_idle(int max_wait)
+static int ispccdc_sbl_wait_idle(struct isp_ccdc_device *isp_ccdc, int max_wait)
 {
-	return isp_wait(ispccdc_sbl_busy, 0, max_wait, NULL);
+	return isp_wait(ispccdc_sbl_busy, 0, max_wait, isp_ccdc);
 }
 
 static void isp_enable_interrupts(struct device *dev, int is_raw)
@@ -780,7 +780,7 @@ int isp_configure_interface(struct device *dev,
 
 	/* Set sensor specific fields in CCDC and Previewer module. */
 	isppreview_set_skip(&isp->isp_prev, config->prev_sph, config->prev_slv);
-	ispccdc_set_wenlog(config->wenlog);
+	ispccdc_set_wenlog(&isp->isp_ccdc, config->wenlog);
 
 	/* FIXME: this should be set in ispccdc_config_vp() */
 	fmtcfg = isp_reg_readl(dev, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMTCFG);
@@ -846,8 +846,8 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *_pdev)
 	if (irqstatus & CCDC_VD0) {
 		if (RAW_CAPTURE(isp))
 			isp_buf_process(dev, bufs);
-		if (!ispccdc_busy())
-			ispccdc_config_shadow_registers();
+		if (!ispccdc_busy(&isp->isp_ccdc))
+			ispccdc_config_shadow_registers(&isp->isp_ccdc);
 	}
 
 	if (irqstatus & PREV_DONE) {
@@ -937,7 +937,7 @@ out_ignore_buff:
 		struct isp_buf *buf = ISP_BUF_DONE(bufs);
 		/* Mark buffer faulty. */
 		buf->vb_state = VIDEOBUF_ERROR;
-		ispccdc_lsc_error_handler();
+		ispccdc_lsc_error_handler(&isp->isp_ccdc);
 		printk(KERN_ERR "%s: lsc prefetch error\n", __func__);
 	}
 
@@ -1123,10 +1123,10 @@ static int __isp_disable_modules(struct device *dev, int suspend)
 	}
 
 	/* Let's stop CCDC now. */
-	ispccdc_enable(0);
+	ispccdc_enable(&isp->isp_ccdc, 0);
 
 	timeout = jiffies + ISP_STOP_TIMEOUT;
-	while (ispccdc_busy()) {
+	while (ispccdc_busy(&isp->isp_ccdc)) {
 		if (time_after(jiffies, timeout)) {
 			printk(KERN_ERR "%s: can't stop ccdc\n", __func__);
 			reset = 1;
@@ -1205,7 +1205,7 @@ static void isp_set_buf(struct device *dev, struct isp_buf *buf)
 	    && is_ispresizer_enabled())
 		ispresizer_set_outaddr(&isp->isp_res, buf->isp_addr);
 	else if (isp->module.isp_pipeline & OMAP_ISP_CCDC)
-		ispccdc_set_outaddr(buf->isp_addr);
+		ispccdc_set_outaddr(&isp->isp_ccdc, buf->isp_addr);
 
 }
 
@@ -1226,21 +1226,24 @@ static u32 isp_calc_pipeline(struct device *dev,
 	    && pix_output->pixelformat != V4L2_PIX_FMT_SGRBG10) {
 		isp->module.isp_pipeline =
 			OMAP_ISP_CCDC | OMAP_ISP_PREVIEW | OMAP_ISP_RESIZER;
-		ispccdc_request();
+		ispccdc_request(&isp->isp_ccdc);
 		isppreview_request(&isp->isp_prev);
 		ispresizer_request(&isp->isp_res);
-		ispccdc_config_datapath(CCDC_RAW, CCDC_OTHERS_VP);
+		ispccdc_config_datapath(&isp->isp_ccdc, CCDC_RAW,
+					CCDC_OTHERS_VP);
 		isppreview_config_datapath(&isp->isp_prev, PRV_RAW_CCDC,
 					   PREVIEW_MEM);
 		ispresizer_config_datapath(&isp->isp_res, RSZ_MEM_YUV);
 	} else {
 		isp->module.isp_pipeline = OMAP_ISP_CCDC;
-		ispccdc_request();
+		ispccdc_request(&isp->isp_ccdc);
 		if (pix_input->pixelformat == V4L2_PIX_FMT_SGRBG10
 		    || pix_input->pixelformat == V4L2_PIX_FMT_SGRBG10DPCM8)
-			ispccdc_config_datapath(CCDC_RAW, CCDC_OTHERS_VP_MEM);
+			ispccdc_config_datapath(&isp->isp_ccdc, CCDC_RAW,
+						CCDC_OTHERS_VP_MEM);
 		else
-			ispccdc_config_datapath(CCDC_YUV_SYNC, CCDC_OTHERS_MEM);
+			ispccdc_config_datapath(&isp->isp_ccdc, CCDC_YUV_SYNC,
+						CCDC_OTHERS_MEM);
 	}
 	return 0;
 }
@@ -1259,7 +1262,7 @@ static void isp_config_pipeline(struct device *dev,
 {
 	struct isp_device *isp = dev_get_drvdata(dev);
 
-	ispccdc_config_size(isp->module.ccdc_input_width,
+	ispccdc_config_size(&isp->isp_ccdc, isp->module.ccdc_input_width,
 			    isp->module.ccdc_input_height,
 			    isp->module.ccdc_output_width,
 			    isp->module.ccdc_output_height);
@@ -1338,7 +1341,7 @@ static int isp_buf_process(struct device *dev, struct isp_bufs *bufs)
 	if (ISP_BUFS_IS_EMPTY(bufs))
 		goto out;
 
-	if (RAW_CAPTURE(isp) && ispccdc_sbl_wait_idle(1000)) {
+	if (RAW_CAPTURE(isp) && ispccdc_sbl_wait_idle(&isp->isp_ccdc, 1000)) {
 		printk(KERN_ERR "ccdc %d won't become idle!\n",
 		       RAW_CAPTURE(isp));
 		goto out;
@@ -1355,7 +1358,7 @@ static int isp_buf_process(struct device *dev, struct isp_bufs *bufs)
 		/* Tell ISP not to write any of our buffers. */
 		isp_disable_interrupts(dev);
 		if (RAW_CAPTURE(isp))
-			ispccdc_enable(0);
+			ispccdc_enable(&isp->isp_ccdc, 0);
 		else
 			ispresizer_enable(&isp->isp_res, 0);
 		/*
@@ -1365,7 +1368,7 @@ static int isp_buf_process(struct device *dev, struct isp_bufs *bufs)
 		 */
 		bufs->wait_hs_vs = isp->config->wait_hs_vs;
 	}
-	if ((RAW_CAPTURE(isp) && ispccdc_busy())
+	if ((RAW_CAPTURE(isp) && ispccdc_busy(&isp->isp_ccdc))
 	    || (!RAW_CAPTURE(isp) && ispresizer_busy(&isp->isp_res))) {
 		/*
 		 * Next buffer available: for the transfer to succeed, the
@@ -1444,7 +1447,7 @@ int isp_buf_queue(struct device *dev, struct videobuf_buffer *vb,
 	if (ISP_BUFS_IS_EMPTY(bufs)) {
 		isp_enable_interrupts(dev, RAW_CAPTURE(isp));
 		isp_set_buf(dev, buf);
-		ispccdc_enable(1);
+		ispccdc_enable(&isp->isp_ccdc, 1);
 		isp_start(dev);
 	}
 
@@ -1675,7 +1678,7 @@ int isp_handle_private(struct device *dev, int cmd, void *arg)
 
 	switch (cmd) {
 	case VIDIOC_PRIVATE_ISP_CCDC_CFG:
-		rval = omap34xx_isp_ccdc_config(arg);
+		rval = omap34xx_isp_ccdc_config(&isp->isp_ccdc, arg);
 		break;
 	case VIDIOC_PRIVATE_ISP_PRV_CFG:
 		rval = omap34xx_isp_preview_config(&isp->isp_prev, arg);
@@ -2000,7 +2003,8 @@ static int isp_try_size(struct device *dev, struct v4l2_pix_format *pix_input,
 	isp->module.resizer_output_height = pix_output->height;
 
 	if (isp->module.isp_pipeline & OMAP_ISP_CCDC) {
-		rval = ispccdc_try_size(isp->module.ccdc_input_width,
+		rval = ispccdc_try_size(&isp->isp_ccdc,
+					isp->module.ccdc_input_width,
 					isp->module.ccdc_input_height,
 					&isp->module.ccdc_output_width,
 					&isp->module.ccdc_output_height);
