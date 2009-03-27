@@ -301,6 +301,11 @@ struct smia_reglist *smia_reglist_find_mode_fmt(
 		if ((*list)->type != SMIA_REGLIST_MODE)
 			continue;
 
+		/* Ignore modes that do cropping on sensor */
+		if (mode->sensor_window_width + 8 < mode->sensor_width ||
+		    mode->sensor_window_height + 8 < mode->sensor_height)
+			continue;
+
 		if (mode->window_width == pix->width &&
 		    mode->window_height == pix->height)
 			return *list;
@@ -330,6 +335,11 @@ struct smia_reglist *smia_reglist_find_mode_streamparm(
 
 		if (mode->window_width != current_mode->window_width
 		    || mode->window_height != current_mode->window_height)
+			continue;
+
+		/* Ignore modes that do cropping on sensor */
+		if (mode->sensor_window_width + 8 < mode->sensor_width ||
+		    mode->sensor_window_height + 8 < mode->sensor_height)
 			continue;
 
 		if (TIMEPERFRAME_AVG_FPS(mode->timeperframe) == fps)
