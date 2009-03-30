@@ -97,8 +97,10 @@ int smia_mode_query(const __u32 *ctrls, size_t nctrls, struct v4l2_queryctrl *a)
 		{ .id = V4L2_CID_MODE_FRAME_WIDTH,    .name = "Frame width" },
 		{ .id = V4L2_CID_MODE_FRAME_HEIGHT,   .name = "Frame height" },
 		{ .id = V4L2_CID_MODE_VISIBLE_WIDTH,  .name = "Visible width" },
-		{ .id = V4L2_CID_MODE_VISIBLE_HEIGHT, .name = "Visible height" },
-		{ .id = V4L2_CID_MODE_PIXELCLOCK,     .name = "Pixel clock [Hz]" },
+		{ .id = V4L2_CID_MODE_VISIBLE_HEIGHT,
+		  .name = "Visible height" },
+		{ .id = V4L2_CID_MODE_PIXELCLOCK,
+		  .name = "Pixel clock [Hz]" },
 		{ .id = V4L2_CID_MODE_SENSITIVITY,    .name = "Sensitivity" },
 	};
 	int id, next = 0, i;
@@ -183,16 +185,6 @@ static int smia_reglist_cmp(const void *a, const void *b)
 	const struct smia_reglist **list1 = (const struct smia_reglist **)a,
 		**list2 = (const struct smia_reglist **)b;
 
-/* 	printk(KERN_ALERT "%s: list1 %p %p, list2 %p %p\n", __func__,
- * 	list1, *list1, list2, *list2); */
-
-/* 	printk(KERN_ALERT "%s: w1 %d h1 %d | w2 %d h2 %d \n", __func__, */
-/* 	       (*list1)->mode.window_width, */
-/* 	       (*list1)->mode.window_height, */
-/* 	       (*list2)->mode.window_width, */
-/* 	       (*list2)->mode.window_height */
-/* 	       ); */
-
 	/* Put real modes in the beginning. */
 	if ((*list1)->type == SMIA_REGLIST_MODE &&
 	    (*list2)->type != SMIA_REGLIST_MODE)
@@ -220,7 +212,8 @@ int smia_reglist_import(struct smia_meta_reglist *meta)
 	uintptr_t nlists = 0;
 
 	if (meta->magic != SMIA_MAGIC) {
-		printk(KERN_ERR "invalid camera sensor firmware (0x%08X)\n", meta->magic);
+		printk(KERN_ERR "invalid camera sensor firmware (0x%08X)\n",
+		       meta->magic);
 		return -EILSEQ;
 	}
 
@@ -255,8 +248,9 @@ int smia_reglist_import(struct smia_meta_reglist *meta)
 		       list->type,
 		       list->mode.window_width, list->mode.window_height,
 		       list->mode.pixel_format,
-		       list->mode.timeperframe.numerator, list->mode.timeperframe.denominator,
-		       meta->reglist[nlists].offset);
+		       list->mode.timeperframe.numerator,
+		       list->mode.timeperframe.denominator,
+		       (void *)meta->reglist[nlists].offset);
 
 		nlists++;
 	}
