@@ -197,7 +197,6 @@ int omap34xx_isp_preview_config(struct isp_prev_device *isp_prev,
 	struct ispprev_csup csup_t;
 	struct ispprev_wbal prev_wbal_t;
 	struct ispprev_blkadj prev_blkadj_t;
-	struct ispprev_csc prev_csc_t;
 	struct ispprev_yclimit yclimit_t;
 	struct ispprev_dcor prev_dcor_t;
 	struct ispprv_update_config *preview_struct;
@@ -306,11 +305,15 @@ int omap34xx_isp_preview_config(struct isp_prev_device *isp_prev,
 	}
 
 	if (ISP_ABS_PREV_COLOR_CONV & preview_struct->update) {
-		if (copy_from_user(&prev_csc_t, (struct ispprev_csc *)
-				   preview_struct->prev_csc,
+		if (copy_from_user(&isp_prev->params->rgb2ycbcr,
+				   (struct ispprev_csc *)
+					preview_struct->prev_csc,
 				   sizeof(struct ispprev_csc)))
 			goto err_copy_from_user;
-		isppreview_config_rgb_to_ycbcr(isp_prev, prev_csc_t);
+		isppreview_config_rgb_to_ycbcr(isp_prev,
+					       isp_prev->params->rgb2ycbcr);
+		wmb();
+		isp_prev->update_rgb_to_ycbcr = 1;
 	}
 
 	if (ISP_ABS_PREV_YC_LIMIT & preview_struct->update) {
@@ -466,6 +469,12 @@ void isppreview_config_shadow_registers(struct isp_prev_device *isp_prev)
 		wmb();
 		isppreview_config_rgb_blending(isp_prev,
 					       isp_prev->params->rgb2rgb);
+	}
+	if (isp_prev->update_rgb_to_ycbcr) {
+		isp_prev->update_rgb_to_ycbcr = 0;
+		wmb();
+		isppreview_config_rgb_to_ycbcr(isp_prev,
+					       isp_prev->params->rgb2ycbcr);
 	}
 	if (isp_prev->gg_update || isp_prev->rg_update
 	    || isp_prev->bg_update || isp_prev->nf_update) {

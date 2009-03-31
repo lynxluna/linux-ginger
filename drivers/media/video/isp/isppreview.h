@@ -259,6 +259,7 @@ struct isp_prev_device {
 	enum preview_output prev_outfmt;
 	u8 update_color_matrix;
 	u8 update_rgb_blending;
+	u8 update_rgb_to_ycbcr;
 	u8 hmed_en;
 	u8 nf_en;
 	u8 dcor_en;
