@@ -240,7 +240,7 @@ static int isph3a_aewb_stats_available(struct isp_h3a_device *isp_h3a,
 				   (void *)isp_h3a->buff[i].virt_addr,
 				   isp_h3a->curr_cfg_buf_size);
 		if (ret) {
-			printk(KERN_ERR "Failed copy_to_user for "
+			dev_err(isp_h3a->dev, "h3a: Failed copy_to_user for "
 			       "H3A stats buff, %d\n", ret);
 		}
 		aewbdata->ts = isp_h3a->buff[i].ts;
@@ -344,7 +344,7 @@ static int isph3a_aewb_set_params(struct isp_h3a_device *isp_h3a,
 				  struct isph3a_aewb_config *user_cfg)
 {
 	if (unlikely(user_cfg->saturation_limit > MAX_SATURATION_LIM)) {
-		printk(KERN_ERR "Invalid Saturation_limit: %d\n",
+		dev_err(isp_h3a->dev, "h3a: Invalid Saturation_limit: %d\n",
 		       user_cfg->saturation_limit);
 		return -EINVAL;
 	}
@@ -365,7 +365,7 @@ static int isph3a_aewb_set_params(struct isp_h3a_device *isp_h3a,
 	if (unlikely(user_cfg->win_height < MIN_WIN_H ||
 		     user_cfg->win_height > MAX_WIN_H ||
 		     user_cfg->win_height & 0x01)) {
-		printk(KERN_ERR "Invalid window height: %d\n",
+		dev_err(isp_h3a->dev, "h3a: Invalid window height: %d\n",
 		       user_cfg->win_height);
 		return -EINVAL;
 	}
@@ -378,7 +378,7 @@ static int isph3a_aewb_set_params(struct isp_h3a_device *isp_h3a,
 	if (unlikely(user_cfg->win_width < MIN_WIN_W ||
 		     user_cfg->win_width > MAX_WIN_W ||
 		     user_cfg->win_width & 0x01)) {
-		printk(KERN_ERR "Invalid window width: %d\n",
+		dev_err(isp_h3a->dev, "h3a: Invalid window width: %d\n",
 		       user_cfg->win_width);
 		return -EINVAL;
 	}
@@ -390,8 +390,9 @@ static int isph3a_aewb_set_params(struct isp_h3a_device *isp_h3a,
 
 	if (unlikely(user_cfg->ver_win_count < 1 ||
 		     user_cfg->ver_win_count > MAX_WINVC)) {
-		printk(KERN_ERR "Invalid vertical window count: %d\n",
-		       user_cfg->ver_win_count);
+		dev_err(isp_h3a->dev,
+			"h3a: Invalid vertical window count: %d\n",
+			user_cfg->ver_win_count);
 		return -EINVAL;
 	}
 	if (isp_h3a->aewb_config_local.ver_win_count !=
@@ -404,8 +405,9 @@ static int isph3a_aewb_set_params(struct isp_h3a_device *isp_h3a,
 
 	if (unlikely(user_cfg->hor_win_count < 1 ||
 		     user_cfg->hor_win_count > MAX_WINHC)) {
-		printk(KERN_ERR "Invalid horizontal window count: %d\n",
-		       user_cfg->hor_win_count);
+		dev_err(isp_h3a->dev,
+			"h3a: Invalid horizontal window count: %d\n",
+			user_cfg->hor_win_count);
 		return -EINVAL;
 	}
 	if (isp_h3a->aewb_config_local.hor_win_count !=
@@ -417,8 +419,9 @@ static int isph3a_aewb_set_params(struct isp_h3a_device *isp_h3a,
 	}
 
 	if (unlikely(user_cfg->ver_win_start > MAX_WINSTART)) {
-		printk(KERN_ERR "Invalid vertical window start: %d\n",
-		       user_cfg->ver_win_start);
+		dev_err(isp_h3a->dev,
+			"h3a: Invalid vertical window start: %d\n",
+			user_cfg->ver_win_start);
 		return -EINVAL;
 	}
 	if (isp_h3a->aewb_config_local.ver_win_start !=
@@ -430,8 +433,9 @@ static int isph3a_aewb_set_params(struct isp_h3a_device *isp_h3a,
 	}
 
 	if (unlikely(user_cfg->hor_win_start > MAX_WINSTART)) {
-		printk(KERN_ERR "Invalid horizontal window start: %d\n",
-		       user_cfg->hor_win_start);
+		dev_err(isp_h3a->dev,
+			"h3a: Invalid horizontal window start: %d\n",
+			user_cfg->hor_win_start);
 		return -EINVAL;
 	}
 	if (isp_h3a->aewb_config_local.hor_win_start !=
@@ -443,8 +447,9 @@ static int isph3a_aewb_set_params(struct isp_h3a_device *isp_h3a,
 	}
 
 	if (unlikely(user_cfg->blk_ver_win_start > MAX_WINSTART)) {
-		printk(KERN_ERR "Invalid black vertical window start: %d\n",
-		       user_cfg->blk_ver_win_start);
+		dev_err(isp_h3a->dev,
+			"h3a: Invalid black vertical window start: %d\n",
+			user_cfg->blk_ver_win_start);
 		return -EINVAL;
 	}
 	if (isp_h3a->aewb_config_local.blk_ver_win_start !=
@@ -459,7 +464,7 @@ static int isph3a_aewb_set_params(struct isp_h3a_device *isp_h3a,
 	if (unlikely(user_cfg->blk_win_height < MIN_WIN_H ||
 		     user_cfg->blk_win_height > MAX_WIN_H ||
 		     user_cfg->blk_win_height & 0x01)) {
-		printk(KERN_ERR "Invalid black window height: %d\n",
+		dev_err(isp_h3a->dev, "h3a: Invalid black window height: %d\n",
 		       user_cfg->blk_win_height);
 		return -EINVAL;
 	}
@@ -474,8 +479,9 @@ static int isph3a_aewb_set_params(struct isp_h3a_device *isp_h3a,
 	if (unlikely(user_cfg->subsample_ver_inc < MIN_SUB_INC ||
 		     user_cfg->subsample_ver_inc > MAX_SUB_INC ||
 		     user_cfg->subsample_ver_inc & 0x01)) {
-		printk(KERN_ERR "Invalid vertical subsample increment: %d\n",
-		       user_cfg->subsample_ver_inc);
+		dev_err(isp_h3a->dev,
+			"h3a: Invalid vertical subsample increment: %d\n",
+			user_cfg->subsample_ver_inc);
 		return -EINVAL;
 	}
 	if (isp_h3a->aewb_config_local.subsample_ver_inc !=
@@ -490,8 +496,9 @@ static int isph3a_aewb_set_params(struct isp_h3a_device *isp_h3a,
 	if (unlikely(user_cfg->subsample_hor_inc < MIN_SUB_INC ||
 		     user_cfg->subsample_hor_inc > MAX_SUB_INC ||
 		     user_cfg->subsample_hor_inc & 0x01)) {
-		printk(KERN_ERR "Invalid horizontal subsample increment: %d\n",
-		       user_cfg->subsample_hor_inc);
+		dev_err(isp_h3a->dev,
+			"h3a: Invalid horizontal subsample increment: %d\n",
+			user_cfg->subsample_hor_inc);
 		return -EINVAL;
 	}
 	if (isp_h3a->aewb_config_local.subsample_hor_inc !=
@@ -526,7 +533,8 @@ int isph3a_aewb_configure(struct isp_h3a_device *isp_h3a,
 	int win_count = 0;
 
 	if (NULL == aewbcfg) {
-		printk(KERN_ERR "Null argument in configuration. \n");
+		dev_err(isp_h3a->dev,
+			"h3a: Null argument in configuration. \n");
 		return -EINVAL;
 	}
 
@@ -536,14 +544,14 @@ int isph3a_aewb_configure(struct isp_h3a_device *isp_h3a,
 				       isph3a_aewb_isr, (void *)NULL,
 				       isp_h3a);
 		if (ret) {
-			printk(KERN_ERR "No callback for H3A\n");
+			dev_err(isp_h3a->dev, "h3a: No callback\n");
 			return ret;
 		}
 	}
 
 	ret = isph3a_aewb_set_params(isp_h3a, aewbcfg);
 	if (ret) {
-		printk(KERN_ERR "Invalid parameters! \n");
+		dev_err(isp_h3a->dev, "h3a: Invalid parameters! \n");
 		return ret;
 	}
 
@@ -587,8 +595,9 @@ int isph3a_aewb_configure(struct isp_h3a_device *isp_h3a,
 					&isp_h3a->buff[i].phy_addr,
 					GFP_KERNEL | GFP_DMA);
 			if (isp_h3a->buff[i].virt_addr == 0) {
-				printk(KERN_ERR "Can't acquire memory for "
-				       "buffer[%d]\n", i);
+				dev_err(isp_h3a->dev,
+					"h3a: Can't acquire memory for "
+					"buffer[%d]\n", i);
 				return -ENOMEM;
 			}
 			isp_h3a->buff[i].addr_align =
@@ -654,7 +663,7 @@ int isph3a_aewb_request_statistics(struct isp_h3a_device *isp_h3a,
 	wait_queue_t wqt;
 
 	if (!isp_h3a->aewb_config_local.aewb_enable) {
-		printk(KERN_ERR "H3A engine not enabled\n");
+		dev_err(isp_h3a->dev, "h3a: engine not enabled\n");
 		return -EINVAL;
 	}
 
@@ -690,7 +699,7 @@ int isph3a_aewb_request_statistics(struct isp_h3a_device *isp_h3a,
 	}
 
 	if (aewbdata->frame_number < 1) {
-		printk(KERN_ERR "Illeagal frame number "
+		dev_err(isp_h3a->dev, "h3a: Illeagal frame number "
 		       "requested (%d)\n",
 		       aewbdata->frame_number);
 		return -EINVAL;
@@ -716,8 +725,9 @@ int isph3a_aewb_request_statistics(struct isp_h3a_device *isp_h3a,
 	}
 
 	if (frame_diff > MAX_FUTURE_FRAMES) {
-		printk(KERN_ERR "Invalid frame requested, returning current"
-		       " frame stats\n");
+		dev_err(isp_h3a->dev,
+			"h3a: Invalid frame requested, returning current"
+			" frame stats\n");
 		aewbdata->frame_number = frame_cnt;
 	}
 	if (isp_h3a->camnotify) {
@@ -736,7 +746,7 @@ int isph3a_aewb_request_statistics(struct isp_h3a_device *isp_h3a,
 	ret = wait_event_interruptible(isp_h3a->stats_wait,
 				       isp_h3a->stats_done == 1);
 	if (ret < 0) {
-		printk(KERN_ERR "isph3a_aewb_request_statistics"
+		dev_err(isp_h3a->dev, "h3a: isph3a_aewb_request_statistics"
 		       " Error on wait event %d\n", ret);
 		aewbdata->h3a_aewb_statistics_buf = NULL;
 		return ret;
@@ -840,7 +850,7 @@ void isph3a_notify(struct isp_h3a_device *isp_h3a, int notify)
 {
 	isp_h3a->camnotify = notify;
 	if (isp_h3a->camnotify && isp_h3a->initialized) {
-		printk(KERN_DEBUG "Warning Camera Off \n");
+		dev_dbg(isp_h3a->dev, "h3a: Warning Camera Off \n");
 		isp_h3a->stats_req = 0;
 		isp_h3a->stats_done = 1;
 		wake_up_interruptible(&isp_h3a->stats_wait);

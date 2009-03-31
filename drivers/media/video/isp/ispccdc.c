@@ -151,8 +151,9 @@ int omap34xx_isp_ccdc_config(struct isp_ccdc_device *isp_ccdc,
 			isp_ccdc->fpc_table_add = kmalloc(64 + fpc_t.fpnum * 4,
 						GFP_KERNEL | GFP_DMA);
 			if (!isp_ccdc->fpc_table_add) {
-				printk(KERN_ERR "Cannot allocate memory for"
-				       " FPC table");
+				dev_err(isp_ccdc->dev,
+					"ccdc: Cannot allocate memory for"
+					" FPC table");
 				return -ENOMEM;
 			}
 			while (((unsigned long)isp_ccdc->fpc_table_add
@@ -216,7 +217,7 @@ int omap34xx_isp_ccdc_config(struct isp_ccdc_device *isp_ccdc,
 	return 0;
 
 copy_from_user_err:
-	printk(KERN_ERR "CCDC Config:Copy From User Error");
+	dev_err(isp_ccdc->dev, "ccdc: Config: copy from user error");
 	return -EINVAL ;
 }
 EXPORT_SYMBOL(omap34xx_isp_ccdc_config);
@@ -325,7 +326,8 @@ static int ispccdc_allocate_lsc(struct isp_ccdc_device *isp_ccdc,
 	isp_ccdc->lsc_gain_table = kmalloc(table_size, GFP_KERNEL | GFP_DMA);
 
 	if (!isp_ccdc->lsc_gain_table) {
-		printk(KERN_ERR "Cannot allocate memory for gain tables \n");
+		dev_err(isp_ccdc->dev,
+			"ccdc: Cannot allocate memory for gain tables\n");
 		return -ENOMEM;
 	}
 
@@ -333,7 +335,8 @@ static int ispccdc_allocate_lsc(struct isp_ccdc_device *isp_ccdc,
 			ispmmu_kmap(virt_to_phys(isp_ccdc->lsc_gain_table),
 				    table_size);
 	if (isp_ccdc->lsc_ispmmu_addr <= 0) {
-		printk(KERN_ERR "Cannot map memory for gain tables \n");
+		dev_err(isp_ccdc->dev,
+			"ccdc: Cannot map memory for gain tables\n");
 		kfree(isp_ccdc->lsc_gain_table);
 		return -ENOMEM;
 	}
