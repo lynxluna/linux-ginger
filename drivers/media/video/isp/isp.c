@@ -165,6 +165,12 @@ static struct isp_reg isp_reg_list[] = {
 	{0, ISP_TOK_TERM, 0}
 };
 
+void isp_flush(struct device *dev)
+{
+	isp_reg_writel(dev, 0, OMAP3_ISP_IOMEM_MAIN, ISP_REVISION);
+	isp_reg_readl(dev, OMAP3_ISP_IOMEM_MAIN, ISP_REVISION);
+}
+
 u32 isp_reg_readl(struct device *dev, enum isp_mem_resources isp_mmio_range,
 		  u32 reg_offset)
 {
@@ -958,6 +964,8 @@ out_ignore_buff:
 	}
 
 	spin_unlock_irqrestore(&isp->lock, irqflags);
+
+	isp_flush(dev);
 
 #if 1
 	{

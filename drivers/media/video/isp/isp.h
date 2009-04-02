@@ -357,6 +357,8 @@ struct isp_device {
 	struct iommu *iommu;
 };
 
+void isp_flush(struct device *dev);
+
 u32 isp_reg_readl(struct device *dev, enum isp_mem_resources isp_mmio_range,
 		  u32 reg_offset);
 
