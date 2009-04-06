@@ -1259,8 +1259,8 @@ void isppreview_config_rgb_blending(struct isp_prev_device *isp_prev,
 	isp_reg_writel(isp_prev->dev, val, OMAP3_ISP_IOMEM_PREV,
 		       ISPPRV_RGB_MAT5);
 
-	val = (rgb2rgb.offset[0] & 0x3ff) << ISPPRV_RGB_OFF1_MTX_OFFG_SHIFT;
-	val |= (rgb2rgb.offset[1] & 0x3ff) << ISPPRV_RGB_OFF1_MTX_OFFR_SHIFT;
+	val = (rgb2rgb.offset[0] & 0x3ff) << ISPPRV_RGB_OFF1_MTX_OFFR_SHIFT;
+	val |= (rgb2rgb.offset[1] & 0x3ff) << ISPPRV_RGB_OFF1_MTX_OFFG_SHIFT;
 	isp_reg_writel(isp_prev->dev, val, OMAP3_ISP_IOMEM_PREV,
 		       ISPPRV_RGB_OFF1);
 
@@ -1295,9 +1295,9 @@ void isppreview_config_rgb_to_ycbcr(struct isp_prev_device *isp_prev,
 	val |= (prev_csc.matrix[2][2] & 0x3ff) << ISPPRV_CSC2_BCR_SHIFT;
 	isp_reg_writel(isp_prev->dev, val, OMAP3_ISP_IOMEM_PREV, ISPPRV_CSC2);
 
-	val = (prev_csc.offset[0] & 0xff) << ISPPRV_CSC_OFFSET_CR_SHIFT;
+	val = (prev_csc.offset[0] & 0xff) << ISPPRV_CSC_OFFSET_Y_SHIFT;
 	val |= (prev_csc.offset[1] & 0xff) << ISPPRV_CSC_OFFSET_CB_SHIFT;
-	val |= (prev_csc.offset[2] & 0xff) << ISPPRV_CSC_OFFSET_Y_SHIFT;
+	val |= (prev_csc.offset[2] & 0xff) << ISPPRV_CSC_OFFSET_CR_SHIFT;
 	isp_reg_writel(isp_prev->dev, val, OMAP3_ISP_IOMEM_PREV,
 		       ISPPRV_CSC_OFFSET);
 }
