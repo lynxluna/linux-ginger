@@ -434,8 +434,8 @@ static int try_pix_parm(struct omap34xxcam_videodev *vdev,
 		rval = vidioc_int_enum_fmt_cap(vdev->vdev_sensor, &fmtd);
 		if (rval)
 			break;
-		dev_info(&vdev->vfd->dev, "trying fmt %8.8x (%d)\n",
-			 fmtd.pixelformat, fmtd_index);
+		dev_dbg(&vdev->vfd->dev, "trying fmt %8.8x (%d)\n",
+			fmtd.pixelformat, fmtd_index);
 		/*
 		 * Get supported resolutions.
 		 */
@@ -465,15 +465,15 @@ static int try_pix_parm(struct omap34xxcam_videodev *vdev,
 			if (rval)
 				return rval;
 
-			dev_info(&vdev->vfd->dev, "this w %d\th %d\tfmt %8.8x\t"
-				 "-> w %d\th %d\t fmt %8.8x"
-				 "\twanted w %d\th %d\t fmt %8.8x\n",
-				 pix_tmp_in.width, pix_tmp_in.height,
-				 pix_tmp_in.pixelformat,
-				 pix_tmp_out.width, pix_tmp_out.height,
-				 pix_tmp_out.pixelformat,
-				 wanted_pix_out->width, wanted_pix_out->height,
-				 wanted_pix_out->pixelformat);
+			dev_dbg(&vdev->vfd->dev, "this w %d\th %d\tfmt %8.8x\t"
+				"-> w %d\th %d\t fmt %8.8x"
+				"\twanted w %d\th %d\t fmt %8.8x\n",
+				pix_tmp_in.width, pix_tmp_in.height,
+				pix_tmp_in.pixelformat,
+				pix_tmp_out.width, pix_tmp_out.height,
+				pix_tmp_out.pixelformat,
+				wanted_pix_out->width, wanted_pix_out->height,
+				wanted_pix_out->pixelformat);
 
 #define IS_SMALLER_OR_EQUAL(pix1, pix2)				\
 			((pix1)->width + (pix1)->height		\
@@ -488,11 +488,11 @@ static int try_pix_parm(struct omap34xxcam_videodev *vdev,
 			 */
 			if (SIZE_DIFF(&pix_tmp_out, wanted_pix_out)
 			    > SIZE_DIFF(&best_pix_out, wanted_pix_out)) {
-				dev_info(&vdev->vfd->dev, "size diff bigger: "
-					 "w %d\th %d\tw %d\th %d\n",
-					 pix_tmp_out.width, pix_tmp_out.height,
-					 best_pix_out.width,
-					 best_pix_out.height);
+				dev_dbg(&vdev->vfd->dev, "size diff bigger: "
+					"w %d\th %d\tw %d\th %d\n",
+					pix_tmp_out.width, pix_tmp_out.height,
+					best_pix_out.width,
+					best_pix_out.height);
 				continue;
 			}
 
@@ -504,11 +504,11 @@ static int try_pix_parm(struct omap34xxcam_videodev *vdev,
 			    < SIZE_DIFF(&best_pix_out, wanted_pix_out)) {
 				/* Force renegotation of fps etc. */
 				best_ival->denominator = 0;
-				dev_info(&vdev->vfd->dev, "renegotiate: "
-					 "w %d\th %d\tw %d\th %d\n",
-					 pix_tmp_out.width, pix_tmp_out.height,
-					 best_pix_out.width,
-					 best_pix_out.height);
+				dev_dbg(&vdev->vfd->dev, "renegotiate: "
+					"w %d\th %d\tw %d\th %d\n",
+					pix_tmp_out.width, pix_tmp_out.height,
+					best_pix_out.width,
+					best_pix_out.height);
 			}
 
 			for (ival_index = 0; ; ival_index++) {
@@ -526,9 +526,9 @@ static int try_pix_parm(struct omap34xxcam_videodev *vdev,
 				if (rval)
 					break;
 
-				dev_info(&vdev->vfd->dev, "fps %d\n",
-					 frmi.discrete.denominator
-					 / frmi.discrete.numerator);
+				dev_dbg(&vdev->vfd->dev, "fps %d\n",
+					frmi.discrete.denominator
+					/ frmi.discrete.numerator);
 
 				if (best_ival->denominator == 0)
 					goto do_it_now;
@@ -544,11 +544,11 @@ static int try_pix_parm(struct omap34xxcam_videodev *vdev,
 				/* Select mode with closest fps. */
 				if (FPS_ABS_DIFF(fps, frmi.discrete)
 				    < FPS_ABS_DIFF(fps, *best_ival)) {
-					dev_info(&vdev->vfd->dev, "closer fps: "
-						 "fps %d\t fps %d\n",
-						 FPS_ABS_DIFF(fps,
+					dev_dbg(&vdev->vfd->dev, "closer fps: "
+						"fps %d\t fps %d\n",
+						FPS_ABS_DIFF(fps,
 							      frmi.discrete),
-						 FPS_ABS_DIFF(fps, *best_ival));
+						FPS_ABS_DIFF(fps, *best_ival));
 					goto do_it_now;
 				}
 
@@ -560,16 +560,16 @@ static int try_pix_parm(struct omap34xxcam_videodev *vdev,
 				    > best_pix_in->width + best_pix_in->height
 				    && FPS_ABS_DIFF(fps, frmi.discrete)
 				    <= FPS_ABS_DIFF(fps, *best_ival)) {
-					dev_info(&vdev->vfd->dev, "bigger res, "
-						 "same fps: "
-						 "w %d\th %d\tw %d\th %d\n",
-						 frmi.width, frmi.height,
-						 best_pix_in->width,
-						 best_pix_in->height);
+					dev_dbg(&vdev->vfd->dev, "bigger res, "
+						"same fps: "
+						"w %d\th %d\tw %d\th %d\n",
+						frmi.width, frmi.height,
+						best_pix_in->width,
+						best_pix_in->height);
 					goto do_it_now;
 				}
 
-				dev_info(&vdev->vfd->dev, "falling through\n");
+				dev_dbg(&vdev->vfd->dev, "falling through\n");
 
 				continue;
 
@@ -580,14 +580,14 @@ do_it_now:
 				best_pix_in->height = frmi.height;
 				best_pix_in->pixelformat = frmi.pixel_format;
 
-				dev_info(&vdev->vfd->dev,
-					 "best_pix_in: w %d\th %d\tfmt %8.8x"
-					 "\tival %d/%d\n",
-					 best_pix_in->width,
-					 best_pix_in->height,
-					 best_pix_in->pixelformat,
-					 best_ival->numerator,
-					 best_ival->denominator);
+				dev_dbg(&vdev->vfd->dev,
+					"best_pix_in: w %d\th %d\tfmt %8.8x"
+					"\tival %d/%d\n",
+					best_pix_in->width,
+					best_pix_in->height,
+					best_pix_in->pixelformat,
+					best_ival->numerator,
+					best_ival->denominator);
 			}
 		}
 	}
@@ -597,10 +597,10 @@ do_it_now:
 
 	*wanted_pix_out = best_pix_out;
 
-	dev_info(&vdev->vfd->dev, "w %d, h %d, fmt %8.8x -> w %d, h %d\n",
-		 best_pix_in->width, best_pix_in->height,
-		 best_pix_in->pixelformat,
-		 best_pix_out.width, best_pix_out.height);
+	dev_dbg(&vdev->vfd->dev, "w %d, h %d, fmt %8.8x -> w %d, h %d\n",
+		best_pix_in->width, best_pix_in->height,
+		best_pix_in->pixelformat,
+		best_pix_out.width, best_pix_out.height);
 
 	return isp_try_fmt_cap(isp, best_pix_in, wanted_pix_out);
 }
@@ -1407,9 +1407,9 @@ static long vidioc_default(struct file *file, void *fh, int cmd, void *arg)
 
 			data = (struct isph3a_aewb_data *) arg;
 			if (data->update & SET_EXPOSURE) {
-				dev_info(&vdev->vfd->dev, "using "
-					 "VIDIOC_PRIVATE_ISP_AEWB_REQ to set "
-					 "exposure is deprecated!\n");
+				dev_dbg(&vdev->vfd->dev, "using "
+					"VIDIOC_PRIVATE_ISP_AEWB_REQ to set "
+					"exposure is deprecated!\n");
 				vc.id = V4L2_CID_EXPOSURE;
 				vc.value = data->shutter;
 				mutex_lock(&vdev->mutex);
@@ -1420,9 +1420,9 @@ static long vidioc_default(struct file *file, void *fh, int cmd, void *arg)
 					goto out;
 			}
 			if (data->update & SET_ANALOG_GAIN) {
-				dev_info(&vdev->vfd->dev, "using "
-					 "VIDIOC_PRIVATE_ISP_AEWB_REQ to set "
-					 "gain is deprecated!\n");
+				dev_dbg(&vdev->vfd->dev, "using "
+					"VIDIOC_PRIVATE_ISP_AEWB_REQ to set "
+					"gain is deprecated!\n");
 				vc.id = V4L2_CID_GAIN;
 				vc.value = data->gain;
 				mutex_lock(&vdev->mutex);
@@ -1445,9 +1445,9 @@ static long vidioc_default(struct file *file, void *fh, int cmd, void *arg)
 			}
 			data = (struct isp_af_data *) arg;
 			if (data->update & LENS_DESIRED_POSITION) {
-				dev_info(&vdev->vfd->dev, "using "
-					 "VIDIOC_PRIVATE_ISP_AF_REQ to set "
-					 "lens position is deprecated!\n");
+				dev_dbg(&vdev->vfd->dev, "using "
+					"VIDIOC_PRIVATE_ISP_AF_REQ to set "
+					"lens position is deprecated!\n");
 				vc.id = V4L2_CID_FOCUS_ABSOLUTE;
 				vc.value = data->desired_lens_direction;
 				mutex_lock(&vdev->mutex);
@@ -1725,7 +1725,7 @@ static void omap34xxcam_vfd_name_update(struct omap34xxcam_videodev *vdev)
 			continue;
 		strlcat(vfd->name, vdev->slave[i]->name, sizeof(vfd->name));
 	}
-	dev_info(&vdev->vfd->dev, "video%d is now %s\n", vfd->num, vfd->name);
+	dev_dbg(&vdev->vfd->dev, "video%d is now %s\n", vfd->num, vfd->name);
 }
 
 /**
