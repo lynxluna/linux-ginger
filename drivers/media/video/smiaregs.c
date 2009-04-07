@@ -243,7 +243,8 @@ int smia_reglist_import(struct smia_meta_reglist *meta)
 
 		list = meta->reglist[nlists].ptr;
 
-		printk(KERN_INFO "%s: type %d\tw %d\th %d\tfmt %x\tival %d/%d\tptr %p\n",
+		printk(KERN_DEBUG
+		       "%s: type %d\tw %d\th %d\tfmt %x\tival %d/%d\tptr %p\n",
 		       __func__,
 		       list->type,
 		       list->mode.window_width, list->mode.window_height,
