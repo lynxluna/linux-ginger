@@ -27,7 +27,6 @@
 #include "isp.h"
 #include "ispreg.h"
 #include "ispccdc.h"
-#include "ispmmu.h"
 
 #define LSC_TABLE_INIT_SIZE	50052
 
@@ -87,6 +86,8 @@ static struct isp_reg ispccdc_reg_list[] = {
 int omap34xx_isp_ccdc_config(struct isp_ccdc_device *isp_ccdc,
 			     void *userspace_add)
 {
+	struct isp_device *isp =
+		container_of(isp_ccdc, struct isp_device, isp_ccdc);
 	struct ispccdc_bclamp bclamp_t;
 	struct ispccdc_blcomp blcomp_t;
 	struct ispccdc_fpc fpc_t;
@@ -161,9 +162,12 @@ int omap34xx_isp_ccdc_config(struct isp_ccdc_device *isp_ccdc,
 			       != (unsigned long)isp_ccdc->fpc_table_add)
 				isp_ccdc->fpc_table_add++;
 
-			isp_ccdc->fpc_table_add_m = ispmmu_kmap(virt_to_phys
-						      (isp_ccdc->fpc_table_add),
-						      fpc_t.fpnum * 4);
+			isp_ccdc->fpc_table_add_m = iommu_kmap(
+				isp->iommu,
+				0,
+				virt_to_phys(isp_ccdc->fpc_table_add),
+				fpc_t.fpnum * 4,
+				IOMMU_FLAG);
 
 			if (copy_from_user(isp_ccdc->fpc_table_add,
 					   (u32 *)fpc_t.fpcaddr,
@@ -292,6 +296,9 @@ EXPORT_SYMBOL(ispccdc_free);
  **/
 static int ispccdc_free_lsc(struct isp_ccdc_device *isp_ccdc)
 {
+	struct isp_device *isp =
+		container_of(isp_ccdc, struct isp_device, isp_ccdc);
+
 	if (!isp_ccdc->lsc_ispmmu_addr)
 		return 0;
 
@@ -299,7 +306,7 @@ static int ispccdc_free_lsc(struct isp_ccdc_device *isp_ccdc)
 	isp_ccdc->lsc_initialized = 0;
 	isp_reg_writel(isp_ccdc->dev, 0, OMAP3_ISP_IOMEM_CCDC,
 		       ISPCCDC_LSC_TABLE_BASE);
-	ispmmu_kunmap(isp_ccdc->lsc_ispmmu_addr);
+	iommu_kunmap(isp->iommu, isp_ccdc->lsc_ispmmu_addr);
 	kfree(isp_ccdc->lsc_gain_table);
 	return 0;
 }
@@ -314,6 +321,9 @@ static int ispccdc_free_lsc(struct isp_ccdc_device *isp_ccdc)
 static int ispccdc_allocate_lsc(struct isp_ccdc_device *isp_ccdc,
 				u32 table_size)
 {
+	struct isp_device *isp =
+		container_of(isp_ccdc, struct isp_device, isp_ccdc);
+
 	if (table_size == 0)
 		return -EINVAL;
 
@@ -332,8 +342,11 @@ static int ispccdc_allocate_lsc(struct isp_ccdc_device *isp_ccdc,
 	}
 
 	isp_ccdc->lsc_ispmmu_addr =
-			ispmmu_kmap(virt_to_phys(isp_ccdc->lsc_gain_table),
-				    table_size);
+		iommu_kmap(isp->iommu,
+			   0,
+			   virt_to_phys(isp_ccdc->lsc_gain_table),
+			   table_size,
+			   IOMMU_FLAG);
 	if (isp_ccdc->lsc_ispmmu_addr <= 0) {
 		dev_err(isp_ccdc->dev,
 			"ccdc: Cannot map memory for gain tables\n");
@@ -1678,7 +1691,7 @@ void isp_ccdc_cleanup(struct device *dev)
 	}
 
 	if (isp_ccdc->fpc_table_add_m != 0) {
-		ispmmu_kunmap(isp_ccdc->fpc_table_add_m);
+		iommu_kunmap(isp->iommu, isp_ccdc->fpc_table_add_m);
 		kfree(isp_ccdc->fpc_table_add);
 	}
 }

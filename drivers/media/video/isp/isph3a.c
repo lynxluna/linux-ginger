@@ -26,7 +26,6 @@
 #include "isp.h"
 #include "ispreg.h"
 #include "isph3a.h"
-#include "ispmmu.h"
 #include "isppreview.h"
 
 /* Structure for saving/restoring h3a module registers */
@@ -528,6 +527,8 @@ static int isph3a_aewb_set_params(struct isp_h3a_device *isp_h3a,
 int isph3a_aewb_configure(struct isp_h3a_device *isp_h3a,
 			  struct isph3a_aewb_config *aewbcfg)
 {
+	struct isp_device *isp =
+		container_of(isp_h3a, struct isp_device, isp_h3a);
 	int ret = 0;
 	int i;
 	int win_count = 0;
@@ -570,7 +571,7 @@ int isph3a_aewb_configure(struct isp_h3a_device *isp_h3a,
 			       "Freeing/unmapping current stat busffs\n");
 		isph3a_aewb_enable(isp_h3a, 0);
 		for (i = 0; i < H3A_MAX_BUFF; i++) {
-			ispmmu_kunmap(isp_h3a->buff[i].ispmmu_addr);
+			iommu_kunmap(isp->iommu, isp_h3a->buff[i].ispmmu_addr);
 			dma_free_coherent(
 				NULL,
 				isp_h3a->min_buf_size,
@@ -606,8 +607,11 @@ int isph3a_aewb_configure(struct isp_h3a_device *isp_h3a,
 			       isp_h3a->buff[i].addr_align)
 				isp_h3a->buff[i].addr_align++;
 			isp_h3a->buff[i].ispmmu_addr =
-				ispmmu_kmap(isp_h3a->buff[i].phy_addr,
-					    isp_h3a->min_buf_size);
+				iommu_kmap(isp->iommu,
+					   0,
+					   isp_h3a->buff[i].phy_addr,
+					   isp_h3a->min_buf_size,
+					   IOMMU_FLAG);
 		}
 		isph3a_aewb_unlock_buffers(isp_h3a);
 		isph3a_aewb_link_buffers(isp_h3a);
@@ -801,7 +805,7 @@ void isph3a_aewb_cleanup(struct device *dev)
 		if (!isp_h3a->buff[i].phy_addr)
 			continue;
 
-		ispmmu_kunmap(isp_h3a->buff[i].ispmmu_addr);
+		iommu_kunmap(isp->iommu, isp_h3a->buff[i].ispmmu_addr);
 		dma_free_coherent(NULL,
 				  isp_h3a->min_buf_size,
 				  (void *)isp_h3a->buff[i].virt_addr,
