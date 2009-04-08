@@ -335,6 +335,12 @@ static int et8ek8_configure(struct v4l2_int_device *s)
 	if (rval)
 		goto fail;
 
+	/* Enable streaming */
+	rval = smia_i2c_write_reg(sensor->i2c_client,
+				  SMIA_REG_8BIT, 0x1252, 0xB0);
+	if (rval)
+		goto fail;
+
 	return rval;
 
 fail:
