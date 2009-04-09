@@ -72,7 +72,7 @@
 #define VAUX4_2V8		0x09
 
 /* Earlier rx51 builds require VAUX3. */
-#define NEEDS_VAUX3		(system_rev >= 100 && system_rev < 900)
+#define NEEDS_VAUX3		(system_rev >= 0x100 && system_rev < 0x900)
 
 static struct rx51_camera {
 	int okay;
