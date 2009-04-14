@@ -260,20 +260,12 @@ out:
 
 }
 
-static int et8ek8_configure(struct v4l2_int_device *s)
+static int et8ek8_update_controls(struct v4l2_int_device *s)
 {
 	struct et8ek8_sensor *sensor = s->priv;
-	int rval, val, i;
+	int i;
 	unsigned int rt;	/* Row time in us */
 	unsigned int clock;	/* Pixel clock in Hz>>2 fixed point */
-
-	rval = smia_i2c_reglist_find_write(sensor->i2c_client,
-					   sensor->meta_reglist,
-					   SMIA_REGLIST_POWERON);
-	if (rval)
-		return rval;
-
-	/* Update V4L2 exposure controls to the current mode */
 
 	if (sensor->current_reglist->mode.pixel_clock <= 0 ||
 	    sensor->current_reglist->mode.width <= 0) {
@@ -299,11 +291,28 @@ static int et8ek8_configure(struct v4l2_int_device *s)
 	/* Adjust V4L2 control values and write them to the sensor */
 
 	for (i=0; i<ARRAY_SIZE(sensor->controls); i++) {
-		rval = sensor->controls[i].set(sensor,
+		int rval = sensor->controls[i].set(sensor,
 			sensor->controls[i].value);
 		if (rval)
-			goto fail;
+			return rval;
 	}
+	return 0;
+}
+
+static int et8ek8_configure(struct v4l2_int_device *s)
+{
+	struct et8ek8_sensor *sensor = s->priv;
+	int val, rval;
+
+	rval = smia_i2c_reglist_find_write(sensor->i2c_client,
+					   sensor->meta_reglist,
+					   SMIA_REGLIST_POWERON);
+	if (rval)
+		goto fail;
+
+	rval = et8ek8_update_controls(s);
+	if (rval)
+		goto fail;
 
 #ifdef USE_CRC
 	rval = smia_i2c_read_reg(sensor->i2c_client,
@@ -331,7 +340,6 @@ static int et8ek8_configure(struct v4l2_int_device *s)
 fail:
 	dev_err(&sensor->i2c_client->dev, "sensor configuration failed\n");
 	return rval;
-
 }
 
 static int et8ek8_setup_if(struct v4l2_int_device *s)
@@ -542,7 +550,7 @@ static int et8ek8_ioctl_s_fmt_cap(struct v4l2_int_device *s,
 
 	sensor->current_reglist = reglist;
 
-	return 0;
+	return et8ek8_update_controls(s);
 }
 
 static int et8ek8_ioctl_g_parm(struct v4l2_int_device *s,
@@ -577,7 +585,7 @@ static int et8ek8_ioctl_s_parm(struct v4l2_int_device *s,
 
 	sensor->current_reglist = reglist;
 
-	return 0;
+	return et8ek8_update_controls(s);
 }
 
 static int et8ek8_g_priv_mem(struct v4l2_int_device *s)
@@ -724,6 +732,12 @@ out_release:
 	return rval;
 }
 
+/*
+ * omap34xxcam will enable sensor power for a while for
+ * sensor detection before user space has a chance to
+ * issue any ioctl calls. At this first power enable,
+ * the driver also initializes itself for usage.
+ */
 static int et8ek8_ioctl_s_power(struct v4l2_int_device *s,
 				enum v4l2_power state)
 {
