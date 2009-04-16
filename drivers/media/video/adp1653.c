@@ -424,18 +424,6 @@ static int adp1653_ioctl_g_priv(struct v4l2_int_device *s, void *priv)
 	return flash->platform_data->g_priv(s, priv);
 }
 
-static int adp1653_ioctl_enum_slaves(struct v4l2_int_device *s,
-			     struct v4l2_slave_info *si)
-{
-/* 	struct adp1653_flash *flash = s->priv; */
-
-	strlcpy(si->driver, ADP1653_NAME, sizeof(si->driver));
-	strlcpy(si->bus_info, "NULL", sizeof(si->bus_info));
-	snprintf(si->version, sizeof(si->version), "%x", 0);
-
-	return 0;
-}
-
 static struct v4l2_int_ioctl_desc adp1653_ioctl_desc[] = {
 	{ vidioc_int_queryctrl_num,
 	  (v4l2_int_ioctl_func *)adp1653_ioctl_queryctrl },
@@ -447,8 +435,6 @@ static struct v4l2_int_ioctl_desc adp1653_ioctl_desc[] = {
 	  (v4l2_int_ioctl_func *)adp1653_ioctl_s_power },
 	{ vidioc_int_g_priv_num,
 	  (v4l2_int_ioctl_func *)adp1653_ioctl_g_priv },
-	{ vidioc_int_enum_slaves_num,
-	  (v4l2_int_ioctl_func *)adp1653_ioctl_enum_slaves },
 };
 
 static struct v4l2_int_slave adp1653_slave = {
