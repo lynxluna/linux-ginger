@@ -794,18 +794,6 @@ static int et8ek8_ioctl_enum_frameintervals(struct v4l2_int_device *s,
 	return smia_reglist_enum_frameintervals(sensor->meta_reglist, frm);
 }
 
-static int et8ek8_ioctl_enum_slaves(struct v4l2_int_device *s,
-				    struct v4l2_slave_info *si)
-{
-	struct et8ek8_sensor *sensor = s->priv;
-
-	strlcpy(si->driver, ET8EK8_NAME, sizeof(si->driver));
-	strlcpy(si->bus_info, "ccp2", sizeof(si->bus_info));
-	snprintf(si->version, sizeof(si->version), "%x", sensor->version);
-
-	return 0;
-}
-
 static ssize_t
 et8ek8_priv_mem_read(struct device *dev, struct device_attribute *attr,
 		     char *buf)
@@ -853,8 +841,6 @@ static struct v4l2_int_ioctl_desc et8ek8_ioctl_desc[] = {
 	  (v4l2_int_ioctl_func *)et8ek8_ioctl_enum_framesizes },
 	{ vidioc_int_enum_frameintervals_num,
 	  (v4l2_int_ioctl_func *)et8ek8_ioctl_enum_frameintervals },
-	{ vidioc_int_enum_slaves_num,
-	  (v4l2_int_ioctl_func *)et8ek8_ioctl_enum_slaves },
 };
 
 static struct v4l2_int_slave et8ek8_slave = {
