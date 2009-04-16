@@ -1181,7 +1181,7 @@ void isp_stop(struct device *dev)
 	int reset;
 
 	isp_disable_interrupts(dev);
-	synchronize_irq(((struct isp *)dev_get_drvdata(dev))->irq_num);
+	synchronize_irq(((struct isp_device *)dev_get_drvdata(dev))->irq_num);
 	reset = isp_stop_modules(dev);
 	if (!reset)
 		return;
