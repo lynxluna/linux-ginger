@@ -440,7 +440,7 @@ err_copy_from_user:
 void isppreview_config_shadow_registers(struct isp_prev_device *isp_prev)
 {
 	u8 current_brightness_contrast;
-	int ctr, prv_disabled;
+	int ctr;
 
 	isppreview_query_brightness(isp_prev, &current_brightness_contrast);
 	if (current_brightness_contrast !=
@@ -475,11 +475,6 @@ void isppreview_config_shadow_registers(struct isp_prev_device *isp_prev)
 		wmb();
 		isppreview_config_rgb_to_ycbcr(isp_prev,
 					       isp_prev->params->rgb2ycbcr);
-	}
-	if (isp_prev->gg_update || isp_prev->rg_update
-	    || isp_prev->bg_update || isp_prev->nf_update) {
-		isppreview_enable(isp_prev, 0);
-		prv_disabled = 1;
 	}
 
 	if (isp_prev->gg_update) {
@@ -538,11 +533,6 @@ void isppreview_config_shadow_registers(struct isp_prev_device *isp_prev)
 
 	if (isp_prev->nf_update && ~isp_prev->nf_enable)
 		isppreview_enable_noisefilter(isp_prev, 0);
-
-	if (prv_disabled) {
-		isppreview_enable(isp_prev, 1);
-		prv_disabled = 0;
-	}
 }
 EXPORT_SYMBOL_GPL(isppreview_config_shadow_registers);
 
@@ -621,7 +611,7 @@ int isppreview_config_datapath(struct isp_prev_device *isp_prev,
 	switch (input) {
 	case PRV_RAW_CCDC:
 		pcr &= ~ISPPRV_PCR_SOURCE;
-		pcr &= ~ISPPRV_PCR_ONESHOT;
+		pcr |= ISPPRV_PCR_ONESHOT;
 		isp_prev->prev_inpfmt = PRV_RAW_CCDC;
 		break;
 	case PRV_RAW_MEM:
