@@ -249,7 +249,6 @@ struct isptables_update {
  * This structure is used to store the OMAP ISP Preview module Information.
  */
 struct isp_prev_device {
-	int pm_state;
 	u8 prev_inuse;
 	u32 prevout_w;
 	u32 prevout_h;
@@ -407,10 +406,6 @@ int isppreview_config_darklineoffset(struct isp_prev_device *isp_prev,
 int isppreview_set_darkaddr(struct isp_prev_device *isp_prev, u32 addr);
 
 void isppreview_enable(struct isp_prev_device *isp_prev, int enable);
-
-void isppreview_suspend(struct isp_prev_device *isp_prev);
-
-void isppreview_resume(struct isp_prev_device *isp_prev);
 
 int isppreview_busy(struct isp_prev_device *isp_prev);
 
