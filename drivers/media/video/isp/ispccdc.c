@@ -168,6 +168,8 @@ int omap34xx_isp_ccdc_config(struct isp_ccdc_device *isp_ccdc,
 				virt_to_phys(isp_ccdc->fpc_table_add),
 				fpc_t.fpnum * 4,
 				IOMMU_FLAG);
+			/* FIXME: Correct unwinding */
+			BUG_ON(IS_ERR_VALUE(isp_ccdc->fpc_table_add_m));
 
 			if (copy_from_user(isp_ccdc->fpc_table_add,
 					   (u32 *)fpc_t.fpcaddr,
@@ -347,7 +349,7 @@ static int ispccdc_allocate_lsc(struct isp_ccdc_device *isp_ccdc,
 			   virt_to_phys(isp_ccdc->lsc_gain_table),
 			   table_size,
 			   IOMMU_FLAG);
-	if (isp_ccdc->lsc_ispmmu_addr <= 0) {
+	if (IS_ERR_VALUE(isp_ccdc->lsc_ispmmu_addr)) {
 		dev_err(isp_ccdc->dev,
 			"ccdc: Cannot map memory for gain tables\n");
 		kfree(isp_ccdc->lsc_gain_table);
