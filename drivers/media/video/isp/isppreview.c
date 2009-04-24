@@ -245,13 +245,31 @@ int omap34xx_isp_preview_config(struct isp_prev_device *isp_prev,
 
 	if (ISP_ABS_PREV_CFA & preview_struct->flag) {
 		if (ISP_ABS_PREV_CFA & preview_struct->update) {
+
+			u32 *table;
+
+			table = kmalloc(ISPPRV_CFA_TBL_SIZE *
+					sizeof(*table), GFP_KERNEL);
+			if (!table)
+				return -ENOMEM;
+
 			if (copy_from_user(&prev_cfa_t,
 					   (struct ispprev_cfa *)
 					   preview_struct->prev_cfa,
 					   sizeof(struct ispprev_cfa)))
 				goto err_copy_from_user;
 
-			isppreview_config_cfa(isp_prev, prev_cfa_t);
+			if (copy_from_user(table, prev_cfa_t.cfa_table,
+				(ISPPRV_CFA_TBL_SIZE * sizeof(*table)))) {
+
+				kfree(table);
+				goto err_copy_from_user;
+			}
+
+			prev_cfa_t.cfa_table = table;
+			isppreview_config_cfa(isp_prev, &prev_cfa_t);
+			kfree(table);
+
 		}
 		isppreview_enable_cfa(isp_prev, 1);
 		isp_prev->params->features |= PREV_CFA;
@@ -658,7 +676,7 @@ int isppreview_config_datapath(struct isp_prev_device *isp_prev,
 	isppreview_config_ycpos(isp_prev, params->pix_fmt);
 
 	if (params->cfa.cfa_table != NULL)
-		isppreview_config_cfa(isp_prev, params->cfa);
+		isppreview_config_cfa(isp_prev, &params->cfa);
 	if (params->csup.hypf_en == 1)
 		isppreview_config_chroma_suppression(isp_prev, params->csup);
 	if (params->ytable != NULL)
@@ -926,25 +944,25 @@ EXPORT_SYMBOL_GPL(isppreview_config_dcor);
  *            in the image, vertical and horizontal gradient threshold.
  **/
 void isppreview_config_cfa(struct isp_prev_device *isp_prev,
-			   struct ispprev_cfa prev_cfa)
+			   struct ispprev_cfa *prev_cfa)
 {
 	int i = 0;
 
-	isp_prev->cfafmt = prev_cfa.cfafmt;
+	isp_prev->cfafmt = prev_cfa->cfafmt;
 
 	isp_reg_or(isp_prev->dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
-		   (prev_cfa.cfafmt << ISPPRV_PCR_CFAFMT_SHIFT));
+		   (prev_cfa->cfafmt << ISPPRV_PCR_CFAFMT_SHIFT));
 
 	isp_reg_writel(isp_prev->dev,
-		(prev_cfa.cfa_gradthrs_vert << ISPPRV_CFA_GRADTH_VER_SHIFT) |
-		(prev_cfa.cfa_gradthrs_horz << ISPPRV_CFA_GRADTH_HOR_SHIFT),
+		(prev_cfa->cfa_gradthrs_vert << ISPPRV_CFA_GRADTH_VER_SHIFT) |
+		(prev_cfa->cfa_gradthrs_horz << ISPPRV_CFA_GRADTH_HOR_SHIFT),
 		OMAP3_ISP_IOMEM_PREV, ISPPRV_CFA);
 
 	isp_reg_writel(isp_prev->dev, ISPPRV_CFA_TABLE_ADDR,
 		       OMAP3_ISP_IOMEM_PREV, ISPPRV_SET_TBL_ADDR);
 
 	for (i = 0; i < ISPPRV_CFA_TBL_SIZE; i++) {
-		isp_reg_writel(isp_prev->dev, prev_cfa.cfa_table[i],
+		isp_reg_writel(isp_prev->dev, prev_cfa->cfa_table[i],
 			       OMAP3_ISP_IOMEM_PREV, ISPPRV_SET_TBL_DATA);
 	}
 }

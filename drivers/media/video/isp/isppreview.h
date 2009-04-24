@@ -327,7 +327,7 @@ void isppreview_config_dcor(struct isp_prev_device *isp_prev,
 
 
 void isppreview_config_cfa(struct isp_prev_device *isp_prev,
-			   struct ispprev_cfa);
+			   struct ispprev_cfa *cfa);
 
 void isppreview_config_gammacorrn(struct isp_prev_device *isp_prev,
 				  struct ispprev_gtable);
