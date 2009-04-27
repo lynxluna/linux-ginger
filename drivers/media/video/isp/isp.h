@@ -133,6 +133,12 @@ enum isp_callback_type {
 	CBK_END,
 };
 
+enum isp_running {
+	ISP_STOPPED,
+	ISP_RUNNING,
+	ISP_STOPPING,
+};
+
 /**
  * struct isp_reg - Structure for ISP register values.
  * @reg: 32-bit Register address.
@@ -278,7 +284,7 @@ struct isp_irq {
  */
 struct isp_module {
 	u32 interrupts;
-	int enable;
+	enum isp_running running;
 	unsigned int isp_pipeline;
 	struct v4l2_pix_format pix;
 	unsigned int ccdc_input_width;

@@ -340,8 +340,6 @@ static void isp_enable_interrupts(struct device *dev, int is_raw)
 {
 	struct isp_device *isp = dev_get_drvdata(dev);
 
-	isp->module.enable = 1;
-
 	isp_reg_writel(dev, -1, OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0STATUS);
 	isp_reg_writel(dev,
 		       IRQ0ENABLE_CCDC_LSC_PREF_ERR_IRQ
@@ -361,10 +359,6 @@ static void isp_enable_interrupts(struct device *dev, int is_raw)
 
 static void isp_disable_interrupts(struct device *dev)
 {
-	struct isp_device *isp = dev_get_drvdata(dev);
-
-	isp->module.enable = 0;
-
 	isp_reg_writel(dev, 0, OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE);
 }
 
@@ -399,7 +393,7 @@ int isp_set_callback(struct device *dev, enum isp_callback_type type,
 	switch (type) {
 	case CBK_H3A_AWB_DONE:
 		isp->module.interrupts |= IRQ0ENABLE_H3A_AWB_DONE_IRQ;
-		if (!isp->module.enable)
+		if (isp->module.running != ISP_RUNNING)
 			break;
 		isp_reg_writel(dev, IRQ0ENABLE_H3A_AWB_DONE_IRQ,
 			       OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0STATUS);
@@ -408,7 +402,7 @@ int isp_set_callback(struct device *dev, enum isp_callback_type type,
 		break;
 	case CBK_H3A_AF_DONE:
 		isp->module.interrupts |= IRQ0ENABLE_H3A_AF_DONE_IRQ;
-		if (!isp->module.enable)
+		if (isp->module.running != ISP_RUNNING)
 			break;
 		isp_reg_writel(dev, IRQ0ENABLE_H3A_AF_DONE_IRQ,
 			       OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0STATUS);
@@ -417,7 +411,7 @@ int isp_set_callback(struct device *dev, enum isp_callback_type type,
 		break;
 	case CBK_HIST_DONE:
 		isp->module.interrupts |= IRQ0ENABLE_HIST_DONE_IRQ;
-		if (!isp->module.enable)
+		if (isp->module.running != ISP_RUNNING)
 			break;
 		isp_reg_writel(dev, IRQ0ENABLE_HIST_DONE_IRQ,
 			       OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0STATUS);
@@ -459,21 +453,21 @@ int isp_unset_callback(struct device *dev, enum isp_callback_type type)
 	switch (type) {
 	case CBK_H3A_AWB_DONE:
 		isp->module.interrupts &= ~IRQ0ENABLE_H3A_AWB_DONE_IRQ;
-		if (!isp->module.enable)
+		if (isp->module.running != ISP_RUNNING)
 			break;
 		isp_reg_and(dev, OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE,
 			    ~IRQ0ENABLE_H3A_AWB_DONE_IRQ);
 		break;
 	case CBK_H3A_AF_DONE:
 		isp->module.interrupts &= ~IRQ0ENABLE_H3A_AF_DONE_IRQ;
-		if (!isp->module.enable)
+		if (isp->module.running != ISP_RUNNING)
 			break;
 		isp_reg_and(dev, OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE,
 			    ~IRQ0ENABLE_H3A_AF_DONE_IRQ);
 		break;
 	case CBK_HIST_DONE:
 		isp->module.interrupts &= ~IRQ0ENABLE_HIST_DONE_IRQ;
-		if (!isp->module.enable)
+		if (isp->module.running != ISP_RUNNING)
 			break;
 		isp_reg_and(dev, OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE,
 			    ~IRQ0ENABLE_HIST_DONE_IRQ);
@@ -831,11 +825,16 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *_pdev)
 	unsigned long irqflags = 0;
 	int wait_hs_vs = 0;
 
-	if (!isp->module.enable)
+	if (isp->module.running == ISP_STOPPED) {
+		dev_err(dev, "ouch %8.8x!\n",isp_reg_readl(dev, OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0STATUS));
 		return IRQ_NONE;
+	}
 
 	irqstatus = isp_reg_readl(dev, OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0STATUS);
 	isp_reg_writel(dev, irqstatus, OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0STATUS);
+
+	if (isp->module.running == ISP_STOPPING)
+		return IRQ_HANDLED;
 
 	spin_lock_irqsave(&bufs->lock, flags);
 	wait_hs_vs = bufs->wait_hs_vs;
@@ -1080,7 +1079,7 @@ void isp_start(struct device *dev)
 {
 	struct isp_device *isp = dev_get_drvdata(dev);
 
-	isp->module.enable = 1;
+	isp->module.running = ISP_RUNNING;
 
 	return;
 }
@@ -1186,10 +1185,13 @@ static void isp_reset(struct device *dev)
  **/
 void isp_stop(struct device *dev)
 {
+	struct isp_device *isp = dev_get_drvdata(dev);
 	int reset;
 
+	isp->module.running = ISP_STOPPING;
 	isp_disable_interrupts(dev);
 	synchronize_irq(((struct isp_device *)dev_get_drvdata(dev))->irq_num);
+	isp->module.running = ISP_STOPPED;
 	reset = isp_stop_modules(dev);
 	if (!reset)
 		return;
@@ -1429,6 +1431,13 @@ int isp_buf_queue(struct device *dev, struct videobuf_buffer *vb,
 	const struct scatterlist *sglist = dma->sglist;
 	struct isp_bufs *bufs = &isp->bufs;
 	int sglen = dma->sglen;
+
+	if (isp->module.running != ISP_RUNNING) {
+		vb->state = VIDEOBUF_ERROR;
+		complete(vb, priv);
+
+		return 0;
+	}
 
 	BUG_ON(sglen < 0 || !sglist);
 
