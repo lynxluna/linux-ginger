@@ -2489,7 +2489,6 @@ static int isp_probe(struct platform_device *pdev)
 	isp_power_settings(&pdev->dev, 1);
 	isp_put();
 
-	isph3a_notify(&isp->isp_h3a, 1);
 	isp_af_notify(&isp->isp_af, 1);
 
 	return 0;
