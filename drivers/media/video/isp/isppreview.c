@@ -318,7 +318,9 @@ int omap34xx_isp_preview_config(struct isp_prev_device *isp_prev,
 			goto err_copy_from_user;
 		isppreview_config_rgb_blending(isp_prev,
 					       isp_prev->params->rgb2rgb);
-		wmb();
+		/* The function call above prevents compiler from reordering
+		 * writes so that the flag below is always set after
+		 * isp_prev->params->rgb2rgb is written to. */
 		isp_prev->update_rgb_blending = 1;
 	}
 
@@ -330,7 +332,8 @@ int omap34xx_isp_preview_config(struct isp_prev_device *isp_prev,
 			goto err_copy_from_user;
 		isppreview_config_rgb_to_ycbcr(isp_prev,
 					       isp_prev->params->rgb2ycbcr);
-		wmb();
+		/* Same here... this flag has to be set after rgb2ycbcr
+		 * structure is written to. */
 		isp_prev->update_rgb_to_ycbcr = 1;
 	}
 
@@ -484,13 +487,11 @@ void isppreview_config_shadow_registers(struct isp_prev_device *isp_prev)
 	}
 	if (isp_prev->update_rgb_blending) {
 		isp_prev->update_rgb_blending = 0;
-		wmb();
 		isppreview_config_rgb_blending(isp_prev,
 					       isp_prev->params->rgb2rgb);
 	}
 	if (isp_prev->update_rgb_to_ycbcr) {
 		isp_prev->update_rgb_to_ycbcr = 0;
-		wmb();
 		isppreview_config_rgb_to_ycbcr(isp_prev,
 					       isp_prev->params->rgb2ycbcr);
 	}
