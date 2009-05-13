@@ -192,6 +192,8 @@ static u32 luma_enhance_table[] = {
 int omap34xx_isp_preview_config(struct isp_prev_device *isp_prev,
 				void *userspace_add)
 {
+	struct isp_device *isp =
+		container_of(isp_prev, struct isp_device, isp_prev);
 	struct ispprev_hmed prev_hmed_t;
 	struct ispprev_cfa prev_cfa_t;
 	struct ispprev_csup csup_t;
@@ -207,6 +209,9 @@ int omap34xx_isp_preview_config(struct isp_prev_device *isp_prev,
 		return -EINVAL;
 
 	preview_struct = userspace_add;
+
+	if (isp->module.running != ISP_STOPPED)
+		goto out_config_shadow;
 
 	if (ISP_ABS_PREV_LUMAENH & preview_struct->flag) {
 		if (ISP_ABS_PREV_LUMAENH & preview_struct->update) {
@@ -310,33 +315,6 @@ int omap34xx_isp_preview_config(struct isp_prev_device *isp_prev,
 		isppreview_config_blkadj(isp_prev, prev_blkadj_t);
 	}
 
-	if (ISP_ABS_PREV_RGB2RGB & preview_struct->update) {
-		if (copy_from_user(&isp_prev->params->rgb2rgb,
-				   (struct ispprev_rgbtorgb *)
-				   preview_struct->rgb2rgb,
-				   sizeof(struct ispprev_rgbtorgb)))
-			goto err_copy_from_user;
-		isppreview_config_rgb_blending(isp_prev,
-					       isp_prev->params->rgb2rgb);
-		/* The function call above prevents compiler from reordering
-		 * writes so that the flag below is always set after
-		 * isp_prev->params->rgb2rgb is written to. */
-		isp_prev->update_rgb_blending = 1;
-	}
-
-	if (ISP_ABS_PREV_COLOR_CONV & preview_struct->update) {
-		if (copy_from_user(&isp_prev->params->rgb2ycbcr,
-				   (struct ispprev_csc *)
-					preview_struct->prev_csc,
-				   sizeof(struct ispprev_csc)))
-			goto err_copy_from_user;
-		isppreview_config_rgb_to_ycbcr(isp_prev,
-					       isp_prev->params->rgb2ycbcr);
-		/* Same here... this flag has to be set after rgb2ycbcr
-		 * structure is written to. */
-		isp_prev->update_rgb_to_ycbcr = 1;
-	}
-
 	if (ISP_ABS_PREV_YC_LIMIT & preview_struct->update) {
 		if (copy_from_user(&yclimit_t, (struct ispprev_yclimit *)
 				   preview_struct->yclimit,
@@ -367,6 +345,34 @@ int omap34xx_isp_preview_config(struct isp_prev_device *isp_prev,
 	} else {
 		isppreview_enable_gammabypass(isp_prev, 0);
 		isp_prev->params->features &= ~PREV_GAMMA_BYPASS;
+	}
+
+out_config_shadow:
+	if (ISP_ABS_PREV_RGB2RGB & preview_struct->update) {
+		if (copy_from_user(&isp_prev->params->rgb2rgb,
+				   (struct ispprev_rgbtorgb *)
+				   preview_struct->rgb2rgb,
+				   sizeof(struct ispprev_rgbtorgb)))
+			goto err_copy_from_user;
+		isppreview_config_rgb_blending(isp_prev,
+					       isp_prev->params->rgb2rgb);
+		/* The function call above prevents compiler from reordering
+		 * writes so that the flag below is always set after
+		 * isp_prev->params->rgb2rgb is written to. */
+		isp_prev->update_rgb_blending = 1;
+	}
+
+	if (ISP_ABS_PREV_COLOR_CONV & preview_struct->update) {
+		if (copy_from_user(&isp_prev->params->rgb2ycbcr,
+				   (struct ispprev_csc *)
+					preview_struct->prev_csc,
+				   sizeof(struct ispprev_csc)))
+			goto err_copy_from_user;
+		isppreview_config_rgb_to_ycbcr(isp_prev,
+					       isp_prev->params->rgb2ycbcr);
+		/* Same here... this flag has to be set after rgb2ycbcr
+		 * structure is written to. */
+		isp_prev->update_rgb_to_ycbcr = 1;
 	}
 
 	isp_table_update.update = preview_struct->update;
