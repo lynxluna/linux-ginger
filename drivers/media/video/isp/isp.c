@@ -837,7 +837,7 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *_pdev)
 		 * missed the start-of-frame so we can do it now.
 		 */
 		if (irqstatus & HS_VS && !RAW_CAPTURE(isp))
-			isppreview_enable(&isp->isp_prev, 1);
+			isppreview_enable(&isp->isp_prev);
 	default:
 		goto out_ignore_buff;
 	case 0:
@@ -873,7 +873,7 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *_pdev)
 				ispresizer_enable(&isp->isp_res, 1);
 			}
 			isppreview_config_shadow_registers(&isp->isp_prev);
-			isppreview_enable(&isp->isp_prev, 1);
+			isppreview_enable(&isp->isp_prev);
 		}
 	}
 
@@ -1089,7 +1089,6 @@ static int __isp_disable_modules(struct device *dev, int suspend)
 		isph3a_aewb_enable(&isp->isp_h3a, 0);
 		isp_hist_enable(&isp->isp_hist, 0);
 	}
-	isppreview_enable(&isp->isp_prev, 0);
 	ispresizer_enable(&isp->isp_res, 0);
 
 	timeout = jiffies + ISP_STOP_TIMEOUT;
