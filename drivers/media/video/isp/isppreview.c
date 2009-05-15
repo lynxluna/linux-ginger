@@ -220,16 +220,16 @@ int omap34xx_isp_preview_config(struct isp_prev_device *isp_prev,
 				goto err_copy_from_user;
 			isppreview_config_luma_enhancement(isp_prev, yen_t);
 		}
-		isp_prev->params->features |= PREV_LUMA_ENHANCE;
+		isp_prev->params.features |= PREV_LUMA_ENHANCE;
 	} else if (ISP_ABS_PREV_LUMAENH & preview_struct->update)
-		isp_prev->params->features &= ~PREV_LUMA_ENHANCE;
+		isp_prev->params.features &= ~PREV_LUMA_ENHANCE;
 
 	if (ISP_ABS_PREV_INVALAW & preview_struct->flag) {
 		isppreview_enable_invalaw(isp_prev, 1);
-		isp_prev->params->features |= PREV_INVERSE_ALAW;
+		isp_prev->params.features |= PREV_INVERSE_ALAW;
 	} else {
 		isppreview_enable_invalaw(isp_prev, 0);
-		isp_prev->params->features &= ~PREV_INVERSE_ALAW;
+		isp_prev->params.features &= ~PREV_INVERSE_ALAW;
 	}
 
 	if (ISP_ABS_PREV_HRZ_MED & preview_struct->flag) {
@@ -242,10 +242,10 @@ int omap34xx_isp_preview_config(struct isp_prev_device *isp_prev,
 			isppreview_config_hmed(isp_prev, prev_hmed_t);
 		}
 		isppreview_enable_hmed(isp_prev, 1);
-		isp_prev->params->features |= PREV_HORZ_MEDIAN_FILTER;
+		isp_prev->params.features |= PREV_HORZ_MEDIAN_FILTER;
 	} else if (ISP_ABS_PREV_HRZ_MED & preview_struct->update) {
 		isppreview_enable_hmed(isp_prev, 0);
-		isp_prev->params->features &= ~PREV_HORZ_MEDIAN_FILTER;
+		isp_prev->params.features &= ~PREV_HORZ_MEDIAN_FILTER;
 	}
 
 	if (ISP_ABS_PREV_CFA & preview_struct->flag) {
@@ -277,10 +277,10 @@ int omap34xx_isp_preview_config(struct isp_prev_device *isp_prev,
 
 		}
 		isppreview_enable_cfa(isp_prev, 1);
-		isp_prev->params->features |= PREV_CFA;
+		isp_prev->params.features |= PREV_CFA;
 	} else if (ISP_ABS_PREV_CFA & preview_struct->update) {
 		isppreview_enable_cfa(isp_prev, 0);
-		isp_prev->params->features &= ~PREV_CFA;
+		isp_prev->params.features &= ~PREV_CFA;
 	}
 
 	if (ISP_ABS_PREV_CHROMA_SUPP & preview_struct->flag) {
@@ -293,10 +293,10 @@ int omap34xx_isp_preview_config(struct isp_prev_device *isp_prev,
 			isppreview_config_chroma_suppression(isp_prev, csup_t);
 		}
 		isppreview_enable_chroma_suppression(isp_prev, 1);
-		isp_prev->params->features |= PREV_CHROMA_SUPPRESS;
+		isp_prev->params.features |= PREV_CHROMA_SUPPRESS;
 	} else if (ISP_ABS_PREV_CHROMA_SUPP & preview_struct->update) {
 		isppreview_enable_chroma_suppression(isp_prev, 0);
-		isp_prev->params->features &= ~PREV_CHROMA_SUPPRESS;
+		isp_prev->params.features &= ~PREV_CHROMA_SUPPRESS;
 	}
 
 	if (ISP_ABS_PREV_WB & preview_struct->update) {
@@ -333,43 +333,43 @@ int omap34xx_isp_preview_config(struct isp_prev_device *isp_prev,
 			isppreview_config_dcor(isp_prev, prev_dcor_t);
 		}
 		isppreview_enable_dcor(isp_prev, 1);
-		isp_prev->params->features |= PREV_DEFECT_COR;
+		isp_prev->params.features |= PREV_DEFECT_COR;
 	} else if (ISP_ABS_PREV_DEFECT_COR & preview_struct->update) {
 		isppreview_enable_dcor(isp_prev, 0);
-		isp_prev->params->features &= ~PREV_DEFECT_COR;
+		isp_prev->params.features &= ~PREV_DEFECT_COR;
 	}
 
 	if (ISP_ABS_PREV_GAMMABYPASS & preview_struct->flag) {
 		isppreview_enable_gammabypass(isp_prev, 1);
-		isp_prev->params->features |= PREV_GAMMA_BYPASS;
+		isp_prev->params.features |= PREV_GAMMA_BYPASS;
 	} else {
 		isppreview_enable_gammabypass(isp_prev, 0);
-		isp_prev->params->features &= ~PREV_GAMMA_BYPASS;
+		isp_prev->params.features &= ~PREV_GAMMA_BYPASS;
 	}
 
 out_config_shadow:
 	if (ISP_ABS_PREV_RGB2RGB & preview_struct->update) {
-		if (copy_from_user(&isp_prev->params->rgb2rgb,
+		if (copy_from_user(&isp_prev->params.rgb2rgb,
 				   (struct ispprev_rgbtorgb *)
 				   preview_struct->rgb2rgb,
 				   sizeof(struct ispprev_rgbtorgb)))
 			goto err_copy_from_user;
 		isppreview_config_rgb_blending(isp_prev,
-					       isp_prev->params->rgb2rgb);
+					       isp_prev->params.rgb2rgb);
 		/* The function call above prevents compiler from reordering
 		 * writes so that the flag below is always set after
-		 * isp_prev->params->rgb2rgb is written to. */
+		 * isp_prev->params.rgb2rgb is written to. */
 		isp_prev->update_rgb_blending = 1;
 	}
 
 	if (ISP_ABS_PREV_COLOR_CONV & preview_struct->update) {
-		if (copy_from_user(&isp_prev->params->rgb2ycbcr,
+		if (copy_from_user(&isp_prev->params.rgb2ycbcr,
 				   (struct ispprev_csc *)
 					preview_struct->prev_csc,
 				   sizeof(struct ispprev_csc)))
 			goto err_copy_from_user;
 		isppreview_config_rgb_to_ycbcr(isp_prev,
-					       isp_prev->params->rgb2ycbcr);
+					       isp_prev->params.rgb2ycbcr);
 		/* Same here... this flag has to be set after rgb2ycbcr
 		 * structure is written to. */
 		isp_prev->update_rgb_to_ycbcr = 1;
@@ -404,7 +404,7 @@ int omap34xx_isp_tables_update(struct isp_prev_device *isp_prev,
 
 	if (ISP_ABS_TBL_NF & isptables_struct->flag) {
 		isp_prev->nf_enable = 1;
-		isp_prev->params->features |= PREV_NOISE_FILTER;
+		isp_prev->params.features |= PREV_NOISE_FILTER;
 		if (ISP_ABS_TBL_NF & isptables_struct->update) {
 			if (copy_from_user(&isp_prev->prev_nf_t,
 					   (struct ispprev_nf *)
@@ -417,7 +417,7 @@ int omap34xx_isp_tables_update(struct isp_prev_device *isp_prev,
 			isp_prev->nf_update = 0;
 	} else {
 		isp_prev->nf_enable = 0;
-		isp_prev->params->features &= ~PREV_NOISE_FILTER;
+		isp_prev->params.features &= ~PREV_NOISE_FILTER;
 		if (ISP_ABS_TBL_NF & isptables_struct->update)
 			isp_prev->nf_update = 1;
 		else
@@ -494,12 +494,12 @@ void isppreview_config_shadow_registers(struct isp_prev_device *isp_prev)
 	if (isp_prev->update_rgb_blending) {
 		isp_prev->update_rgb_blending = 0;
 		isppreview_config_rgb_blending(isp_prev,
-					       isp_prev->params->rgb2rgb);
+					       isp_prev->params.rgb2rgb);
 	}
 	if (isp_prev->update_rgb_to_ycbcr) {
 		isp_prev->update_rgb_to_ycbcr = 0;
 		isppreview_config_rgb_to_ycbcr(isp_prev,
-					       isp_prev->params->rgb2ycbcr);
+					       isp_prev->params.rgb2ycbcr);
 	}
 
 	if (isp_prev->gg_update) {
@@ -568,14 +568,6 @@ EXPORT_SYMBOL_GPL(isppreview_config_shadow_registers);
  **/
 int isppreview_request(struct isp_prev_device *isp_prev)
 {
-	mutex_lock(&isp_prev->ispprev_mutex);
-	if (isp_prev->prev_inuse) {
-		mutex_unlock(&isp_prev->ispprev_mutex);
-		dev_err(isp_prev->dev, "preview: Module Busy\n");
-		return -EBUSY;
-	}
-	isp_prev->prev_inuse = 1;
-	mutex_unlock(&isp_prev->ispprev_mutex);
 	isp_reg_or(isp_prev->dev,
 		   OMAP3_ISP_IOMEM_MAIN, ISP_CTRL, ISPCTRL_PREV_RAM_EN |
 		   ISPCTRL_PREV_CLK_EN | ISPCTRL_SBL_WR1_RAM_EN);
@@ -590,21 +582,12 @@ EXPORT_SYMBOL_GPL(isppreview_request);
  **/
 int isppreview_free(struct isp_prev_device *isp_prev)
 {
-	mutex_lock(&isp_prev->ispprev_mutex);
-	if (isp_prev->prev_inuse) {
-		isp_prev->prev_inuse = 0;
-		mutex_unlock(&isp_prev->ispprev_mutex);
-		isp_reg_and(isp_prev->dev, OMAP3_ISP_IOMEM_MAIN, ISP_CTRL,
+	isp_reg_and(isp_prev->dev, OMAP3_ISP_IOMEM_MAIN, ISP_CTRL,
 			    ~(ISPCTRL_PREV_CLK_EN |
 			      ISPCTRL_PREV_RAM_EN |
 			      ISPCTRL_SBL_WR1_RAM_EN));
-		return 0;
-	} else {
-		mutex_unlock(&isp_prev->ispprev_mutex);
-		DPRINTK_ISPPREV("ISP_ERR : Preview Module already freed\n");
-		return -EINVAL;
-	}
 
+	return 0;
 }
 EXPORT_SYMBOL_GPL(isppreview_free);
 
@@ -628,7 +611,7 @@ int isppreview_config_datapath(struct isp_prev_device *isp_prev,
 {
 	u32 pcr = 0;
 	u8 enable = 0;
-	struct prev_params *params = isp_prev->prev_params;
+	struct prev_params *params = &isp_prev->params;
 	struct ispprev_yclimit yclimit;
 
 	pcr = isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR);
@@ -1751,15 +1734,6 @@ int isppreview_busy(struct isp_prev_device *isp_prev)
 EXPORT_SYMBOL_GPL(isppreview_busy);
 
 /**
- * isppreview_get_config - Gets parameters of preview module.
- **/
-struct prev_params *isppreview_get_config(struct isp_prev_device *isp_prev)
-{
-	return isp_prev->prev_params;
-}
-EXPORT_SYMBOL_GPL(isppreview_get_config);
-
-/**
  * isppreview_save_context - Saves the values of the preview module registers.
  **/
 void isppreview_save_context(struct device *dev)
@@ -1786,7 +1760,6 @@ EXPORT_SYMBOL_GPL(isppreview_restore_context);
  **/
 void isppreview_print_status(struct isp_prev_device *isp_prev)
 {
-	DPRINTK_ISPPREV("Module in use =%d\n", isp_prev->prev_inuse);
 	DPRINTK_ISPPREV("Preview Input format =%d, Output Format =%d\n",
 			isp_prev->prev_inpfmt,
 			isp_prev->prev_outfmt);
@@ -1896,18 +1869,10 @@ int __init isp_preview_init(struct device *dev)
 {
 	struct isp_device *isp = dev_get_drvdata(dev);
 	struct isp_prev_device *isp_prev = &isp->isp_prev;
-	struct prev_params *params;
+	struct prev_params *params = &isp_prev->params;
 	int i = 0;
 
-	params = kmalloc(sizeof(*isp_prev->prev_params), GFP_KERNEL);
-	if (!params) {
-		dev_err(isp_prev->dev,
-			"preview: Can't get memory for isp_preview params!\n");
-		return -ENOMEM;
-	}
 	isp_prev->dev = dev;
-	isp_prev->prev_inuse = 0;
-	mutex_init(&isp_prev->ispprev_mutex);
 
 	/* Init values */
 	isp_prev->sph = 2;
@@ -1964,18 +1929,5 @@ int __init isp_preview_init(struct device *dev)
 			      PREV_CHROMA_SUPPRESS |
 			      PREV_LUMA_ENHANCE);
 
-	isp_prev->prev_params = params;
-	isp_prev->params = params;
-
 	return 0;
-}
-
-/**
- * isp_preview_cleanup - Module Cleanup.
- **/
-void isp_preview_cleanup(struct device *dev)
-{
-	struct isp_device *isp = dev_get_drvdata(dev);
-
-	kfree(isp->isp_prev.prev_params);
 }
