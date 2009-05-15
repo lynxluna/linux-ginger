@@ -82,6 +82,8 @@ obj-y					+= $(i2c-omap-m) $(i2c-omap-y)
 # Debobs
 obj-$(CONFIG_OMAP3_DEBOBS)	+= debobs.o
 
+obj-$(CONFIG_MPU_BRIDGE)		+= dspbridge.o
+
 # Specific board support
 obj-$(CONFIG_MACH_OMAP_GENERIC)		+= board-generic.o
 obj-$(CONFIG_MACH_OMAP_H4)		+= board-h4.o
