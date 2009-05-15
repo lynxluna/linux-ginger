@@ -49,6 +49,8 @@
 #include "omap_hwmod_2430.h"
 #include "omap_hwmod_34xx.h"
 
+#include <dspbridge/host_os.h>
+
 /*
  * The machine specific code may provide the extra mapping besides the
  * default mapping provided here.
@@ -264,6 +266,7 @@ void __init omap2_map_common_io(void)
 	omap2_check_revision();
 	omap_sram_init();
 	omapfb_reserve_sdram();
+	dspbridge_reserve_sdram();
 }
 
 /*
