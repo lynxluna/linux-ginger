@@ -208,9 +208,14 @@ int omap34xx_isp_preview_config(struct isp_prev_device *isp_prev,
 	struct ispprv_update_config *preview_struct;
 	struct isptables_update isp_table_update;
 	int yen_t[ISPPRV_YENH_TBL_SIZE];
+	unsigned long flags;
 
 	if (userspace_add == NULL)
 		return -EINVAL;
+
+	spin_lock_irqsave(&isp_prev->lock, flags);
+	isp_prev->shadow_update = 1;
+	spin_unlock_irqrestore(&isp_prev->lock, flags);
 
 	preview_struct = userspace_add;
 
@@ -389,9 +394,17 @@ out_config_shadow:
 	if (omap34xx_isp_tables_update(isp_prev, &isp_table_update))
 		goto err_copy_from_user;
 
+	spin_lock_irqsave(&isp_prev->lock, flags);
+	isp_prev->shadow_update = 0;
+	spin_unlock_irqrestore(&isp_prev->lock, flags);
+
 	return 0;
 
 err_copy_from_user:
+	spin_lock_irqsave(&isp_prev->lock, flags);
+	isp_prev->shadow_update = 0;
+	spin_unlock_irqrestore(&isp_prev->lock, flags);
+
 	dev_err(isp_prev->dev, "preview: Config: Copy From User Error\n");
 	return -EFAULT;
 }
@@ -472,6 +485,13 @@ void isppreview_config_shadow_registers(struct isp_prev_device *isp_prev)
 {
 	u8 current_brightness_contrast;
 	int ctr;
+	unsigned long flags;
+
+	spin_lock_irqsave(&isp_prev->lock, flags);
+	if (isp_prev->shadow_update) {
+		spin_unlock_irqrestore(&isp_prev->lock, flags);
+		return;
+	}
 
 	isppreview_query_brightness(isp_prev, &current_brightness_contrast);
 	if (current_brightness_contrast !=
@@ -562,6 +582,8 @@ void isppreview_config_shadow_registers(struct isp_prev_device *isp_prev)
 
 	if (isp_prev->nf_update && ~isp_prev->nf_enable)
 		isppreview_enable_noisefilter(isp_prev, 0);
+
+	spin_unlock_irqrestore(&isp_prev->lock, flags);
 }
 EXPORT_SYMBOL_GPL(isppreview_config_shadow_registers);
 

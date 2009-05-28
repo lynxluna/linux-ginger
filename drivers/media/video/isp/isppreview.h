@@ -274,6 +274,7 @@ struct isp_prev_device {
 	enum cfa_fmt cfafmt;
 	struct ispprev_nf prev_nf_t;
 	struct prev_params params;
+	int shadow_update;
 	u32 sph;
 	u32 slv;
 	struct device *dev;
