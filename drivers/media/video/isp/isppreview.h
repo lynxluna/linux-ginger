@@ -277,6 +277,7 @@ struct isp_prev_device {
 	u32 sph;
 	u32 slv;
 	struct device *dev;
+	spinlock_t lock;
 };
 
 void isppreview_config_shadow_registers(struct isp_prev_device *isp_prev);

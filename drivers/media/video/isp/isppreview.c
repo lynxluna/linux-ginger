@@ -1934,5 +1934,7 @@ int __init isp_preview_init(struct device *dev)
 			      PREV_CHROMA_SUPPRESS |
 			      PREV_LUMA_ENHANCE);
 
+	spin_lock_init(&isp_prev->lock);
+
 	return 0;
 }
