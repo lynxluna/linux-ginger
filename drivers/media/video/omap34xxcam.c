@@ -1540,6 +1540,8 @@ static int omap34xxcam_open(struct file *file)
 	if (fh == NULL)
 		return -ENOMEM;
 
+	fh->vdev = vdev;
+
 	mutex_lock(&vdev->mutex);
 	for (i = 0; i <= OMAP34XXCAM_SLAVE_FLASH; i++) {
 		if (vdev->slave[i] != v4l2_int_device_dummy()
@@ -1575,10 +1577,8 @@ static int omap34xxcam_open(struct file *file)
 			OMAP34XXCAM_SLAVE_POWER_LENS);
 	}
 
-	fh->vdev = vdev;
-
-	if (vdev->vdev_sensor == v4l2_int_device_dummy())
-		goto out_no_sensor;
+	if (vdev->vdev_sensor == v4l2_int_device_dummy() || !first_user)
+		goto out_no_pix;
 
 	/* Get the format the sensor is using. */
 	rval = vidioc_int_g_fmt_cap(vdev->vdev_sensor, &sensor_format);
@@ -1604,7 +1604,7 @@ static int omap34xxcam_open(struct file *file)
 		}
 	}
 
-out_no_sensor:
+out_no_pix:
 	mutex_unlock(&vdev->mutex);
 
 	file->private_data = fh;
