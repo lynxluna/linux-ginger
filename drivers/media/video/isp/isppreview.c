@@ -199,7 +199,6 @@ int omap34xx_isp_preview_config(struct isp_prev_device *isp_prev,
 	struct isp_device *isp =
 		container_of(isp_prev, struct isp_device, isp_prev);
 	struct ispprev_hmed prev_hmed_t;
-	struct ispprev_cfa prev_cfa_t;
 	struct ispprev_csup csup_t;
 	struct ispprev_wbal prev_wbal_t;
 	struct ispprev_blkadj prev_blkadj_t;
@@ -255,41 +254,6 @@ int omap34xx_isp_preview_config(struct isp_prev_device *isp_prev,
 	} else if (ISP_ABS_PREV_HRZ_MED & config->update) {
 		isppreview_enable_hmed(isp_prev, 0);
 		isp_prev->params.features &= ~PREV_HORZ_MEDIAN_FILTER;
-	}
-
-	if (ISP_ABS_PREV_CFA & config->flag) {
-		if (ISP_ABS_PREV_CFA & config->update) {
-
-			u32 *table;
-
-			table = kmalloc(ISPPRV_CFA_TBL_SIZE *
-					sizeof(*table), GFP_KERNEL);
-			if (!table)
-				return -ENOMEM;
-
-			if (copy_from_user(&prev_cfa_t,
-					   (struct ispprev_cfa *)
-					   config->prev_cfa,
-					   sizeof(struct ispprev_cfa)))
-				goto err_copy_from_user;
-
-			if (copy_from_user(table, prev_cfa_t.cfa_table,
-				(ISPPRV_CFA_TBL_SIZE * sizeof(*table)))) {
-
-				kfree(table);
-				goto err_copy_from_user;
-			}
-
-			prev_cfa_t.cfa_table = table;
-			isppreview_config_cfa(isp_prev, &prev_cfa_t);
-			kfree(table);
-
-		}
-		isppreview_enable_cfa(isp_prev, 1);
-		isp_prev->params.features |= PREV_CFA;
-	} else if (ISP_ABS_PREV_CFA & config->update) {
-		isppreview_enable_cfa(isp_prev, 0);
-		isp_prev->params.features &= ~PREV_CFA;
 	}
 
 	if (ISP_ABS_PREV_CHROMA_SUPP & config->flag) {
@@ -390,6 +354,7 @@ out_config_shadow:
 	isp_table_update.red_gamma = config->red_gamma;
 	isp_table_update.green_gamma = config->green_gamma;
 	isp_table_update.blue_gamma = config->blue_gamma;
+	isp_table_update.prev_cfa = config->prev_cfa;
 
 	if (omap34xx_isp_tables_update(isp_prev, &isp_table_update))
 		goto err_copy_from_user;
@@ -468,6 +433,32 @@ static int omap34xx_isp_tables_update(struct isp_prev_device *isp_prev,
 		isp_prev->bg_update = 1;
 	} else
 		isp_prev->bg_update = 0;
+
+	if (ISP_ABS_PREV_CFA & isptables_struct->update) {
+		struct ispprev_cfa cfa;
+		if (isptables_struct->prev_cfa) {
+			if (copy_from_user(&cfa,
+					   isptables_struct->prev_cfa,
+					   sizeof(struct ispprev_cfa)))
+				goto err_copy_from_user;
+			if (cfa.cfa_table != NULL) {
+				if (copy_from_user(cfa_coef_table,
+						   cfa.cfa_table,
+						   sizeof(cfa_coef_table)))
+					goto err_copy_from_user;
+			}
+			cfa.cfa_table = cfa_coef_table;
+			isp_prev->params.cfa = cfa;
+		}
+		if (ISP_ABS_PREV_CFA & isptables_struct->flag) {
+			isp_prev->cfa_en = 1;
+			isp_prev->params.features |= PREV_CFA;
+		} else {
+			isp_prev->cfa_en = 0;
+			isp_prev->params.features &= ~PREV_CFA;
+		}
+		isp_prev->cfa_update = 1;
+	}
 
 	return 0;
 
@@ -560,6 +551,12 @@ void isppreview_config_shadow_registers(struct isp_prev_device *isp_prev)
 				       ISPPRV_SET_TBL_DATA);
 		}
 		isp_prev->bg_update = 0;
+	}
+
+	if (isp_prev->cfa_update) {
+		isp_prev->cfa_update = 0;
+		isppreview_config_cfa(isp_prev, &isp_prev->params.cfa);
+		isppreview_enable_cfa(isp_prev, isp_prev->cfa_en);
 	}
 
 	if (isp_prev->nf_update && isp_prev->nf_enable) {
@@ -688,8 +685,6 @@ int isppreview_config_datapath(struct isp_prev_device *isp_prev,
 
 	isppreview_config_ycpos(isp_prev, params->pix_fmt);
 
-	if (params->cfa.cfa_table != NULL)
-		isppreview_config_cfa(isp_prev, &params->cfa);
 	if (params->csup.hypf_en == 1)
 		isppreview_config_chroma_suppression(isp_prev, params->csup);
 	if (params->ytable != NULL)
@@ -698,6 +693,8 @@ int isppreview_config_datapath(struct isp_prev_device *isp_prev,
 	if (params->gtable.redtable != NULL)
 		isppreview_config_gammacorrn(isp_prev, params->gtable);
 
+	isp_prev->cfa_update = 0;
+	isppreview_config_cfa(isp_prev, &params->cfa);
 	enable = (params->features & PREV_CFA) ? 1 : 0;
 	isppreview_enable_cfa(isp_prev, enable);
 

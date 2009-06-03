@@ -221,6 +221,7 @@ struct isptables_update {
 	u32 *red_gamma;
 	u32 *green_gamma;
 	u32 *blue_gamma;
+	struct ispprev_cfa *prev_cfa;
 };
 
 /**
@@ -265,6 +266,7 @@ struct isp_prev_device {
 	u8 rg_update;
 	u8 gg_update;
 	u8 bg_update;
+	u8 cfa_update;
 	u8 nf_enable;
 	u8 nf_update;
 	u8 fmtavg;
