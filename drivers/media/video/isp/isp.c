@@ -46,9 +46,6 @@
 
 static struct platform_device *omap3isp_pdev;
 
-static int isp_try_size(struct device *dev, struct v4l2_pix_format *pix_input,
-			struct v4l2_pix_format *pix_output);
-
 static void isp_save_ctx(struct device *dev);
 
 static void isp_restore_ctx(struct device *dev);
@@ -297,13 +294,13 @@ static void isp_release_resources(struct device *dev)
 {
 	struct isp_device *isp = dev_get_drvdata(dev);
 
-	if (isp->module.isp_pipeline & OMAP_ISP_CCDC)
+	if (isp->pipeline.modules & OMAP_ISP_CCDC)
 		ispccdc_free(&isp->isp_ccdc);
 
-	if (isp->module.isp_pipeline & OMAP_ISP_PREVIEW)
+	if (isp->pipeline.modules & OMAP_ISP_PREVIEW)
 		isppreview_free(&isp->isp_prev);
 
-	if (isp->module.isp_pipeline & OMAP_ISP_RESIZER)
+	if (isp->pipeline.modules & OMAP_ISP_RESIZER)
 		ispresizer_free(&isp->isp_res);
 	return;
 }
@@ -347,7 +344,7 @@ static void isp_enable_interrupts(struct device *dev, int is_raw)
 		| IRQ0ENABLE_CSIA_IRQ
 		| IRQ0ENABLE_CSIB_IRQ
 		| IRQ0ENABLE_H3A_AWB_DONE_IRQ | IRQ0ENABLE_H3A_AF_DONE_IRQ
-		| isp->module.interrupts;
+		| isp->interrupts;
 
 	if (!is_raw)
 		irq0enable |= IRQ0ENABLE_PRV_DONE_IRQ | IRQ0ENABLE_RSZ_DONE_IRQ;
@@ -393,8 +390,8 @@ int isp_set_callback(struct device *dev, enum isp_callback_type type,
 
 	switch (type) {
 	case CBK_HIST_DONE:
-		isp->module.interrupts |= IRQ0ENABLE_HIST_DONE_IRQ;
-		if (isp->module.running != ISP_RUNNING)
+		isp->interrupts |= IRQ0ENABLE_HIST_DONE_IRQ;
+		if (isp->running != ISP_RUNNING)
 			break;
 		isp_reg_writel(dev, IRQ0ENABLE_HIST_DONE_IRQ,
 			       OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0STATUS);
@@ -435,8 +432,8 @@ int isp_unset_callback(struct device *dev, enum isp_callback_type type)
 
 	switch (type) {
 	case CBK_HIST_DONE:
-		isp->module.interrupts &= ~IRQ0ENABLE_HIST_DONE_IRQ;
-		if (isp->module.running != ISP_RUNNING)
+		isp->interrupts &= ~IRQ0ENABLE_HIST_DONE_IRQ;
+		if (isp->running != ISP_RUNNING)
 			break;
 		isp_reg_and(dev, OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE,
 			    ~IRQ0ENABLE_HIST_DONE_IRQ);
@@ -802,7 +799,7 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *_pdev)
 	unsigned long irqflags = 0;
 	int wait_hs_vs = 0;
 
-	if (isp->module.running == ISP_STOPPED) {
+	if (isp->running == ISP_STOPPED) {
 		dev_err(dev, "ouch %8.8x!\n",isp_reg_readl(dev, OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0STATUS));
 		return IRQ_NONE;
 	}
@@ -810,7 +807,7 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *_pdev)
 	irqstatus = isp_reg_readl(dev, OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0STATUS);
 	isp_reg_writel(dev, irqstatus, OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0STATUS);
 
-	if (isp->module.running == ISP_STOPPING)
+	if (isp->running == ISP_STOPPING)
 		return IRQ_HANDLED;
 
 	spin_lock_irqsave(&bufs->lock, flags);
@@ -1055,7 +1052,7 @@ void isp_start(struct device *dev)
 {
 	struct isp_device *isp = dev_get_drvdata(dev);
 
-	isp->module.running = ISP_RUNNING;
+	isp->running = ISP_RUNNING;
 
 	return;
 }
@@ -1165,10 +1162,10 @@ void isp_stop(struct device *dev)
 	struct isp_device *isp = dev_get_drvdata(dev);
 	int reset;
 
-	isp->module.running = ISP_STOPPING;
+	isp->running = ISP_STOPPING;
 	isp_disable_interrupts(dev);
 	synchronize_irq(((struct isp_device *)dev_get_drvdata(dev))->irq_num);
-	isp->module.running = ISP_STOPPED;
+	isp->running = ISP_STOPPED;
 	reset = isp_stop_modules(dev);
 	if (!reset)
 		return;
@@ -1183,99 +1180,154 @@ static void isp_set_buf(struct device *dev, struct isp_buf *buf)
 {
 	struct isp_device *isp = dev_get_drvdata(dev);
 
-	if (isp->module.isp_pipeline & OMAP_ISP_RESIZER
+	if (isp->pipeline.modules & OMAP_ISP_RESIZER
 	    && is_ispresizer_enabled())
 		ispresizer_set_outaddr(&isp->isp_res, buf->isp_addr);
-	else if (isp->module.isp_pipeline & OMAP_ISP_CCDC)
+	else if (isp->pipeline.modules & OMAP_ISP_CCDC)
 		ispccdc_set_outaddr(&isp->isp_ccdc, buf->isp_addr);
 
 }
 
-/**
- * isp_calc_pipeline - Sets pipeline depending of input and output pixel format
- * @pix_input: Pointer to V4L2 pixel format structure for input image.
- * @pix_output: Pointer to V4L2 pixel format structure for output image.
- **/
-static u32 isp_calc_pipeline(struct device *dev,
-			     struct v4l2_pix_format *pix_input,
-			     struct v4l2_pix_format *pix_output)
+static int isp_try_pipeline(struct device *dev,
+			    struct v4l2_pix_format *pix_input,
+			    struct isp_pipeline *pipe)
 {
 	struct isp_device *isp = dev_get_drvdata(dev);
+	struct v4l2_pix_format *pix_output = &pipe->pix;
+	unsigned int wanted_width = pix_output->width;
+	unsigned int wanted_height = pix_output->height;
+	int ifmt;
+	int rval;
 
-	isp_release_resources(dev);
 	if ((pix_input->pixelformat == V4L2_PIX_FMT_SGRBG10
 	     || pix_input->pixelformat == V4L2_PIX_FMT_SGRBG10DPCM8)
 	    && pix_output->pixelformat != V4L2_PIX_FMT_SGRBG10) {
-		isp->module.isp_pipeline =
-			OMAP_ISP_CCDC | OMAP_ISP_PREVIEW | OMAP_ISP_RESIZER;
-		ispccdc_request(&isp->isp_ccdc);
-		isppreview_request(&isp->isp_prev);
-		ispresizer_request(&isp->isp_res);
-		ispccdc_config_datapath(&isp->isp_ccdc, CCDC_RAW,
-					CCDC_OTHERS_VP);
-		isppreview_config_datapath(&isp->isp_prev, PRV_RAW_CCDC,
-					   PREVIEW_MEM);
-		ispresizer_config_datapath(&isp->isp_res, RSZ_MEM_YUV);
+		pipe->modules = OMAP_ISP_CCDC | OMAP_ISP_PREVIEW
+			| OMAP_ISP_RESIZER;
+		pipe->ccdc_in = CCDC_RAW;
+		pipe->ccdc_out = CCDC_OTHERS_VP;
 	} else {
-		isp->module.isp_pipeline = OMAP_ISP_CCDC;
-		ispccdc_request(&isp->isp_ccdc);
+		pipe->modules = OMAP_ISP_CCDC;
 		if (pix_input->pixelformat == V4L2_PIX_FMT_SGRBG10
-		    || pix_input->pixelformat == V4L2_PIX_FMT_SGRBG10DPCM8)
-			ispccdc_config_datapath(&isp->isp_ccdc, CCDC_RAW,
-						CCDC_OTHERS_VP_MEM);
-		else
-			ispccdc_config_datapath(&isp->isp_ccdc, CCDC_YUV_SYNC,
-						CCDC_OTHERS_MEM);
+		    || pix_input->pixelformat == V4L2_PIX_FMT_SGRBG10DPCM8) {
+			pipe->ccdc_in = CCDC_RAW;
+			pipe->ccdc_out = CCDC_OTHERS_VP_MEM;
+		} else {
+			pipe->ccdc_in = CCDC_YUV_SYNC;
+			pipe->ccdc_out = CCDC_OTHERS_MEM;
+		}
 	}
+
+	if (pipe->modules & OMAP_ISP_CCDC) {
+		pipe->ccdc_in_w = pix_input->width;
+		pipe->ccdc_in_h = pix_input->height;
+		rval = ispccdc_try_pipeline(&isp->isp_ccdc, pipe);
+		if (rval) {
+			dev_err(dev, "the dimensions %dx%d are not"
+			       " supported\n", pix_input->width,
+			       pix_input->height);
+			return rval;
+		}
+		pix_output->width = pipe->ccdc_out_w_img;
+		pix_output->height = pipe->ccdc_out_h;
+		pix_output->bytesperline =
+			pipe->ccdc_out_w * ISP_BYTES_PER_PIXEL;
+	}
+
+	if (pipe->modules & OMAP_ISP_PREVIEW) {
+		rval = isppreview_try_pipeline(&isp->isp_prev, pipe);
+		if (rval) {
+			dev_err(dev, "the dimensions %dx%d are not"
+			       " supported\n", pix_input->width,
+			       pix_input->height);
+			return rval;
+		}
+		pix_output->width = pipe->prv_out_w;
+		pix_output->height = pipe->prv_out_h;
+	}
+
+	if (pipe->modules & OMAP_ISP_RESIZER) {
+		pipe->rsz_out_w = wanted_width;
+		pipe->rsz_out_h = wanted_height;
+
+		pipe->rsz_crop.left = pipe->rsz_crop.top = 0;
+		pipe->rsz_crop.width = pipe->prv_out_w_img;
+		pipe->rsz_crop.height = pipe->prv_out_h;
+
+		rval = ispresizer_try_pipeline(&isp->isp_res, pipe);
+		if (rval) {
+			dev_err(dev, "The dimensions %dx%d are not"
+			       " supported\n", pix_input->width,
+			       pix_input->height);
+			return rval;
+		}
+
+		pix_output->width = pipe->rsz_out_w;
+		pix_output->height = pipe->rsz_out_h;
+		pix_output->bytesperline =
+			pipe->rsz_out_w * ISP_BYTES_PER_PIXEL;
+	}
+
+	pix_output->field = V4L2_FIELD_NONE;
+	pix_output->sizeimage =
+		PAGE_ALIGN(pix_output->bytesperline * pix_output->height);
+	pix_output->priv = 0;
+
+	for (ifmt = 0; ifmt < NUM_ISP_CAPTURE_FORMATS; ifmt++) {
+		if (pix_output->pixelformat == isp_formats[ifmt].pixelformat)
+			break;
+	}
+	if (ifmt == NUM_ISP_CAPTURE_FORMATS)
+		pix_output->pixelformat = V4L2_PIX_FMT_YUYV;
+
+	switch (pix_output->pixelformat) {
+	case V4L2_PIX_FMT_YUYV:
+	case V4L2_PIX_FMT_UYVY:
+		pix_output->colorspace = V4L2_COLORSPACE_JPEG;
+		break;
+	default:
+		pix_output->colorspace = V4L2_COLORSPACE_SRGB;
+	}
+
 	return 0;
 }
 
-/**
- * isp_config_pipeline - Configures the image size and ycpos for ISP submodules
- * @pix_input: Pointer to V4L2 pixel format structure for input image.
- * @pix_output: Pointer to V4L2 pixel format structure for output image.
- *
- * The configuration of ycpos depends on the output pixel format for both the
- * Preview and Resizer submodules.
- **/
-static void isp_config_pipeline(struct device *dev,
-				struct v4l2_pix_format *pix_input,
-				struct v4l2_pix_format *pix_output)
+static int isp_s_pipeline(struct device *dev,
+			  struct v4l2_pix_format *pix_input,
+			  struct v4l2_pix_format *pix_output)
 {
 	struct isp_device *isp = dev_get_drvdata(dev);
+	struct isp_pipeline pipe;
+	int rval;
 
-	ispccdc_config_size(&isp->isp_ccdc, isp->module.ccdc_input_width,
-			    isp->module.ccdc_input_height,
-			    isp->module.ccdc_output_width,
-			    isp->module.ccdc_output_height);
+	isp_release_resources(dev);
 
-	if (isp->module.isp_pipeline & OMAP_ISP_PREVIEW) {
-		isppreview_config_size(&isp->isp_prev,
-				       isp->module.preview_input_width,
-				       isp->module.preview_input_height,
-				       isp->module.preview_output_width,
-				       isp->module.preview_output_height);
+	pipe.pix = *pix_output;
+
+	rval = isp_try_pipeline(dev, pix_input, &pipe);
+	if (rval)
+		return rval;
+
+	ispccdc_request(&isp->isp_ccdc);
+	ispccdc_s_pipeline(&isp->isp_ccdc, &pipe);
+
+	if (pipe.modules & OMAP_ISP_PREVIEW) {
+		isppreview_request(&isp->isp_prev);
+		pipe.prv_in = PRV_RAW_CCDC;
+		pipe.prv_out = PREVIEW_MEM;
+		isppreview_s_pipeline(&isp->isp_prev, &pipe);
 	}
 
-	if (isp->module.isp_pipeline & OMAP_ISP_RESIZER) {
-		ispresizer_config_size(&isp->isp_res,
-				       isp->isp_res.croprect.width,
-				       isp->isp_res.croprect.height,
-				       isp->module.resizer_output_width,
-				       isp->module.resizer_output_height);
+	if (pipe.modules & OMAP_ISP_RESIZER) {
+		ispresizer_request(&isp->isp_res);
+		pipe.rsz_in = RSZ_MEM_YUV;
+		ispresizer_s_pipeline(&isp->isp_res, &pipe);
 	}
 
-	if (pix_output->pixelformat == V4L2_PIX_FMT_UYVY) {
-		isppreview_config_ycpos(&isp->isp_prev, YCPOS_YCrYCb);
-		if (is_ispresizer_enabled())
-			ispresizer_config_ycpos(&isp->isp_res, 0);
-	} else {
-		isppreview_config_ycpos(&isp->isp_prev, YCPOS_CrYCbY);
-		if (is_ispresizer_enabled())
-			ispresizer_config_ycpos(&isp->isp_res, 1);
-	}
+	isp->pipeline = pipe;
+	*pix_output = isp->pipeline.pix;
 
-	return;
+	return 0;
 }
 
 /**
@@ -1409,7 +1461,7 @@ int isp_buf_queue(struct device *dev, struct videobuf_buffer *vb,
 	struct isp_bufs *bufs = &isp->bufs;
 	int sglen = dma->sglen;
 
-	if (isp->module.running != ISP_RUNNING) {
+	if (isp->running != ISP_RUNNING) {
 		vb->state = VIDEOBUF_ERROR;
 		complete(vb, priv);
 
@@ -1455,16 +1507,15 @@ int isp_vbq_setup(struct device *dev, struct videobuf_queue *vbq,
 		  unsigned int *cnt, unsigned int *size)
 {
 	struct isp_device *isp = dev_get_drvdata(dev);
-	int rval = 0;
-	size_t tmp_size = PAGE_ALIGN(isp->module.preview_output_width
-				     * isp->module.preview_output_height
+	size_t tmp_size = PAGE_ALIGN(isp->pipeline.prv_out_w
+				     * isp->pipeline.prv_out_h
 				     * ISP_BYTES_PER_PIXEL);
 
-	if (isp->module.isp_pipeline & OMAP_ISP_PREVIEW
+	if (isp->pipeline.modules & OMAP_ISP_PREVIEW
 	    && isp->tmp_buf_size < tmp_size)
-		rval = isp_tmp_buf_alloc(dev, tmp_size);
+		return isp_tmp_buf_alloc(dev, tmp_size);
 
-	return rval;
+	return 0;
 }
 EXPORT_SYMBOL(isp_vbq_setup);
 
@@ -1812,7 +1863,7 @@ void isp_g_fmt_cap(struct device *dev, struct v4l2_pix_format *pix)
 {
 	struct isp_device *isp = dev_get_drvdata(dev);
 
-	*pix = isp->module.pix;
+	*pix = isp->pipeline.pix;
 	return;
 }
 EXPORT_SYMBOL(isp_g_fmt_cap);
@@ -1828,27 +1879,11 @@ int isp_s_fmt_cap(struct device *dev, struct v4l2_pix_format *pix_input,
 		  struct v4l2_pix_format *pix_output)
 {
 	struct isp_device *isp = dev_get_drvdata(dev);
-	int rval = 0;
 
 	if (!isp->ref_count)
 		return -EINVAL;
 
-	rval = isp_calc_pipeline(dev, pix_input, pix_output);
-	if (rval)
-		goto out;
-
-	rval = isp_try_size(dev, pix_input, pix_output);
-	if (rval)
-		goto out;
-
-	rval = isp_try_fmt(dev, pix_input, pix_output);
-	if (rval)
-		goto out;
-
-	isp_config_pipeline(dev, pix_input, pix_output);
-
-out:
-	return rval;
+	return isp_s_pipeline(dev, pix_input, pix_output);
 }
 EXPORT_SYMBOL(isp_s_fmt_cap);
 
@@ -1862,7 +1897,14 @@ int isp_g_crop(struct device *dev, struct v4l2_crop *crop)
 {
 	struct isp_device *isp = dev_get_drvdata(dev);
 
-	crop->c = isp->isp_res.croprect;
+	if (isp->pipeline.modules & OMAP_ISP_RESIZER) {
+		crop->c = isp->pipeline.rsz_crop;
+	} else {
+		crop->c.left = 0;
+		crop->c.top = 0;
+		crop->c.width = isp->pipeline.ccdc_out_w_img;
+		crop->c.height = isp->pipeline.ccdc_out_h;
+	}
 
 	return 0;
 }
@@ -1896,165 +1938,20 @@ EXPORT_SYMBOL(isp_s_crop);
 int isp_try_fmt_cap(struct device *dev, struct v4l2_pix_format *pix_input,
 		    struct v4l2_pix_format *pix_output)
 {
-	int rval = 0;
+	struct isp_pipeline pipe;
+	int rval;
 
-	rval = isp_calc_pipeline(dev, pix_input, pix_output);
+	pipe.pix = *pix_output;
+
+	rval = isp_try_pipeline(dev, pix_input, &pipe);
 	if (rval)
-		goto out;
+		return rval;
 
-	rval = isp_try_size(dev, pix_input, pix_output);
-	if (rval)
-		goto out;
-
-	rval = isp_try_fmt(dev, pix_input, pix_output);
-	if (rval)
-		goto out;
-
-out:
-	return rval;
-}
-EXPORT_SYMBOL(isp_try_fmt_cap);
-
-/**
- * isp_try_size - Tries size configuration for I/O images of each ISP submodule
- * @pix_input: Pointer to V4L2 pixel format structure for input image.
- * @pix_output: Pointer to V4L2 pixel format structure for output image.
- *
- * Returns 0 if successful, or return value of ispccdc_try_size,
- * isppreview_try_size, or ispresizer_try_size (depending on the pipeline
- * configuration) if there is an error.
- **/
-static int isp_try_size(struct device *dev, struct v4l2_pix_format *pix_input,
-			struct v4l2_pix_format *pix_output)
-{
-	struct isp_device *isp = dev_get_drvdata(dev);
-	int rval = 0;
-
-	if (pix_output->width <= ISPRSZ_MIN_OUTPUT
-	    || pix_output->height <= ISPRSZ_MIN_OUTPUT)
-		return -EINVAL;
-
-	if (pix_output->width >= ISPRSZ_MAX_OUTPUT
-	    || pix_output->height > ISPRSZ_MAX_OUTPUT)
-		return -EINVAL;
-
-	isp->module.ccdc_input_width = pix_input->width;
-	isp->module.ccdc_input_height = pix_input->height;
-	isp->module.resizer_output_width = pix_output->width;
-	isp->module.resizer_output_height = pix_output->height;
-
-	if (isp->module.isp_pipeline & OMAP_ISP_CCDC) {
-		rval = ispccdc_try_size(&isp->isp_ccdc,
-					isp->module.ccdc_input_width,
-					isp->module.ccdc_input_height,
-					&isp->module.ccdc_output_width,
-					&isp->module.ccdc_output_height);
-		if (rval) {
-			dev_err(dev, "the dimensions %dx%d are not"
-			       " supported\n", pix_input->width,
-			       pix_input->height);
-			return rval;
-		}
-		pix_output->width = isp->module.ccdc_output_width;
-		pix_output->height = isp->module.ccdc_output_height;
-	}
-
-	if (isp->module.isp_pipeline & OMAP_ISP_PREVIEW) {
-		isp->module.preview_input_width = isp->module.ccdc_output_width;
-		isp->module.preview_input_height =
-			isp->module.ccdc_output_height;
-		rval = isppreview_try_size(&isp->isp_prev,
-					   isp->module.preview_input_width,
-					   isp->module.preview_input_height,
-					   &isp->module.preview_output_width,
-					   &isp->module.preview_output_height);
-		if (rval) {
-			dev_err(dev, "the dimensions %dx%d are not"
-			       " supported\n", pix_input->width,
-			       pix_input->height);
-			return rval;
-		}
-		pix_output->width = isp->module.preview_output_width;
-		pix_output->height = isp->module.preview_output_height;
-	}
-
-	if (isp->module.isp_pipeline & OMAP_ISP_RESIZER) {
-		struct v4l2_crop crop;
-
-		isp->module.resizer_input_width =
-			isp->module.preview_output_width;
-		isp->module.resizer_input_height =
-			isp->module.preview_output_height;
-		rval = ispresizer_try_size(&isp->isp_res,
-					   &isp->module.resizer_input_width,
-					   &isp->module.resizer_input_height,
-					   &isp->module.resizer_output_width,
-					   &isp->module.resizer_output_height);
-		if (rval) {
-			dev_err(dev, "The dimensions %dx%d are not"
-			       " supported\n", pix_input->width,
-			       pix_input->height);
-			return rval;
-		}
-
-		crop.c.left = crop.c.top = 0;
-		crop.c.width = isp->module.resizer_input_width;
-		crop.c.height = isp->module.resizer_input_height;
-
-		ispresizer_config_crop(&isp->isp_res, &crop);
-		pix_output->width = isp->module.resizer_output_width;
-		pix_output->height = isp->module.resizer_output_height;
-	}
-
-	return rval;
-}
-
-/**
- * isp_try_fmt - Validates input/output format parameters.
- * @pix_input: Pointer to V4L2 pixel format structure for input image.
- * @pix_output: Pointer to V4L2 pixel format structure for output image.
- *
- * Always returns 0.
- **/
-int isp_try_fmt(struct device *dev, struct v4l2_pix_format *pix_input,
-		struct v4l2_pix_format *pix_output)
-{
-	struct isp_device *isp = dev_get_drvdata(dev);
-	int ifmt;
-
-	for (ifmt = 0; ifmt < NUM_ISP_CAPTURE_FORMATS; ifmt++) {
-		if (pix_output->pixelformat == isp_formats[ifmt].pixelformat)
-			break;
-	}
-	if (ifmt == NUM_ISP_CAPTURE_FORMATS)
-		ifmt = 1;
-	pix_output->pixelformat = isp_formats[ifmt].pixelformat;
-	pix_output->field = V4L2_FIELD_NONE;
-	pix_output->bytesperline = pix_output->width * ISP_BYTES_PER_PIXEL;
-	pix_output->sizeimage =
-		PAGE_ALIGN(pix_output->bytesperline * pix_output->height);
-	pix_output->priv = 0;
-	switch (pix_output->pixelformat) {
-	case V4L2_PIX_FMT_YUYV:
-	case V4L2_PIX_FMT_UYVY:
-		pix_output->colorspace = V4L2_COLORSPACE_JPEG;
-		break;
-	default:
-		pix_output->colorspace = V4L2_COLORSPACE_SRGB;
-	}
-
-	isp->module.pix.pixelformat = pix_output->pixelformat;
-	isp->module.pix.width = pix_output->width;
-	isp->module.pix.height = pix_output->height;
-	isp->module.pix.field = pix_output->field;
-	isp->module.pix.bytesperline = pix_output->bytesperline;
-	isp->module.pix.sizeimage = pix_output->sizeimage;
-	isp->module.pix.priv = pix_output->priv;
-	isp->module.pix.colorspace = pix_output->colorspace;
+	*pix_output = pipe.pix;
 
 	return 0;
 }
-EXPORT_SYMBOL(isp_try_fmt);
+EXPORT_SYMBOL(isp_try_fmt_cap);
 
 /**
  * isp_save_ctx - Saves ISP, CCDC, HIST, H3A, PREV, RESZ & MMU context.
@@ -2199,7 +2096,6 @@ int isp_put(void)
 			isp_save_ctx(&pdev->dev);
 			isp_tmp_buf_free(&pdev->dev);
 			isp_release_resources(&pdev->dev);
-			isp->module.isp_pipeline = 0;
 			isp_disable_clocks(&pdev->dev);
 		}
 	}

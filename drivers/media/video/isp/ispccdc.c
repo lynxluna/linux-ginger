@@ -534,8 +534,8 @@ void ispccdc_config_crop(struct isp_ccdc_device *isp_ccdc, u32 left, u32 top,
  * Returns 0 if successful, or -EINVAL if wrong I/O combination or wrong input
  * or output values.
  **/
-int ispccdc_config_datapath(struct isp_ccdc_device *isp_ccdc,
-			    enum ccdc_input input, enum ccdc_output output)
+static int ispccdc_config_datapath(struct isp_ccdc_device *isp_ccdc,
+				   struct isp_pipeline *pipe)
 {
 	u32 syn_mode = 0;
 	struct ispccdc_vp vpcfg;
@@ -559,17 +559,10 @@ int ispccdc_config_datapath(struct isp_ccdc_device *isp_ccdc,
 		ISPCCDC_COLPTN_B_Mg << ISPCCDC_COLPTN_CP3PLC2_SHIFT |
 		ISPCCDC_COLPTN_Gb_G << ISPCCDC_COLPTN_CP3PLC3_SHIFT;
 
-	/* CCDC does not convert the image format */
-	if ((input == CCDC_RAW || input == CCDC_OTHERS) &&
-	    output == CCDC_YUV_RSZ) {
-		DPRINTK_ISPCCDC("ISP_ERR: Wrong CCDC I/O Combination\n");
-		return -EINVAL;
-	}
-
 	syn_mode = isp_reg_readl(isp_ccdc->dev, OMAP3_ISP_IOMEM_CCDC,
 				 ISPCCDC_SYN_MODE);
 
-	switch (output) {
+	switch (pipe->ccdc_out) {
 	case CCDC_YUV_RSZ:
 		syn_mode |= ISPCCDC_SYN_MODE_SDR2RSZ;
 		syn_mode &= ~ISPCCDC_SYN_MODE_WEN;
@@ -626,7 +619,7 @@ int ispccdc_config_datapath(struct isp_ccdc_device *isp_ccdc,
 	isp_reg_writel(isp_ccdc->dev, syn_mode, OMAP3_ISP_IOMEM_CCDC,
 		       ISPCCDC_SYN_MODE);
 
-	switch (input) {
+	switch (pipe->ccdc_in) {
 	case CCDC_RAW:
 		syncif.ccdc_mastermode = 0;
 		syncif.datapol = 0;
@@ -674,9 +667,7 @@ int ispccdc_config_datapath(struct isp_ccdc_device *isp_ccdc,
 		return -EINVAL;
 	}
 
-	isp_ccdc->ccdc_inpfmt = input;
-	isp_ccdc->ccdc_outfmt = output;
-	ispccdc_print_status(isp_ccdc);
+	ispccdc_print_status(isp_ccdc, pipe);
 	isp_print_status(isp_ccdc->dev);
 	return 0;
 }
@@ -1116,53 +1107,40 @@ void ispccdc_config_shadow_registers(struct isp_ccdc_device *isp_ccdc)
  *
  * Returns 0 if successful, or -EINVAL if the input width is less than 2 pixels
  **/
-int ispccdc_try_size(struct isp_ccdc_device *isp_ccdc, u32 input_w, u32 input_h,
-		     u32 *output_w, u32 *output_h)
+int ispccdc_try_pipeline(struct isp_ccdc_device *isp_ccdc,
+			 struct isp_pipeline *pipe)
 {
-	if (input_w < 32 || input_h < 32) {
+	struct isp_device *isp =
+		container_of(isp_ccdc, struct isp_device, isp_ccdc);
+
+	if (pipe->ccdc_in_w < 32 || pipe->ccdc_in_h < 32) {
 		DPRINTK_ISPCCDC("ISP_ERR: CCDC cannot handle input width less"
 				" than 32 pixels or height less than 32\n");
 		return -EINVAL;
 	}
 
-	if (isp_ccdc->crop_w)
-		*output_w = isp_ccdc->crop_w;
-	else
-		*output_w = input_w;
-
-	if (isp_ccdc->crop_h)
-		*output_h = isp_ccdc->crop_h;
-	else
-		*output_h = input_h;
-
-	if (!isp_ccdc->refmt_en
-	    && isp_ccdc->ccdc_outfmt != CCDC_OTHERS_MEM
-	    && isp_ccdc->ccdc_outfmt != CCDC_OTHERS_VP_MEM)
-		*output_h -= 1;
-
-	if (isp_ccdc->ccdc_outfmt == CCDC_OTHERS_MEM
-	    || isp_ccdc->ccdc_outfmt == CCDC_OTHERS_VP_MEM) {
-		if (*output_w % 16) {
-			*output_w -= (*output_w % 16);
-			*output_w += 16;
-		}
+	/* CCDC does not convert the image format */
+	if ((pipe->ccdc_in == CCDC_RAW || pipe->ccdc_in == CCDC_OTHERS)
+	    && pipe->ccdc_out == CCDC_YUV_RSZ) {
+		dev_info(isp->dev, "wrong CCDC I/O Combination\n");
+		return -EINVAL;
 	}
 
-	isp_ccdc->ccdcout_w = *output_w;
-	isp_ccdc->ccdcout_h = *output_h;
-	isp_ccdc->ccdcin_w = input_w;
-	isp_ccdc->ccdcin_h = input_h;
+	pipe->ccdc_out_w = pipe->ccdc_in_w;
+	pipe->ccdc_out_h = pipe->ccdc_in_h;
 
-	DPRINTK_ISPCCDC("try size: ccdcin_w=%u,ccdcin_h=%u,ccdcout_w=%u,"
-			" ccdcout_h=%u\n",
-			isp_ccdc->ccdcin_w,
-			isp_ccdc->ccdcin_h,
-			isp_ccdc->ccdcout_w,
-			isp_ccdc->ccdcout_h);
+	if (!isp_ccdc->refmt_en
+	    && pipe->ccdc_out != CCDC_OTHERS_MEM
+	    && pipe->ccdc_out != CCDC_OTHERS_VP_MEM)
+		pipe->ccdc_out_h -= 1;
+
+	pipe->ccdc_out_w_img = pipe->ccdc_out_w;
+	/* Round up to nearest 16 pixels. */
+	pipe->ccdc_out_w = ALIGN(pipe->ccdc_out_w, 0x10);
 
 	return 0;
 }
-EXPORT_SYMBOL(ispccdc_try_size);
+EXPORT_SYMBOL(ispccdc_try_pipeline);
 
 /**
  * ispccdc_config_size - Configure the dimensions of the CCDC input/output
@@ -1178,40 +1156,35 @@ EXPORT_SYMBOL(ispccdc_try_size);
  * Returns 0 if successful, or -EINVAL if try_size was not called before to
  * validate the requested dimensions.
  **/
-int ispccdc_config_size(struct isp_ccdc_device *isp_ccdc, u32 input_w,
-			u32 input_h, u32 output_w, u32 output_h)
+int ispccdc_s_pipeline(struct isp_ccdc_device *isp_ccdc,
+		       struct isp_pipeline *pipe)
 {
-	DPRINTK_ISPCCDC("config size: input_w=%u, input_h=%u, output_w=%u,"
-			" output_h=%u\n",
-			input_w, input_h,
-			output_w, output_h);
-	if (output_w != isp_ccdc->ccdcout_w
-	    || output_h != isp_ccdc->ccdcout_h) {
-		DPRINTK_ISPCCDC("ISP_ERR : ispccdc_try_size should"
-				" be called before config size\n");
-		return -EINVAL;
-	}
+	int rval;
 
-	if (isp_ccdc->ccdc_outfmt == CCDC_OTHERS_VP) {
+	rval = ispccdc_config_datapath(isp_ccdc, pipe);
+	if (rval)
+		return rval;
+
+	if (pipe->ccdc_out == CCDC_OTHERS_VP) {
 		isp_reg_writel(isp_ccdc->dev, (isp_ccdc->ccdcin_woffset <<
 				ISPCCDC_FMT_HORZ_FMTSPH_SHIFT) |
-			       (isp_ccdc->ccdcin_w <<
+			       (pipe->ccdc_in_w <<
 				ISPCCDC_FMT_HORZ_FMTLNH_SHIFT),
 			       OMAP3_ISP_IOMEM_CCDC,
 			       ISPCCDC_FMT_HORZ);
 		isp_reg_writel(isp_ccdc->dev, (isp_ccdc->ccdcin_hoffset <<
 				ISPCCDC_FMT_VERT_FMTSLV_SHIFT) |
-			       (isp_ccdc->ccdcin_h <<
+			       (pipe->ccdc_in_h <<
 				ISPCCDC_FMT_VERT_FMTLNV_SHIFT),
 			       OMAP3_ISP_IOMEM_CCDC,
 			       ISPCCDC_FMT_VERT);
-		isp_reg_writel(isp_ccdc->dev, (isp_ccdc->ccdcout_w <<
+		isp_reg_writel(isp_ccdc->dev, (pipe->ccdc_out_w <<
 				ISPCCDC_VP_OUT_HORZ_NUM_SHIFT) |
-			       (isp_ccdc->ccdcout_h - 1) <<
+			       (pipe->ccdc_out_h - 1) <<
 			       ISPCCDC_VP_OUT_VERT_NUM_SHIFT,
 			       OMAP3_ISP_IOMEM_CCDC,
 			       ISPCCDC_VP_OUT);
-		isp_reg_writel(isp_ccdc->dev, (((isp_ccdc->ccdcout_h - 25) &
+		isp_reg_writel(isp_ccdc->dev, (((pipe->ccdc_out_h - 25) &
 				 ISPCCDC_VDINT_0_MASK) <<
 				ISPCCDC_VDINT_0_SHIFT) |
 			       ((50 & ISPCCDC_VDINT_1_MASK) <<
@@ -1219,20 +1192,20 @@ int ispccdc_config_size(struct isp_ccdc_device *isp_ccdc, u32 input_w,
 			       OMAP3_ISP_IOMEM_CCDC,
 			       ISPCCDC_VDINT);
 
-	} else if (isp_ccdc->ccdc_outfmt == CCDC_OTHERS_MEM) {
+	} else if (pipe->ccdc_out == CCDC_OTHERS_MEM) {
 		isp_reg_writel(isp_ccdc->dev, 0, OMAP3_ISP_IOMEM_CCDC,
 			       ISPCCDC_VP_OUT);
-		if (isp_ccdc->ccdc_inpfmt == CCDC_RAW) {
+		if (pipe->ccdc_in == CCDC_RAW) {
 			isp_reg_writel(isp_ccdc->dev,
 				       0 << ISPCCDC_HORZ_INFO_SPH_SHIFT
-				       | ((isp_ccdc->ccdcout_w - 1)
+				       | ((pipe->ccdc_out_w - 1)
 					  << ISPCCDC_HORZ_INFO_NPH_SHIFT),
 				       OMAP3_ISP_IOMEM_CCDC,
 				       ISPCCDC_HORZ_INFO);
 		} else {
 			isp_reg_writel(isp_ccdc->dev,
 				       0 << ISPCCDC_HORZ_INFO_SPH_SHIFT
-				       | ((isp_ccdc->ccdcout_w - 1)
+				       | ((pipe->ccdc_out_w - 1)
 					  << ISPCCDC_HORZ_INFO_NPH_SHIFT),
 				       OMAP3_ISP_IOMEM_CCDC,
 				       ISPCCDC_HORZ_INFO);
@@ -1241,42 +1214,42 @@ int ispccdc_config_size(struct isp_ccdc_device *isp_ccdc, u32 input_w,
 			       0 << ISPCCDC_VERT_START_SLV0_SHIFT,
 			       OMAP3_ISP_IOMEM_CCDC,
 			       ISPCCDC_VERT_START);
-		isp_reg_writel(isp_ccdc->dev, (isp_ccdc->ccdcout_h - 1) <<
+		isp_reg_writel(isp_ccdc->dev, (pipe->ccdc_out_h - 1) <<
 			       ISPCCDC_VERT_LINES_NLV_SHIFT,
 			       OMAP3_ISP_IOMEM_CCDC,
 			       ISPCCDC_VERT_LINES);
 
-		ispccdc_config_outlineoffset(isp_ccdc, isp_ccdc->ccdcout_w * 2,
+		ispccdc_config_outlineoffset(isp_ccdc, pipe->ccdc_out_w * 2,
 					     0, 0);
-		isp_reg_writel(isp_ccdc->dev, (((isp_ccdc->ccdcout_h - 2) &
+		isp_reg_writel(isp_ccdc->dev, (((pipe->ccdc_out_h - 2) &
 				 ISPCCDC_VDINT_0_MASK) <<
 				ISPCCDC_VDINT_0_SHIFT) |
 			       ((100 & ISPCCDC_VDINT_1_MASK) <<
 				ISPCCDC_VDINT_1_SHIFT),
 			       OMAP3_ISP_IOMEM_CCDC,
 			       ISPCCDC_VDINT);
-	} else if (isp_ccdc->ccdc_outfmt == CCDC_OTHERS_VP_MEM) {
+	} else if (pipe->ccdc_out == CCDC_OTHERS_VP_MEM) {
 		isp_reg_writel(isp_ccdc->dev,
 			       (0 << ISPCCDC_FMT_HORZ_FMTSPH_SHIFT) |
-			       (isp_ccdc->ccdcin_w <<
+			       (pipe->ccdc_in_w <<
 				ISPCCDC_FMT_HORZ_FMTLNH_SHIFT),
 			       OMAP3_ISP_IOMEM_CCDC,
 			       ISPCCDC_FMT_HORZ);
 		isp_reg_writel(isp_ccdc->dev,
 			       (0 << ISPCCDC_FMT_VERT_FMTSLV_SHIFT) |
-			       ((isp_ccdc->ccdcin_h) <<
+			       (pipe->ccdc_in_h <<
 				ISPCCDC_FMT_VERT_FMTLNV_SHIFT),
 			       OMAP3_ISP_IOMEM_CCDC,
 			       ISPCCDC_FMT_VERT);
-		isp_reg_writel(isp_ccdc->dev, (isp_ccdc->ccdcout_w
+		isp_reg_writel(isp_ccdc->dev, (pipe->ccdc_out_w
 				<< ISPCCDC_VP_OUT_HORZ_NUM_SHIFT) |
-			       ((isp_ccdc->ccdcout_h - 1) <<
+			       ((pipe->ccdc_out_h - 1) <<
 				ISPCCDC_VP_OUT_VERT_NUM_SHIFT),
 			       OMAP3_ISP_IOMEM_CCDC,
 			       ISPCCDC_VP_OUT);
 		isp_reg_writel(isp_ccdc->dev,
 			       0 << ISPCCDC_HORZ_INFO_SPH_SHIFT |
-			       ((isp_ccdc->ccdcout_w - 1) <<
+			       ((pipe->ccdc_out_w - 1) <<
 				ISPCCDC_HORZ_INFO_NPH_SHIFT),
 			       OMAP3_ISP_IOMEM_CCDC,
 			       ISPCCDC_HORZ_INFO);
@@ -1284,13 +1257,13 @@ int ispccdc_config_size(struct isp_ccdc_device *isp_ccdc, u32 input_w,
 			       0 << ISPCCDC_VERT_START_SLV0_SHIFT,
 			       OMAP3_ISP_IOMEM_CCDC,
 			       ISPCCDC_VERT_START);
-		isp_reg_writel(isp_ccdc->dev, (isp_ccdc->ccdcout_h - 1) <<
+		isp_reg_writel(isp_ccdc->dev, (pipe->ccdc_out_h - 1) <<
 			       ISPCCDC_VERT_LINES_NLV_SHIFT,
 			       OMAP3_ISP_IOMEM_CCDC,
 			       ISPCCDC_VERT_LINES);
-		ispccdc_config_outlineoffset(isp_ccdc, isp_ccdc->ccdcout_w * 2,
+		ispccdc_config_outlineoffset(isp_ccdc, pipe->ccdc_out_w * 2,
 					     0, 0);
-		isp_reg_writel(isp_ccdc->dev, (((isp_ccdc->ccdcout_h - 2) &
+		isp_reg_writel(isp_ccdc->dev, (((pipe->ccdc_out_h - 2) &
 				 ISPCCDC_VDINT_0_MASK) <<
 				ISPCCDC_VDINT_0_SHIFT) |
 			       ((100 & ISPCCDC_VDINT_1_MASK) <<
@@ -1300,7 +1273,7 @@ int ispccdc_config_size(struct isp_ccdc_device *isp_ccdc, u32 input_w,
 	}
 
 	if (is_isplsc_activated()) {
-		if (isp_ccdc->ccdc_inpfmt == CCDC_RAW) {
+		if (pipe->ccdc_in == CCDC_RAW) {
 			ispccdc_config_lsc(isp_ccdc, &isp_ccdc->lsc_config);
 			ispccdc_load_lsc(isp_ccdc, isp_ccdc->lsc_gain_table,
 					 isp_ccdc->lsc_config.size);
@@ -1309,7 +1282,7 @@ int ispccdc_config_size(struct isp_ccdc_device *isp_ccdc, u32 input_w,
 
 	return 0;
 }
-EXPORT_SYMBOL(ispccdc_config_size);
+EXPORT_SYMBOL(ispccdc_s_pipeline);
 
 /**
  * ispccdc_config_outlineoffset - Configures the output line offset
@@ -1405,9 +1378,12 @@ EXPORT_SYMBOL(ispccdc_set_outaddr);
  **/
 void ispccdc_enable(struct isp_ccdc_device *isp_ccdc, u8 enable)
 {
+	struct isp_device *isp =
+		container_of(isp_ccdc, struct isp_device, isp_ccdc);
+
 	if (enable) {
 		if (isp_ccdc->lsc_enable
-		    && isp_ccdc->ccdc_inpfmt == CCDC_RAW)
+		    && isp->pipeline.ccdc_in == CCDC_RAW)
 			ispccdc_enable_lsc(isp_ccdc, 1);
 
 	} else {
@@ -1482,7 +1458,8 @@ EXPORT_SYMBOL(ispccdc_restore_context);
  *
  * Also prints other debug information stored in the CCDC module.
  **/
-void ispccdc_print_status(struct isp_ccdc_device *isp_ccdc)
+void ispccdc_print_status(struct isp_ccdc_device *isp_ccdc,
+			  struct isp_pipeline *pipe)
 {
 	if (!is_ispccdc_debug_enabled())
 		return;
@@ -1500,7 +1477,7 @@ void ispccdc_print_status(struct isp_ccdc_device *isp_ccdc)
 	DPRINTK_ISPCCDC("ISP_CTRL =0x%x\n",
 			isp_reg_readl(isp_ccdc->dev, OMAP3_ISP_IOMEM_MAIN,
 				      ISP_CTRL));
-	switch (isp_ccdc->ccdc_inpfmt) {
+	switch ((int)pipe->ccdc_in) {
 	case CCDC_RAW:
 		DPRINTK_ISPCCDC("ccdc input format is CCDC_RAW\n");
 		break;
@@ -1512,7 +1489,7 @@ void ispccdc_print_status(struct isp_ccdc_device *isp_ccdc)
 		break;
 	}
 
-	switch (isp_ccdc->ccdc_outfmt) {
+	switch ((int)pipe->ccdc_out) {
 	case CCDC_OTHERS_VP:
 		DPRINTK_ISPCCDC("ccdc output format is CCDC_OTHERS_VP\n");
 		break;
