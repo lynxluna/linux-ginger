@@ -226,7 +226,6 @@ copy_from_user_err:
 	dev_err(isp_ccdc->dev, "ccdc: Config: copy from user error");
 	return -EINVAL ;
 }
-EXPORT_SYMBOL(omap34xx_isp_ccdc_config);
 
 /**
  * Set the value to be used for CCDC_CFG.WENLOG.
@@ -236,7 +235,6 @@ void ispccdc_set_wenlog(struct isp_ccdc_device *isp_ccdc, u32 wenlog)
 {
 	isp_ccdc->wenlog = wenlog;
 }
-EXPORT_SYMBOL(ispccdc_set_wenlog);
 
 /**
  * ispccdc_request - Reserves the CCDC module.
@@ -263,7 +261,6 @@ int ispccdc_request(struct isp_ccdc_device *isp_ccdc)
 		   ISPCCDC_CFG_VDLC);
 	return 0;
 }
-EXPORT_SYMBOL(ispccdc_request);
 
 /**
  * ispccdc_free - Frees the CCDC module.
@@ -289,7 +286,6 @@ int ispccdc_free(struct isp_ccdc_device *isp_ccdc)
 		      ISPCTRL_SBL_WR1_RAM_EN));
 	return 0;
 }
-EXPORT_SYMBOL(ispccdc_free);
 
 /**
  * ispccdc_free_lsc - Frees Lens Shading Compensation table
@@ -410,7 +406,6 @@ int ispccdc_load_lsc(struct isp_ccdc_device *isp_ccdc, u8 *table_addr,
 		return ret;
 	return 0;
 }
-EXPORT_SYMBOL(ispccdc_load_lsc);
 
 /**
  * ispccdc_config_lsc - Configures the lens shading compensation module
@@ -443,7 +438,6 @@ void ispccdc_config_lsc(struct isp_ccdc_device *isp_ccdc,
 	isp_reg_writel(isp_ccdc->dev, reg, OMAP3_ISP_IOMEM_CCDC,
 		       ISPCCDC_LSC_INITIAL);
 }
-EXPORT_SYMBOL(ispccdc_config_lsc);
 
 /**
  * ispccdc_enable_lsc - Enables/Disables the Lens Shading Compensation module.
@@ -475,7 +469,6 @@ void ispccdc_enable_lsc(struct isp_ccdc_device *isp_ccdc, u8 enable)
 		isp_ccdc->lsc_enable = 0;
 	}
 }
-EXPORT_SYMBOL(ispccdc_enable_lsc);
 
 void ispccdc_lsc_error_handler(struct isp_ccdc_device *isp_ccdc)
 {
@@ -673,7 +666,6 @@ static int ispccdc_config_datapath(struct isp_ccdc_device *isp_ccdc,
 	isp_print_status(isp_ccdc->dev);
 	return 0;
 }
-EXPORT_SYMBOL(ispccdc_config_datapath);
 
 /**
  * ispccdc_config_sync_if - Sets the sync i/f params between sensor and CCDC.
@@ -774,7 +766,6 @@ void ispccdc_config_sync_if(struct isp_ccdc_device *isp_ccdc,
 			    ISPCCDC_REC656IF, ~ISPCCDC_REC656IF_R656ON);
 	}
 }
-EXPORT_SYMBOL(ispccdc_config_sync_if);
 
 /**
  * ispccdc_config_black_clamp - Configures the clamp parameters in CCDC.
@@ -812,7 +803,6 @@ int ispccdc_config_black_clamp(struct isp_ccdc_device *isp_ccdc,
 	}
 	return 0;
 }
-EXPORT_SYMBOL(ispccdc_config_black_clamp);
 
 /**
  * ispccdc_enable_black_clamp - Enables/Disables the optical black clamp.
@@ -828,7 +818,6 @@ void ispccdc_enable_black_clamp(struct isp_ccdc_device *isp_ccdc, u8 enable)
 		       enable ? ISPCCDC_CLAMP_CLAMPEN : 0);
 	isp_ccdc->obclamp_en = enable;
 }
-EXPORT_SYMBOL(ispccdc_enable_black_clamp);
 
 /**
  * ispccdc_config_fpc - Configures the Faulty Pixel Correction parameters.
@@ -859,7 +848,6 @@ int ispccdc_config_fpc(struct isp_ccdc_device *isp_ccdc, struct ispccdc_fpc fpc)
 		       OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FPC);
 	return 0;
 }
-EXPORT_SYMBOL(ispccdc_config_fpc);
 
 /**
  * ispccdc_enable_fpc - Enables the Faulty Pixel Correction.
@@ -871,7 +859,6 @@ void ispccdc_enable_fpc(struct isp_ccdc_device *isp_ccdc, u8 enable)
 		       ~ISPCCDC_FPC_FPCEN,
 		       enable ? ISPCCDC_FPC_FPCEN : 0);
 }
-EXPORT_SYMBOL(ispccdc_enable_fpc);
 
 /**
  * ispccdc_config_black_comp - Configures Black Level Compensation parameters.
@@ -891,7 +878,6 @@ void ispccdc_config_black_comp(struct isp_ccdc_device *isp_ccdc,
 	isp_reg_writel(isp_ccdc->dev, blcomp_val, OMAP3_ISP_IOMEM_CCDC,
 		       ISPCCDC_BLKCMP);
 }
-EXPORT_SYMBOL(ispccdc_config_black_comp);
 
 /**
  * ispccdc_config_vp - Configures the Video Port Configuration parameters.
@@ -940,7 +926,6 @@ void ispccdc_config_vp(struct isp_ccdc_device *isp_ccdc,
 	isp_reg_writel(isp_ccdc->dev, fmtcfg_vp, OMAP3_ISP_IOMEM_CCDC,
 		       ISPCCDC_FMTCFG);
 }
-EXPORT_SYMBOL(ispccdc_config_vp);
 
 /**
  * ispccdc_enable_vp - Enables the Video Port.
@@ -952,7 +937,6 @@ void ispccdc_enable_vp(struct isp_ccdc_device *isp_ccdc, u8 enable)
 		       ~ISPCCDC_FMTCFG_VPEN,
 		       enable ? ISPCCDC_FMTCFG_VPEN : 0);
 }
-EXPORT_SYMBOL(ispccdc_enable_vp);
 
 /**
  * ispccdc_config_reformatter - Configures the Reformatter.
@@ -1008,7 +992,6 @@ void ispccdc_config_reformatter(struct isp_ccdc_device *isp_ccdc,
 	isp_reg_writel(isp_ccdc->dev, fmtcfg_val, OMAP3_ISP_IOMEM_CCDC,
 		       ISPCCDC_FMTCFG);
 }
-EXPORT_SYMBOL(ispccdc_config_reformatter);
 
 /**
  * ispccdc_enable_reformatter - Enables the Reformatter.
@@ -1021,7 +1004,6 @@ void ispccdc_enable_reformatter(struct isp_ccdc_device *isp_ccdc, u8 enable)
 		       enable ? ISPCCDC_FMTCFG_FMTEN : 0);
 	isp_ccdc->refmt_en = enable;
 }
-EXPORT_SYMBOL(ispccdc_enable_reformatter);
 
 /**
  * ispccdc_config_culling - Configures the culling parameters.
@@ -1040,7 +1022,6 @@ void ispccdc_config_culling(struct isp_ccdc_device *isp_ccdc,
 	isp_reg_writel(isp_ccdc->dev, culling_val, OMAP3_ISP_IOMEM_CCDC,
 		       ISPCCDC_CULLING);
 }
-EXPORT_SYMBOL(ispccdc_config_culling);
 
 /**
  * ispccdc_enable_lpf - Enables the Low-Pass Filter (LPF).
@@ -1052,7 +1033,6 @@ void ispccdc_enable_lpf(struct isp_ccdc_device *isp_ccdc, u8 enable)
 		       ~ISPCCDC_SYN_MODE_LPF,
 		       enable ? ISPCCDC_SYN_MODE_LPF : 0);
 }
-EXPORT_SYMBOL(ispccdc_enable_lpf);
 
 /**
  * ispccdc_config_alaw - Configures the input width for A-law.
@@ -1064,7 +1044,6 @@ void ispccdc_config_alaw(struct isp_ccdc_device *isp_ccdc,
 	isp_reg_writel(isp_ccdc->dev, ipwidth << ISPCCDC_ALAW_GWDI_SHIFT,
 		       OMAP3_ISP_IOMEM_CCDC, ISPCCDC_ALAW);
 }
-EXPORT_SYMBOL(ispccdc_config_alaw);
 
 /**
  * ispccdc_enable_alaw - Enables the A-law compression.
@@ -1076,7 +1055,6 @@ void ispccdc_enable_alaw(struct isp_ccdc_device *isp_ccdc, u8 enable)
 		       ~ISPCCDC_ALAW_CCDTBL,
 		       enable ? ISPCCDC_ALAW_CCDTBL : 0);
 }
-EXPORT_SYMBOL(ispccdc_enable_alaw);
 
 /**
  * ispccdc_config_imgattr - Configures the sensor image specific attributes.
@@ -1087,7 +1065,6 @@ void ispccdc_config_imgattr(struct isp_ccdc_device *isp_ccdc, u32 colptn)
 	isp_reg_writel(isp_ccdc->dev, colptn, OMAP3_ISP_IOMEM_CCDC,
 		       ISPCCDC_COLPTN);
 }
-EXPORT_SYMBOL(ispccdc_config_imgattr);
 
 void ispccdc_config_shadow_registers(struct isp_ccdc_device *isp_ccdc)
 {
@@ -1142,7 +1119,6 @@ int ispccdc_try_pipeline(struct isp_ccdc_device *isp_ccdc,
 
 	return 0;
 }
-EXPORT_SYMBOL(ispccdc_try_pipeline);
 
 /**
  * ispccdc_config_size - Configure the dimensions of the CCDC input/output
@@ -1284,7 +1260,6 @@ int ispccdc_s_pipeline(struct isp_ccdc_device *isp_ccdc,
 
 	return 0;
 }
-EXPORT_SYMBOL(ispccdc_s_pipeline);
 
 /**
  * ispccdc_config_outlineoffset - Configures the output line offset
@@ -1346,7 +1321,6 @@ int ispccdc_config_outlineoffset(struct isp_ccdc_device *isp_ccdc, u32 offset,
 	}
 	return 0;
 }
-EXPORT_SYMBOL(ispccdc_config_outlineoffset);
 
 /**
  * ispccdc_set_outaddr - Sets the memory address where the output will be saved
@@ -1370,7 +1344,6 @@ int ispccdc_set_outaddr(struct isp_ccdc_device *isp_ccdc, u32 addr)
 	}
 
 }
-EXPORT_SYMBOL(ispccdc_set_outaddr);
 
 /**
  * ispccdc_enable - Enables the CCDC module.
@@ -1398,7 +1371,6 @@ void ispccdc_enable(struct isp_ccdc_device *isp_ccdc, u8 enable)
 	isp_reg_and_or(isp_ccdc->dev, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_PCR,
 		       ~ISPCCDC_PCR_EN, enable ? ISPCCDC_PCR_EN : 0);
 }
-EXPORT_SYMBOL(ispccdc_enable);
 
 /*
  * Returns zero if the CCDC is idle and the image has been written to
@@ -1422,7 +1394,6 @@ int ispccdc_sbl_busy(void *_isp_ccdc)
 				 ISPSBL_CCDC_WR_3) &
 		   ISPSBL_CCDC_WR_0_DATA_READY);
 }
-EXPORT_SYMBOL(ispccdc_sbl_busy);
 
 /**
  * ispccdc_busy - Gets busy state of the CCDC.
@@ -1433,7 +1404,6 @@ int ispccdc_busy(struct isp_ccdc_device *isp_ccdc)
 			     ISPCCDC_PCR) &
 		ISPCCDC_PCR_BUSY;
 }
-EXPORT_SYMBOL(ispccdc_busy);
 
 /**
  * ispccdc_save_context - Saves the values of the CCDC module registers
@@ -1443,7 +1413,6 @@ void ispccdc_save_context(struct device *dev)
 	DPRINTK_ISPCCDC("Saving context\n");
 	isp_save_context(dev, ispccdc_reg_list);
 }
-EXPORT_SYMBOL(ispccdc_save_context);
 
 /**
  * ispccdc_restore_context - Restores the values of the CCDC module registers
@@ -1453,7 +1422,6 @@ void ispccdc_restore_context(struct device *dev)
 	DPRINTK_ISPCCDC("Restoring context\n");
 	isp_restore_context(dev, ispccdc_reg_list);
 }
-EXPORT_SYMBOL(ispccdc_restore_context);
 
 /**
  * ispccdc_print_status - Prints the values of the CCDC Module registers
@@ -1573,7 +1541,6 @@ void ispccdc_print_status(struct isp_ccdc_device *isp_ccdc,
 			isp_reg_readl(isp_ccdc->dev, OMAP3_ISP_IOMEM_CCDC,
 				      ISPCCDC_LSC_TABLE_OFFSET));
 }
-EXPORT_SYMBOL(ispccdc_print_status);
 
 /**
  * isp_ccdc_init - CCDC module initialization.
