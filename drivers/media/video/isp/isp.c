@@ -339,7 +339,6 @@ static void isp_enable_interrupts(struct device *dev, int is_raw)
 	u32 irq0enable;
 
 	irq0enable = IRQ0ENABLE_CCDC_LSC_PREF_ERR_IRQ
-		| IRQ0ENABLE_HS_VS_IRQ
 		| IRQ0ENABLE_CCDC_VD0_IRQ | IRQ0ENABLE_CCDC_VD1_IRQ
 		| IRQ0ENABLE_CSIA_IRQ
 		| IRQ0ENABLE_CSIB_IRQ
@@ -814,7 +813,7 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *_pdev)
 
 	spin_lock_irqsave(&isp->lock, flags);
 	wait_hs_vs = bufs->wait_hs_vs;
-	if (irqstatus & HS_VS && bufs->wait_hs_vs)
+	if (irqstatus & CCDC_VD0 && bufs->wait_hs_vs)
 		bufs->wait_hs_vs--;
 	/*
 	 * We need to wait for the first HS_VS interrupt from CCDC.
@@ -826,8 +825,10 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *_pdev)
 		 * Enable preview for the first time. We just have
 		 * missed the start-of-frame so we can do it now.
 		 */
-		if (irqstatus & HS_VS && !RAW_CAPTURE(isp))
+		if (irqstatus & CCDC_VD0 && !RAW_CAPTURE(isp)) {
+			isppreview_config_shadow_registers(&isp->isp_prev);
 			isppreview_enable(&isp->isp_prev, 1);
+		}
 	default:
 		goto out_ignore_buff;
 	case 0:
@@ -885,8 +886,11 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *_pdev)
 					&isp->isp_res);
 				ispresizer_enable(&isp->isp_res, 1);
 			}
-			isppreview_config_shadow_registers(&isp->isp_prev);
-			isppreview_enable(&isp->isp_prev, 1);
+			if (!ISP_BUFS_IS_EMPTY(bufs)) {
+				isppreview_config_shadow_registers(
+					&isp->isp_prev);
+				isppreview_enable(&isp->isp_prev, 1);
+			}
 		}
 	}
 
