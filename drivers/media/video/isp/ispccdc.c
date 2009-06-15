@@ -1143,112 +1143,55 @@ int ispccdc_s_pipeline(struct isp_ccdc_device *isp_ccdc,
 	if (rval)
 		return rval;
 
-	if (pipe->ccdc_out == CCDC_OTHERS_VP) {
-		isp_reg_writel(isp_ccdc->dev, (isp_ccdc->ccdcin_woffset <<
-				ISPCCDC_FMT_HORZ_FMTSPH_SHIFT) |
-			       (pipe->ccdc_in_w <<
-				ISPCCDC_FMT_HORZ_FMTLNH_SHIFT),
-			       OMAP3_ISP_IOMEM_CCDC,
-			       ISPCCDC_FMT_HORZ);
-		isp_reg_writel(isp_ccdc->dev, (isp_ccdc->ccdcin_hoffset <<
-				ISPCCDC_FMT_VERT_FMTSLV_SHIFT) |
-			       (pipe->ccdc_in_h <<
-				ISPCCDC_FMT_VERT_FMTLNV_SHIFT),
-			       OMAP3_ISP_IOMEM_CCDC,
-			       ISPCCDC_FMT_VERT);
-		isp_reg_writel(isp_ccdc->dev, (pipe->ccdc_out_w <<
-				ISPCCDC_VP_OUT_HORZ_NUM_SHIFT) |
-			       (pipe->ccdc_out_h - 1) <<
-			       ISPCCDC_VP_OUT_VERT_NUM_SHIFT,
-			       OMAP3_ISP_IOMEM_CCDC,
-			       ISPCCDC_VP_OUT);
-		isp_reg_writel(isp_ccdc->dev, (((pipe->ccdc_out_h - 25) &
-				 ISPCCDC_VDINT_0_MASK) <<
-				ISPCCDC_VDINT_0_SHIFT) |
-			       ((50 & ISPCCDC_VDINT_1_MASK) <<
-				ISPCCDC_VDINT_1_SHIFT),
-			       OMAP3_ISP_IOMEM_CCDC,
-			       ISPCCDC_VDINT);
+	isp_reg_writel(isp_ccdc->dev,
+		       (0 << ISPCCDC_FMT_HORZ_FMTSPH_SHIFT) |
+		       (pipe->ccdc_in_w <<
+			ISPCCDC_FMT_HORZ_FMTLNH_SHIFT),
+		       OMAP3_ISP_IOMEM_CCDC,
+		       ISPCCDC_FMT_HORZ);
+	isp_reg_writel(isp_ccdc->dev,
+		       (0 << ISPCCDC_FMT_VERT_FMTSLV_SHIFT) |
+		       (pipe->ccdc_in_h <<
+			ISPCCDC_FMT_VERT_FMTLNV_SHIFT),
+		       OMAP3_ISP_IOMEM_CCDC,
+		       ISPCCDC_FMT_VERT);
+	isp_reg_writel(isp_ccdc->dev,
+		       0 << ISPCCDC_VERT_START_SLV0_SHIFT,
+		       OMAP3_ISP_IOMEM_CCDC,
+		       ISPCCDC_VERT_START);
+	isp_reg_writel(isp_ccdc->dev, (pipe->ccdc_out_h - 1) <<
+		       ISPCCDC_VERT_LINES_NLV_SHIFT,
+		       OMAP3_ISP_IOMEM_CCDC,
+		       ISPCCDC_VERT_LINES);
+	isp_reg_writel(isp_ccdc->dev,
+		       0 << ISPCCDC_HORZ_INFO_SPH_SHIFT
+		       | ((pipe->ccdc_out_w - 1)
+			  << ISPCCDC_HORZ_INFO_NPH_SHIFT),
+		       OMAP3_ISP_IOMEM_CCDC,
+		       ISPCCDC_HORZ_INFO);
+	ispccdc_config_outlineoffset(isp_ccdc,
+				     pipe->ccdc_out_w * ISP_BYTES_PER_PIXEL,
+				     0, 0);
+	isp_reg_writel(isp_ccdc->dev,
+		       (((pipe->ccdc_out_h - 2) &
+			 ISPCCDC_VDINT_0_MASK) <<
+			ISPCCDC_VDINT_0_SHIFT) |
+		       ((0 & ISPCCDC_VDINT_1_MASK) <<
+			ISPCCDC_VDINT_1_SHIFT),
+		       OMAP3_ISP_IOMEM_CCDC,
+		       ISPCCDC_VDINT);
 
-	} else if (pipe->ccdc_out == CCDC_OTHERS_MEM) {
+	if (pipe->ccdc_out == CCDC_OTHERS_MEM)
 		isp_reg_writel(isp_ccdc->dev, 0, OMAP3_ISP_IOMEM_CCDC,
 			       ISPCCDC_VP_OUT);
-		if (pipe->ccdc_in == CCDC_RAW) {
-			isp_reg_writel(isp_ccdc->dev,
-				       0 << ISPCCDC_HORZ_INFO_SPH_SHIFT
-				       | ((pipe->ccdc_out_w - 1)
-					  << ISPCCDC_HORZ_INFO_NPH_SHIFT),
-				       OMAP3_ISP_IOMEM_CCDC,
-				       ISPCCDC_HORZ_INFO);
-		} else {
-			isp_reg_writel(isp_ccdc->dev,
-				       0 << ISPCCDC_HORZ_INFO_SPH_SHIFT
-				       | ((pipe->ccdc_out_w - 1)
-					  << ISPCCDC_HORZ_INFO_NPH_SHIFT),
-				       OMAP3_ISP_IOMEM_CCDC,
-				       ISPCCDC_HORZ_INFO);
-		}
+	else
 		isp_reg_writel(isp_ccdc->dev,
-			       0 << ISPCCDC_VERT_START_SLV0_SHIFT,
-			       OMAP3_ISP_IOMEM_CCDC,
-			       ISPCCDC_VERT_START);
-		isp_reg_writel(isp_ccdc->dev, (pipe->ccdc_out_h - 1) <<
-			       ISPCCDC_VERT_LINES_NLV_SHIFT,
-			       OMAP3_ISP_IOMEM_CCDC,
-			       ISPCCDC_VERT_LINES);
-
-		ispccdc_config_outlineoffset(isp_ccdc, pipe->ccdc_out_w * 2,
-					     0, 0);
-		isp_reg_writel(isp_ccdc->dev, (((pipe->ccdc_out_h - 2) &
-				 ISPCCDC_VDINT_0_MASK) <<
-				ISPCCDC_VDINT_0_SHIFT) |
-			       ((100 & ISPCCDC_VDINT_1_MASK) <<
-				ISPCCDC_VDINT_1_SHIFT),
-			       OMAP3_ISP_IOMEM_CCDC,
-			       ISPCCDC_VDINT);
-	} else if (pipe->ccdc_out == CCDC_OTHERS_VP_MEM) {
-		isp_reg_writel(isp_ccdc->dev,
-			       (0 << ISPCCDC_FMT_HORZ_FMTSPH_SHIFT) |
-			       (pipe->ccdc_in_w <<
-				ISPCCDC_FMT_HORZ_FMTLNH_SHIFT),
-			       OMAP3_ISP_IOMEM_CCDC,
-			       ISPCCDC_FMT_HORZ);
-		isp_reg_writel(isp_ccdc->dev,
-			       (0 << ISPCCDC_FMT_VERT_FMTSLV_SHIFT) |
-			       (pipe->ccdc_in_h <<
-				ISPCCDC_FMT_VERT_FMTLNV_SHIFT),
-			       OMAP3_ISP_IOMEM_CCDC,
-			       ISPCCDC_FMT_VERT);
-		isp_reg_writel(isp_ccdc->dev, (pipe->ccdc_out_w
+			       (pipe->ccdc_out_w
 				<< ISPCCDC_VP_OUT_HORZ_NUM_SHIFT) |
 			       ((pipe->ccdc_out_h - 1) <<
 				ISPCCDC_VP_OUT_VERT_NUM_SHIFT),
 			       OMAP3_ISP_IOMEM_CCDC,
 			       ISPCCDC_VP_OUT);
-		isp_reg_writel(isp_ccdc->dev,
-			       0 << ISPCCDC_HORZ_INFO_SPH_SHIFT |
-			       ((pipe->ccdc_out_w - 1) <<
-				ISPCCDC_HORZ_INFO_NPH_SHIFT),
-			       OMAP3_ISP_IOMEM_CCDC,
-			       ISPCCDC_HORZ_INFO);
-		isp_reg_writel(isp_ccdc->dev,
-			       0 << ISPCCDC_VERT_START_SLV0_SHIFT,
-			       OMAP3_ISP_IOMEM_CCDC,
-			       ISPCCDC_VERT_START);
-		isp_reg_writel(isp_ccdc->dev, (pipe->ccdc_out_h - 1) <<
-			       ISPCCDC_VERT_LINES_NLV_SHIFT,
-			       OMAP3_ISP_IOMEM_CCDC,
-			       ISPCCDC_VERT_LINES);
-		ispccdc_config_outlineoffset(isp_ccdc, pipe->ccdc_out_w * 2,
-					     0, 0);
-		isp_reg_writel(isp_ccdc->dev, (((pipe->ccdc_out_h - 2) &
-				 ISPCCDC_VDINT_0_MASK) <<
-				ISPCCDC_VDINT_0_SHIFT) |
-			       ((100 & ISPCCDC_VDINT_1_MASK) <<
-				ISPCCDC_VDINT_1_SHIFT),
-			       OMAP3_ISP_IOMEM_CCDC,
-			       ISPCCDC_VDINT);
-	}
 
 	if (is_isplsc_activated()) {
 		if (pipe->ccdc_in == CCDC_RAW) {
