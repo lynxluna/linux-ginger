@@ -177,7 +177,6 @@ struct isp_ccdc_device {
 	struct ispccdc_lsc_config lsc_config;
 	unsigned long fpc_table_add_m;
 	u32 *fpc_table_add;
-	struct device *dev;
 };
 
 int ispccdc_request(struct isp_ccdc_device *isp_ccdc);
