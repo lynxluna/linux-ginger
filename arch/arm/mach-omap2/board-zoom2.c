@@ -22,6 +22,7 @@
 #include <plat/board.h>
 
 #include "sdram-micron-mt46h32m32lf-6.h"
+#include "omap3-opp.h"
 
 static struct omap_board_config_kernel zoom2_config[] __initdata = {
 };
@@ -31,7 +32,8 @@ static void __init omap_zoom2_init_irq(void)
 	omap_board_config = zoom2_config;
 	omap_board_config_size = ARRAY_SIZE(zoom2_config);
 	omap2_init_common_hw(mt46h32m32lf6_sdrc_params,
-				 mt46h32m32lf6_sdrc_params);
+				 mt46h32m32lf6_sdrc_params, omap3_mpu_rate_table,
+				 omap3_dsp_rate_table, omap3_l3_rate_table);
 	omap_init_irq();
 	omap_gpio_init();
 }
