@@ -862,12 +862,8 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *_pdev)
 		dev_err(dev, "CCP2 err:%x\n", ispcsi1_irqstatus);
 	}
 
-	if (irqstatus & RESZ_DONE) {
-		if (!RAW_CAPTURE(isp)) {
-			ispresizer_config_shadow_registers(&isp->isp_res);
-			isp_buf_process(dev, bufs);
-		}
-	}
+	if (irqstatus & RESZ_DONE && !RAW_CAPTURE(isp))
+		isp_buf_process(dev, bufs);
 
 	if (irqstatus & CCDC_VD0) {
 		if (RAW_CAPTURE(isp))
@@ -887,6 +883,8 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *_pdev)
 				buf->vb_state = VIDEOBUF_ERROR;
 				dev_err(dev, "%s: resizer busy!\n", __func__);
 			} else {
+				ispresizer_config_shadow_registers(
+					&isp->isp_res);
 				ispresizer_enable(&isp->isp_res, 1);
 			}
 			isppreview_config_shadow_registers(&isp->isp_prev);
