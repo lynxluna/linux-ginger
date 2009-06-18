@@ -1535,7 +1535,7 @@ static int ioctl_g_priv(struct v4l2_int_device *s, void *p)
 {
 	struct mt9p012_sensor *sensor = s->priv;
 
-	return sensor->pdata->priv_data_set(p);
+	return sensor->pdata->priv_data_set(s, p);
 }
 
 /**
@@ -1677,10 +1677,10 @@ static int ioctl_s_power(struct v4l2_int_device *s, enum v4l2_power new_power)
 
 	switch (new_power) {
 	case V4L2_POWER_ON:
-		rval = sensor->pdata->set_xclk(sensor->xclk_current);
+		rval = sensor->pdata->set_xclk(s, sensor->xclk_current);
 		if (rval == -EINVAL)
 			break;
-		rval = sensor->pdata->power_set(V4L2_POWER_ON);
+		rval = sensor->pdata->power_set(s, V4L2_POWER_ON);
 		if (rval)
 			break;
 
@@ -1694,14 +1694,14 @@ static int ioctl_s_power(struct v4l2_int_device *s, enum v4l2_power new_power)
 		break;
 	case V4L2_POWER_OFF:
 err_on:
-		rval = sensor->pdata->power_set(V4L2_POWER_OFF);
-		sensor->pdata->set_xclk(0);
+		rval = sensor->pdata->power_set(s, V4L2_POWER_OFF);
+		sensor->pdata->set_xclk(s, 0);
 		break;
 	case V4L2_POWER_STANDBY:
 		if (sensor->detected)
 			mt9p012_write_regs(c, stream_off_list);
-		rval = sensor->pdata->power_set(V4L2_POWER_STANDBY);
-		sensor->pdata->set_xclk(0);
+		rval = sensor->pdata->power_set(s, V4L2_POWER_STANDBY);
+		sensor->pdata->set_xclk(s, 0);
 		break;
 	default:
 		return -EINVAL;

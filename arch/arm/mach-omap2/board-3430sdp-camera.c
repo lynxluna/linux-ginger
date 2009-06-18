@@ -59,7 +59,6 @@ static enum v4l2_power mt9p012_previous_power = V4L2_POWER_OFF;
 #if defined(CONFIG_VIDEO_OV3640) || defined(CONFIG_VIDEO_OV3640_MODULE)
 #include <media/ov3640.h>
 #include <../drivers/media/video/isp/ispcsi2.h>
-static	struct omap34xxcam_hw_config *hwc;
 #define OV3640_CSI2_CLOCK_POLARITY	0	/* +/- pin order */
 #define OV3640_CSI2_DATA0_POLARITY	0	/* +/- pin order */
 #define OV3640_CSI2_DATA1_POLARITY	0	/* +/- pin order */
@@ -190,16 +189,14 @@ struct dw9710_platform_data sdp3430_dw9710_platform_data = {
 #if defined(CONFIG_VIDEO_MT9P012) || defined(CONFIG_VIDEO_MT9P012_MODULE)
 static struct omap34xxcam_sensor_config cam_hwc = {
 	.sensor_isp = 0,
-	.xclk = OMAP34XXCAM_XCLK_A,
 	.capture_mem = MT9P012_BIGGEST_FRAME_BYTE_SIZE * 4,
 	.ival_default	= { 1, 10 },
 };
 
-static int mt9p012_sensor_set_prv_data(void *priv)
+static int mt9p012_sensor_set_prv_data(struct v4l2_int_device *s, void *priv)
 {
 	struct omap34xxcam_hw_config *hwc = priv;
 
-	hwc->u.sensor.xclk = cam_hwc.xclk;
 	hwc->u.sensor.sensor_isp = cam_hwc.sensor_isp;
 	hwc->u.sensor.capture_mem = cam_hwc.capture_mem;
 	hwc->dev_index = 0;
@@ -222,8 +219,11 @@ static struct isp_interface_config mt9p012_if_config = {
 	.u.par.par_clk_pol = 0x0,
 };
 
-static int mt9p012_sensor_power_set(enum v4l2_power power)
+static int mt9p012_sensor_power_set(struct v4l2_int_device *s,
+				    enum v4l2_power power)
 {
+	struct omap34xxcam_videodev *vdev = s->u.slave->master->priv;
+
 	if (!cam_inited) {
 		printk(KERN_ERR "MT9P012: Unable to control board GPIOs!\n");
 		return -EFAULT;
@@ -241,7 +241,8 @@ static int mt9p012_sensor_power_set(enum v4l2_power power)
 	case V4L2_POWER_ON:
 		if (mt9p012_previous_power == V4L2_POWER_OFF) {
 			/* Power Up Sequence */
-			isp_configure_interface(&mt9p012_if_config);
+			isp_configure_interface(vdev->cam->isp,
+						&mt9p012_if_config);
 
 			/* set to output mode */
 			gpio_direction_output(MT9P012_STANDBY_GPIO, true);
@@ -293,9 +294,11 @@ static int mt9p012_sensor_power_set(enum v4l2_power power)
 	return 0;
 }
 
-static u32 mt9p012_sensor_set_xclk(u32 xclkfreq)
+static u32 mt9p012_sensor_set_xclk(struct v4l2_int_device *s, u32 xclkfreq)
 {
-	return isp_set_xclk(xclkfreq, CAMKITV3_USE_XCLKA);
+	struct omap34xxcam_videodev *vdev = s->u.slave->master->priv;
+
+	return isp_set_xclk(vdev->cam->isp, xclkfreq, CAMKITV3_USE_XCLKA);
 }
 
 struct mt9p012_platform_data sdp3430_mt9p012_platform_data = {
@@ -310,11 +313,6 @@ struct mt9p012_platform_data sdp3430_mt9p012_platform_data = {
 
 static struct omap34xxcam_sensor_config ov3640_hwc = {
 	.sensor_isp = 0,
-#if defined(CONFIG_VIDEO_OV3640_CSI2)
-	.xclk = OMAP34XXCAM_XCLK_B,
-#else
-	.xclk = OMAP34XXCAM_XCLK_A,
-#endif
 	.capture_mem = OV3640_BIGGEST_FRAME_BYTE_SIZE * 2,
 	.ival_default	= { 1, 15 },
 };
@@ -343,10 +341,10 @@ static struct isp_interface_config ov3640_if_config = {
 	.u.csi.format = V4L2_PIX_FMT_SGRBG10,
 };
 
-static int ov3640_sensor_set_prv_data(void *priv)
+static int ov3640_sensor_set_prv_data(struct v4l2_int_device *s, void *priv)
 {
-	hwc = priv;
-	hwc->u.sensor.xclk = ov3640_hwc.xclk;
+	struct omap34xxcam_hw_config *hwc = priv;
+
 	hwc->u.sensor.sensor_isp = ov3640_hwc.sensor_isp;
 	hwc->u.sensor.capture_mem = ov3640_hwc.capture_mem;
 	hwc->dev_index = 1;
@@ -355,8 +353,10 @@ static int ov3640_sensor_set_prv_data(void *priv)
 	return 0;
 }
 
-static int ov3640_sensor_power_set(enum v4l2_power power)
+static int ov3640_sensor_power_set(struct v4l2_int_device *s,
+				   enum v4l2_power power)
 {
+	struct omap34xxcam_videodev *vdev = s->u.slave->master->priv;
 	struct isp_csi2_lanes_cfg lanecfg;
 	struct isp_csi2_phy_cfg phyconfig;
 	static enum v4l2_power previous_power = V4L2_POWER_OFF;
@@ -392,7 +392,7 @@ static int ov3640_sensor_power_set(enum v4l2_power power)
 		isp_csi2_phy_config(&phyconfig);
 		isp_csi2_phy_update(true);
 
-		isp_configure_interface(&ov3640_if_config);
+		isp_configure_interface(vdev->cam->isp, &ov3640_if_config);
 
 		if (previous_power == V4L2_POWER_OFF) {
 			/* turn on analog power */
@@ -445,9 +445,11 @@ static int ov3640_sensor_power_set(enum v4l2_power power)
 	return 0;
 }
 
-static u32 ov3640_sensor_set_xclk(u32 xclkfreq)
+static u32 ov3640_sensor_set_xclk(struct v4l2_int_device *s, u32 xclkfreq)
 {
-	return isp_set_xclk(xclkfreq, CAMKITV3_USE_XCLKB);
+	struct omap34xxcam_videodev *vdev = s->u.slave->master->priv;
+
+	return isp_set_xclk(vdev->cam->isp, xclkfreq, CAMKITV3_USE_XCLKB);
 }
 
 struct ov3640_platform_data sdp3430_ov3640_platform_data = {

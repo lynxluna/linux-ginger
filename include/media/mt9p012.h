@@ -16,6 +16,7 @@
 #ifndef MT9P012_H
 #define MT9P012_H
 
+#include <media/v4l2-int-device.h>
 
 #define MT9P012_I2C_ADDR		0x10
 
@@ -27,9 +28,9 @@
  * @priv_data_set: device private data (pointer) access function
  */
 struct mt9p012_platform_data {
-	int (*power_set)(enum v4l2_power power);
-	u32 (*set_xclk)(u32 xclkfreq);
-	int (*priv_data_set)(void *);
+	int (*power_set)(struct v4l2_int_device *s, enum v4l2_power power);
+	u32 (*set_xclk)(struct v4l2_int_device *s, u32 xclkfreq);
+	int (*priv_data_set)(struct v4l2_int_device *s, void *);
 };
 
 #endif /* ifndef MT9P012_H */
