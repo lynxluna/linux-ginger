@@ -16,6 +16,7 @@
 #include <linux/clk.h>
 #include <linux/platform_device.h>
 #include <linux/delay.h>
+#include <linux/mm.h>
 
 #include <linux/i2c/twl4030.h>
 
@@ -86,7 +87,8 @@ static struct isp_interface_config ov3640_if_config = {
 
 static int ov3640_sensor_set_prv_data(void *priv)
 {
-	hwc = priv;
+	struct omap34xxcam_hw_config *hwc = priv;
+
 	hwc->u.sensor.xclk = ov3640_hwc.xclk;
 	hwc->u.sensor.sensor_isp = ov3640_hwc.sensor_isp;
 	hwc->dev_index = 1;
