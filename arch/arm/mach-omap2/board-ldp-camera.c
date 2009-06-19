@@ -183,6 +183,7 @@ struct ov3640_platform_data ldp_ov3640_platform_data = {
 
 void __init ldp_cam_init(void)
 {
+#if defined(CONFIG_VIDEO_OV3640) || defined(CONFIG_VIDEO_OV3640_MODULE)
 	cam_inited = 0;
 	/* Request and configure gpio pins */
 	if (gpio_request(OV3640_RESET_GPIO, "ov3640_reset_gpio") != 0) {
@@ -199,6 +200,7 @@ void __init ldp_cam_init(void)
 	/* set to output mode */
 	gpio_direction_output(OV3640_RESET_GPIO, true);
 	gpio_direction_output(OV3640_STANDBY_GPIO, true);
+#endif
 	cam_inited = 1;
 }
 #else
