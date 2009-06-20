@@ -54,6 +54,10 @@ static void __iomem *fpga_map_addr;
 static enum v4l2_power mt9p012_previous_power = V4L2_POWER_OFF;
 
 #define MT9P012_BIGGEST_FRAME_BYTE_SIZE	PAGE_ALIGN(2592 * 1944 * 2)
+
+#ifdef CONFIG_VIDEO_DW9710
+#include <media/dw9710.h>
+#endif
 #endif
 
 #if defined(CONFIG_VIDEO_OV3640) || defined(CONFIG_VIDEO_OV3640_MODULE)
@@ -72,10 +76,6 @@ static enum v4l2_power mt9p012_previous_power = V4L2_POWER_OFF;
 #define OV3640_CSI2_PHY_TCLK_SETTLE	14
 
 #define OV3640_BIGGEST_FRAME_BYTE_SIZE	PAGE_ALIGN(2048 * 1536 * 2)
-#endif
-
-#ifdef CONFIG_VIDEO_DW9710
-#include <media/dw9710.h>
 #endif
 
 static void __iomem *fpga_map_addr;
@@ -107,6 +107,7 @@ static void enable_fpga_vio_1v8(u8 enable)
 	mdelay(1);
 }
 
+#if defined(CONFIG_VIDEO_MT9P012) || defined(CONFIG_VIDEO_MT9P012_MODULE)
 #ifdef CONFIG_VIDEO_DW9710
 static int dw9710_lens_power_set(enum v4l2_power power)
 {
@@ -186,7 +187,6 @@ struct dw9710_platform_data sdp3430_dw9710_platform_data = {
 };
 #endif
 
-#if defined(CONFIG_VIDEO_MT9P012) || defined(CONFIG_VIDEO_MT9P012_MODULE)
 static struct omap34xxcam_sensor_config cam_hwc = {
 	.sensor_isp = 0,
 	.capture_mem = MT9P012_BIGGEST_FRAME_BYTE_SIZE * 4,
