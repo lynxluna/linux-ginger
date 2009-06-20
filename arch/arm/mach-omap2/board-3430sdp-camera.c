@@ -47,7 +47,6 @@ static int cam_inited;
 /* Sensor specific GPIO signals */
 #define MT9P012_STANDBY_GPIO	58
 #define OV3640_STANDBY_GPIO	55
-static void __iomem *fpga_map_addr;
 
 #if defined(CONFIG_VIDEO_MT9P012) || defined(CONFIG_VIDEO_MT9P012_MODULE)
 #include <media/mt9p012.h>
@@ -78,6 +77,9 @@ static enum v4l2_power mt9p012_previous_power = V4L2_POWER_OFF;
 #define OV3640_BIGGEST_FRAME_BYTE_SIZE	PAGE_ALIGN(2048 * 1536 * 2)
 #endif
 
+#if defined(CONFIG_VIDEO_MT9P012) || defined(CONFIG_VIDEO_MT9P012_MODULE) || \
+    defined(CONFIG_VIDEO_OV3640) || defined(CONFIG_VIDEO_OV3640_MODULE) || \
+    defined(CONFIG_VIDEO_DW9710)
 static void __iomem *fpga_map_addr;
 
 static void enable_fpga_vio_1v8(u8 enable)
@@ -106,6 +108,7 @@ static void enable_fpga_vio_1v8(u8 enable)
 	/* Vrise time for the voltage - should be less than 1 ms */
 	mdelay(1);
 }
+#endif
 
 #if defined(CONFIG_VIDEO_MT9P012) || defined(CONFIG_VIDEO_MT9P012_MODULE)
 #ifdef CONFIG_VIDEO_DW9710
