@@ -27,6 +27,20 @@
 #include "mmc-twl4030.h"
 #include "sdram-micron-mt46h32m32lf-6.h"
 
+#include <media/v4l2-int-device.h>
+
+#if defined(CONFIG_VIDEO_IMX046) || defined(CONFIG_VIDEO_IMX046_MODULE)
+#include <media/imx046.h>
+extern struct imx046_platform_data zoom2_imx046_platform_data;
+#endif
+
+extern void zoom2_cam_init(void);
+
+#ifdef CONFIG_VIDEO_LV8093
+#include <media/lv8093.h>
+extern struct imx046_platform_data zoom2_lv8093_platform_data;
+#endif
+
 /* Zoom2 has Qwerty keyboard*/
 static int board_keymap[] = {
 	KEY(0, 0, KEY_E),
@@ -256,11 +270,27 @@ static struct i2c_board_info __initdata zoom2_i2c_boardinfo[] = {
 	},
 };
 
+static struct i2c_board_info __initdata zoom2_i2c_boardinfo2[] = {
+#if defined(CONFIG_VIDEO_IMX046) || defined(CONFIG_VIDEO_IMX046_MODULE)
+	{
+		I2C_BOARD_INFO("imx046", IMX046_I2C_ADDR),
+		.platform_data = &zoom2_imx046_platform_data,
+	},
+#endif
+#ifdef CONFIG_VIDEO_LV8093
+	{
+		I2C_BOARD_INFO(LV8093_NAME,  LV8093_AF_I2C_ADDR),
+		.platform_data = &zoom2_lv8093_platform_data,
+	},
+#endif
+};
+
 static int __init omap_i2c_init(void)
 {
 	omap_register_i2c_bus(1, 2600, zoom2_i2c_boardinfo,
 			ARRAY_SIZE(zoom2_i2c_boardinfo));
-	omap_register_i2c_bus(2, 400, NULL, 0);
+	omap_register_i2c_bus(2, 100, zoom2_i2c_boardinfo2,
+			ARRAY_SIZE(zoom2_i2c_boardinfo2));
 	omap_register_i2c_bus(3, 400, NULL, 0);
 	return 0;
 }
@@ -273,6 +303,7 @@ static void __init omap_zoom2_init(void)
 	omap_serial_init();
 	omap_zoom2_debugboard_init();
 	usb_musb_init();
+	zoom2_cam_init();
 }
 
 static void __init omap_zoom2_map_io(void)
