@@ -211,6 +211,8 @@ struct prev_params {
  * @red_gamma: Pointer to red gamma correction table.
  * @green_gamma: Pointer to green gamma correction table.
  * @blue_gamma: Pointer to blue gamma correction table.
+ * @prev_cfa: Pointer to color filter array configuration.
+ * @prev_wbal: Pointer to colour and digital gain configuration.
  */
 struct isptables_update {
 	u16 update;
@@ -221,6 +223,7 @@ struct isptables_update {
 	u32 *green_gamma;
 	u32 *blue_gamma;
 	struct ispprev_cfa *prev_cfa;
+	struct ispprev_wbal *prev_wbal;
 };
 
 /**
@@ -243,6 +246,7 @@ struct isptables_update {
  * @contrast: Contrast in preview module.
  * @color: Color effect in preview module.
  * @cfafmt: Color Filter Array (CFA) Format.
+ * @wbal_update: Update digital and colour gains in Previewer
  *
  * This structure is used to store the OMAP ISP Preview module Information.
  */
@@ -262,6 +266,7 @@ struct isp_prev_device {
 	u8 cfa_update;
 	u8 nf_enable;
 	u8 nf_update;
+	u8 wbal_update;
 	u8 fmtavg;
 	u8 brightness;
 	u8 contrast;

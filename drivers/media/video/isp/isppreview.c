@@ -200,7 +200,6 @@ int omap34xx_isp_preview_config(struct isp_prev_device *isp_prev,
 	struct device *dev = to_device(isp_prev, isp_prev);
 	struct ispprev_hmed prev_hmed_t;
 	struct ispprev_csup csup_t;
-	struct ispprev_wbal prev_wbal_t;
 	struct ispprev_blkadj prev_blkadj_t;
 	struct ispprev_yclimit yclimit_t;
 	struct ispprev_dcor prev_dcor_t;
@@ -270,14 +269,6 @@ int omap34xx_isp_preview_config(struct isp_prev_device *isp_prev,
 	} else if (ISP_ABS_PREV_CHROMA_SUPP & config->update) {
 		isppreview_enable_chroma_suppression(isp_prev, 0);
 		isp_prev->params.features &= ~PREV_CHROMA_SUPPRESS;
-	}
-
-	if (ISP_ABS_PREV_WB & config->update) {
-		if (copy_from_user(&prev_wbal_t, (struct ispprev_wbal *)
-				   config->prev_wbal,
-				   sizeof(struct ispprev_wbal)))
-			goto err_copy_from_user;
-		isppreview_config_whitebalance(isp_prev, prev_wbal_t);
 	}
 
 	if (ISP_ABS_PREV_BLKADJ & config->update) {
@@ -355,6 +346,7 @@ out_config_shadow:
 	isp_table_update.green_gamma = config->green_gamma;
 	isp_table_update.blue_gamma = config->blue_gamma;
 	isp_table_update.prev_cfa = config->prev_cfa;
+	isp_table_update.prev_wbal = config->prev_wbal;
 
 	if (omap34xx_isp_tables_update(isp_prev, &isp_table_update))
 		goto err_copy_from_user;
@@ -384,6 +376,15 @@ static int omap34xx_isp_tables_update(struct isp_prev_device *isp_prev,
 			       struct isptables_update *isptables_struct)
 {
 	struct device *dev = to_device(isp_prev, isp_prev);
+
+	if (ISP_ABS_PREV_WB & isptables_struct->update) {
+		if (copy_from_user(&isp_prev->params.wbal,
+				isptables_struct->prev_wbal,
+				sizeof(struct ispprev_wbal)))
+			goto err_copy_from_user;
+
+		isp_prev->wbal_update = 1;
+	}
 
 	if (ISP_ABS_TBL_NF & isptables_struct->flag) {
 		isp_prev->nf_enable = 1;
@@ -502,6 +503,10 @@ void isppreview_config_shadow_registers(struct isp_prev_device *isp_prev)
 				isp_prev->contrast);
 		isppreview_config_contrast(isp_prev, isp_prev->contrast *
 					   ISPPRV_CONTRAST_UNITS);
+	}
+	if (isp_prev->wbal_update) {
+		isppreview_config_whitebalance(isp_prev, isp_prev->params.wbal);
+		isp_prev->wbal_update = 0;
 	}
 	if (isp_prev->update_color_matrix) {
 		isppreview_config_rgb_to_ycbcr(isp_prev,
@@ -714,6 +719,8 @@ int isppreview_config_datapath(struct isp_prev_device *isp_prev,
 	isppreview_enable_gammabypass(isp_prev, enable);
 
 	isppreview_config_whitebalance(isp_prev, params->wbal);
+	isp_prev->wbal_update = 0;
+
 	isppreview_config_blkadj(isp_prev, params->blk_adj);
 	isppreview_config_rgb_blending(isp_prev, params->rgb2rgb);
 	isppreview_config_rgb_to_ycbcr(isp_prev, params->rgb2ycbcr);
