@@ -297,6 +297,8 @@ struct isp_irq {
  * struct isp_pipeline - ISP pipeline description.
  * @modules: ISP submodules in use.
  * @pix: Output pixel format details in v4l2_pix_format structure.
+ * @ccdc_in_v_st: CCDC input vertical start.
+ * @ccdc_in_h_st: CCDC input horizontal start.
  * @ccdc_in_w: CCDC input width.
  * @ccdc_in_h: CCDC input height.
  * @ccdc_out_w: CCDC output width (with extra padding pixels).
@@ -320,6 +322,8 @@ struct isp_irq {
 struct isp_pipeline {
 	unsigned int modules;
 	struct v4l2_pix_format pix;
+	unsigned int ccdc_in_v_st;
+	unsigned int ccdc_in_h_st;
 	unsigned int ccdc_in_w;
 	unsigned int ccdc_in_h;
 	unsigned int ccdc_out_w;
