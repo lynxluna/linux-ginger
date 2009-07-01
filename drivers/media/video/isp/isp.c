@@ -383,6 +383,12 @@ int isp_set_callback(struct device *dev, enum isp_callback_type type,
 		isp_reg_or(dev, OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE,
 			   IRQ0ENABLE_PRV_DONE_IRQ);
 		break;
+	case CBK_RESZ_DONE:
+		isp_reg_writel(dev, IRQ0ENABLE_RSZ_DONE_IRQ,
+			       OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0STATUS);
+		isp_reg_or(dev, OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE,
+			   IRQ0ENABLE_RSZ_DONE_IRQ);
+		break;
 	default:
 		break;
 	}
@@ -414,6 +420,10 @@ int isp_unset_callback(struct device *dev, enum isp_callback_type type)
 	case CBK_PREV_DONE:
 		isp_reg_and(dev, OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE,
 			    ~IRQ0ENABLE_PRV_DONE_IRQ);
+		break;
+	case CBK_RESZ_DONE:
+		isp_reg_and(dev, OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE,
+			    ~IRQ0ENABLE_RSZ_DONE_IRQ);
 		break;
 	default:
 		break;
@@ -908,8 +918,15 @@ static irqreturn_t isp_isr(int irq, void *_pdev)
 		}
 	}
 
-	if (irqstatus & RESZ_DONE && !RAW_CAPTURE(isp))
-		isp_buf_process(dev, bufs);
+	if (irqstatus & RESZ_DONE) {
+		if (irqdis->isp_callbk[CBK_RESZ_DONE])
+			irqdis->isp_callbk[CBK_RESZ_DONE](
+				RESZ_DONE,
+				irqdis->isp_callbk_arg1[CBK_RESZ_DONE],
+				irqdis->isp_callbk_arg2[CBK_RESZ_DONE]);
+		else if (!RAW_CAPTURE(isp))
+			isp_buf_process(dev, bufs);
+	}
 
 	if (irqstatus & CCDC_VD0) {
 		if (RAW_CAPTURE(isp))
