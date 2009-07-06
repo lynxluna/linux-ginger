@@ -891,6 +891,8 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *_pdev)
 			ispccdc_config_shadow_registers(&isp->isp_ccdc);
 
 		/* Enabling configured statistic modules */
+		if (!(irqstatus & H3A_AWB_DONE))
+			isph3a_aewb_try_enable(&isp->isp_h3a);
 		if (!(irqstatus & H3A_AF_DONE))
 			isp_af_try_enable(&isp->isp_af);
 	}
@@ -918,8 +920,19 @@ static irqreturn_t omap34xx_isp_isr(int irq, void *_pdev)
 		}
 	}
 
-	if (irqstatus & H3A_AWB_DONE)
-		isph3a_aewb_isr(&isp->isp_h3a);
+	if (irqstatus & H3A_AWB_DONE) {
+		isph3a_aewb_enable(&isp->isp_h3a, 0);
+		/* If it's busy we can't process this buffer anymore */
+		if (!isph3a_aewb_busy(&isp->isp_h3a)) {
+			isph3a_aewb_buf_process(&isp->isp_h3a);
+			isph3a_aewb_config_registers(&isp->isp_h3a);
+		} else {
+			dev_dbg(dev, "h3a: cannot process buffer, device is "
+				     "busy.\n");
+			irqstatus &= ~H3A_AWB_DONE;
+		}
+		isph3a_aewb_enable(&isp->isp_h3a, 1);
+	}
 
 	if (irqstatus & HIST_DONE) {
 		if (irqdis->isp_callbk[CBK_HIST_DONE])
@@ -1494,6 +1507,7 @@ int isp_buf_queue(struct device *dev, struct videobuf_buffer *vb,
 		isp_enable_interrupts(dev, RAW_CAPTURE(isp));
 		isp_set_buf(dev, buf);
 		isp_af_try_enable(&isp->isp_af);
+		isph3a_aewb_try_enable(&isp->isp_h3a);
 		ispccdc_enable(&isp->isp_ccdc, 1);
 	}
 
@@ -1783,13 +1797,14 @@ int isp_handle_private(struct device *dev, int cmd, void *arg)
 	case VIDIOC_PRIVATE_ISP_AEWB_CFG: {
 		struct isph3a_aewb_config *params;
 		params = (struct isph3a_aewb_config *)arg;
-		rval = isph3a_aewb_configure(&isp->isp_h3a, params);
+		rval = omap34xx_isph3a_aewb_config(&isp->isp_h3a, params);
 	}
 		break;
 	case VIDIOC_PRIVATE_ISP_AEWB_REQ: {
 		struct isph3a_aewb_data *data;
 		data = (struct isph3a_aewb_data *)arg;
-		rval = isph3a_aewb_request_statistics(&isp->isp_h3a, data);
+		rval = omap34xx_isph3a_aewb_request_statistics(&isp->isp_h3a,
+							       data);
 	}
 		break;
 	case VIDIOC_PRIVATE_ISP_HIST_CFG: {
