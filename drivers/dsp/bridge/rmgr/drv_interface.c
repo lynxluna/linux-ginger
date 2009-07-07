@@ -576,6 +576,7 @@ static int bridge_open(struct inode *ip, struct file *filp)
 	struct PROCESS_CONTEXT    *pCtxtclosed = NULL;
 	struct PROCESS_CONTEXT    *pCtxttraverse = NULL;
 	struct task_struct *tsk = NULL;
+	struct pid *pnr = NULL;
 	GT_0trace(driverTrace, GT_ENTER, "-> driver_open\n");
 	dsp_status = CFG_GetObject((u32 *)&hDrvObject, REG_DRV_OBJECT);
 
@@ -586,7 +587,8 @@ static int bridge_open(struct inode *ip, struct file *filp)
 
 	DRV_GetProcCtxtList(&pCtxtclosed, (struct DRV_OBJECT *)hDrvObject);
 	while (pCtxtclosed != NULL) {
-		tsk = find_task_by_vpid(pCtxtclosed->pid);
+		pnr = find_get_pid(pCtxtclosed->pid);
+		tsk = pid_task(pnr, PIDTYPE_PID);
 		next_node = pCtxtclosed->next;
 
 		if ((tsk == NULL) || (tsk->exit_state == EXIT_ZOMBIE)) {
