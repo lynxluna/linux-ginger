@@ -145,7 +145,10 @@
 /*  ----------------------------------- This */
 #include <dspbridge/proc.h>
 #include <dspbridge/pwr.h>
+
+#ifdef CONFIG_BRIDGE_DVFS
 #include <mach-omap2/omap3-opp.h>
+#endif
 
 #ifndef RES_CLEANUP_DISABLE
 #include <dspbridge/resourcecleanup.h>
