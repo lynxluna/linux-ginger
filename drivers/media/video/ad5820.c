@@ -290,6 +290,9 @@ static int ad5820_ioctl_s_power(struct v4l2_int_device *s,
 	enum v4l2_power orig_state = coil->power;
 	int rval;
 
+	if (new_state == V4L2_POWER_STANDBY)
+		new_state = V4L2_POWER_ON;
+
 	if (orig_state == new_state)
 		return 0;
 	if (orig_state == V4L2_POWER_OFF) {
