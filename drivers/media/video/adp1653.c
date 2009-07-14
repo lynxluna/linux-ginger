@@ -355,7 +355,7 @@ static int adp1653_init_device(struct v4l2_int_device *s)
 	return 0;
 }
 
-static void adp1653_init_controls(struct v4l2_int_device *s)
+static int adp1653_ioctl_dev_init(struct v4l2_int_device *s)
 {
 	struct adp1653_flash *flash = s->priv;
 
@@ -377,6 +377,7 @@ static void adp1653_init_controls(struct v4l2_int_device *s)
 			[CTRL_CAMERA_FLASH_TORCH_INTENSITY].default_value;
 	flash->indicator_intensity = adp1653_ctrls
 			[CTRL_CAMERA_FLASH_INDICATOR_INTENSITY].default_value;
+	return 0;
 }
 
 static int adp1653_ioctl_s_power(struct v4l2_int_device *s,
@@ -386,12 +387,8 @@ static int adp1653_ioctl_s_power(struct v4l2_int_device *s,
 	int rval = 0;
 
 	switch (state) {
+	case V4L2_POWER_STANDBY:
 	case V4L2_POWER_ON:
-		if (!flash->dev_init_done) {
-			flash->dev_init_done = true;
-			adp1653_init_controls(s);
-		}
-
 		rval = flash->platform_data->power_on(s);
 		if (rval)
 			return rval;
@@ -404,7 +401,6 @@ static int adp1653_ioctl_s_power(struct v4l2_int_device *s,
 		break;
 
 	case V4L2_POWER_OFF:
-	case V4L2_POWER_STANDBY:
 		rval = flash->platform_data->power_off(s);
 		flash->power = V4L2_POWER_OFF;
 		break;
@@ -435,6 +431,8 @@ static struct v4l2_int_ioctl_desc adp1653_ioctl_desc[] = {
 	  (v4l2_int_ioctl_func *)adp1653_ioctl_s_power },
 	{ vidioc_int_g_priv_num,
 	  (v4l2_int_ioctl_func *)adp1653_ioctl_g_priv },
+	{ vidioc_int_dev_init_num,
+	  (v4l2_int_ioctl_func *)adp1653_ioctl_dev_init },
 };
 
 static struct v4l2_int_slave adp1653_slave = {
@@ -500,8 +498,6 @@ static int adp1653_probe(struct i2c_client *client,
 
 	if (flash->platform_data == NULL)
 		return -ENODEV;
-
-	flash->dev_init_done = false;
 
 	flash->v4l2_int_device = &adp1653_int_device;
 
