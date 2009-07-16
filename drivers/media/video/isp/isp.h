@@ -363,21 +363,6 @@ struct isp_device {
 
 void isp_flush(struct device *dev);
 
-u32 isp_reg_readl(struct device *dev, enum isp_mem_resources isp_mmio_range,
-		  u32 reg_offset);
-
-void isp_reg_writel(struct device *dev, u32 reg_value,
-		    enum isp_mem_resources isp_mmio_range, u32 reg_offset);
-
-void isp_reg_and(struct device *dev, enum isp_mem_resources mmio_range, u32 reg,
-		 u32 and_bits);
-
-void isp_reg_or(struct device *dev, enum isp_mem_resources mmio_range, u32 reg,
-		u32 or_bits);
-
-void isp_reg_and_or(struct device *dev, enum isp_mem_resources mmio_range,
-		    u32 reg, u32 and_bits, u32 or_bits);
-
 void isp_start(struct device *dev);
 
 void isp_stop(struct device *dev);
@@ -462,5 +447,50 @@ void isp_csi2_cleanup(struct device *dev);
 dma_addr_t ispmmu_vmap(struct device *dev, const struct scatterlist *sglist,
 		       int sglen);
 void ispmmu_vunmap(struct device *dev, dma_addr_t da);
+
+static inline
+u32 isp_reg_readl(struct device *dev, enum isp_mem_resources isp_mmio_range,
+		  u32 reg_offset)
+{
+	struct isp_device *isp = dev_get_drvdata(dev);
+
+	return __raw_readl(isp->mmio_base[isp_mmio_range] + reg_offset);
+}
+
+static inline
+void isp_reg_writel(struct device *dev, u32 reg_value,
+		    enum isp_mem_resources isp_mmio_range, u32 reg_offset)
+{
+	struct isp_device *isp = dev_get_drvdata(dev);
+
+	__raw_writel(reg_value, isp->mmio_base[isp_mmio_range] + reg_offset);
+}
+
+static inline
+void isp_reg_and(struct device *dev, enum isp_mem_resources mmio_range, u32 reg,
+		 u32 and_bits)
+{
+	u32 v = isp_reg_readl(dev, mmio_range, reg);
+
+	isp_reg_writel(dev, v & and_bits, mmio_range, reg);
+}
+
+static inline
+void isp_reg_or(struct device *dev, enum isp_mem_resources mmio_range, u32 reg,
+		u32 or_bits)
+{
+	u32 v = isp_reg_readl(dev, mmio_range, reg);
+
+	isp_reg_writel(dev, v | or_bits, mmio_range, reg);
+}
+
+static inline
+void isp_reg_and_or(struct device *dev, enum isp_mem_resources mmio_range,
+		    u32 reg, u32 and_bits, u32 or_bits)
+{
+	u32 v = isp_reg_readl(dev, mmio_range, reg);
+
+	isp_reg_writel(dev, (v & and_bits) | or_bits, mmio_range, reg);
+}
 
 #endif	/* OMAP_ISP_TOP_H */
