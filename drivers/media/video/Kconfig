@@ -904,6 +904,8 @@ config VIDEO_OMAP3
 	---help---
 	  Driver for an OMAP 3 camera controller.
 
+source "drivers/media/video/isp/Kconfig"
+
 config VIDEO_SMIAREGS
 	tristate "Generic SMIA I2C register access and register list helper"
 	depends on I2C
