@@ -344,11 +344,12 @@ static int et8ek8_power_off(struct v4l2_int_device *s)
 	struct et8ek8_sensor *sensor = s->priv;
 	int rval;
 
-	rval = sensor->platform_data->set_xclk(s, 0);
+	rval = sensor->platform_data->power_off(s);
 	if (rval)
 		return rval;
-
-	return sensor->platform_data->power_off(s);
+	msleep(1);
+	rval = sensor->platform_data->set_xclk(s, 0);
+	return rval;
 }
 
 static int et8ek8_power_on(struct v4l2_int_device *s)
@@ -357,17 +358,16 @@ static int et8ek8_power_on(struct v4l2_int_device *s)
 	unsigned int hz = ET8EK8_XCLK_HZ;
 	int val, rval;
 
-	rval = sensor->platform_data->power_on(s);
-	if (rval)
-		return rval;
-
-	/* At least one ms is required between xshutdown up and clock start */
-	msleep(1);
-
 	if (sensor->current_reglist)
 		hz = sensor->current_reglist->mode.ext_clock;
 
 	rval = sensor->platform_data->set_xclk(s, hz);
+	if (rval)
+		goto out;
+
+	msleep(1);
+
+	rval = sensor->platform_data->power_on(s);
 	if (rval)
 		goto out;
 
