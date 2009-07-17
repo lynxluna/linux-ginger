@@ -304,8 +304,8 @@ static int ispccdc_free_lsc(struct isp_ccdc_device *isp_ccdc)
 	isp_ccdc->lsc_initialized = 0;
 	isp_reg_writel(to_device(isp_ccdc, isp_ccdc), 0, OMAP3_ISP_IOMEM_CCDC,
 		       ISPCCDC_LSC_TABLE_BASE);
-	iommu_kunmap(isp->iommu, isp_ccdc->lsc_ispmmu_addr);
-	kfree(isp_ccdc->lsc_gain_table);
+	iommu_vfree(isp->iommu, isp_ccdc->lsc_ispmmu_addr);
+	isp_ccdc->lsc_gain_table = NULL;
 	return 0;
 }
 
@@ -330,26 +330,16 @@ static int ispccdc_allocate_lsc(struct isp_ccdc_device *isp_ccdc,
 
 	ispccdc_free_lsc(isp_ccdc);
 
-	isp_ccdc->lsc_gain_table = kmalloc(table_size, GFP_KERNEL | GFP_DMA);
-
-	if (!isp_ccdc->lsc_gain_table) {
-		dev_err(to_device(isp_ccdc, isp_ccdc),
-			"ccdc: Cannot allocate memory for gain tables\n");
-		return -ENOMEM;
-	}
-
-	isp_ccdc->lsc_ispmmu_addr =
-		iommu_kmap(isp->iommu,
-			   0,
-			   virt_to_phys(isp_ccdc->lsc_gain_table),
-			   table_size,
-			   IOMMU_FLAG);
+	isp_ccdc->lsc_ispmmu_addr = iommu_vmalloc(isp->iommu, 0, table_size,
+						  IOMMU_FLAG);
 	if (IS_ERR_VALUE(isp_ccdc->lsc_ispmmu_addr)) {
 		dev_err(to_device(isp_ccdc, isp_ccdc),
-			"ccdc: Cannot map memory for gain tables\n");
-		kfree(isp_ccdc->lsc_gain_table);
+			"ccdc: Cannot allocate memory for gain tables\n");
+		isp_ccdc->lsc_ispmmu_addr = 0;
 		return -ENOMEM;
 	}
+	isp_ccdc->lsc_gain_table = da_to_va(isp->iommu,
+					    (u32)isp_ccdc->lsc_ispmmu_addr);
 
 	return 0;
 }
