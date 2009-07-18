@@ -481,21 +481,17 @@ void isppreview_config_shadow_registers(struct isp_prev_device *isp_prev)
 	}
 
 	isppreview_query_brightness(isp_prev, &current_brightness_contrast);
-	if (current_brightness_contrast !=
-	    (isp_prev->brightness * ISPPRV_BRIGHT_UNITS)) {
+	if (current_brightness_contrast != isp_prev->brightness) {
 		DPRINTK_ISPPREV(" Changing Brightness level to %d\n",
 				isp_prev->brightness);
-		isppreview_config_brightness(isp_prev, isp_prev->brightness *
-					     ISPPRV_BRIGHT_UNITS);
+		isppreview_config_brightness(isp_prev, isp_prev->brightness);
 	}
 
 	isppreview_query_contrast(isp_prev, &current_brightness_contrast);
-	if (current_brightness_contrast !=
-	    (isp_prev->contrast * ISPPRV_CONTRAST_UNITS)) {
+	if (current_brightness_contrast != isp_prev->contrast) {
 		DPRINTK_ISPPREV(" Changing Contrast level to %d\n",
 				isp_prev->contrast);
-		isppreview_config_contrast(isp_prev, isp_prev->contrast *
-					   ISPPRV_CONTRAST_UNITS);
+		isppreview_config_contrast(isp_prev, isp_prev->contrast);
 	}
 	if (isp_prev->wbal_update) {
 		isppreview_config_whitebalance(isp_prev, isp_prev->params.wbal);
@@ -718,10 +714,8 @@ int isppreview_config_datapath(struct isp_prev_device *isp_prev,
 	isppreview_config_rgb_blending(isp_prev, params->rgb2rgb);
 	isppreview_config_rgb_to_ycbcr(isp_prev, params->rgb2ycbcr);
 
-	isppreview_config_contrast(isp_prev,
-				   params->contrast * ISPPRV_CONTRAST_UNITS);
-	isppreview_config_brightness(isp_prev,
-				     params->brightness * ISPPRV_BRIGHT_UNITS);
+	isppreview_config_contrast(isp_prev, params->contrast);
+	isppreview_config_brightness(isp_prev, params->brightness);
 
 	yclimit.minC = ISPPRV_YC_MIN;
 	yclimit.maxC = ISPPRV_YC_MAX;

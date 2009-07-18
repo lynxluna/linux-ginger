@@ -26,7 +26,7 @@
 /* Isp query control structure */
 
 #define ISPPRV_BRIGHT_STEP		0x1
-#define ISPPRV_BRIGHT_DEF		0x0
+#define ISPPRV_BRIGHT_DEF		0x1
 #define ISPPRV_BRIGHT_LOW		0x0
 #define ISPPRV_BRIGHT_HIGH		0xFF
 #define ISPPRV_BRIGHT_UNITS		0x1
