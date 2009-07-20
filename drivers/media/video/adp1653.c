@@ -386,6 +386,11 @@ static int adp1653_ioctl_s_power(struct v4l2_int_device *s,
 	struct adp1653_flash *flash = s->priv;
 	int rval = 0;
 
+	if (state == V4L2_POWER_STANDBY)
+		state = V4L2_POWER_ON;
+	if (state == flash->power)
+		return 0;
+
 	switch (state) {
 	case V4L2_POWER_STANDBY:
 	case V4L2_POWER_ON:
