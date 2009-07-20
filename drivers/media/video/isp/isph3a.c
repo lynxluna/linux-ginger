@@ -494,10 +494,10 @@ int isph3a_aewb_request_statistics(struct isp_h3a_device *isp_h3a,
 	if (aewbdata->update & SET_DIGITAL_GAIN)
 		isp_h3a->h3awb_update.dgain = (u16)aewbdata->dgain;
 	if (aewbdata->update & SET_COLOR_GAINS) {
-		isp_h3a->h3awb_update.coef0 = (u8)aewbdata->wb_gain_gr;
-		isp_h3a->h3awb_update.coef1 = (u8)aewbdata->wb_gain_r;
-		isp_h3a->h3awb_update.coef2 = (u8)aewbdata->wb_gain_b;
-		isp_h3a->h3awb_update.coef3 = (u8)aewbdata->wb_gain_gb;
+		isp_h3a->h3awb_update.coef0 = (u8)aewbdata->wb_gain_r;
+		isp_h3a->h3awb_update.coef1 = (u8)aewbdata->wb_gain_gr;
+		isp_h3a->h3awb_update.coef2 = (u8)aewbdata->wb_gain_gb;
+		isp_h3a->h3awb_update.coef3 = (u8)aewbdata->wb_gain_b;
 	}
 	if (aewbdata->update & (SET_COLOR_GAINS | SET_DIGITAL_GAIN))
 		isp_h3a->wb_update = 1;
