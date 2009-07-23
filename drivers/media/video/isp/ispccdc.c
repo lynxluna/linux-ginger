@@ -86,7 +86,7 @@ static struct isp_reg ispccdc_reg_list[] = {
 int omap34xx_isp_ccdc_config(struct isp_ccdc_device *isp_ccdc,
 			     void *userspace_add)
 {
-	struct isp_device *isp = to_isp_device(isp_ccdc, isp_ccdc);
+	struct isp_device *isp = to_isp_device(isp_ccdc);
 	struct ispccdc_bclamp bclamp_t;
 	struct ispccdc_blcomp blcomp_t;
 	struct ispccdc_fpc fpc_t;
@@ -151,7 +151,7 @@ int omap34xx_isp_ccdc_config(struct isp_ccdc_device *isp_ccdc,
 			isp_ccdc->fpc_table_add = kmalloc(64 + fpc_t.fpnum * 4,
 						GFP_KERNEL | GFP_DMA);
 			if (!isp_ccdc->fpc_table_add) {
-				dev_err(to_device(isp_ccdc, isp_ccdc),
+				dev_err(to_device(isp_ccdc),
 					"ccdc: Cannot allocate memory for"
 					" FPC table");
 				return -ENOMEM;
@@ -244,7 +244,7 @@ void ispccdc_set_wenlog(struct isp_ccdc_device *isp_ccdc, u32 wenlog)
  **/
 int ispccdc_request(struct isp_ccdc_device *isp_ccdc)
 {
-	struct device *dev = to_device(isp_ccdc, isp_ccdc);
+	struct device *dev = to_device(isp_ccdc);
 
 	mutex_lock(&isp_ccdc->mutexlock);
 	if (isp_ccdc->ccdc_inuse) {
@@ -281,7 +281,7 @@ int ispccdc_free(struct isp_ccdc_device *isp_ccdc)
 
 	isp_ccdc->ccdc_inuse = 0;
 	mutex_unlock(&isp_ccdc->mutexlock);
-	isp_reg_and(to_device(isp_ccdc, isp_ccdc), OMAP3_ISP_IOMEM_MAIN,
+	isp_reg_and(to_device(isp_ccdc), OMAP3_ISP_IOMEM_MAIN,
 		    ISP_CTRL, ~(ISPCTRL_CCDC_CLK_EN |
 				ISPCTRL_CCDC_RAM_EN |
 				ISPCTRL_SBL_WR1_RAM_EN));
@@ -295,14 +295,14 @@ int ispccdc_free(struct isp_ccdc_device *isp_ccdc)
  **/
 static int ispccdc_free_lsc(struct isp_ccdc_device *isp_ccdc)
 {
-	struct isp_device *isp = to_isp_device(isp_ccdc, isp_ccdc);
+	struct isp_device *isp = to_isp_device(isp_ccdc);
 
 	if (!isp_ccdc->lsc_ispmmu_addr)
 		return 0;
 
 	ispccdc_enable_lsc(isp_ccdc, 0);
 	isp_ccdc->lsc_initialized = 0;
-	isp_reg_writel(to_device(isp_ccdc, isp_ccdc), 0, OMAP3_ISP_IOMEM_CCDC,
+	isp_reg_writel(to_device(isp_ccdc), 0, OMAP3_ISP_IOMEM_CCDC,
 		       ISPCCDC_LSC_TABLE_BASE);
 	iommu_vfree(isp->iommu, isp_ccdc->lsc_ispmmu_addr);
 	isp_ccdc->lsc_gain_table = NULL;
@@ -319,7 +319,7 @@ static int ispccdc_free_lsc(struct isp_ccdc_device *isp_ccdc)
 static int ispccdc_allocate_lsc(struct isp_ccdc_device *isp_ccdc,
 				u32 table_size)
 {
-	struct isp_device *isp = to_isp_device(isp_ccdc, isp_ccdc);
+	struct isp_device *isp = to_isp_device(isp_ccdc);
 
 	if (table_size == 0)
 		return -EINVAL;
@@ -333,7 +333,7 @@ static int ispccdc_allocate_lsc(struct isp_ccdc_device *isp_ccdc,
 	isp_ccdc->lsc_ispmmu_addr = iommu_vmalloc(isp->iommu, 0, table_size,
 						  IOMMU_FLAG);
 	if (IS_ERR_VALUE(isp_ccdc->lsc_ispmmu_addr)) {
-		dev_err(to_device(isp_ccdc, isp_ccdc),
+		dev_err(to_device(isp_ccdc),
 			"ccdc: Cannot allocate memory for gain tables\n");
 		isp_ccdc->lsc_ispmmu_addr = 0;
 		return -ENOMEM;
@@ -359,7 +359,7 @@ static int ispccdc_program_lsc(struct isp_ccdc_device *isp_ccdc)
 	if (isp_ccdc->lsc_initialized)
 		return 0;
 
-	isp_reg_writel(to_device(isp_ccdc, isp_ccdc), isp_ccdc->lsc_ispmmu_addr,
+	isp_reg_writel(to_device(isp_ccdc), isp_ccdc->lsc_ispmmu_addr,
 		       OMAP3_ISP_IOMEM_CCDC, ISPCCDC_LSC_TABLE_BASE);
 	isp_ccdc->lsc_initialized = 1;
 	return 0;
@@ -403,7 +403,7 @@ int ispccdc_load_lsc(struct isp_ccdc_device *isp_ccdc, u8 *table_addr,
 void ispccdc_config_lsc(struct isp_ccdc_device *isp_ccdc,
 			struct ispccdc_lsc_config *lsc_cfg)
 {
-	struct device *dev = to_device(isp_ccdc, isp_ccdc);
+	struct device *dev = to_device(isp_ccdc);
 	int reg;
 
 	if (!is_isplsc_activated())
@@ -434,7 +434,7 @@ void ispccdc_config_lsc(struct isp_ccdc_device *isp_ccdc,
  **/
 void ispccdc_enable_lsc(struct isp_ccdc_device *isp_ccdc, u8 enable)
 {
-	struct device *dev = to_device(isp_ccdc, isp_ccdc);
+	struct device *dev = to_device(isp_ccdc);
 
 	if (!is_isplsc_activated())
 		return;
@@ -521,7 +521,7 @@ void ispccdc_config_crop(struct isp_ccdc_device *isp_ccdc, u32 left, u32 top,
 static int ispccdc_config_datapath(struct isp_ccdc_device *isp_ccdc,
 				   struct isp_pipeline *pipe)
 {
-	struct device *dev = to_device(isp_ccdc, isp_ccdc);
+	struct device *dev = to_device(isp_ccdc);
 
 	u32 syn_mode = 0;
 	struct ispccdc_vp vpcfg;
@@ -666,7 +666,7 @@ static int ispccdc_config_datapath(struct isp_ccdc_device *isp_ccdc,
 void ispccdc_config_sync_if(struct isp_ccdc_device *isp_ccdc,
 			    struct ispccdc_syncif syncif)
 {
-	struct device *dev = to_device(isp_ccdc, isp_ccdc);
+	struct device *dev = to_device(isp_ccdc);
 	u32 syn_mode = isp_reg_readl(dev, OMAP3_ISP_IOMEM_CCDC,
 				     ISPCCDC_SYN_MODE);
 
@@ -771,7 +771,7 @@ void ispccdc_config_sync_if(struct isp_ccdc_device *isp_ccdc,
 int ispccdc_config_black_clamp(struct isp_ccdc_device *isp_ccdc,
 			       struct ispccdc_bclamp bclamp)
 {
-	struct device *dev = to_device(isp_ccdc, isp_ccdc);
+	struct device *dev = to_device(isp_ccdc);
 	u32 bclamp_val = 0;
 
 	if (isp_ccdc->obclamp_en) {
@@ -804,7 +804,7 @@ int ispccdc_config_black_clamp(struct isp_ccdc_device *isp_ccdc,
  **/
 void ispccdc_enable_black_clamp(struct isp_ccdc_device *isp_ccdc, u8 enable)
 {
-	struct device *dev = to_device(isp_ccdc, isp_ccdc);
+	struct device *dev = to_device(isp_ccdc);
 
 	isp_reg_and_or(dev, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_CLAMP,
 		       ~ISPCCDC_CLAMP_CLAMPEN,
@@ -822,7 +822,7 @@ void ispccdc_enable_black_clamp(struct isp_ccdc_device *isp_ccdc, u8 enable)
  **/
 int ispccdc_config_fpc(struct isp_ccdc_device *isp_ccdc, struct ispccdc_fpc fpc)
 {
-	struct device *dev = to_device(isp_ccdc, isp_ccdc);
+	struct device *dev = to_device(isp_ccdc);
 	u32 fpc_val = 0;
 
 	fpc_val = isp_reg_readl(dev, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FPC);
@@ -847,7 +847,7 @@ int ispccdc_config_fpc(struct isp_ccdc_device *isp_ccdc, struct ispccdc_fpc fpc)
  **/
 void ispccdc_enable_fpc(struct isp_ccdc_device *isp_ccdc, u8 enable)
 {
-	struct device *dev = to_device(isp_ccdc, isp_ccdc);
+	struct device *dev = to_device(isp_ccdc);
 
 	isp_reg_and_or(dev, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FPC,
 		       ~ISPCCDC_FPC_FPCEN, enable ? ISPCCDC_FPC_FPCEN : 0);
@@ -861,7 +861,7 @@ void ispccdc_enable_fpc(struct isp_ccdc_device *isp_ccdc, u8 enable)
 void ispccdc_config_black_comp(struct isp_ccdc_device *isp_ccdc,
 			       struct ispccdc_blcomp blcomp)
 {
-	struct device *dev = to_device(isp_ccdc, isp_ccdc);
+	struct device *dev = to_device(isp_ccdc);
 	u32 blcomp_val = 0;
 
 	blcomp_val |= blcomp.b_mg << ISPCCDC_BLKCMP_B_MG_SHIFT;
@@ -881,7 +881,7 @@ void ispccdc_config_black_comp(struct isp_ccdc_device *isp_ccdc,
 void ispccdc_config_vp(struct isp_ccdc_device *isp_ccdc,
 		       struct ispccdc_vp vpcfg)
 {
-	struct device *dev = to_device(isp_ccdc, isp_ccdc);
+	struct device *dev = to_device(isp_ccdc);
 	u32 fmtcfg_vp = isp_reg_readl(dev, OMAP3_ISP_IOMEM_CCDC,
 				      ISPCCDC_FMTCFG);
 
@@ -927,7 +927,7 @@ void ispccdc_config_vp(struct isp_ccdc_device *isp_ccdc,
  **/
 void ispccdc_enable_vp(struct isp_ccdc_device *isp_ccdc, u8 enable)
 {
-	struct device *dev = to_device(isp_ccdc, isp_ccdc);
+	struct device *dev = to_device(isp_ccdc);
 
 	isp_reg_and_or(dev, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMTCFG,
 		       ~ISPCCDC_FMTCFG_VPEN,
@@ -945,7 +945,7 @@ void ispccdc_enable_vp(struct isp_ccdc_device *isp_ccdc, u8 enable)
 void ispccdc_config_reformatter(struct isp_ccdc_device *isp_ccdc,
 				struct ispccdc_refmt refmt)
 {
-	struct device *dev = to_device(isp_ccdc, isp_ccdc);
+	struct device *dev = to_device(isp_ccdc);
 	u32 fmtcfg_val = 0;
 
 	fmtcfg_val = isp_reg_readl(dev, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMTCFG);
@@ -994,7 +994,7 @@ void ispccdc_config_reformatter(struct isp_ccdc_device *isp_ccdc,
  **/
 void ispccdc_enable_reformatter(struct isp_ccdc_device *isp_ccdc, u8 enable)
 {
-	struct device *dev = to_device(isp_ccdc, isp_ccdc);
+	struct device *dev = to_device(isp_ccdc);
 
 	isp_reg_and_or(dev, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_FMTCFG,
 		       ~ISPCCDC_FMTCFG_FMTEN,
@@ -1010,7 +1010,7 @@ void ispccdc_enable_reformatter(struct isp_ccdc_device *isp_ccdc, u8 enable)
 void ispccdc_config_culling(struct isp_ccdc_device *isp_ccdc,
 			    struct ispccdc_culling cull)
 {
-	struct device *dev = to_device(isp_ccdc, isp_ccdc);
+	struct device *dev = to_device(isp_ccdc);
 
 	u32 culling_val = 0;
 
@@ -1028,7 +1028,7 @@ void ispccdc_config_culling(struct isp_ccdc_device *isp_ccdc,
  **/
 void ispccdc_enable_lpf(struct isp_ccdc_device *isp_ccdc, u8 enable)
 {
-	struct device *dev = to_device(isp_ccdc, isp_ccdc);
+	struct device *dev = to_device(isp_ccdc);
 
 	isp_reg_and_or(dev, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_SYN_MODE,
 		       ~ISPCCDC_SYN_MODE_LPF,
@@ -1042,7 +1042,7 @@ void ispccdc_enable_lpf(struct isp_ccdc_device *isp_ccdc, u8 enable)
 void ispccdc_config_alaw(struct isp_ccdc_device *isp_ccdc,
 			 enum alaw_ipwidth ipwidth)
 {
-	struct device *dev = to_device(isp_ccdc, isp_ccdc);
+	struct device *dev = to_device(isp_ccdc);
 
 	isp_reg_writel(dev, ipwidth << ISPCCDC_ALAW_GWDI_SHIFT,
 		       OMAP3_ISP_IOMEM_CCDC, ISPCCDC_ALAW);
@@ -1054,7 +1054,7 @@ void ispccdc_config_alaw(struct isp_ccdc_device *isp_ccdc,
  **/
 void ispccdc_enable_alaw(struct isp_ccdc_device *isp_ccdc, u8 enable)
 {
-	struct device *dev = to_device(isp_ccdc, isp_ccdc);
+	struct device *dev = to_device(isp_ccdc);
 
 	isp_reg_and_or(dev, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_ALAW,
 		       ~ISPCCDC_ALAW_CCDTBL,
@@ -1067,7 +1067,7 @@ void ispccdc_enable_alaw(struct isp_ccdc_device *isp_ccdc, u8 enable)
  **/
 void ispccdc_config_imgattr(struct isp_ccdc_device *isp_ccdc, u32 colptn)
 {
-	struct device *dev = to_device(isp_ccdc, isp_ccdc);
+	struct device *dev = to_device(isp_ccdc);
 
 	isp_reg_writel(dev, colptn, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_COLPTN);
 }
@@ -1095,7 +1095,7 @@ void ispccdc_config_shadow_registers(struct isp_ccdc_device *isp_ccdc)
 int ispccdc_try_pipeline(struct isp_ccdc_device *isp_ccdc,
 			 struct isp_pipeline *pipe)
 {
-	struct device *dev = to_device(isp_ccdc, isp_ccdc);
+	struct device *dev = to_device(isp_ccdc);
 
 	if (pipe->ccdc_in_w < 32 || pipe->ccdc_in_h < 32) {
 		DPRINTK_ISPCCDC("ISP_ERR: CCDC cannot handle input width less"
@@ -1142,7 +1142,7 @@ int ispccdc_try_pipeline(struct isp_ccdc_device *isp_ccdc,
 int ispccdc_s_pipeline(struct isp_ccdc_device *isp_ccdc,
 		       struct isp_pipeline *pipe)
 {
-	struct device *dev = to_device(isp_ccdc, isp_ccdc);
+	struct device *dev = to_device(isp_ccdc);
 	int rval;
 
 	rval = ispccdc_config_datapath(isp_ccdc, pipe);
@@ -1229,7 +1229,7 @@ int ispccdc_s_pipeline(struct isp_ccdc_device *isp_ccdc,
 int ispccdc_config_outlineoffset(struct isp_ccdc_device *isp_ccdc, u32 offset,
 				 u8 oddeven, u8 numlines)
 {
-	struct device *dev = to_device(isp_ccdc, isp_ccdc);
+	struct device *dev = to_device(isp_ccdc);
 
 	if ((offset & ISP_32B_BOUNDARY_OFFSET) == offset) {
 		isp_reg_writel(dev, (offset & 0xFFFF),
@@ -1280,7 +1280,7 @@ int ispccdc_config_outlineoffset(struct isp_ccdc_device *isp_ccdc, u32 offset,
  **/
 int ispccdc_set_outaddr(struct isp_ccdc_device *isp_ccdc, u32 addr)
 {
-	struct device *dev = to_device(isp_ccdc, isp_ccdc);
+	struct device *dev = to_device(isp_ccdc);
 
 	if ((addr & ISP_32B_BOUNDARY_BUF) == addr) {
 		isp_reg_writel(dev, addr, OMAP3_ISP_IOMEM_CCDC,
@@ -1302,7 +1302,7 @@ int ispccdc_set_outaddr(struct isp_ccdc_device *isp_ccdc, u32 addr)
  **/
 void ispccdc_enable(struct isp_ccdc_device *isp_ccdc, u8 enable)
 {
-	struct isp_device *isp = to_isp_device(isp_ccdc, isp_ccdc);
+	struct isp_device *isp = to_isp_device(isp_ccdc);
 
 	if (enable) {
 		if (isp_ccdc->lsc_enable
@@ -1327,7 +1327,7 @@ void ispccdc_enable(struct isp_ccdc_device *isp_ccdc, u8 enable)
 int ispccdc_sbl_busy(void *_isp_ccdc)
 {
 	struct isp_ccdc_device *isp_ccdc = _isp_ccdc;
-	struct device *dev = to_device(isp_ccdc, isp_ccdc);
+	struct device *dev = to_device(isp_ccdc);
 
 	return ispccdc_busy(isp_ccdc)
 		| (isp_reg_readl(dev, OMAP3_ISP_IOMEM_SBL, ISPSBL_CCDC_WR_0) &
@@ -1345,7 +1345,7 @@ int ispccdc_sbl_busy(void *_isp_ccdc)
  **/
 int ispccdc_busy(struct isp_ccdc_device *isp_ccdc)
 {
-	struct device *dev = to_device(isp_ccdc, isp_ccdc);
+	struct device *dev = to_device(isp_ccdc);
 
 	return isp_reg_readl(dev, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_PCR) &
 		ISPCCDC_PCR_BUSY;
