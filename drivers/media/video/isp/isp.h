@@ -361,6 +361,8 @@ struct isp_device {
 	struct iommu *iommu;
 };
 
+void omap34xx_isp_hist_dma_done(struct device *dev);
+
 void isp_flush(struct device *dev);
 
 void isp_start(struct device *dev);
