@@ -709,14 +709,11 @@ u32 PROCWRAP_Ctrl(union Trapped_Args *args)
 			goto func_end;
 		}
 		cbDataSize += sizeof(u32);
-		if (DSP_SUCCEEDED(status)) {
-			pArgs = MEM_Alloc(cbDataSize, MEM_NONPAGED);
-			if (pArgs == NULL) {
-				status = DSP_EMEMORY;
-				goto func_end;
-			}
-		} else
+		pArgs = MEM_Alloc(cbDataSize, MEM_NONPAGED);
+		if (pArgs == NULL) {
+			status = DSP_EMEMORY;
 			goto func_end;
+		}
 
 		cp_fm_usr(pArgs, args->ARGS_PROC_CTRL.pArgs, status,
 			 cbDataSize);
