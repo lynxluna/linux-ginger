@@ -2038,8 +2038,9 @@ int isp_csi2_reset(void)
 	reg = isp_reg_readl(current_csi2_cfg.dev, OMAP3_ISP_IOMEM_CSI2A,
 			    ISPCSI2_SYSCONFIG);
 	reg &= ~ISPCSI2_SYSCONFIG_MSTANDBY_MODE_MASK;
-	reg |= ISPCSI2_SYSCONFIG_MSTANDBY_MODE_NO;
+	reg |= ISPCSI2_SYSCONFIG_MSTANDBY_MODE_SMART;
 	reg &= ~ISPCSI2_SYSCONFIG_AUTO_IDLE_MASK;
+	reg |= ISPCSI2_SYSCONFIG_AUTO_IDLE_AUTO;
 	isp_reg_writel(current_csi2_cfg.dev, reg, OMAP3_ISP_IOMEM_CSI2A,
 		       ISPCSI2_SYSCONFIG);
 
