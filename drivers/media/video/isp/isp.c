@@ -2444,14 +2444,13 @@ static int isp_remove(struct platform_device *pdev)
 
 /**
  * isp_suspend - Suspend routine for the ISP
- * @pdev: Pointer to ISP platform device
- * @state: Power management state request (Not used)
+ * @dev: Pointer to ISP device
  *
  * Always returns 0.
  **/
-static int isp_suspend(struct platform_device *pdev, pm_message_t state)
+static int isp_suspend(struct device *dev)
 {
-	struct isp_device *isp = platform_get_drvdata(pdev);
+	struct isp_device *isp = (struct isp_device *)dev;
 	int reset;
 
 	DPRINTK_ISPCTRL("isp_suspend: starting\n");
@@ -2461,13 +2460,13 @@ static int isp_suspend(struct platform_device *pdev, pm_message_t state)
 	if (isp->ref_count == 0)
 		goto out;
 
-	isp_disable_interrupts(&pdev->dev);
-	reset = isp_suspend_modules(&pdev->dev);
-	isp_save_ctx(&pdev->dev);
+	isp_disable_interrupts(dev);
+	reset = isp_suspend_modules(dev);
+	isp_save_ctx(dev);
 	if (reset)
-		isp_reset(&pdev->dev);
+		isp_reset(dev);
 
-	isp_disable_clocks(&pdev->dev);
+	isp_disable_clocks(dev);
 
 out:
 	DPRINTK_ISPCTRL("isp_suspend: done\n");
@@ -2477,13 +2476,13 @@ out:
 
 /**
  * isp_resume - Resume routine for the ISP
- * @pdev: Pointer to ISP platform device
+ * @dev: Pointer to ISP device
  *
  * Returns 0 if successful, or isp_enable_clocks return value otherwise.
  **/
-static int isp_resume(struct platform_device *pdev)
+static int isp_resume(struct device *dev)
 {
-	struct isp_device *isp = platform_get_drvdata(pdev);
+	struct isp_device *isp = (struct isp_device *)dev;
 	int ret_err = 0;
 
 	DPRINTK_ISPCTRL("isp_resume: starting\n");
@@ -2491,11 +2490,11 @@ static int isp_resume(struct platform_device *pdev)
 	if (isp->ref_count == 0)
 		goto out;
 
-	ret_err = isp_enable_clocks(&pdev->dev);
+	ret_err = isp_enable_clocks(dev);
 	if (ret_err)
 		goto out;
-	isp_restore_ctx(&pdev->dev);
-	isp_resume_modules(&pdev->dev);
+	isp_restore_ctx(dev);
+	isp_resume_modules(dev);
 
 out:
 	DPRINTK_ISPCTRL("isp_resume: done \n");
@@ -2681,13 +2680,17 @@ out_free_mmio:
 	return ret_err;
 }
 
+static struct dev_pm_ops omap3isp_pm_ops = {
+	.suspend = isp_suspend,
+	.resume  = isp_resume,
+};
+
 static struct platform_driver omap3isp_driver = {
 	.probe = isp_probe,
 	.remove = isp_remove,
-	.suspend = isp_suspend,
-	.resume = isp_resume,
 	.driver = {
 		.name = "omap3isp",
+		.pm	= &omap3isp_pm_ops,
 	},
 };
 
