@@ -535,102 +535,74 @@ static void __exit bridge_exit(void)
 	platform_driver_unregister(&bridge_driver);
 }
 
-/* This function is called when an application opens handle to the
- * bridge driver. */
-
+/*
+ * This function is called when an application opens handle to the
+ * bridge driver.
+ */
 static int bridge_open(struct inode *ip, struct file *filp)
 {
 	int status = 0;
-#ifndef RES_CLEANUP_DISABLE
-       u32     hProcess;
-	DSP_STATUS dsp_status = DSP_SOK;
-	HANDLE	     hDrvObject = NULL;
-	struct PROCESS_CONTEXT    *pPctxt = NULL;
-	struct PROCESS_CONTEXT	*next_node = NULL;
-	struct PROCESS_CONTEXT    *pCtxtclosed = NULL;
-	struct PROCESS_CONTEXT    *pCtxttraverse = NULL;
-	struct task_struct *tsk = NULL;
-	GT_0trace(driverTrace, GT_ENTER, "-> driver_open\n");
+	DSP_STATUS dsp_status;
+	HANDLE hDrvObject;
+	struct PROCESS_CONTEXT *pr_ctxt = NULL;
+
+	GT_0trace(driverTrace, GT_ENTER, "-> bridge_open\n");
+
 	dsp_status = CFG_GetObject((u32 *)&hDrvObject, REG_DRV_OBJECT);
-
-	/* Checking weather task structure for all process existing
-	 * in the process context list If not removing those processes*/
-	if (DSP_FAILED(dsp_status))
-		goto func_cont;
-
-	DRV_GetProcCtxtList(&pCtxtclosed, (struct DRV_OBJECT *)hDrvObject);
-	while (pCtxtclosed != NULL) {
-		tsk = find_task_by_vpid(pCtxtclosed->pid);
-		next_node = pCtxtclosed->next;
-
-		if ((tsk == NULL) || (tsk->exit_state == EXIT_ZOMBIE)) {
-
-			GT_1trace(driverTrace, GT_5CLASS,
-				 "***Task structure not existing for "
-				 "process***%d\n", pCtxtclosed->pid);
-			DRV_RemoveAllResources(pCtxtclosed);
-			if (pCtxtclosed->hProcessor != NULL) {
-				DRV_GetProcCtxtList(&pCtxttraverse,
-					    (struct DRV_OBJECT *)hDrvObject);
-				if (pCtxttraverse->next == NULL) {
-					PROC_Detach(pCtxtclosed->hProcessor);
-				} else {
-					if ((pCtxtclosed->pid ==
-					  pCtxttraverse->pid) &&
-					  (pCtxttraverse->next != NULL)) {
-						pCtxttraverse =
-							pCtxttraverse->next;
-					}
-					while ((pCtxttraverse != NULL) &&
-					     (pCtxtclosed->hProcessor
-					     != pCtxttraverse->hProcessor)) {
-						pCtxttraverse =
-							pCtxttraverse->next;
-						if ((pCtxttraverse != NULL) &&
-						  (pCtxtclosed->pid ==
-						  pCtxttraverse->pid)) {
-							pCtxttraverse =
-							   pCtxttraverse->next;
-						}
-					}
-					if (pCtxttraverse == NULL) {
-						PROC_Detach
-						     (pCtxtclosed->hProcessor);
-					}
-				}
-			}
-			DRV_RemoveProcContext((struct DRV_OBJECT *)hDrvObject,
-					     pCtxtclosed,
-					     (void *)pCtxtclosed->pid);
+	if (DSP_SUCCEEDED(dsp_status)) {
+		/*
+		 * Allocate a new process context and insert it into global
+		 * process context list.
+		 */
+		DRV_InsertProcContext(hDrvObject, &pr_ctxt);
+		if (pr_ctxt) {
+			DRV_ProcUpdatestate(pr_ctxt, PROC_RES_ALLOCATED);
+			DRV_ProcSetPID(pr_ctxt, current->pid);
+		} else {
+			status = -ENOMEM;
 		}
-		pCtxtclosed = next_node;
+	} else {
+		status = -EIO;
 	}
-func_cont:
-	dsp_status = CFG_GetObject((u32 *)&hDrvObject, REG_DRV_OBJECT);
-	if (DSP_SUCCEEDED(dsp_status))
-		dsp_status = DRV_InsertProcContext(
-				(struct DRV_OBJECT *)hDrvObject, &pPctxt);
 
-	if (pPctxt != NULL) {
-			/* Return PID instead of process handle */
-			hProcess = current->pid;
+	filp->private_data = pr_ctxt;
 
-		DRV_ProcUpdatestate(pPctxt, PROC_RES_ALLOCATED);
-			DRV_ProcSetPID(pPctxt, hProcess);
-	}
-#endif
-
-	GT_0trace(driverTrace, GT_ENTER, " <- driver_open\n");
+	GT_0trace(driverTrace, GT_ENTER, "<- bridge_open\n");
 	return status;
 }
 
-/* This function is called when an application closes handle to the bridge
- * driver. */
+/*
+ * This function is called when an application closes handle to the bridge
+ * driver.
+ */
 static int bridge_release(struct inode *ip, struct file *filp)
 {
+	int status = 0;
+	DSP_STATUS dsp_status;
+	HANDLE hDrvObject;
+	struct PROCESS_CONTEXT *pr_ctxt;
+
 	GT_0trace(driverTrace, GT_ENTER, "-> bridge_release\n");
+
+	if (!filp->private_data) {
+		status = -EIO;
+	} else {
+		pr_ctxt = filp->private_data;
+		dsp_status = CFG_GetObject((u32 *)&hDrvObject, REG_DRV_OBJECT);
+		if (DSP_SUCCEEDED(dsp_status)) {
+			flush_signals(current);
+			DRV_RemoveAllResources(pr_ctxt);
+			PROC_Detach(pr_ctxt->hProcessor);
+			DRV_RemoveProcContext((struct DRV_OBJECT *)hDrvObject,
+					pr_ctxt, (void *)pr_ctxt->pid);
+		} else {
+			status = -EIO;
+		}
+		filp->private_data = NULL;
+	}
+
 	GT_0trace(driverTrace, GT_ENTER, "<- bridge_release\n");
-	return 0;
+	return status;
 }
 
 /* This function provides IO interface to the bridge driver. */
