@@ -130,18 +130,12 @@ struct ispccdc_refmt {
 
 /**
  * struct isp_ccdc_device - Structure for the CCDC module to store its own
-			    information
+ *			    information
  * @ccdc_inuse: Flag to determine if CCDC has been reserved or not (0 or 1).
- * @ccdcout_w: CCDC output width.
- * @ccdcout_h: CCDC output height.
- * @ccdcin_w: CCDC input width.
- * @ccdcin_h: CCDC input height.
  * @ccdcin_woffset: CCDC input horizontal offset.
  * @ccdcin_hoffset: CCDC input vertical offset.
  * @crop_w: Crop width.
  * @crop_h: Crop weight.
- * @ccdc_inpfmt: CCDC input format.
- * @ccdc_outfmt: CCDC output format.
  * @vpout_en: Video port output enable.
  * @wen: Data write enable.
  * @exwen: External data write enable.
@@ -150,6 +144,9 @@ struct ispccdc_refmt {
  * @syncif_ipmod: Image
  * @obclamp_en: Data input format.
  * @mutexlock: Mutex used to get access to the CCDC.
+ * @wenlog: Write Enable logic to use against valid data signal.
+ * @fpc_table_add_m: ISP MMU mapped address of the current used FPC table.
+ * @fpc_table_add: Virtual address of the current used FPC table.
  * @update_lsc_config: Set when user changes lsc_config
  * @lsc_request_enable: Whether LSC is requested to be enabled
  * @lsc_config: LSC config set by user
