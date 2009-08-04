@@ -648,7 +648,7 @@
 /* Define bit fields within selected registers */
 #define ISP_REVISION_SHIFT			0
 
-#define ISP_SYSCONFIG_AUTOIDLE			0
+#define ISP_SYSCONFIG_AUTOIDLE			(1 << 0)
 #define ISP_SYSCONFIG_SOFTRESET			(1 << 1)
 #define ISP_SYSCONFIG_MIDLEMODE_SHIFT		12
 #define ISP_SYSCONFIG_MIDLEMODE_FORCESTANDBY	0x0
