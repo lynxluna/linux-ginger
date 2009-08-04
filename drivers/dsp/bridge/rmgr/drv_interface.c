@@ -654,22 +654,9 @@ func_cont:
  * driver. */
 static int bridge_release(struct inode *ip, struct file *filp)
 {
-	int status;
-       u32 pid;
-
-	GT_0trace(driverTrace, GT_ENTER, "-> driver_release\n");
-
-       /* Return PID instead of process handle */
-       pid = current->pid;
-
-       status = DSP_Close(pid);
-
-
-	(status == true) ? (status = 0) : (status = -1);
-
-	GT_0trace(driverTrace, GT_ENTER, " <- driver_release\n");
-
-	return status;
+	GT_0trace(driverTrace, GT_ENTER, "-> bridge_release\n");
+	GT_0trace(driverTrace, GT_ENTER, "<- bridge_release\n");
+	return 0;
 }
 
 /* This function provides IO interface to the bridge driver. */
