@@ -1402,7 +1402,7 @@ static int ov3640_detect(struct i2c_client *client)
 
 	if ((pidh == OV3640_PIDH_MAGIC) && ((pidl == OV3640_PIDL_MAGIC1) ||
 						(pidl == OV3640_PIDL_MAGIC2))) {
-		dev_dbg(&client->dev, "Detect success (%02X,%02X)\n", pidh,
+		dev_info(&client->dev, "Detect success (%02X,%02X)\n", pidh,
 									pidl);
 		return pidl;
 	}
