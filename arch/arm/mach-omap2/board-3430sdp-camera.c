@@ -219,6 +219,7 @@ static struct isp_interface_config mt9p012_if_config = {
 	.prev_sph = 2,
 	.prev_slv = 0,
 	.wenlog = ISPCCDC_CFG_WENLOG_AND,
+	.wait_hs_vs = 2,
 	.u.par.par_bridge = 0x0,
 	.u.par.par_clk_pol = 0x0,
 };
