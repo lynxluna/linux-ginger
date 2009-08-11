@@ -22,6 +22,7 @@
 #include <asm/io.h>
 
 #include <mach/gpio.h>
+#include <mach/omap-pm.h>
 
 static int cam_inited;
 
@@ -268,8 +269,20 @@ static int mt9p012_sensor_power_set(struct v4l2_int_device *s,
 			regulator_disable(sdp3430_mt9p012_reg);
 		enable_fpga_vio_1v8(0);
 		iounmap(fpga_map_addr);
+
+#ifdef CONFIG_OMAP_PM_SRF
+		omap_pm_set_min_bus_tput(vdev->cam->isp, OCP_INITIATOR_AGENT, 0);
+#endif
 		break;
 	case V4L2_POWER_ON:
+
+#ifdef CONFIG_OMAP_PM_SRF
+		/* Through-put requirement:
+		 * 2592 x 1944 x 2Bpp x 11fps x 3 memory ops = 324770 KByte/s
+		 */
+		omap_pm_set_min_bus_tput(vdev->cam->isp, OCP_INITIATOR_AGENT, 324770);
+#endif
+
 		if (mt9p012_previous_power == V4L2_POWER_OFF) {
 			/* Power Up Sequence */
 			isp_configure_interface(vdev->cam->isp,
@@ -315,6 +328,9 @@ static int mt9p012_sensor_power_set(struct v4l2_int_device *s,
 	case V4L2_POWER_STANDBY:
 		/* stand by */
 		gpio_set_value(MT9P012_STANDBY_GPIO, 1);
+#ifdef CONFIG_OMAP_PM_SRF
+		omap_pm_set_min_bus_tput(vdev->cam->isp, OCP_INITIATOR_AGENT, 0);
+#endif
 		break;
 	}
 	/* Save powerstate to know what was before calling POWER_ON. */
@@ -416,6 +432,12 @@ static int ov3640_sensor_power_set(struct v4l2_int_device *s,
 
 	switch (power) {
 	case V4L2_POWER_ON:
+#ifdef CONFIG_OMAP_PM_SRF
+		/* Through-put requirement:
+		 * 2048 x 1536 x 2Bpp x 7.5fps x 3 memory ops = 138240 KByte/s
+		 */
+		omap_pm_set_min_bus_tput(vdev->cam->isp, OCP_INITIATOR_AGENT, 138240);
+#endif
 		if (previous_power == V4L2_POWER_OFF)
 			isp_csi2_reset();
 
@@ -470,8 +492,14 @@ static int ov3640_sensor_power_set(struct v4l2_int_device *s,
 			regulator_disable(sdp3430_ov3640_reg);
 		enable_fpga_vio_1v8(0);
 		iounmap(fpga_map_addr);
+#ifdef CONFIG_OMAP_PM_SRF
+		omap_pm_set_min_bus_tput(vdev->cam->isp, OCP_INITIATOR_AGENT, 0);
+#endif
 		break;
 	case V4L2_POWER_STANDBY:
+#ifdef CONFIG_OMAP_PM_SRF
+		omap_pm_set_min_bus_tput(vdev->cam->isp, OCP_INITIATOR_AGENT, 0);
+#endif
 		break;
 	}
 	previous_power = power;
