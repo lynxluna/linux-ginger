@@ -12,20 +12,21 @@
  * published by the Free Software Foundation.
  */
 
-#ifdef CONFIG_TWL4030_CORE
-
 #include <linux/clk.h>
 #include <linux/platform_device.h>
 #include <linux/delay.h>
 #include <linux/mm.h>
 
-#include <linux/i2c/twl4030.h>
+#include <linux/regulator/consumer.h>
 
 #include <asm/io.h>
 
 #include <mach/gpio.h>
 
 static int cam_inited;
+
+static struct device *camkit_dev;
+
 #include <media/v4l2-int-device.h>
 #include <../drivers/media/video/omap34xxcam.h>
 #include <../drivers/media/video/isp/ispreg.h>
@@ -35,11 +36,6 @@ static int cam_inited;
 #define FPGA_SPR_GPIO1_3v3	(0x1 << 14)
 #define FPGA_GPIO6_DIR_CTRL	(0x1 << 6)
 
-#define VAUX_2_8_V		0x09
-#define VAUX_1_8_V		0x05
-#define VAUX_DEV_GRP_P1		0x20
-#define VAUX_DEV_GRP_NONE	0x00
-
 #define CAMKITV3_USE_XCLKA  	0
 #define CAMKITV3_USE_XCLKB  	1
 
@@ -47,6 +43,10 @@ static int cam_inited;
 /* Sensor specific GPIO signals */
 #define MT9P012_STANDBY_GPIO	58
 #define OV3640_STANDBY_GPIO	55
+
+static struct regulator *sdp3430_mt9p012_reg;
+static struct regulator *sdp3430_dw9710_reg;
+static struct regulator *sdp3430_ov3640_reg;
 
 #if defined(CONFIG_VIDEO_MT9P012) || defined(CONFIG_VIDEO_MT9P012_MODULE)
 #include <media/mt9p012.h>
@@ -119,18 +119,37 @@ static int dw9710_lens_power_set(enum v4l2_power power)
 		return -EFAULT;
 	}
 
-	/* The power change depends on MT9P012 powerup, so if we request a
+	/* The power change depends on MT9P012 powerup GPIO, so if we request a
 	 * power state different from sensor, we should return error
 	 */
 	if ((mt9p012_previous_power != V4L2_POWER_OFF) &&
 					(power != mt9p012_previous_power))
 		return -EIO;
+	/*
+	 * Plug regulator consumer to respective VAUX supply
+	 * if not done before.
+	 */
+	if (!sdp3430_dw9710_reg) {
+		sdp3430_dw9710_reg = regulator_get(camkit_dev, "vaux2_2");
+		if (IS_ERR(sdp3430_dw9710_reg)) {
+			dev_err(camkit_dev, "vaux2_2 regulator missing\n");
+			return PTR_ERR(sdp3430_dw9710_reg);
+		}
+	}
+
+	if (!sdp3430_dw9710_reg) {
+		sdp3430_dw9710_reg = regulator_get(camkit_dev, "vaux2_2");
+		if (IS_ERR(sdp3430_dw9710_reg)) {
+			dev_err(camkit_dev, "vaux2_2 regulator missing\n");
+			return PTR_ERR(sdp3430_dw9710_reg);
+		}
+	}
 
 	switch (power) {
 	case V4L2_POWER_OFF:
 		/* Power Down Sequence */
-		twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
-				VAUX_DEV_GRP_NONE, TWL4030_VAUX2_DEV_GRP);
+		if (regulator_is_enabled(sdp3430_dw9710_reg))
+			regulator_disable(sdp3430_dw9710_reg);
 		enable_fpga_vio_1v8(0);
 		iounmap(fpga_map_addr);
 		break;
@@ -145,10 +164,7 @@ static int dw9710_lens_power_set(enum v4l2_power power)
 		enable_fpga_vio_1v8(1);
 
 		/* turn on analog power */
-		twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
-				VAUX_2_8_V, TWL4030_VAUX2_DEDICATED);
-		twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
-				VAUX_DEV_GRP_P1, TWL4030_VAUX2_DEV_GRP);
+		regulator_enable(sdp3430_dw9710_reg);
 
 		/* out of standby */
 		gpio_set_value(MT9P012_STANDBY_GPIO, 0);
@@ -233,12 +249,23 @@ static int mt9p012_sensor_power_set(struct v4l2_int_device *s,
 		return -EFAULT;
 	}
 
+	/*
+	 * Plug regulator consumer to respective VAUX supply
+	 * if not done before.
+	 */
+	if (!sdp3430_mt9p012_reg) {
+		sdp3430_mt9p012_reg = regulator_get(camkit_dev, "vaux2_1");
+		if (IS_ERR(sdp3430_mt9p012_reg)) {
+			dev_err(camkit_dev, "vaux2_1 regulator missing\n");
+			return PTR_ERR(sdp3430_mt9p012_reg);
+		}
+	}
+
 	switch (power) {
 	case V4L2_POWER_OFF:
 		/* Power Down Sequence */
-		twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
-				VAUX_DEV_GRP_NONE, TWL4030_VAUX2_DEV_GRP);
-
+		if (regulator_is_enabled(sdp3430_mt9p012_reg))
+			regulator_disable(sdp3430_mt9p012_reg);
 		enable_fpga_vio_1v8(0);
 		iounmap(fpga_map_addr);
 		break;
@@ -263,10 +290,7 @@ static int mt9p012_sensor_power_set(struct v4l2_int_device *s,
 			enable_fpga_vio_1v8(1);
 
 			/* turn on analog power */
-			twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
-					VAUX_2_8_V, TWL4030_VAUX2_DEDICATED);
-			twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
-					VAUX_DEV_GRP_P1, TWL4030_VAUX2_DEV_GRP);
+			regulator_enable(sdp3430_mt9p012_reg);
 		}
 
 		/* out of standby */
@@ -370,6 +394,26 @@ static int ov3640_sensor_power_set(struct v4l2_int_device *s,
 		return -EFAULT;
 	}
 
+	/*
+	 * Plug regulator consumer to respective VAUX supply
+	 * if not done before.
+	 */
+	if (!sdp3430_ov3640_reg) {
+#if defined(CONFIG_VIDEO_OV3640_CSI2)
+		sdp3430_ov3640_reg = regulator_get(camkit_dev, "vaux4_1");
+		if (IS_ERR(sdp3430_ov3640_reg)) {
+			dev_err(camkit_dev, "vaux4_1 regulator missing\n");
+			return PTR_ERR(sdp3430_ov3640_reg);
+		}
+#else
+		sdp3430_ov3640_reg = regulator_get(camkit_dev, "vaux2_3");
+		if (IS_ERR(sdp3430_ov3640_reg)) {
+			dev_err(camkit_dev, "vaux2_3 regulator missing\n");
+			return PTR_ERR(sdp3430_ov3640_reg);
+		}
+#endif
+	}
+
 	switch (power) {
 	case V4L2_POWER_ON:
 		if (previous_power == V4L2_POWER_OFF)
@@ -400,17 +444,7 @@ static int ov3640_sensor_power_set(struct v4l2_int_device *s,
 
 		if (previous_power == V4L2_POWER_OFF) {
 			/* turn on analog power */
-#if defined(CONFIG_VIDEO_OV3640_CSI2)
-			twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
-					VAUX_1_8_V, TWL4030_VAUX4_DEDICATED);
-			twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
-					VAUX_DEV_GRP_P1, TWL4030_VAUX4_DEV_GRP);
-#else
-			twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
-					VAUX_2_8_V, TWL4030_VAUX2_DEDICATED);
-			twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
-					VAUX_DEV_GRP_P1, TWL4030_VAUX2_DEV_GRP);
-#endif
+			regulator_enable(sdp3430_ov3640_reg);
 			udelay(100);
 
 			/* Turn ON Omnivision sensor */
@@ -432,13 +466,8 @@ static int ov3640_sensor_power_set(struct v4l2_int_device *s,
 	case V4L2_POWER_OFF:
 		/* Power Down Sequence */
 		isp_csi2_complexio_power(ISP_CSI2_POWER_OFF);
-#if defined(CONFIG_VIDEO_OV3640_CSI2)
-		twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
-				VAUX_DEV_GRP_NONE, TWL4030_VAUX4_DEV_GRP);
-#else
-		twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
-				VAUX_DEV_GRP_NONE, TWL4030_VAUX2_DEV_GRP);
-#endif
+		if (regulator_is_enabled(sdp3430_ov3640_reg))
+			regulator_disable(sdp3430_ov3640_reg);
 		enable_fpga_vio_1v8(0);
 		iounmap(fpga_map_addr);
 		break;
@@ -464,26 +493,30 @@ struct ov3640_platform_data sdp3430_ov3640_platform_data = {
 
 #endif
 
-void __init sdp3430_cam_init(void)
+static int sdp3430_camkit_probe(struct platform_device *pdev)
 {
-	cam_inited = 0;
+	int ret = 0;
+
 	/* Request and configure gpio pins */
 	if (gpio_request(CAMKITV3_RESET_GPIO, "camkitv3_reset_gpio") != 0) {
-		printk(KERN_ERR "Could not request GPIO %d",
-					CAMKITV3_RESET_GPIO);
-		return;
+		dev_err(&pdev->dev, "Could not request GPIO %d",
+			CAMKITV3_RESET_GPIO);
+		ret = -ENODEV;
+		goto err;
 	}
 
 	if (gpio_request(OV3640_STANDBY_GPIO, "ov3640_standby_gpio") != 0) {
-		printk(KERN_ERR "Could not request GPIO %d",
-					OV3640_STANDBY_GPIO);
-		return;
+		dev_err(&pdev->dev, "Could not request GPIO %d",
+			OV3640_STANDBY_GPIO);
+		ret = -ENODEV;
+		goto err_freegpio1;
 	}
 
 	if (gpio_request(MT9P012_STANDBY_GPIO, "mt9p012_standby_gpio")) {
-		printk(KERN_ERR "Could not request GPIO %d for MT9P012\n",
-							MT9P012_STANDBY_GPIO);
-		return;
+		dev_err(&pdev->dev, "Could not request GPIO %d for MT9P012\n",
+			MT9P012_STANDBY_GPIO);
+		ret = -ENODEV;
+		goto err_freegpio2;
 	}
 
 	/* set to output mode */
@@ -492,9 +525,65 @@ void __init sdp3430_cam_init(void)
 	gpio_direction_output(MT9P012_STANDBY_GPIO, true);
 
 	cam_inited = 1;
+	camkit_dev = &pdev->dev;
+	return 0;
+
+err_freegpio2:
+	gpio_free(OV3640_STANDBY_GPIO);
+err_freegpio1:
+	gpio_free(CAMKITV3_RESET_GPIO);
+err:
+	cam_inited = 0;
+	return ret;
 }
-#else
+
+static int sdp3430_camkit_remove(struct platform_device *pdev)
+{
+	if (regulator_is_enabled(sdp3430_ov3640_reg))
+		regulator_disable(sdp3430_ov3640_reg);
+	regulator_put(sdp3430_ov3640_reg);
+
+	if (regulator_is_enabled(sdp3430_dw9710_reg))
+		regulator_disable(sdp3430_dw9710_reg);
+	regulator_put(sdp3430_dw9710_reg);
+
+	if (regulator_is_enabled(sdp3430_mt9p012_reg))
+		regulator_disable(sdp3430_ov3640_reg);
+	regulator_put(sdp3430_mt9p012_reg);
+
+	gpio_free(MT9P012_STANDBY_GPIO);
+	gpio_free(OV3640_STANDBY_GPIO);
+	gpio_free(CAMKITV3_RESET_GPIO);
+	return 0;
+}
+
+static int sdp3430_camkit_suspend(struct device *dev)
+{
+	return 0;
+}
+
+static int sdp3430_camkit_resume(struct device *dev)
+{
+	return 0;
+}
+
+static struct dev_pm_ops sdp3430_camkit_pm_ops = {
+	.suspend = sdp3430_camkit_suspend,
+	.resume  = sdp3430_camkit_resume,
+};
+
+static struct platform_driver sdp3430_camkit_driver = {
+	.probe		= sdp3430_camkit_probe,
+	.remove		= sdp3430_camkit_remove,
+	.driver		= {
+		.name	= "sdp3430_camkit",
+		.pm	= &sdp3430_camkit_pm_ops,
+	},
+};
+
 void __init sdp3430_cam_init(void)
 {
+	cam_inited = 0;
+	platform_driver_register(&sdp3430_camkit_driver);
 }
-#endif
+
