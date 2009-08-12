@@ -148,6 +148,9 @@ DSP_STATUS CHNLSM_InterruptDSP2(struct WMD_DEV_CONTEXT *pDevContext,
 		temp = *(REG_UWORD32 *)(resources.dwDmmuBase + 0x10);
 
 		pDevContext->dwBrdState = BRD_RUNNING;
+	} else if (pDevContext->dwBrdState == BRD_RETENTION) {
+		/* Restart the peripheral clocks */
+		DSP_PeripheralClocks_Enable(pDevContext, NULL);
 	}
 
 	timeout = jiffies + msecs_to_jiffies(1);
