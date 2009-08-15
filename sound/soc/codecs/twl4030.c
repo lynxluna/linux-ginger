@@ -1043,6 +1043,15 @@ static const struct soc_enum twl4030_avadc_clk_priority_enum =
 			ARRAY_SIZE(twl4030_avadc_clk_priority_texts),
 			twl4030_avadc_clk_priority_texts);
 
+static const char *twl4030_apll_ctl_texts[] = {
+	"APLL disabled", "APLL enabled"
+};
+
+static const struct soc_enum twl4030_apll_ctl_enum =
+	SOC_ENUM_SINGLE(TWL4030_REG_APLL_CTL, 4,
+			ARRAY_SIZE(twl4030_apll_ctl_texts),
+			twl4030_apll_ctl_texts);
+
 static const char *twl4030_rampdelay_texts[] = {
 	"27/20/14 ms", "55/40/27 ms", "109/81/55 ms", "218/161/109 ms",
 	"437/323/218 ms", "874/645/437 ms", "1748/1291/874 ms",
@@ -1145,6 +1154,7 @@ static const struct snd_kcontrol_new twl4030_snd_controls[] = {
 		0, 3, 5, 0, input_gain_tlv),
 
 	SOC_ENUM("AVADC Clock Priority", twl4030_avadc_clk_priority_enum),
+	SOC_ENUM("PLL power control", twl4030_apll_ctl_enum),
 
 	SOC_ENUM("HS ramp delay", twl4030_rampdelay_enum),
 
