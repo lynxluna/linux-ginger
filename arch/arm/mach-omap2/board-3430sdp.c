@@ -186,36 +186,8 @@ static struct regulator_consumer_supply sdp3430_vdvi_supply = {
 	.dev		= &sdp3430_lcd_device.dev,
 };
 
-static struct platform_device sdp3430_camkit_device = {
-	.name		= "sdp3430_camkit",
-	.id		= -1,
-};
-
-static struct regulator_consumer_supply sdp3430_vaux2_supplies[] = {
-	{
-		.supply		= "vaux2_1",
-		.dev		= &sdp3430_camkit_device.dev,
-	},
-	{
-		.supply		= "vaux2_2",
-		.dev		= &sdp3430_camkit_device.dev,
-	},
-	{
-		.supply		= "vaux2_3",
-		.dev		= &sdp3430_camkit_device.dev,
-	},
-};
-
-static struct regulator_consumer_supply sdp3430_vaux4_supplies[] = {
-	{
-		.supply		= "vaux4_1",
-		.dev		= &sdp3430_camkit_device.dev,
-	},
-};
-
 static struct platform_device *sdp3430_devices[] __initdata = {
 	&sdp3430_lcd_device,
-	&sdp3430_camkit_device,
 };
 
 static struct omap_lcd_config sdp3430_lcd_config __initdata = {
@@ -354,8 +326,6 @@ static struct regulator_init_data sdp3430_vaux2 = {
 		.valid_ops_mask		= REGULATOR_CHANGE_MODE
 					| REGULATOR_CHANGE_STATUS,
 	},
-	.num_consumer_supplies	= ARRAY_SIZE(sdp3430_vaux2_supplies),
-	.consumer_supplies	= sdp3430_vaux2_supplies,
 };
 
 /* VAUX3 for LCD board */
@@ -382,8 +352,6 @@ static struct regulator_init_data sdp3430_vaux4 = {
 		.valid_ops_mask		= REGULATOR_CHANGE_MODE
 					| REGULATOR_CHANGE_STATUS,
 	},
-	.num_consumer_supplies	= ARRAY_SIZE(sdp3430_vaux4_supplies),
-	.consumer_supplies	= sdp3430_vaux4_supplies,
 };
 
 /* VMMC1 for OMAP VDD_MMC1 (i/o) and MMC1 card */
