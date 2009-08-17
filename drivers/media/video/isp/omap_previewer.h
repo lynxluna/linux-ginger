@@ -141,7 +141,6 @@ struct prev_cropsize {
  * @isp_addr_read: LSC address
  */
 struct prev_device {
-	struct prev_params *params;
 	unsigned char opened;
 	struct completion wfc;
 	struct mutex prevwrap_mutex;
@@ -150,6 +149,8 @@ struct prev_device {
 	struct videobuf_queue_ops vbq_ops;
 	dma_addr_t isp_addr_read;
 	dma_addr_t isp_addr_lsc;
+	struct device *isp;
+	struct prev_size_params size_params;
 };
 
 /**
