@@ -562,10 +562,12 @@ static struct adp1653_platform_data adp1653_my_platform_data = {
 	.g_priv			 = rx51_adp1653_g_priv,
 	.power_on		 = rx51_adp1653_power_on,
 	.power_off		 = rx51_adp1653_power_off,
-	.max_flash_timeout	 = 820000,		/* us */
+	/* Must be limited to 500 ms in RX-51 */
+	.max_flash_timeout	 = 500000,		/* us */
 	/* Must be limited to 320 mA in RX-51 B3 and newer hardware */
-	.max_flash_intensity	 = 21,
-	.max_torch_intensity	 = ADP1653_TORCH_INTENSITY_MAX,
+	.max_flash_intensity	 = 19,
+	/* Must be limited to 50 mA in RX-51 */
+	.max_torch_intensity	 = 1,
 	.max_indicator_intensity = ADP1653_REG_OUT_SEL_ILED_MAX,
 };
 
