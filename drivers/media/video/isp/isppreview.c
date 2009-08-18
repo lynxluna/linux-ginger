@@ -1982,6 +1982,8 @@ int __init isp_preview_init(struct device *dev)
 	params->csup.gain = FLR_CSUP_GAIN;
 	params->csup.thres = FLR_CSUP_THRES;
 	params->csup.hypf_en = 0;
+	params->ytable = kzalloc(sizeof(u32) * ISPPRV_YENH_TBL_SIZE,
+				 GFP_KERNEL);
 	isppreview_set_luma_enhancement(isp_prev, luma_enhance_table);
 	params->nf.spread = FLR_NF_STRGTH;
 	memcpy(params->nf.table, noise_filter_table, sizeof(params->nf.table));
@@ -2022,4 +2024,16 @@ int __init isp_preview_init(struct device *dev)
 	spin_lock_init(&isp_prev->lock);
 
 	return 0;
+}
+
+/**
+ * isp_preview_cleanup - Module Cleanup.
+ **/
+void isp_preview_cleanup(struct device *dev)
+{
+	struct isp_device *isp = dev_get_drvdata(dev);
+	struct isp_prev_device *isp_prev = &isp->isp_prev;
+	struct prev_params *params = &isp_prev->params;
+
+	kfree(params->ytable);
 }
