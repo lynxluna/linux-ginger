@@ -384,9 +384,9 @@ int isp_set_callback(struct device *dev, enum isp_callback_type type,
 			   IRQ0ENABLE_PRV_DONE_IRQ);
 		break;
 	case CBK_RESZ_DONE:
-		isp_reg_writel(IRQ0ENABLE_RSZ_DONE_IRQ,
+		isp_reg_writel(dev, IRQ0ENABLE_RSZ_DONE_IRQ,
 			       OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0STATUS);
-		isp_reg_or(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE,
+		isp_reg_or(dev, OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE,
 			   IRQ0ENABLE_RSZ_DONE_IRQ);
 		break;
 	default:
@@ -422,7 +422,7 @@ int isp_unset_callback(struct device *dev, enum isp_callback_type type)
 			    ~IRQ0ENABLE_PRV_DONE_IRQ);
 		break;
 	case CBK_RESZ_DONE:
-		isp_reg_and(OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE,
+		isp_reg_and(dev, OMAP3_ISP_IOMEM_MAIN, ISP_IRQ0ENABLE,
 			    ~IRQ0ENABLE_RSZ_DONE_IRQ);
 		break;
 	default:
