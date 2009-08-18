@@ -510,8 +510,6 @@ void isp_restore_context(struct device *dev, struct isp_reg *);
 
 void isp_print_status(struct device *dev);
 
-void isp_set_hs_vs(int);
-
 int __init isp_ccdc_init(struct device *dev);
 int __init isp_hist_init(struct device *dev);
 int __init isph3a_aewb_init(struct device *dev);
