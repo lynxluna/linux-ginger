@@ -97,6 +97,8 @@ static int prev_calculate_crop(struct prev_device *device,
 	pipe.ccdc_out_w = pipe.ccdc_out_w_img =
 		device->size_params.hsize;
 	pipe.ccdc_out_h = device->size_params.vsize;
+	pipe.prv_in = PRV_RAW_MEM;
+	pipe.prv_out = PREVIEW_MEM;
 
 	ret = isppreview_try_pipeline(&isp->isp_prev, &pipe);
 
@@ -791,6 +793,50 @@ static int previewer_mmap(struct file *file, struct vm_area_struct *vma)
 	return -EINVAL;
 }
 
+static int previewer_get_param(struct prev_device *device,
+			       struct prev_params __user *uparams)
+{
+	struct isp_device *isp_dev = dev_get_drvdata(device->isp);
+	struct prev_params *config = &isp_dev->isp_prev.params;
+	struct prev_params params;
+	__u32 *cfa_table;
+	__u32 *ytable;
+	__u32 *redtable;
+	__u32 *greentable;
+	__u32 *bluetable;
+	int ret;
+
+	ret = copy_from_user(&params, uparams, sizeof(params));
+	if (ret) {
+		dev_err(prev_dev, "GET_PARAM: nocopy: %d\n", ret);
+		return -EFAULT;
+	}
+
+	/* Backup user pointers */
+	cfa_table = params.cfa.cfa_table;
+	ytable = params.ytable;
+	redtable = params.gtable.redtable;
+	greentable = params.gtable.greentable;
+	bluetable = params.gtable.bluetable;
+
+	memcpy(&params, config, sizeof(config));
+
+	/* Restore user pointers */
+	params.cfa.cfa_table = cfa_table;
+	params.ytable = ytable;
+	params.gtable.redtable = redtable;
+	params.gtable.greentable = greentable;
+	params.gtable.bluetable = bluetable;
+
+	ret = copy_to_user(uparams, &params, sizeof(struct prev_params));
+	if (ret) {
+		dev_err(prev_dev, "GET_PARAM: nocopy: %d\n", ret);
+		return -EFAULT;
+	}
+
+	return ret;
+}
+
 #define COPY_USERTABLE(dst, src, size)					\
 	if (src) {							\
 		if (!dst)						\
@@ -810,8 +856,11 @@ static int previewer_set_param(struct prev_device *device,
 	struct prev_params *params = &p;
 	int ret;
 
-	if (copy_from_user(params, uparams, sizeof(*params)))
+	ret = copy_from_user(params, uparams, sizeof(*params));
+	if (ret) {
+		dev_err(prev_dev, "SET_PARAM: nocopy: %d\n", ret);
 		return -EFAULT;
+	}
 	ret = prev_validate_params(params);
 	if (ret < 0)
 		return -EINVAL;
@@ -908,8 +957,6 @@ static int previewer_ioctl(struct inode *inode, struct file *file,
 	int ret = 0;
 	struct prev_fh *fh = file->private_data;
 	struct prev_device *device = fh->device;
-	struct isp_device *isp = dev_get_drvdata(device->isp);
-	struct isp_prev_device *isp_prev = &isp->isp_prev;
 	struct v4l2_buffer b;
 	struct v4l2_requestbuffers req;
 
@@ -1001,9 +1048,10 @@ static int previewer_ioctl(struct inode *inode, struct file *file,
 		break;
 
 	case PREV_GET_PARAM:
-		if (copy_to_user((struct prev_params *)arg, &isp_prev->params,
-				 sizeof(struct prev_params)))
-			ret = -EFAULT;
+		if (mutex_lock_interruptible(&device->prevwrap_mutex))
+			goto err_eintr;
+		ret = previewer_get_param(device, (struct prev_params *)arg);
+		mutex_unlock(&device->prevwrap_mutex);
 		break;
 
 	case PREV_GET_STATUS:
