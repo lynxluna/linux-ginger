@@ -267,6 +267,7 @@ static int imx046_sensor_power_set(struct v4l2_int_device *s, enum v4l2_power po
 		break;
 	case V4L2_POWER_STANDBY:
 		printk(KERN_DEBUG "imx046_sensor_power_set(STANDBY)\n");
+		isp_csi2_complexio_power(ISP_CSI2_POWER_OFF);
 		/*TODO*/
 #ifdef CONFIG_OMAP_PM_SRF
 		omap_pm_set_min_bus_tput(vdev->cam->isp, OCP_INITIATOR_AGENT, 0);
