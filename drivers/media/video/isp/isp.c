@@ -1466,12 +1466,6 @@ static void isp_buf_process(struct device *dev, struct isp_bufs *bufs)
 	} else {
 		/* Tell ISP not to write any of our buffers. */
 		isp_disable_interrupts(dev);
-		/*
-		 * We must wait for the HS_VS since before that the
-		 * CCDC may trigger interrupts even if it's not
-		 * receiving a frame.
-		 */
-		bufs->wait_hs_vs = isp->config->wait_hs_vs;
 	}
 
 	/* Mark the current buffer as done. */
@@ -1528,6 +1522,12 @@ int isp_buf_queue(struct device *dev, struct videobuf_buffer *vb,
 	buf->vb->state = VIDEOBUF_ACTIVE;
 
 	if (ISP_BUFS_IS_EMPTY(bufs)) {
+		/*
+		 * We must wait for the HS_VS since before that the
+		 * CCDC may trigger interrupts even if it's not
+		 * receiving a frame.
+		 */
+		bufs->wait_hs_vs++;
 		isp_enable_interrupts(dev, RAW_CAPTURE(isp));
 		isp_set_buf(dev, buf);
 		isp_af_try_enable(&isp->isp_af);
