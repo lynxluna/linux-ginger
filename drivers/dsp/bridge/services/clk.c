@@ -57,7 +57,7 @@ typedef volatile unsigned long  REG_UWORD32;
 
 #define SSI_Base        0x48058000
 
-#define SSI_BASE                     IO_ADDRESS(SSI_Base)
+#define SSI_BASE	OMAP2_IO_ADDRESS(SSI_Base)
 
 
 struct SERVICES_Clk_t {
