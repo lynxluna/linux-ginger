@@ -46,6 +46,25 @@
 
 #define CONFIG_DISABLE_HFCLK 1
 
+#include <media/v4l2-int-device.h>
+
+#if defined(CONFIG_VIDEO_MT9P012) || defined(CONFIG_VIDEO_MT9P012_MODULE)
+#include <media/mt9p012.h>
+extern struct mt9p012_platform_data sdp3430_mt9p012_platform_data;
+#endif
+
+#if defined(CONFIG_VIDEO_OV3640) || defined(CONFIG_VIDEO_OV3640_MODULE)
+#include <media/ov3640.h>
+extern struct ov3640_platform_data sdp3430_ov3640_platform_data;
+#endif
+
+#ifdef CONFIG_VIDEO_DW9710
+#include <media/dw9710.h>
+extern struct dw9710_platform_data sdp3430_dw9710_platform_data;
+#endif
+
+extern void sdp3430_cam_init(void);
+
 #define SDP3430_TS_GPIO_IRQ_SDPV1	3
 #define SDP3430_TS_GPIO_IRQ_SDPV2	2
 
@@ -441,13 +460,35 @@ static struct i2c_board_info __initdata sdp3430_i2c_boardinfo[] = {
 	},
 };
 
+static struct i2c_board_info __initdata sdp3430_i2c_boardinfo_2[] = {
+#if defined(CONFIG_VIDEO_MT9P012) || defined(CONFIG_VIDEO_MT9P012_MODULE)
+	{
+		I2C_BOARD_INFO("mt9p012", MT9P012_I2C_ADDR),
+		.platform_data = &sdp3430_mt9p012_platform_data,
+	},
+#ifdef CONFIG_VIDEO_DW9710
+	{
+		I2C_BOARD_INFO("dw9710",  DW9710_AF_I2C_ADDR),
+		.platform_data = &sdp3430_dw9710_platform_data,
+	},
+#endif
+#endif
+#if defined(CONFIG_VIDEO_OV3640) || defined(CONFIG_VIDEO_OV3640_MODULE)
+	{
+		I2C_BOARD_INFO("ov3640", OV3640_I2C_ADDR),
+		.platform_data = &sdp3430_ov3640_platform_data,
+	},
+#endif
+};
+
 static int __init omap3430_i2c_init(void)
 {
 	/* i2c1 for PMIC only */
 	omap_register_i2c_bus(1, 2600, sdp3430_i2c_boardinfo,
 			ARRAY_SIZE(sdp3430_i2c_boardinfo));
 	/* i2c2 on camera connector (for sensor control) and optional isp1301 */
-	omap_register_i2c_bus(2, 400, NULL, 0);
+	omap_register_i2c_bus(2, 400, sdp3430_i2c_boardinfo_2,
+			ARRAY_SIZE(sdp3430_i2c_boardinfo_2));
 	/* i2c3 on display connector (for DVI, tfp410) */
 	omap_register_i2c_bus(3, 400, NULL, 0);
 	return 0;
@@ -513,6 +554,7 @@ static void __init omap_3430sdp_init(void)
 	board_smc91x_init();
 	enable_board_wakeup_source();
 	usb_ehci_init(&ehci_pdata);
+	sdp3430_cam_init();
 }
 
 static void __init omap_3430sdp_map_io(void)
