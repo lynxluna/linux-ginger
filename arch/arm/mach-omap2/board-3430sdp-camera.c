@@ -22,7 +22,9 @@
 #include <asm/io.h>
 
 #include <mach/gpio.h>
+#ifdef CONFIG_OMAP_PM_SRF
 #include <mach/omap-pm.h>
+#endif
 
 static int cam_inited;
 
