@@ -112,6 +112,25 @@ static struct twl4030_keypad_data zoom2_kp_twl4030_data = {
 static struct omap_board_config_kernel zoom2_config[] __initdata = {
 };
 
+static struct platform_device zoom2_cam_device = {
+	.name		= "zoom2_cam",
+	.id		= -1,
+};
+
+static struct regulator_consumer_supply zoom2_vaux2_supplies[] = {
+	{
+		.supply		= "vaux2_1",
+		.dev		= &zoom2_cam_device.dev,
+	},
+};
+
+static struct regulator_consumer_supply zoom2_vaux4_supplies[] = {
+	{
+		.supply		= "vaux4_1",
+		.dev		= &zoom2_cam_device.dev,
+	},
+};
+
 static struct regulator_consumer_supply zoom2_vmmc1_supply = {
 	.supply		= "vmmc",
 };
@@ -122,6 +141,36 @@ static struct regulator_consumer_supply zoom2_vsim_supply = {
 
 static struct regulator_consumer_supply zoom2_vmmc2_supply = {
 	.supply		= "vmmc",
+};
+
+/* VAUX2 for camera module */
+static struct regulator_init_data zoom2_vaux2 = {
+	.constraints = {
+		.min_uV			= 2800000,
+		.max_uV			= 2800000,
+		.apply_uV		= true,
+		.valid_modes_mask	= REGULATOR_MODE_NORMAL
+					| REGULATOR_MODE_STANDBY,
+		.valid_ops_mask		= REGULATOR_CHANGE_MODE
+					| REGULATOR_CHANGE_STATUS,
+	},
+	.num_consumer_supplies	= ARRAY_SIZE(zoom2_vaux2_supplies),
+	.consumer_supplies	= zoom2_vaux2_supplies,
+};
+
+/* VAUX4 for OMAP VDD_CSI2 (camera) */
+static struct regulator_init_data zoom2_vaux4 = {
+	.constraints = {
+		.min_uV			= 1800000,
+		.max_uV			= 1800000,
+		.apply_uV		= true,
+		.valid_modes_mask	= REGULATOR_MODE_NORMAL
+					| REGULATOR_MODE_STANDBY,
+		.valid_ops_mask		= REGULATOR_CHANGE_MODE
+					| REGULATOR_CHANGE_STATUS,
+	},
+	.num_consumer_supplies	= ARRAY_SIZE(zoom2_vaux4_supplies),
+	.consumer_supplies	= zoom2_vaux4_supplies,
 };
 
 /* VMMC1 for OMAP VDD_MMC1 (i/o) and MMC1 card */
@@ -255,6 +304,8 @@ static struct twl4030_platform_data zoom2_twldata = {
 	.usb		= &zoom2_usb_data,
 	.gpio		= &zoom2_gpio_data,
 	.keypad		= &zoom2_kp_twl4030_data,
+	.vaux2		= &zoom2_vaux2,
+	.vaux4		= &zoom2_vaux4,
 	.vmmc1          = &zoom2_vmmc1,
 	.vmmc2          = &zoom2_vmmc2,
 	.vsim           = &zoom2_vsim,
@@ -297,9 +348,14 @@ static int __init omap_i2c_init(void)
 
 extern int __init omap_zoom2_debugboard_init(void);
 
+static struct platform_device *zoom2_devices[] __initdata = {
+	&zoom2_cam_device,
+};
+
 static void __init omap_zoom2_init(void)
 {
 	omap_i2c_init();
+	platform_add_devices(zoom2_devices, ARRAY_SIZE(zoom2_devices));
 	omap_serial_init();
 	omap_zoom2_debugboard_init();
 	usb_musb_init();

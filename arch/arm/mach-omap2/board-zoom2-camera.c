@@ -12,14 +12,12 @@
  * published by the Free Software Foundation.
  */
 
-#ifdef CONFIG_TWL4030_CORE
-
 #include <linux/clk.h>
 #include <linux/platform_device.h>
 #include <linux/delay.h>
 #include <linux/mm.h>
 
-#include <linux/i2c/twl4030.h>
+#include <linux/regulator/consumer.h>
 
 #include <asm/io.h>
 
@@ -29,6 +27,9 @@
 #endif
 
 static int cam_inited;
+
+static struct device *zoom2cam_dev;
+
 #include <media/v4l2-int-device.h>
 #include <../drivers/media/video/omap34xxcam.h>
 #include <../drivers/media/video/isp/ispreg.h>
@@ -38,16 +39,15 @@ static int cam_inited;
 #define FPGA_SPR_GPIO1_3v3	(0x1 << 14)
 #define FPGA_GPIO6_DIR_CTRL	(0x1 << 6)
 
-#define VAUX_2_8_V		0x09
-#define VAUX_1_8_V		0x05
-#define VAUX_DEV_GRP_P1		0x20
-#define VAUX_DEV_GRP_NONE	0x00
-
 #define CAMZOOM2_USE_XCLKB  	1
 
 /* Sensor specific GPIO signals */
 #define IMX046_RESET_GPIO  	98
 #define IMX046_STANDBY_GPIO	58
+#define LV8093_PS_GPIO		7
+
+static struct regulator *zoom2_imx046_reg1;
+static struct regulator *zoom2_imx046_reg2;
 
 #if defined(CONFIG_VIDEO_IMX046) || defined(CONFIG_VIDEO_IMX046_MODULE)
 #include <media/imx046.h>
@@ -68,7 +68,6 @@ static int cam_inited;
 
 #ifdef CONFIG_VIDEO_LV8093
 #include <media/lv8093.h>
-#define LV8093_PS_GPIO			7
 /* GPIO7 is connected to lens PS pin through inverter */
 #define LV8093_PWR_OFF			1
 #define LV8093_PWR_ON			(!LV8093_PWR_OFF)
@@ -80,24 +79,20 @@ static int lv8093_lens_power_set(enum v4l2_power power)
 {
 	static enum v4l2_power previous_pwr = V4L2_POWER_OFF;
 
+	if (!cam_inited) {
+		printk(KERN_ERR "MT9P012: Unable to control board GPIOs!\n");
+		return -EFAULT;
+	}
+
 	switch (power) {
 	case V4L2_POWER_ON:
 		printk(KERN_DEBUG "lv8093_lens_power_set(ON)\n");
-		if (previous_pwr == V4L2_POWER_OFF) {
-			if (gpio_request(LV8093_PS_GPIO, "lv8093_ps") != 0) {
-				printk(KERN_WARNING "Could not request GPIO %d"
-					" for LV8093\n", LV8093_PS_GPIO);
-				return -EIO;
-			}
-
+		if (previous_pwr == V4L2_POWER_OFF)
 			gpio_set_value(LV8093_PS_GPIO, LV8093_PWR_OFF);
-			gpio_direction_output(LV8093_PS_GPIO, true);
-		}
 		gpio_set_value(LV8093_PS_GPIO, LV8093_PWR_ON);
 		break;
 	case V4L2_POWER_OFF:
 		printk(KERN_DEBUG "lv8093_lens_power_set(OFF)\n");
-		gpio_free(LV8093_PS_GPIO);
 		break;
 	case V4L2_POWER_STANDBY:
 		printk(KERN_DEBUG "lv8093_lens_power_set(STANDBY)\n");
@@ -175,6 +170,29 @@ static int imx046_sensor_power_set(struct v4l2_int_device *s, enum v4l2_power po
 	static enum v4l2_power previous_power = V4L2_POWER_OFF;
 	int err = 0;
 
+	if (!cam_inited) {
+		printk(KERN_ERR "MT9P012: Unable to control board GPIOs!\n");
+		return -EFAULT;
+	}
+
+	/*
+	 * Plug regulator consumer to respective VAUX supply
+	 * if not done before.
+	 */
+	if (!zoom2_imx046_reg1 && !zoom2_imx046_reg2) {
+		zoom2_imx046_reg1 = regulator_get(zoom2cam_dev, "vaux2_1");
+		if (IS_ERR(zoom2_imx046_reg1)) {
+			dev_err(zoom2cam_dev, "vaux2_1 regulator missing\n");
+			return PTR_ERR(zoom2_imx046_reg1);
+		}
+		zoom2_imx046_reg2 = regulator_get(zoom2cam_dev, "vaux4_1");
+		if (IS_ERR(zoom2_imx046_reg2)) {
+			dev_err(zoom2cam_dev, "vaux4_1 regulator missing\n");
+			regulator_put(zoom2_imx046_reg1);
+			return PTR_ERR(zoom2_imx046_reg2);
+		}
+	}
+
 	switch (power) {
 	case V4L2_POWER_ON:
 		/* Power Up Sequence */
@@ -215,26 +233,13 @@ static int imx046_sensor_power_set(struct v4l2_int_device *s, enum v4l2_power po
 		isp_configure_interface(vdev->cam->isp, &imx046_if_config);
 
 		if (previous_power == V4L2_POWER_OFF) {
-			/* Request and configure gpio pins */
-			if (gpio_request(IMX046_RESET_GPIO, "imx046_rst") != 0)
-				return -EIO;
-
 			/* nRESET is active LOW. set HIGH to release reset */
 			gpio_set_value(IMX046_RESET_GPIO, 1);
 
-			/* set to output mode */
-			gpio_direction_output(IMX046_RESET_GPIO, true);
 
 			/* turn on analog power */
-			twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
-					VAUX_2_8_V, TWL4030_VAUX2_DEDICATED);
-			twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
-					VAUX_DEV_GRP_P1, TWL4030_VAUX2_DEV_GRP);
-
-			twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
-					VAUX_1_8_V, TWL4030_VAUX4_DEDICATED);
-			twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
-					VAUX_DEV_GRP_P1, TWL4030_VAUX4_DEV_GRP);
+			regulator_enable(zoom2_imx046_reg1);
+			regulator_enable(zoom2_imx046_reg2);
 			udelay(100);
 
 			/* have to put sensor to reset to guarantee detection */
@@ -251,11 +256,10 @@ static int imx046_sensor_power_set(struct v4l2_int_device *s, enum v4l2_power po
 		/* Power Down Sequence */
 		isp_csi2_complexio_power(ISP_CSI2_POWER_OFF);
 
-		twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
-				VAUX_DEV_GRP_NONE, TWL4030_VAUX4_DEV_GRP);
-		twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
-				VAUX_DEV_GRP_NONE, TWL4030_VAUX2_DEV_GRP);
-		gpio_free(IMX046_RESET_GPIO);
+		if (regulator_is_enabled(zoom2_imx046_reg1))
+			regulator_disable(zoom2_imx046_reg1);
+		if (regulator_is_enabled(zoom2_imx046_reg2))
+			regulator_disable(zoom2_imx046_reg2);
 
 #ifdef CONFIG_OMAP_PM_SRF
 		omap_pm_set_min_bus_tput(vdev->cam->isp, OCP_INITIATOR_AGENT, 0);
@@ -295,23 +299,92 @@ struct imx046_platform_data zoom2_imx046_platform_data = {
 };
 #endif
 
-void __init zoom2_cam_init(void)
+static int zoom2_cam_probe(struct platform_device *pdev)
 {
-	cam_inited = 0;
+	int ret = 0;
+
 	/* Request and configure gpio pins */
-	if (gpio_request(IMX046_STANDBY_GPIO, "ov3640_standby_gpio") != 0) {
-		printk(KERN_ERR "Could not request GPIO %d",
-					IMX046_STANDBY_GPIO);
-		return;
+	if (gpio_request(IMX046_STANDBY_GPIO, "imx046_standby_gpio") != 0) {
+		dev_err(&pdev->dev, "Could not request GPIO %d",
+			IMX046_STANDBY_GPIO);
+		ret = -ENODEV;
+		goto err;
+	}
+
+	if (gpio_request(IMX046_RESET_GPIO, "imx046_rst") != 0) {
+		dev_err(&pdev->dev, "Could not request GPIO %d",
+			IMX046_RESET_GPIO);
+		ret = -ENODEV;
+		goto err_freegpio1;
+	}
+
+	if (gpio_request(LV8093_PS_GPIO, "lv8093_ps") != 0) {
+		dev_err(&pdev->dev, "Could not request GPIO %d",
+			LV8093_PS_GPIO);
+		ret = -ENODEV;
+		goto err_freegpio2;
 	}
 
 	/* set to output mode */
 	gpio_direction_output(IMX046_STANDBY_GPIO, true);
+	gpio_direction_output(IMX046_RESET_GPIO, true);
+	gpio_direction_output(LV8093_PS_GPIO, true);
 
 	cam_inited = 1;
+	zoom2cam_dev = &pdev->dev;
+	return 0;
+
+err_freegpio2:
+	gpio_free(IMX046_RESET_GPIO);
+err_freegpio1:
+	gpio_free(IMX046_STANDBY_GPIO);
+err:
+	cam_inited = 0;
+	return ret;
 }
-#else
+
+static int zoom2_cam_remove(struct platform_device *pdev)
+{
+	if (regulator_is_enabled(zoom2_imx046_reg1))
+		regulator_disable(zoom2_imx046_reg1);
+	regulator_put(zoom2_imx046_reg1);
+	if (regulator_is_enabled(zoom2_imx046_reg2))
+		regulator_disable(zoom2_imx046_reg2);
+	regulator_put(zoom2_imx046_reg2);
+
+	gpio_free(IMX046_STANDBY_GPIO);
+	gpio_free(IMX046_RESET_GPIO);
+	gpio_free(LV8093_PS_GPIO);
+	return 0;
+}
+
+static int zoom2_cam_suspend(struct device *dev)
+{
+	return 0;
+}
+
+static int zoom2_cam_resume(struct device *dev)
+{
+	return 0;
+}
+
+static struct dev_pm_ops zoom2_cam_pm_ops = {
+	.suspend = zoom2_cam_suspend,
+	.resume  = zoom2_cam_resume,
+};
+
+static struct platform_driver zoom2_cam_driver = {
+	.probe		= zoom2_cam_probe,
+	.remove		= zoom2_cam_remove,
+	.driver		= {
+		.name	= "zoom2_cam",
+		.pm	= &zoom2_cam_pm_ops,
+	},
+};
+
 void __init zoom2_cam_init(void)
 {
+	cam_inited = 0;
+	platform_driver_register(&zoom2_cam_driver);
 }
-#endif
+
