@@ -24,7 +24,9 @@
 #include <asm/io.h>
 
 #include <mach/gpio.h>
+#ifdef CONFIG_OMAP_PM_SRF
 #include <mach/omap-pm.h>
+#endif
 
 static int cam_inited;
 #include <media/v4l2-int-device.h>
@@ -181,7 +183,9 @@ static int imx046_sensor_power_set(struct device *dev, enum v4l2_power power)
 		/* Through-put requirement:
 		 * 3280 x 2464 x 2Bpp x 7.5fps x 3 memory ops = 355163 KByte/s
 		 */
+#ifdef CONFIG_OMAP_PM_SRF
 		omap_pm_set_min_bus_tput(dev, OCP_INITIATOR_AGENT, 355163);
+#endif
 
 		isp_csi2_reset();
 
@@ -253,12 +257,16 @@ static int imx046_sensor_power_set(struct device *dev, enum v4l2_power power)
 				VAUX_DEV_GRP_NONE, TWL4030_VAUX2_DEV_GRP);
 		gpio_free(IMX046_RESET_GPIO);
 
+#ifdef CONFIG_OMAP_PM_SRF
 		omap_pm_set_min_bus_tput(dev, OCP_INITIATOR_AGENT, 0);
+#endif
 		break;
 	case V4L2_POWER_STANDBY:
 		printk(KERN_DEBUG "imx046_sensor_power_set(STANDBY)\n");
 		/*TODO*/
+#ifdef CONFIG_OMAP_PM_SRF
 		omap_pm_set_min_bus_tput(dev, OCP_INITIATOR_AGENT, 0);
+#endif
 		break;
 	}
 
