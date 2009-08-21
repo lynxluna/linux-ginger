@@ -132,7 +132,7 @@ static struct omap34xxcam_sensor_config imx046_hwc = {
 	.ival_default	= { 1, 10 },
 };
 
-static int imx046_sensor_set_prv_data(void *priv)
+static int imx046_sensor_set_prv_data(struct v4l2_int_device *s, void *priv)
 {
 	struct omap34xxcam_hw_config *hwc = priv;
 
@@ -167,8 +167,9 @@ static struct isp_interface_config imx046_if_config = {
 };
 
 
-static int imx046_sensor_power_set(struct device *dev, enum v4l2_power power)
+static int imx046_sensor_power_set(struct v4l2_int_device *s, enum v4l2_power power)
 {
+	struct omap34xxcam_videodev *vdev = s->u.slave->master->priv;
 	struct isp_csi2_lanes_cfg lanecfg;
 	struct isp_csi2_phy_cfg phyconfig;
 	static enum v4l2_power previous_power = V4L2_POWER_OFF;
@@ -183,7 +184,7 @@ static int imx046_sensor_power_set(struct device *dev, enum v4l2_power power)
 		 * 3280 x 2464 x 2Bpp x 7.5fps x 3 memory ops = 355163 KByte/s
 		 */
 #ifdef CONFIG_OMAP_PM_SRF
-		omap_pm_set_min_bus_tput(dev, OCP_INITIATOR_AGENT, 355163);
+		omap_pm_set_min_bus_tput(vdev->cam->isp, OCP_INITIATOR_AGENT, 355163);
 #endif
 
 		isp_csi2_reset();
@@ -211,7 +212,7 @@ static int imx046_sensor_power_set(struct device *dev, enum v4l2_power power)
 		isp_csi2_phy_config(&phyconfig);
 		isp_csi2_phy_update(true);
 
-		isp_configure_interface(&imx046_if_config);
+		isp_configure_interface(vdev->cam->isp, &imx046_if_config);
 
 		if (previous_power == V4L2_POWER_OFF) {
 			/* Request and configure gpio pins */
@@ -257,14 +258,14 @@ static int imx046_sensor_power_set(struct device *dev, enum v4l2_power power)
 		gpio_free(IMX046_RESET_GPIO);
 
 #ifdef CONFIG_OMAP_PM_SRF
-		omap_pm_set_min_bus_tput(dev, OCP_INITIATOR_AGENT, 0);
+		omap_pm_set_min_bus_tput(vdev->cam->isp, OCP_INITIATOR_AGENT, 0);
 #endif
 		break;
 	case V4L2_POWER_STANDBY:
 		printk(KERN_DEBUG "imx046_sensor_power_set(STANDBY)\n");
 		/*TODO*/
 #ifdef CONFIG_OMAP_PM_SRF
-		omap_pm_set_min_bus_tput(dev, OCP_INITIATOR_AGENT, 0);
+		omap_pm_set_min_bus_tput(vdev->cam->isp, OCP_INITIATOR_AGENT, 0);
 #endif
 		break;
 	}
