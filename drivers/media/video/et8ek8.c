@@ -684,7 +684,7 @@ out:
 static int et8ek8_ioctl_dev_init(struct v4l2_int_device *s)
 {
 	struct et8ek8_sensor *sensor = s->priv;
-	char name[FIRMWARE_NAME_MAX];
+	char name[SMIA_MAX_LEN];
 	int rval, rev_l, rev_h;
 
 	rval = et8ek8_power_on(s);
@@ -707,7 +707,7 @@ static int et8ek8_ioctl_dev_init(struct v4l2_int_device *s)
 			 "unknown version 0x%x detected, "
 			 "continuing anyway\n", sensor->version);
 
-	snprintf(name, FIRMWARE_NAME_MAX, "%s-%4.4x.bin", ET8EK8_NAME,
+	snprintf(name, sizeof(name), "%s-%4.4x.bin", ET8EK8_NAME,
 		 sensor->version);
 	if (request_firmware(&sensor->fw, name,
 			     &sensor->i2c_client->dev)) {
