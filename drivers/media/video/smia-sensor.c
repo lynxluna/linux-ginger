@@ -487,7 +487,7 @@ static int smia_ioctl_s_parm(struct v4l2_int_device *s,
 static int smia_ioctl_dev_init(struct v4l2_int_device *s)
 {
 	struct smia_sensor *sensor = s->priv;
-	char name[FIRMWARE_NAME_MAX];
+	char name[SMIA_MAX_LEN];
 	int model_id, revision_number, manufacturer_id, smia_version;
 	int i, rval;
 
@@ -534,7 +534,7 @@ static int smia_ioctl_dev_init(struct v4l2_int_device *s)
 	s->name[V4L2NAMESIZE-1] = 0;	/* Ensure NULL terminated string */
 
 	/* Import firmware */
-	snprintf(name, FIRMWARE_NAME_MAX, "%s-%02x-%04x-%02x.bin",
+	snprintf(name, sizeof(name), "%s-%02x-%04x-%02x.bin",
 		 SMIA_SENSOR_NAME, sensor->manufacturer_id,
 		 sensor->model_id, sensor->revision_number);
 
