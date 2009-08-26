@@ -92,11 +92,17 @@ int omap34xx_isp_ccdc_config(struct isp_ccdc_device *isp_ccdc,
 	struct ispccdc_fpc fpc_t;
 	struct ispccdc_culling cull_t;
 	struct ispccdc_update_config *ccdc_struct;
+	unsigned long flags;
+	int ret = 0;
 
 	if (userspace_add == NULL)
 		return -EINVAL;
 
 	ccdc_struct = userspace_add;
+
+	spin_lock_irqsave(&isp_ccdc->lock, flags);
+	isp_ccdc->shadow_update = 1;
+	spin_unlock_irqrestore(&isp_ccdc->lock, flags);
 
 	if (ISP_ABS_CCDC_ALAW & ccdc_struct->flag) {
 		if (ISP_ABS_CCDC_ALAW & ccdc_struct->update)
@@ -114,8 +120,10 @@ int omap34xx_isp_ccdc_config(struct isp_ccdc_device *isp_ccdc,
 		if (ISP_ABS_CCDC_BLCLAMP & ccdc_struct->update) {
 			if (copy_from_user(&bclamp_t, (struct ispccdc_bclamp *)
 					   ccdc_struct->bclamp,
-					   sizeof(struct ispccdc_bclamp)))
-				goto copy_from_user_err;
+					   sizeof(struct ispccdc_bclamp))) {
+				ret = -EFAULT;
+				goto out;
+			}
 
 			ispccdc_enable_black_clamp(isp_ccdc, 1);
 			ispccdc_config_black_clamp(isp_ccdc, bclamp_t);
@@ -125,8 +133,10 @@ int omap34xx_isp_ccdc_config(struct isp_ccdc_device *isp_ccdc,
 		if (ISP_ABS_CCDC_BLCLAMP & ccdc_struct->update) {
 			if (copy_from_user(&bclamp_t, (struct ispccdc_bclamp *)
 					   ccdc_struct->bclamp,
-					   sizeof(struct ispccdc_bclamp)))
-				goto copy_from_user_err;
+					   sizeof(struct ispccdc_bclamp))) {
+				ret = -EFAULT;
+				goto out;
+			}
 
 			ispccdc_enable_black_clamp(isp_ccdc, 0);
 			ispccdc_config_black_clamp(isp_ccdc, bclamp_t);
@@ -136,8 +146,10 @@ int omap34xx_isp_ccdc_config(struct isp_ccdc_device *isp_ccdc,
 	if (ISP_ABS_CCDC_BCOMP & ccdc_struct->update) {
 		if (copy_from_user(&blcomp_t, (struct ispccdc_blcomp *)
 				   ccdc_struct->blcomp,
-				   sizeof(blcomp_t)))
-			goto copy_from_user_err;
+				   sizeof(blcomp_t))) {
+				ret = -EFAULT;
+				goto out;
+			}
 
 		ispccdc_config_black_comp(isp_ccdc, blcomp_t);
 	}
@@ -146,15 +158,15 @@ int omap34xx_isp_ccdc_config(struct isp_ccdc_device *isp_ccdc,
 		if (ISP_ABS_CCDC_FPC & ccdc_struct->update) {
 			if (copy_from_user(&fpc_t, (struct ispccdc_fpc *)
 					   ccdc_struct->fpc,
-					   sizeof(fpc_t)))
-				goto copy_from_user_err;
+					   sizeof(fpc_t))) {
+				ret = -EFAULT;
+				goto out;
+			}
 			isp_ccdc->fpc_table_add = kmalloc(64 + fpc_t.fpnum * 4,
 						GFP_KERNEL | GFP_DMA);
 			if (!isp_ccdc->fpc_table_add) {
-				dev_err(to_device(isp_ccdc),
-					"ccdc: Cannot allocate memory for"
-					" FPC table");
-				return -ENOMEM;
+				ret = -ENOMEM;
+				goto out;
 			}
 			while (((unsigned long)isp_ccdc->fpc_table_add
 				& 0xFFFFFFC0)
@@ -172,8 +184,10 @@ int omap34xx_isp_ccdc_config(struct isp_ccdc_device *isp_ccdc,
 
 			if (copy_from_user(isp_ccdc->fpc_table_add,
 					   (u32 *)fpc_t.fpcaddr,
-					   fpc_t.fpnum * 4))
-				goto copy_from_user_err;
+					   fpc_t.fpnum * 4)) {
+				ret = -EFAULT;
+				goto out;
+			}
 
 			fpc_t.fpcaddr = isp_ccdc->fpc_table_add_m;
 			ispccdc_config_fpc(isp_ccdc, fpc_t);
@@ -185,8 +199,10 @@ int omap34xx_isp_ccdc_config(struct isp_ccdc_device *isp_ccdc,
 	if (ISP_ABS_CCDC_CULL & ccdc_struct->update) {
 		if (copy_from_user(&cull_t, (struct ispccdc_culling *)
 				   ccdc_struct->cull,
-				   sizeof(cull_t)))
-			goto copy_from_user_err;
+				   sizeof(cull_t))) {
+			ret = -EFAULT;
+			goto out;
+		}
 		ispccdc_config_culling(isp_ccdc, cull_t);
 	}
 
@@ -194,11 +210,13 @@ int omap34xx_isp_ccdc_config(struct isp_ccdc_device *isp_ccdc,
 		if (ISP_ABS_CCDC_CONFIG_LSC & ccdc_struct->flag) {
 			if (ISP_ABS_CCDC_CONFIG_LSC & ccdc_struct->update) {
 				if (copy_from_user(
-					    &isp_ccdc->lsc_config,
-					    (struct ispccdc_lsc_config *)
-					    ccdc_struct->lsc_cfg,
-					    sizeof(struct ispccdc_lsc_config)))
-					goto copy_from_user_err;
+					   &isp_ccdc->lsc_config,
+					   (struct ispccdc_lsc_config *)
+					   ccdc_struct->lsc_cfg,
+					   sizeof(struct ispccdc_lsc_config))) {
+					ret = -EFAULT;
+					goto out;
+				}
 				ispccdc_config_lsc(isp_ccdc,
 						   &isp_ccdc->lsc_config);
 			}
@@ -209,8 +227,10 @@ int omap34xx_isp_ccdc_config(struct isp_ccdc_device *isp_ccdc,
 		if (ISP_ABS_TBL_LSC & ccdc_struct->update) {
 			if (copy_from_user(isp_ccdc->lsc_gain_table,
 					   ccdc_struct->lsc,
-					   isp_ccdc->lsc_config.size))
-				goto copy_from_user_err;
+					   isp_ccdc->lsc_config.size)) {
+				ret = -EFAULT;
+				goto out;
+			}
 			ispccdc_load_lsc(isp_ccdc, isp_ccdc->lsc_gain_table,
 					 isp_ccdc->lsc_config.size);
 		}
@@ -219,11 +239,17 @@ int omap34xx_isp_ccdc_config(struct isp_ccdc_device *isp_ccdc,
 	if (ISP_ABS_CCDC_COLPTN & ccdc_struct->update)
 		ispccdc_config_imgattr(isp_ccdc, ccdc_struct->colptn);
 
-	return 0;
+out:
+	if (ret == -EFAULT)
+		dev_err(to_device(isp_ccdc),
+			"ccdc: user provided bad configuration data address");
 
-copy_from_user_err:
-	dev_err(isp->dev, "ccdc: Config: copy from user error");
-	return -EINVAL ;
+	if (ret == -ENOMEM)
+		dev_err(to_device(isp_ccdc),
+			"ccdc: can not allocate memory");
+
+	isp_ccdc->shadow_update = 0;
+	return ret;
 }
 
 /**
@@ -1074,10 +1100,19 @@ void ispccdc_config_imgattr(struct isp_ccdc_device *isp_ccdc, u32 colptn)
 
 void ispccdc_config_shadow_registers(struct isp_ccdc_device *isp_ccdc)
 {
+	unsigned long flags;
+
+	spin_lock_irqsave(&isp_ccdc->lock, flags);
+	if (isp_ccdc->shadow_update)
+		goto out;
+
 	if (isp_ccdc->lsc_enable) {
 		ispccdc_enable_lsc(isp_ccdc, 1);
 		isp_ccdc->lsc_enable = 0;
 	}
+
+out:
+	spin_unlock_irqrestore(&isp_ccdc->lock, flags);
 }
 
 /**
@@ -1519,6 +1554,9 @@ int __init isp_ccdc_init(struct device *dev)
 		isp_ccdc->lsc_config.size = LSC_TABLE_INIT_SIZE;
 		isp_ccdc->lsc_enable = 1;
 	}
+
+	isp_ccdc->shadow_update = 0;
+	spin_lock_init(&isp_ccdc->lock);
 
 	return 0;
 }

@@ -152,6 +152,8 @@ struct ispccdc_refmt {
  * @syncif_ipmod: Image
  * @obclamp_en: Data input format.
  * @mutexlock: Mutex used to get access to the CCDC.
+ * @shadow_update: non-zero when user is updating CCDC configuration
+ * @lock: serializes shadow_update with interrupt handler
  */
 struct isp_ccdc_device {
 	u8 ccdc_inuse;
@@ -177,6 +179,8 @@ struct isp_ccdc_device {
 	struct ispccdc_lsc_config lsc_config;
 	unsigned long fpc_table_add_m;
 	u32 *fpc_table_add;
+	int shadow_update;
+	spinlock_t lock;
 };
 
 int ispccdc_request(struct isp_ccdc_device *isp_ccdc);
