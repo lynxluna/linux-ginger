@@ -446,7 +446,7 @@ void ispccdc_enable_lsc(struct isp_ccdc_device *isp_ccdc, u8 enable)
 				   | ISPCTRL_SBL_RD_RAM_EN);
 
 			isp_reg_or(dev, OMAP3_ISP_IOMEM_CCDC,
-				   ISPCCDC_LSC_CONFIG, 0x1);
+				   ISPCCDC_LSC_CONFIG, ISPCCDC_LSC_ENABLE);
 
 			isp_ccdc->lsc_state = 1;
 		} else {
@@ -455,7 +455,7 @@ void ispccdc_enable_lsc(struct isp_ccdc_device *isp_ccdc, u8 enable)
 		}
 	} else {
 		isp_reg_and(dev, OMAP3_ISP_IOMEM_CCDC,
-			    ISPCCDC_LSC_CONFIG, 0xFFFE);
+			    ISPCCDC_LSC_CONFIG, ~ISPCCDC_LSC_ENABLE);
 		isp_ccdc->lsc_state = 0;
 		isp_ccdc->lsc_enable = 0;
 	}
