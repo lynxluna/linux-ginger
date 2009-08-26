@@ -449,6 +449,73 @@ static void ispccdc_config_imgattr(struct isp_ccdc_device *isp_ccdc, u32 colptn)
 }
 
 /**
+ * ispccdc_validate_config_lsc - Check that LSC configuration is valid.
+ * @lsc_cfg: the LSC configuration to check.
+ * @pipe: if not NULL, verify the table size against CCDC input size.
+ *
+ * Returns 0 if the LSC configuration is valid, or -EINVAL if invalid.
+ **/
+static int ispccdc_validate_config_lsc(struct isp_ccdc_device *isp_ccdc,
+				       struct ispccdc_lsc_config *lsc_cfg,
+				       struct isp_pipeline *pipe)
+{
+	struct device *dev = to_device(isp_ccdc);
+	unsigned int paxel_width, paxel_height;
+	unsigned int paxel_shift_x, paxel_shift_y;
+	unsigned int min_width, min_height, min_size;
+	unsigned int input_width, input_height;
+
+	paxel_shift_x = lsc_cfg->gain_mode_m;
+	paxel_shift_y = lsc_cfg->gain_mode_n;
+
+	if ((paxel_shift_x < 2) || (paxel_shift_x > 6) ||
+	    (paxel_shift_y < 2) || (paxel_shift_y > 6)) {
+		dev_dbg(dev, "CCDC: LSC: Invalid paxel size\n");
+		return -EINVAL;
+	}
+
+	if (lsc_cfg->offset & 3) {
+		dev_dbg(dev, "CCDC: LSC: Offset must be a multiple of 4\n");
+		return -EINVAL;
+	}
+
+	if ((lsc_cfg->initial_x & 1) || (lsc_cfg->initial_y & 1)) {
+		dev_dbg(dev, "CCDC: LSC: initial_x and y must be even\n");
+		return -EINVAL;
+	}
+
+	if (!pipe)
+		return 0;
+
+	input_width = pipe->ccdc_in_w;
+	input_height = pipe->ccdc_in_h;
+
+	/* Calculate minimum bytesize for validation */
+	paxel_width = 1 << paxel_shift_x;
+	min_width = ((input_width + lsc_cfg->initial_x + paxel_width - 1)
+		     >> paxel_shift_x) + 1;
+
+	paxel_height = 1 << paxel_shift_y;
+	min_height = ((input_height + lsc_cfg->initial_y + paxel_height - 1)
+		     >> paxel_shift_y) + 1;
+
+	min_size = 4 * min_width * min_height;
+	if (min_size > lsc_cfg->size) {
+		dev_dbg(dev, "CCDC: LSC: too small table\n");
+		return -EINVAL;
+	}
+	if (lsc_cfg->offset < (min_width * 4)) {
+		dev_dbg(dev, "CCDC: LSC: Offset is too small\n");
+		return -EINVAL;
+	}
+	if ((lsc_cfg->size / lsc_cfg->offset) < min_height) {
+		dev_dbg(dev, "CCDC: LSC: Wrong size/offset combination\n");
+		return -EINVAL;
+	}
+	return 0;
+}
+
+/**
  * ispccdc_program_lsc - Program Lens Shading Compensation table address.
  **/
 static void ispccdc_program_lsc(struct isp_ccdc_device *isp_ccdc)
@@ -1032,6 +1099,13 @@ int ispccdc_s_pipeline(struct isp_ccdc_device *isp_ccdc,
 			       OMAP3_ISP_IOMEM_CCDC,
 			       ISPCCDC_VP_OUT);
 
+	if (isp_ccdc->lsc_request_enable) {
+		if (ispccdc_validate_config_lsc(isp_ccdc,
+						&isp_ccdc->lsc_config, pipe)) {
+			/* Invalid LSC for this resolution -- disable */
+			isp_ccdc->lsc_request_enable = 0;
+		}
+	}
 	ispccdc_setup_lsc(isp_ccdc, pipe);
 
 	return 0;
@@ -1252,14 +1326,19 @@ int ispccdc_config(struct isp_ccdc_device *isp_ccdc,
 
 	if (ISP_ABS_CCDC_CONFIG_LSC & ccdc_struct->update) {
 		if (ISP_ABS_CCDC_CONFIG_LSC & ccdc_struct->flag) {
-			if (copy_from_user(
-				    &isp_ccdc->lsc_config,
-				    (struct ispccdc_lsc_config *)
-				    ccdc_struct->lsc_cfg,
-				    sizeof(struct ispccdc_lsc_config))) {
+			struct ispccdc_lsc_config cfg;
+			if (copy_from_user(&cfg, ccdc_struct->lsc_cfg,
+					   sizeof(cfg))) {
 				ret = -EFAULT;
 				goto out;
 			}
+			ret = ispccdc_validate_config_lsc(isp_ccdc, &cfg,
+						isp->running == ISP_RUNNING ?
+						&isp->pipeline : NULL);
+			if (ret)
+				goto out;
+			memcpy(&isp_ccdc->lsc_config, &cfg,
+			       sizeof(isp_ccdc->lsc_config));
 			isp_ccdc->lsc_request_enable = 1;
 		} else {
 			isp_ccdc->lsc_request_enable = 0;
