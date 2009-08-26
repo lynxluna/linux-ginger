@@ -29,6 +29,7 @@
 #include "ispccdc.h"
 
 #define LSC_TABLE_INIT_SIZE	50052
+#define PTR_FREE		((u32)(-ENOMEM))
 
 /* Structure for saving/restoring CCDC module registers*/
 static struct isp_reg ispccdc_reg_list[] = {
@@ -448,160 +449,23 @@ static void ispccdc_config_imgattr(struct isp_ccdc_device *isp_ccdc, u32 colptn)
 }
 
 /**
- * ispccdc_enable_lsc - Enables/Disables the Lens Shading Compensation module.
- * @enable: 0 Disables LSC, 1 Enables LSC.
+ * ispccdc_program_lsc - Program Lens Shading Compensation table address.
  **/
-static void ispccdc_enable_lsc(struct isp_ccdc_device *isp_ccdc, u8 enable)
+static void ispccdc_program_lsc(struct isp_ccdc_device *isp_ccdc)
 {
-	struct device *dev = to_device(isp_ccdc);
-
-	if (!is_isplsc_activated())
-		return;
-
-	if (enable) {
-		if (!ispccdc_busy(isp_ccdc)) {
-			isp_reg_or(dev, OMAP3_ISP_IOMEM_MAIN,
-				   ISP_CTRL, ISPCTRL_SBL_SHARED_RPORTB
-				   | ISPCTRL_SBL_RD_RAM_EN);
-
-			isp_reg_or(dev, OMAP3_ISP_IOMEM_CCDC,
-				   ISPCCDC_LSC_CONFIG, ISPCCDC_LSC_ENABLE);
-
-			isp_ccdc->lsc_state = 1;
-		} else {
-			/* Postpone enabling LSC */
-			isp_ccdc->lsc_enable = 1;
-		}
-	} else {
-		isp_reg_and(dev, OMAP3_ISP_IOMEM_CCDC,
-			    ISPCCDC_LSC_CONFIG, ~ISPCCDC_LSC_ENABLE);
-		isp_ccdc->lsc_state = 0;
-		isp_ccdc->lsc_enable = 0;
-	}
-}
-
-/**
- * ispccdc_free_lsc - Frees Lens Shading Compensation table
- *
- * Always returns 0.
- **/
-static int ispccdc_free_lsc(struct isp_ccdc_device *isp_ccdc)
-{
-	struct isp_device *isp = to_isp_device(isp_ccdc);
-
-	if (!isp_ccdc->lsc_ispmmu_addr)
-		return 0;
-
-	ispccdc_enable_lsc(isp_ccdc, 0);
-	isp_ccdc->lsc_initialized = 0;
-	isp_reg_writel(to_device(isp_ccdc), 0, OMAP3_ISP_IOMEM_CCDC,
-		       ISPCCDC_LSC_TABLE_BASE);
-	iommu_vfree(isp->iommu, isp_ccdc->lsc_ispmmu_addr);
-	isp_ccdc->lsc_gain_table = NULL;
-	return 0;
-}
-
-/**
- * ispccdc_allocate_lsc - Allocate space for Lens Shading Compensation table
- * @table_size: LSC gain table size.
- *
- * Returns 0 if successful, -ENOMEM of its no memory available, or -EINVAL if
- * table_size is zero.
- **/
-static int ispccdc_allocate_lsc(struct isp_ccdc_device *isp_ccdc,
-				u32 table_size)
-{
-	struct isp_device *isp = to_isp_device(isp_ccdc);
-
-	if (table_size == 0)
-		return -EINVAL;
-
-	if ((isp_ccdc->lsc_config.size >= table_size)
-	    && isp_ccdc->lsc_gain_table)
-		return 0;
-
-	ispccdc_free_lsc(isp_ccdc);
-
-	isp_ccdc->lsc_ispmmu_addr = iommu_vmalloc(isp->iommu, 0, table_size,
-						  IOMMU_FLAG);
-	if (IS_ERR_VALUE(isp_ccdc->lsc_ispmmu_addr)) {
-		dev_err(to_device(isp_ccdc),
-			"ccdc: Cannot allocate memory for gain tables\n");
-		isp_ccdc->lsc_ispmmu_addr = 0;
-		return -ENOMEM;
-	}
-	isp_ccdc->lsc_gain_table = da_to_va(isp->iommu,
-					    (u32)isp_ccdc->lsc_ispmmu_addr);
-
-	return 0;
-}
-
-/**
- * ispccdc_program_lsc - Program Lens Shading Compensation table.
- * @table_size: LSC gain table size.
- *
- * Returns 0 if successful, or -EINVAL if there's no mapped address for the
- * table yet.
- **/
-static int ispccdc_program_lsc(struct isp_ccdc_device *isp_ccdc)
-{
-	if (!isp_ccdc->lsc_ispmmu_addr)
-		return -EINVAL;
-
-	if (isp_ccdc->lsc_initialized)
-		return 0;
-
-	isp_reg_writel(to_device(isp_ccdc), isp_ccdc->lsc_ispmmu_addr,
+	isp_reg_writel(to_device(isp_ccdc), isp_ccdc->lsc_table_inuse,
 		       OMAP3_ISP_IOMEM_CCDC, ISPCCDC_LSC_TABLE_BASE);
-	isp_ccdc->lsc_initialized = 1;
-	return 0;
-}
-
-/**
- * ispccdc_load_lsc - Load Lens Shading Compensation table.
- * @table_addr: LSC gain table MMU Mapped address.
- * @table_size: LSC gain table size.
- *
- * Returns 0 if successful, -ENOMEM of its no memory available, or -EINVAL if
- * table_size is zero.
- **/
-static int ispccdc_load_lsc(struct isp_ccdc_device *isp_ccdc,
-			    u8 *table_addr, u32 table_size)
-{
-	int ret;
-
-	if (!is_isplsc_activated())
-		return 0;
-
-	if (!table_addr)
-		return -EINVAL;
-
-	ret = ispccdc_allocate_lsc(isp_ccdc, table_size);
-	if (ret)
-		return ret;
-
-	if (table_addr != isp_ccdc->lsc_gain_table)
-		memcpy(isp_ccdc->lsc_gain_table, table_addr, table_size);
-	ret = ispccdc_program_lsc(isp_ccdc);
-	if (ret)
-		return ret;
-	return 0;
 }
 
 /**
  * ispccdc_config_lsc - Configures the lens shading compensation module
- * @lsc_cfg: LSC configuration structure
  **/
-static void ispccdc_config_lsc(struct isp_ccdc_device *isp_ccdc,
-			       struct ispccdc_lsc_config *lsc_cfg)
+static void ispccdc_config_lsc(struct isp_ccdc_device *isp_ccdc)
 {
 	struct device *dev = to_device(isp_ccdc);
+	struct ispccdc_lsc_config *lsc_cfg = &isp_ccdc->lsc_config;
 	int reg;
 
-	if (!is_isplsc_activated())
-		return;
-
-	ispccdc_enable_lsc(isp_ccdc, 0);
 	isp_reg_writel(dev, lsc_cfg->offset, OMAP3_ISP_IOMEM_CCDC,
 		       ISPCCDC_LSC_TABLE_OFFSET);
 
@@ -620,13 +484,59 @@ static void ispccdc_config_lsc(struct isp_ccdc_device *isp_ccdc,
 		       ISPCCDC_LSC_INITIAL);
 }
 
+/**
+ * ispccdc_enable_lsc - Enables/Disables the Lens Shading Compensation module.
+ * @enable: 0 Disables LSC, 1 Enables LSC.
+ **/
+static void ispccdc_enable_lsc(struct isp_ccdc_device *isp_ccdc, u8 enable)
+{
+	struct device *dev = to_device(isp_ccdc);
+
+	if (enable) {
+		isp_reg_or(dev, OMAP3_ISP_IOMEM_MAIN,
+			   ISP_CTRL, ISPCTRL_SBL_SHARED_RPORTB
+			   | ISPCTRL_SBL_RD_RAM_EN);
+
+		isp_reg_or(dev, OMAP3_ISP_IOMEM_CCDC,
+			   ISPCCDC_LSC_CONFIG, ISPCCDC_LSC_ENABLE);
+	} else {
+		isp_reg_and(dev, OMAP3_ISP_IOMEM_CCDC,
+			    ISPCCDC_LSC_CONFIG, ~ISPCCDC_LSC_ENABLE);
+	}
+}
+
+/**
+ * ispccdc_setup_lsc - apply user LSC settings
+ * Consume the new LSC configuration and table set by user space application
+ * and program to CCDC.  This function must be called from process context
+ * before streamon when ISP is not yet running.
+ */
+static void ispccdc_setup_lsc(struct isp_ccdc_device *isp_ccdc,
+			      struct isp_pipeline *pipe)
+{
+	if (pipe->ccdc_in == CCDC_RAW && isp_ccdc->lsc_request_enable) {
+		/* Enable LSC */
+		if (isp_ccdc->update_lsc_table) {
+			struct isp_device *isp = to_isp_device(isp_ccdc);
+			BUG_ON(isp_ccdc->lsc_table_new == PTR_FREE);
+			iommu_vfree(isp->iommu, isp_ccdc->lsc_table_inuse);
+			isp_ccdc->lsc_table_inuse = isp_ccdc->lsc_table_new;
+			isp_ccdc->lsc_table_new = PTR_FREE;
+			isp_ccdc->update_lsc_table = 0;
+		}
+		ispccdc_config_lsc(isp_ccdc);
+		ispccdc_program_lsc(isp_ccdc);
+		ispccdc_enable_lsc(isp_ccdc, 1); /* Start prefetching table */
+	} else {
+		/* Disable LSC */
+		ispccdc_enable_lsc(isp_ccdc, 0);
+	}
+	isp_ccdc->update_lsc_config = 0;
+}
+
 void ispccdc_lsc_error_handler(struct isp_ccdc_device *isp_ccdc)
 {
-	int lsc_enable = isp_ccdc->lsc_state;
-
 	ispccdc_enable_lsc(isp_ccdc, 0);
-
-	isp_ccdc->lsc_enable = lsc_enable;
 }
 
 /**
@@ -971,12 +881,6 @@ static int ispccdc_config_datapath(struct isp_ccdc_device *isp_ccdc,
 		blkcfg.oblen = 0;
 		blkcfg.dcsubval = 64;
 		ispccdc_config_black_clamp(isp_ccdc, blkcfg);
-		if (is_isplsc_activated()) {
-			ispccdc_config_lsc(isp_ccdc, &isp_ccdc->lsc_config);
-			ispccdc_load_lsc(isp_ccdc, isp_ccdc->lsc_gain_table_tmp,
-					 LSC_TABLE_INIT_SIZE);
-		}
-
 		break;
 	case CCDC_YUV_SYNC:
 		syncif.ccdc_mastermode = 0;
@@ -1128,13 +1032,7 @@ int ispccdc_s_pipeline(struct isp_ccdc_device *isp_ccdc,
 			       OMAP3_ISP_IOMEM_CCDC,
 			       ISPCCDC_VP_OUT);
 
-	if (is_isplsc_activated()) {
-		if (pipe->ccdc_in == CCDC_RAW) {
-			ispccdc_config_lsc(isp_ccdc, &isp_ccdc->lsc_config);
-			ispccdc_load_lsc(isp_ccdc, isp_ccdc->lsc_gain_table,
-					 isp_ccdc->lsc_config.size);
-		}
-	}
+	ispccdc_setup_lsc(isp_ccdc, pipe);
 
 	return 0;
 }
@@ -1150,15 +1048,11 @@ void ispccdc_enable(struct isp_ccdc_device *isp_ccdc, u8 enable)
 	struct isp_device *isp = to_isp_device(isp_ccdc);
 
 	if (enable) {
-		if (isp_ccdc->lsc_enable
-		    && isp->pipeline.ccdc_in == CCDC_RAW)
-			ispccdc_enable_lsc(isp_ccdc, 1);
-
+		if (isp->pipeline.ccdc_in == CCDC_RAW)
+			ispccdc_enable_lsc(isp_ccdc,
+					   isp_ccdc->lsc_request_enable);
 	} else {
-		int lsc_enable = isp_ccdc->lsc_state;
-
 		ispccdc_enable_lsc(isp_ccdc, 0);
-		isp_ccdc->lsc_enable = lsc_enable;
 	}
 
 	isp_reg_and_or(isp->dev, OMAP3_ISP_IOMEM_CCDC, ISPCCDC_PCR,
@@ -1204,10 +1098,22 @@ void ispccdc_config_shadow_registers(struct isp_ccdc_device *isp_ccdc)
 	if (isp_ccdc->shadow_update)
 		goto out;
 
-	if (isp_ccdc->lsc_enable) {
-		ispccdc_enable_lsc(isp_ccdc, 1);
-		isp_ccdc->lsc_enable = 0;
+#if 0	/* FIXME: Do not support on-the-fly-LSC configuration yet */
+	if (isp_ccdc->update_lsc_config) {
+		ispccdc_config_lsc(isp_ccdc);
+		ispccdc_enable_lsc(isp_ccdc, isp_ccdc->lsc_request_enable);
+		isp_ccdc->update_lsc_config = 0;
 	}
+
+	if (isp_ccdc->update_lsc_table) {
+		u32 n = isp_ccdc->lsc_table_new;
+		/* Swap tables--no need to vfree in interrupt context */
+		isp_ccdc->lsc_table_new = isp_ccdc->lsc_table_inuse;
+		isp_ccdc->lsc_table_inuse = n;
+		ispccdc_program_lsc(isp_ccdc);
+		isp_ccdc->update_lsc_table = 0;
+	}
+#endif
 
 out:
 	spin_unlock_irqrestore(&isp_ccdc->lock, flags);
@@ -1344,35 +1250,49 @@ int ispccdc_config(struct isp_ccdc_device *isp_ccdc,
 		ispccdc_config_culling(isp_ccdc, cull_t);
 	}
 
-	if (is_isplsc_activated()) {
+	if (ISP_ABS_CCDC_CONFIG_LSC & ccdc_struct->update) {
 		if (ISP_ABS_CCDC_CONFIG_LSC & ccdc_struct->flag) {
-			if (ISP_ABS_CCDC_CONFIG_LSC & ccdc_struct->update) {
-				if (copy_from_user(
-					   &isp_ccdc->lsc_config,
-					   (struct ispccdc_lsc_config *)
-					   ccdc_struct->lsc_cfg,
-					   sizeof(struct ispccdc_lsc_config))) {
-					ret = -EFAULT;
-					goto out;
-				}
-				ispccdc_config_lsc(isp_ccdc,
-						   &isp_ccdc->lsc_config);
-			}
-			ispccdc_enable_lsc(isp_ccdc, 1);
-		} else if (ISP_ABS_CCDC_CONFIG_LSC & ccdc_struct->update) {
-			ispccdc_enable_lsc(isp_ccdc, 0);
-		}
-		if (ISP_ABS_TBL_LSC & ccdc_struct->update) {
-			if (copy_from_user(isp_ccdc->lsc_gain_table,
-					   ccdc_struct->lsc,
-					   isp_ccdc->lsc_config.size)) {
+			if (copy_from_user(
+				    &isp_ccdc->lsc_config,
+				    (struct ispccdc_lsc_config *)
+				    ccdc_struct->lsc_cfg,
+				    sizeof(struct ispccdc_lsc_config))) {
 				ret = -EFAULT;
 				goto out;
 			}
-			ispccdc_load_lsc(isp_ccdc, isp_ccdc->lsc_gain_table,
-					 isp_ccdc->lsc_config.size);
+			isp_ccdc->lsc_request_enable = 1;
+		} else {
+			isp_ccdc->lsc_request_enable = 0;
 		}
+		isp_ccdc->update_lsc_config = 1;
 	}
+
+	if (ISP_ABS_TBL_LSC & ccdc_struct->update) {
+		void *n;
+		if (isp_ccdc->lsc_table_new != PTR_FREE)
+			iommu_vfree(isp->iommu, isp_ccdc->lsc_table_new);
+		isp_ccdc->lsc_table_new = iommu_vmalloc(isp->iommu, 0,
+					isp_ccdc->lsc_config.size, IOMMU_FLAG);
+		if (IS_ERR_VALUE(isp_ccdc->lsc_table_new)) {
+			/* Disable LSC if table can not be allocated */
+			isp_ccdc->lsc_table_new = PTR_FREE;
+			isp_ccdc->lsc_request_enable = 0;
+			isp_ccdc->update_lsc_config = 1;
+			ret = -ENOMEM;
+			goto out;
+		}
+		n = da_to_va(isp->iommu, isp_ccdc->lsc_table_new);
+		if (copy_from_user(n, ccdc_struct->lsc,
+				   isp_ccdc->lsc_config.size)) {
+			ret = -EFAULT;
+			goto out;
+		}
+		isp_ccdc->update_lsc_table = 1;
+	}
+
+	if (isp->running == ISP_STOPPED &&
+	    (isp_ccdc->update_lsc_table || isp_ccdc->update_lsc_config))
+		ispccdc_setup_lsc(isp_ccdc, &isp->pipeline);
 
 	if (ISP_ABS_CCDC_COLPTN & ccdc_struct->update)
 		ispccdc_config_imgattr(isp_ccdc, ccdc_struct->colptn);
@@ -1470,24 +1390,31 @@ int __init isp_ccdc_init(struct device *dev)
 {
 	struct isp_device *isp = dev_get_drvdata(dev);
 	struct isp_ccdc_device *isp_ccdc = &isp->isp_ccdc;
+	void *p;
 
 	isp_ccdc->ccdc_inuse = 0;
 	ispccdc_config_crop(isp_ccdc, 0, 0, 0, 0);
 	mutex_init(&isp_ccdc->mutexlock);
 
-	if (is_isplsc_activated()) {
-		isp_ccdc->lsc_gain_table_tmp = kmalloc(LSC_TABLE_INIT_SIZE,
-						       GFP_KERNEL | GFP_DMA);
-		memset(isp_ccdc->lsc_gain_table_tmp, 0x40, LSC_TABLE_INIT_SIZE);
-		isp_ccdc->lsc_config.initial_x = 0;
-		isp_ccdc->lsc_config.initial_y = 0;
-		isp_ccdc->lsc_config.gain_mode_n = 0x6;
-		isp_ccdc->lsc_config.gain_mode_m = 0x6;
-		isp_ccdc->lsc_config.gain_format = 0x4;
-		isp_ccdc->lsc_config.offset = 0x60;
-		isp_ccdc->lsc_config.size = LSC_TABLE_INIT_SIZE;
-		isp_ccdc->lsc_enable = 1;
-	}
+	isp_ccdc->update_lsc_config = 0;
+	isp_ccdc->lsc_request_enable = 1;
+
+	isp_ccdc->lsc_config.initial_x = 0;
+	isp_ccdc->lsc_config.initial_y = 0;
+	isp_ccdc->lsc_config.gain_mode_n = 0x6;
+	isp_ccdc->lsc_config.gain_mode_m = 0x6;
+	isp_ccdc->lsc_config.gain_format = 0x4;
+	isp_ccdc->lsc_config.offset = 0x60;
+	isp_ccdc->lsc_config.size = LSC_TABLE_INIT_SIZE;
+
+	isp_ccdc->update_lsc_table = 0;
+	isp_ccdc->lsc_table_new = PTR_FREE;
+	isp_ccdc->lsc_table_inuse = iommu_vmalloc(isp->iommu, 0,
+					LSC_TABLE_INIT_SIZE, IOMMU_FLAG);
+	if (IS_ERR_VALUE(isp_ccdc->lsc_table_inuse))
+		return -ENOMEM;
+	p = da_to_va(isp->iommu, isp_ccdc->lsc_table_inuse);
+	memset(p, 0x40, LSC_TABLE_INIT_SIZE);
 
 	isp_ccdc->shadow_update = 0;
 	spin_lock_init(&isp_ccdc->lock);
@@ -1503,10 +1430,9 @@ void isp_ccdc_cleanup(struct device *dev)
 	struct isp_device *isp = dev_get_drvdata(dev);
 	struct isp_ccdc_device *isp_ccdc = &isp->isp_ccdc;
 
-	if (is_isplsc_activated()) {
-		ispccdc_free_lsc(isp_ccdc);
-		kfree(isp_ccdc->lsc_gain_table_tmp);
-	}
+	iommu_vfree(isp->iommu, isp_ccdc->lsc_table_inuse);
+	if (isp_ccdc->lsc_table_new != PTR_FREE)
+		iommu_vfree(isp->iommu, isp_ccdc->lsc_table_new);
 
 	if (isp_ccdc->fpc_table_add_m != 0) {
 		iommu_kunmap(isp->iommu, isp_ccdc->fpc_table_add_m);

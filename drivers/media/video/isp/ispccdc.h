@@ -24,8 +24,6 @@
 
 #include <mach/isp_user.h>
 
-#define is_isplsc_activated()		1
-
 /* Enumeration constants for CCDC input output format */
 enum ccdc_input {
 	CCDC_RAW,
@@ -152,6 +150,12 @@ struct ispccdc_refmt {
  * @syncif_ipmod: Image
  * @obclamp_en: Data input format.
  * @mutexlock: Mutex used to get access to the CCDC.
+ * @update_lsc_config: Set when user changes lsc_config
+ * @lsc_request_enable: Whether LSC is requested to be enabled
+ * @lsc_config: LSC config set by user
+ * @update_lsc_table: Set when user provides a new LSC table to lsc_table_new
+ * @lsc_table_new: LSC table set by user, ISP address
+ * @lsc_table_inuse: LSC table currently in use, ISP address
  * @shadow_update: non-zero when user is updating CCDC configuration
  * @lock: serializes shadow_update with interrupt handler
  */
@@ -168,17 +172,19 @@ struct isp_ccdc_device {
 	u8 ccdcslave;
 	u8 syncif_ipmod;
 	u8 obclamp_en;
-	u8 lsc_enable;
-	u8 lsc_initialized;
-	int lsc_state;
 	struct mutex mutexlock; /* For checking/modifying ccdc_inuse */
 	u32 wenlog;
-	u8 *lsc_gain_table_tmp;
-	unsigned long lsc_ispmmu_addr;
-	u8 *lsc_gain_table;
-	struct ispccdc_lsc_config lsc_config;
 	unsigned long fpc_table_add_m;
 	u32 *fpc_table_add;
+
+	/* LSC related fields */
+	u8 update_lsc_config;
+	u8 lsc_request_enable;
+	struct ispccdc_lsc_config lsc_config;
+	u8 update_lsc_table;
+	u32 lsc_table_new;
+	u32 lsc_table_inuse;
+
 	int shadow_update;
 	spinlock_t lock;
 };
