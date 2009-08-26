@@ -31,6 +31,12 @@
 /* Time out Values in uSeconds*/
 #define TIHELEN_ACKTIMEOUT  10000
 
+/*
+ * Time out for power state transition (in msecs), due to system
+ * latencies and HZ resolution this timer can vary.
+ */
+#define PWRSTST_TIMEOUT		200
+
 /*  Time delay for HOM->SAM transition. */
 #define  WAIT_SAM   1000000	/* in usec (1000 millisec) */
 
