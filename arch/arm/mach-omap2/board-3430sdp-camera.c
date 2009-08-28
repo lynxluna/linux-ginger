@@ -21,6 +21,7 @@
 
 #include <asm/io.h>
 
+#include <mach/mux.h>
 #include <mach/gpio.h>
 #ifdef CONFIG_OMAP_PM_SRF
 #include <mach/omap-pm.h>
@@ -59,6 +60,12 @@ static enum v4l2_power mt9p012_previous_power = V4L2_POWER_OFF;
 
 #ifdef CONFIG_VIDEO_DW9710
 #include <media/dw9710.h>
+#endif
+
+#if defined(CONFIG_VIDEO_TPS61059) || defined(CONFIG_VIDEO_TPS61059_MODULE)
+#include <media/tps61059.h>
+#define TPS61059_TORCH_EN_GPIO		56
+#define TPS61059_FLASH_STROBE_GPIO	126
 #endif
 #endif
 
@@ -207,6 +214,50 @@ struct dw9710_platform_data sdp3430_dw9710_platform_data = {
 	.power_set      = dw9710_lens_power_set,
 	.priv_data_set  = dw9710_lens_set_prv_data,
 };
+#endif
+
+#if defined(CONFIG_VIDEO_TPS61059) || defined(CONFIG_VIDEO_TPS61059_MODULE)
+static void tps61059_flash_on(void)
+{
+	gpio_set_value(TPS61059_TORCH_EN_GPIO, 1);
+	gpio_set_value(TPS61059_FLASH_STROBE_GPIO, 1);
+}
+
+static void tps61059_flash_off(void)
+{
+	gpio_set_value(TPS61059_FLASH_STROBE_GPIO, 0);
+	gpio_set_value(TPS61059_TORCH_EN_GPIO, 0);
+}
+
+static void tps61059_s_torch_intensity(u32 value)
+{
+	if (value > 0) {
+		/* Torch mode, light immediately on, duration indefinite */
+		gpio_set_value(TPS61059_TORCH_EN_GPIO, 1);
+	} else {
+		/* Torch mode off */
+		gpio_set_value(TPS61059_TORCH_EN_GPIO, 0);
+	}
+}
+
+static int tps61059_set_prv_data(void *priv)
+{
+	struct omap34xxcam_hw_config *hwc = priv;
+
+	hwc->dev_index = 0;
+	hwc->dev_minor = 0;
+	hwc->dev_type = OMAP34XXCAM_SLAVE_FLASH;
+
+	return 0;
+}
+
+struct tps61059_platform_data sdp3430_tps61059_data = {
+	.flash_on		= tps61059_flash_on,
+	.flash_off		= tps61059_flash_off,
+	.s_torch_intensity	= tps61059_s_torch_intensity,
+	.priv_data_set		= tps61059_set_prv_data,
+};
+
 #endif
 
 static struct omap34xxcam_sensor_config cam_hwc = {
@@ -549,15 +600,39 @@ static int sdp3430_camkit_probe(struct platform_device *pdev)
 		goto err_freegpio2;
 	}
 
+	/* Configure pin MUX for GPIO 126 for TPS61059 flash */
+	omap_cfg_reg(D25_34XX_GPIO126_OUT);
+
+	if (gpio_request(TPS61059_TORCH_EN_GPIO, "tps61059_torch_en_gpio")) {
+		dev_err(&pdev->dev, "Could not request GPIO %d for TPS61059\n",
+			TPS61059_TORCH_EN_GPIO);
+		ret = -ENODEV;
+		goto err_freegpio3;
+	}
+
+	if (gpio_request(TPS61059_FLASH_STROBE_GPIO,
+			 "tps61059_flash_strobe_gpio")) {
+		dev_err(&pdev->dev, "Could not request GPIO %d for TPS61059\n",
+			TPS61059_FLASH_STROBE_GPIO);
+		ret = -ENODEV;
+		goto err_freegpio4;
+	}
+
 	/* set to output mode */
 	gpio_direction_output(CAMKITV3_RESET_GPIO, true);
 	gpio_direction_output(OV3640_STANDBY_GPIO, true);
 	gpio_direction_output(MT9P012_STANDBY_GPIO, true);
+	gpio_direction_output(TPS61059_TORCH_EN_GPIO, false);
+	gpio_direction_output(TPS61059_FLASH_STROBE_GPIO, false);
 
 	cam_inited = 1;
 	camkit_dev = &pdev->dev;
 	return 0;
 
+err_freegpio4:
+	gpio_free(TPS61059_TORCH_EN_GPIO);
+err_freegpio3:
+	gpio_free(MT9P012_STANDBY_GPIO);
 err_freegpio2:
 	gpio_free(OV3640_STANDBY_GPIO);
 err_freegpio1:
@@ -581,6 +656,8 @@ static int sdp3430_camkit_remove(struct platform_device *pdev)
 		regulator_disable(sdp3430_ov3640_reg);
 	regulator_put(sdp3430_mt9p012_reg);
 
+	gpio_free(TPS61059_FLASH_STROBE_GPIO);
+	gpio_free(TPS61059_TORCH_EN_GPIO);
 	gpio_free(MT9P012_STANDBY_GPIO);
 	gpio_free(OV3640_STANDBY_GPIO);
 	gpio_free(CAMKITV3_RESET_GPIO);
