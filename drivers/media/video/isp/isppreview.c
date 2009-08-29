@@ -1602,7 +1602,7 @@ int isppreview_try_pipeline(struct isp_prev_device *isp_prev,
 	pipe->prv_out_w_img &= ~1;
 
 	/* FIXME: This doesn't apply for prv -> rsz. */
-	pipe->prv_out_w = ALIGN(pipe->prv_out_w, 0x20);
+	pipe->prv_out_w = ALIGN(pipe->prv_out_w_img, 0x20);
 
 	return 0;
 }
