@@ -102,8 +102,8 @@ static int prev_calculate_crop(struct prev_device *device,
 
 	ret = isppreview_try_pipeline(&isp->isp_prev, &pipe);
 
-	crop->hcrop = pipe.prv_out_w;
-	crop->vcrop = pipe.prv_out_h;
+	crop->hcrop = pipe.prv_out_w_img;
+	crop->vcrop = pipe.prv_out_h_img;
 
 	return ret;
 }
