@@ -228,7 +228,9 @@ static struct regulator_consumer_supply sdp3430_vaux4_supplies[] = {
 static struct platform_device *sdp3430_devices[] __initdata = {
 	&sdp3430_lcd_device,
 	&sdp3430_camkit_device,
+#if defined(CONFIG_VIDEO_TPS61059) || defined(CONFIG_VIDEO_TPS61059_MODULE)
 	&sdp3430_tps61059_device,
+#endif
 };
 
 static struct omap_lcd_config sdp3430_lcd_config __initdata = {
