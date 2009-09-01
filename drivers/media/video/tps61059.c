@@ -287,7 +287,7 @@ static int tps61059_probe(struct platform_device *pdev)
 	int err;
 
 	if (!pdata) {
-		dev_err(pdev->dev, "tps61059 platform data not supplied\n");
+		dev_err(&pdev->dev, "tps61059 platform data not supplied\n");
 		return -ENOENT;
 	}
 
