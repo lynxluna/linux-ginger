@@ -34,19 +34,22 @@ static struct device *camkit_dev;
 #include <media/v4l2-int-device.h>
 #include <../drivers/media/video/omap34xxcam.h>
 #include <../drivers/media/video/isp/ispreg.h>
-#define DEBUG_BASE		0x08000000
+#define DEBUG_BASE			0x08000000
 
-#define REG_SDP3430_FPGA_GPIO_2 (0x50)
-#define FPGA_SPR_GPIO1_3v3	(0x1 << 14)
-#define FPGA_GPIO6_DIR_CTRL	(0x1 << 6)
+#define REG_SDP3430_FPGA_GPIO_2		(0x50)
+#define FPGA_SPR_GPIO1_3v3		(0x1 << 14)
+#define FPGA_GPIO6_DIR_CTRL		(0x1 << 6)
 
-#define CAMKITV3_USE_XCLKA  	0
-#define CAMKITV3_USE_XCLKB  	1
+#define CAMKITV3_USE_XCLKA		0
+#define CAMKITV3_USE_XCLKB		1
 
-#define CAMKITV3_RESET_GPIO  	98
+#define CAMKITV3_RESET_GPIO		98
+
 /* Sensor specific GPIO signals */
-#define MT9P012_STANDBY_GPIO	58
-#define OV3640_STANDBY_GPIO	55
+#define MT9P012_STANDBY_GPIO		58
+#define OV3640_STANDBY_GPIO		55
+#define TPS61059_TORCH_EN_GPIO		56
+#define TPS61059_FLASH_STROBE_GPIO	126
 
 static struct regulator *sdp3430_mt9p012_reg;
 static struct regulator *sdp3430_dw9710_reg;
@@ -60,14 +63,24 @@ static enum v4l2_power mt9p012_previous_power = V4L2_POWER_OFF;
 
 #ifdef CONFIG_VIDEO_DW9710
 #include <media/dw9710.h>
-#endif
+#define is_dw9710_enabled()		1
+#else
+#define is_dw9710_enabled()		0
+#endif /* CONFIG_VIDEO_DW9710 */
 
 #if defined(CONFIG_VIDEO_TPS61059) || defined(CONFIG_VIDEO_TPS61059_MODULE)
 #include <media/tps61059.h>
-#define TPS61059_TORCH_EN_GPIO		56
-#define TPS61059_FLASH_STROBE_GPIO	126
-#endif
-#endif
+#define is_tps61059_enabled()		1
+#else
+#define is_tps61059_enabled()		0
+#endif /* CONFIG_VIDEO_TPS61059 || CONFIG_VIDEO_TPS61059_MODULE */
+
+#define is_mt9p012_enabled()		1
+#else /* CONFIG_VIDEO_MT9P012 || CONFIG_VIDEO_MT9P012_MODULE */
+#define is_mt9p012_enabled()		0
+#define is_dw9710_enabled()		0
+#define is_tps61059_enabled()		0
+#endif /* CONFIG_VIDEO_MT9P012 || CONFIG_VIDEO_MT9P012_MODULE */
 
 #if defined(CONFIG_VIDEO_OV3640) || defined(CONFIG_VIDEO_OV3640_MODULE)
 #include <media/ov3640.h>
@@ -85,15 +98,18 @@ static enum v4l2_power mt9p012_previous_power = V4L2_POWER_OFF;
 #define OV3640_CSI2_PHY_TCLK_SETTLE	14
 
 #define OV3640_BIGGEST_FRAME_BYTE_SIZE	PAGE_ALIGN(2048 * 1536 * 2)
-#endif
+#define is_ov3640_enabled()		1
+#else
+#define is_ov3640_enabled()		0
+#endif /* CONFIG_VIDEO_OV3640 || CONFIG_VIDEO_OV3640_MODULE */
 
 #if defined(CONFIG_VIDEO_MT9P012) || defined(CONFIG_VIDEO_MT9P012_MODULE) || \
     defined(CONFIG_VIDEO_OV3640) || defined(CONFIG_VIDEO_OV3640_MODULE) || \
     defined(CONFIG_VIDEO_DW9710)
-static void __iomem *fpga_map_addr;
 
 static void enable_fpga_vio_1v8(u8 enable)
 {
+	void __iomem *fpga_map_addr;
 	u16 reg_val;
 
 	fpga_map_addr = ioremap(DEBUG_BASE, 4096);
@@ -115,6 +131,7 @@ static void enable_fpga_vio_1v8(u8 enable)
 		reg_val |= FPGA_SPR_GPIO1_3v3 | FPGA_GPIO6_DIR_CTRL;
 		writew(reg_val, fpga_map_addr + REG_SDP3430_FPGA_GPIO_2);
 	}
+	iounmap(fpga_map_addr);
 	/* Vrise time for the voltage - should be less than 1 ms */
 	mdelay(1);
 }
@@ -161,7 +178,6 @@ static int dw9710_lens_power_set(enum v4l2_power power)
 		if (regulator_is_enabled(sdp3430_dw9710_reg))
 			regulator_disable(sdp3430_dw9710_reg);
 		enable_fpga_vio_1v8(0);
-		iounmap(fpga_map_addr);
 		break;
 	case V4L2_POWER_ON:
 		/* STANDBY_GPIO is active HIGH for set LOW to release */
@@ -321,7 +337,6 @@ static int mt9p012_sensor_power_set(struct v4l2_int_device *s,
 		if (regulator_is_enabled(sdp3430_mt9p012_reg))
 			regulator_disable(sdp3430_mt9p012_reg);
 		enable_fpga_vio_1v8(0);
-		iounmap(fpga_map_addr);
 
 #ifdef CONFIG_OMAP_PM_SRF
 		omap_pm_set_min_bus_tput(vdev->cam->isp, OCP_INITIATOR_AGENT, 0);
@@ -544,7 +559,6 @@ static int ov3640_sensor_power_set(struct v4l2_int_device *s,
 		if (regulator_is_enabled(sdp3430_ov3640_reg))
 			regulator_disable(sdp3430_ov3640_reg);
 		enable_fpga_vio_1v8(0);
-		iounmap(fpga_map_addr);
 #ifdef CONFIG_OMAP_PM_SRF
 		omap_pm_set_min_bus_tput(vdev->cam->isp, OCP_INITIATOR_AGENT, 0);
 #endif
@@ -578,65 +592,91 @@ static int sdp3430_camkit_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 
-	/* Request and configure gpio pins */
-	if (gpio_request(CAMKITV3_RESET_GPIO, "camkitv3_reset_gpio") != 0) {
-		dev_err(&pdev->dev, "Could not request GPIO %d",
-			CAMKITV3_RESET_GPIO);
-		ret = -ENODEV;
-		goto err;
+	if (!is_mt9p012_enabled() && !is_ov3640_enabled())
+		return -ENODEV;
+
+	/* Request and configure shared gpio pins for both cameras */
+	if (is_mt9p012_enabled() || is_ov3640_enabled()) {
+		if (gpio_request(CAMKITV3_RESET_GPIO,
+				 "camkitv3_reset_gpio") != 0) {
+			dev_err(&pdev->dev, "Could not request GPIO %d",
+				CAMKITV3_RESET_GPIO);
+			ret = -ENODEV;
+			goto err;
+		}
+		gpio_direction_output(CAMKITV3_RESET_GPIO, false);
 	}
 
-	if (gpio_request(OV3640_STANDBY_GPIO, "ov3640_standby_gpio") != 0) {
-		dev_err(&pdev->dev, "Could not request GPIO %d",
-			OV3640_STANDBY_GPIO);
-		ret = -ENODEV;
-		goto err_freegpio1;
+	/* Request and configure shared gpio pins for primary camera */
+	if (is_mt9p012_enabled()) {
+		if (gpio_request(MT9P012_STANDBY_GPIO,
+				 "mt9p012_standby_gpio")) {
+			dev_err(&pdev->dev,
+				"Could not request GPIO %d for MT9P012\n",
+				MT9P012_STANDBY_GPIO);
+			ret = -ENODEV;
+			goto err_freegpio1;
+		}
+
+		gpio_direction_output(MT9P012_STANDBY_GPIO, false);
+
+		if (is_tps61059_enabled()) {
+			/* Configure pin MUX for GPIO 126 for TPS61059 flash */
+			omap_cfg_reg(D25_34XX_GPIO126_OUT);
+
+			if (gpio_request(TPS61059_TORCH_EN_GPIO,
+					 "tps61059_torch_en_gpio")) {
+				dev_err(&pdev->dev,
+					"Could not request GPIO %d for"
+					" TPS61059\n",
+					TPS61059_TORCH_EN_GPIO);
+				ret = -ENODEV;
+				goto err_freegpio2;
+			}
+
+			if (gpio_request(TPS61059_FLASH_STROBE_GPIO,
+					 "tps61059_flash_strobe_gpio")) {
+				dev_err(&pdev->dev,
+					"Could not request GPIO %d for"
+					" TPS61059\n",
+					TPS61059_FLASH_STROBE_GPIO);
+				ret = -ENODEV;
+				goto err_freegpio3;
+			}
+			gpio_direction_output(TPS61059_TORCH_EN_GPIO, false);
+			gpio_direction_output(TPS61059_FLASH_STROBE_GPIO,
+					      false);
+		}
 	}
 
-	if (gpio_request(MT9P012_STANDBY_GPIO, "mt9p012_standby_gpio")) {
-		dev_err(&pdev->dev, "Could not request GPIO %d for MT9P012\n",
-			MT9P012_STANDBY_GPIO);
-		ret = -ENODEV;
-		goto err_freegpio2;
+	/* Request and configure shared gpio pins for secondary camera */
+	if (is_ov3640_enabled()) {
+		if (gpio_request(OV3640_STANDBY_GPIO,
+				 "ov3640_standby_gpio") != 0) {
+			dev_err(&pdev->dev, "Could not request GPIO %d",
+				OV3640_STANDBY_GPIO);
+			ret = -ENODEV;
+			goto err_freegpio4;
+		}
+		gpio_direction_output(OV3640_STANDBY_GPIO, false);
 	}
-
-	/* Configure pin MUX for GPIO 126 for TPS61059 flash */
-	omap_cfg_reg(D25_34XX_GPIO126_OUT);
-
-	if (gpio_request(TPS61059_TORCH_EN_GPIO, "tps61059_torch_en_gpio")) {
-		dev_err(&pdev->dev, "Could not request GPIO %d for TPS61059\n",
-			TPS61059_TORCH_EN_GPIO);
-		ret = -ENODEV;
-		goto err_freegpio3;
-	}
-
-	if (gpio_request(TPS61059_FLASH_STROBE_GPIO,
-			 "tps61059_flash_strobe_gpio")) {
-		dev_err(&pdev->dev, "Could not request GPIO %d for TPS61059\n",
-			TPS61059_FLASH_STROBE_GPIO);
-		ret = -ENODEV;
-		goto err_freegpio4;
-	}
-
-	/* set to output mode */
-	gpio_direction_output(CAMKITV3_RESET_GPIO, true);
-	gpio_direction_output(OV3640_STANDBY_GPIO, true);
-	gpio_direction_output(MT9P012_STANDBY_GPIO, true);
-	gpio_direction_output(TPS61059_TORCH_EN_GPIO, false);
-	gpio_direction_output(TPS61059_FLASH_STROBE_GPIO, false);
 
 	cam_inited = 1;
 	camkit_dev = &pdev->dev;
 	return 0;
 
 err_freegpio4:
-	gpio_free(TPS61059_TORCH_EN_GPIO);
+	if (is_mt9p012_enabled() && is_tps61059_enabled())
+		gpio_free(TPS61059_FLASH_STROBE_GPIO);
 err_freegpio3:
-	gpio_free(MT9P012_STANDBY_GPIO);
+	if (is_mt9p012_enabled() && is_tps61059_enabled())
+		gpio_free(TPS61059_TORCH_EN_GPIO);
 err_freegpio2:
-	gpio_free(OV3640_STANDBY_GPIO);
+	if (is_mt9p012_enabled())
+		gpio_free(MT9P012_STANDBY_GPIO);
 err_freegpio1:
-	gpio_free(CAMKITV3_RESET_GPIO);
+	if (is_mt9p012_enabled() || is_ov3640_enabled())
+		gpio_free(CAMKITV3_RESET_GPIO);
 err:
 	cam_inited = 0;
 	return ret;
@@ -644,23 +684,41 @@ err:
 
 static int sdp3430_camkit_remove(struct platform_device *pdev)
 {
-	if (regulator_is_enabled(sdp3430_ov3640_reg))
-		regulator_disable(sdp3430_ov3640_reg);
-	regulator_put(sdp3430_ov3640_reg);
+	/* Primary camera resources */
+	if (is_mt9p012_enabled()) {
+		/* Free Regulators */
+		if (is_dw9710_enabled()) {
+			if (regulator_is_enabled(sdp3430_dw9710_reg))
+				regulator_disable(sdp3430_dw9710_reg);
+			regulator_put(sdp3430_dw9710_reg);
+		}
 
-	if (regulator_is_enabled(sdp3430_dw9710_reg))
-		regulator_disable(sdp3430_dw9710_reg);
-	regulator_put(sdp3430_dw9710_reg);
+		if (regulator_is_enabled(sdp3430_mt9p012_reg))
+			regulator_disable(sdp3430_mt9p012_reg);
+		regulator_put(sdp3430_mt9p012_reg);
 
-	if (regulator_is_enabled(sdp3430_mt9p012_reg))
-		regulator_disable(sdp3430_ov3640_reg);
-	regulator_put(sdp3430_mt9p012_reg);
+		/* Free GPIOs */
+		if (is_tps61059_enabled()) {
+			gpio_free(TPS61059_FLASH_STROBE_GPIO);
+			gpio_free(TPS61059_TORCH_EN_GPIO);
+		}
+		gpio_free(MT9P012_STANDBY_GPIO);
+	}
 
-	gpio_free(TPS61059_FLASH_STROBE_GPIO);
-	gpio_free(TPS61059_TORCH_EN_GPIO);
-	gpio_free(MT9P012_STANDBY_GPIO);
-	gpio_free(OV3640_STANDBY_GPIO);
-	gpio_free(CAMKITV3_RESET_GPIO);
+	/* Secondary camera resources */
+	if (is_ov3640_enabled()) {
+		/* Free Regulators */
+		if (regulator_is_enabled(sdp3430_ov3640_reg))
+			regulator_disable(sdp3430_ov3640_reg);
+		regulator_put(sdp3430_ov3640_reg);
+
+		/* Free GPIOs */
+		gpio_free(OV3640_STANDBY_GPIO);
+	}
+
+	/* Shared resources to free */
+	if (is_mt9p012_enabled() || is_ov3640_enabled())
+		gpio_free(CAMKITV3_RESET_GPIO);
 	return 0;
 }
 
