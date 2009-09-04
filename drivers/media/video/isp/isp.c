@@ -2494,7 +2494,7 @@ static int isp_remove(struct platform_device *pdev)
  **/
 static int isp_suspend(struct device *dev)
 {
-	struct isp_device *isp = (struct isp_device *)dev;
+	struct isp_device *isp = dev_get_drvdata(dev);
 	int reset;
 
 	DPRINTK_ISPCTRL("isp_suspend: starting\n");
@@ -2526,7 +2526,7 @@ out:
  **/
 static int isp_resume(struct device *dev)
 {
-	struct isp_device *isp = (struct isp_device *)dev;
+	struct isp_device *isp = dev_get_drvdata(dev);
 	int ret_err = 0;
 
 	DPRINTK_ISPCTRL("isp_resume: starting\n");
