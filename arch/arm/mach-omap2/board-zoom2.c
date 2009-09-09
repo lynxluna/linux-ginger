@@ -314,6 +314,11 @@ static int __init omap_i2c_init(void)
 
 extern int __init omap_zoom2_debugboard_init(void);
 
+static void enable_board_wakeup_source(void)
+{
+	omap_cfg_reg(AF26_34XX_SYS_NIRQ);
+}
+
 static void __init omap_zoom2_init(void)
 {
 	omap_i2c_init();
@@ -322,6 +327,7 @@ static void __init omap_zoom2_init(void)
 	omap_zoom2_debugboard_init();
 	usb_musb_init();
 	ldp_flash_init();
+	enable_board_wakeup_source();
 }
 
 static void __init omap_zoom2_map_io(void)
