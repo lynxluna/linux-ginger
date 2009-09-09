@@ -71,6 +71,7 @@ static u8 twl4030_start_script_address = 0x2b;
 
 #define DEVGROUP_OFFSET		0
 #define TYPE_OFFSET		1
+#define REMAP_OFFSET		2
 
 /* Bit positions */
 #define DEVGROUP_SHIFT		5
@@ -170,64 +171,24 @@ static int __init twl4030_write_script(u8 address, struct twl4030_ins *script,
 	return err;
 }
 
-static int __init twl4030_config_wakeup3_sequence(u8 address)
-{
-	int err;
-	u8 data;
-
-	/* Set SLEEP to ACTIVE SEQ address for P3 */
-	err = twl4030_i2c_write_u8(TWL4030_MODULE_PM_MASTER, address,
-				R_SEQ_ADD_S2A3);
-	if (err)
-		goto out;
-
-	/* P3 LVL_WAKEUP should be on LEVEL */
-	err = twl4030_i2c_read_u8(TWL4030_MODULE_PM_MASTER, &data,
-				R_P3_SW_EVENTS);
-	if (err)
-		goto out;
-	data |= LVL_WAKEUP;
-	err = twl4030_i2c_write_u8(TWL4030_MODULE_PM_MASTER, data,
-				R_P3_SW_EVENTS);
-out:
-	if (err)
-		pr_err("TWL4030 wakeup sequence for P3 config error\n");
-	return err;
-}
-
-static int __init twl4030_config_wakeup12_sequence(u8 address)
+static int __init config_wakeup_sequence(u8 address)
 {
 	int err = 0;
 	u8 data;
 
 	/* Set SLEEP to ACTIVE SEQ address for P1 and P2 */
-	err = twl4030_i2c_write_u8(TWL4030_MODULE_PM_MASTER, address,
-				R_SEQ_ADD_S2A12);
-	if (err)
-		goto out;
-
-	/* P1/P2 LVL_WAKEUP should be on LEVEL */
-	err = twl4030_i2c_read_u8(TWL4030_MODULE_PM_MASTER, &data,
-				R_P1_SW_EVENTS);
-	if (err)
-		goto out;
-
-	data |= LVL_WAKEUP;
-	err = twl4030_i2c_write_u8(TWL4030_MODULE_PM_MASTER, data,
-				R_P1_SW_EVENTS);
-	if (err)
-		goto out;
-
-	err = twl4030_i2c_read_u8(TWL4030_MODULE_PM_MASTER, &data,
-				R_P2_SW_EVENTS);
-	if (err)
-		goto out;
-
-	data |= LVL_WAKEUP;
-	err = twl4030_i2c_write_u8(TWL4030_MODULE_PM_MASTER, data,
-				R_P2_SW_EVENTS);
-	if (err)
-		goto out;
+	err |= twl4030_i2c_write_u8(TWL4030_MODULE_PM_MASTER, address,
+				  R_SEQ_ADD_S2A12);
+	/* Set SLEEP to ACTIVE SEQ address for P3 */
+	err |= twl4030_i2c_write_u8(TWL4030_MODULE_PM_MASTER, address,
+				R_SEQ_ADD_S2A3);
+	/* P1/P2/P3 LVL_WAKEUP should be on LEVEL */
+	err |= twl4030_i2c_write_u8(TWL4030_MODULE_PM_MASTER, LVL_WAKEUP,
+					R_P1_SW_EVENTS);
+	err |= twl4030_i2c_write_u8(TWL4030_MODULE_PM_MASTER, LVL_WAKEUP,
+					R_P2_SW_EVENTS);
+	err |= twl4030_i2c_write_u8(TWL4030_MODULE_PM_MASTER, LVL_WAKEUP,
+					R_P3_SW_EVENTS);
 
 	if (machine_is_omap_3430sdp() || machine_is_omap_ldp()) {
 		/* Disabling AC charger effect on sleep-active transitions */
@@ -244,8 +205,8 @@ static int __init twl4030_config_wakeup12_sequence(u8 address)
 
 out:
 	if (err)
-		pr_err("TWL4030 wakeup sequence for P1 and P2" \
-			"config error\n");
+		printk(KERN_ERR "TWL4030 wakeup sequence config error\n");
+
 	return err;
 }
 
@@ -317,6 +278,7 @@ static int __init twl4030_configure_resource(struct twl4030_resconfig *rconfig)
 	int err;
 	u8 type;
 	u8 grp;
+	u8 remap;
 
 	if (rconfig->resource > TOTAL_RESOURCES) {
 		pr_err("TWL4030 Resource %d does not exist\n",
@@ -372,6 +334,23 @@ static int __init twl4030_configure_resource(struct twl4030_resconfig *rconfig)
 		return err;
 	}
 
+	/* Set resource state remap */
+
+	if (twl4030_i2c_read_u8(TWL4030_MODULE_PM_RECEIVER,
+					&remap,
+					rconfig_addr + REMAP_OFFSET) < 0) {
+		printk(KERN_ERR
+			"TWL4030 Resource %d remap could not read\n",
+			rconfig->resource);
+		return;
+	}
+	if (rconfig->remap_sleep >= 0) {
+		remap &= ~0xF;
+		remap |= rconfig->remap_sleep;
+	}
+
+	twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
+				remap, rconfig_addr + REMAP_OFFSET);
 	return 0;
 }
 
@@ -396,17 +375,13 @@ static int __init load_twl4030_script(struct twl4030_script *tscript,
 		if (err)
 			goto out;
 	}
-	if (tscript->flags & TWL4030_WAKEUP12_SCRIPT) {
-		err = twl4030_config_wakeup12_sequence(address);
-		if (err)
-			goto out;
-		order = 1;
-	}
-	if (tscript->flags & TWL4030_WAKEUP3_SCRIPT) {
-		err = twl4030_config_wakeup3_sequence(address);
+
+	if (tscript->flags & TWL4030_WAKEUP_SCRIPT) {
+		err = config_wakeup_sequence(address);
 		if (err)
 			goto out;
 	}
+
 	if (tscript->flags & TWL4030_SLEEP_SCRIPT)
 		if (order)
 			pr_warning("TWL4030: Bad order of scripts (sleep "\
