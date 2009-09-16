@@ -28,7 +28,7 @@
 #include <plat/mux.h>
 #include <plat/gpio.h>
 
-#include <mach/board-ldp.h>
+#include <mach/board-zoom.h>
 
 #include "mmc-twl4030.h"
 #include "sdram-micron-mt46h32m32lf-6.h"
@@ -326,8 +326,8 @@ static void __init omap_zoom2_init(void)
 	omap_serial_init();
 	omap_zoom2_debugboard_init();
 	usb_musb_init();
-	ldp_flash_init();
 	enable_board_wakeup_source();
+	zoom_flash_init();
 }
 
 static void __init omap_zoom2_map_io(void)
