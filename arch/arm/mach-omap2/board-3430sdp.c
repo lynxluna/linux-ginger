@@ -43,6 +43,7 @@
 #include <plat/gpmc-smc91x.h>
 #include <plat/omap-pm.h>
 
+#include "board-sdp.h"
 #include "sdram-qimonda-hyb18m512160af-6.h"
 #include "mmc-twl4030.h"
 #include "pm.h"
@@ -642,6 +643,7 @@ static void __init omap_3430sdp_init(void)
 	omap_serial_init();
 	usb_musb_init();
 	board_smc91x_init();
+	sdp_flash_init();
 	enable_board_wakeup_source();
 	usb_ehci_init(&ehci_pdata);
 }

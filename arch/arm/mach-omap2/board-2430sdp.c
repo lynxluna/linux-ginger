@@ -38,6 +38,7 @@
 #include <plat/usb.h>
 #include <plat/gpmc-smc91x.h>
 
+#include "board-sdp.h"
 #include "mmc-twl4030.h"
 
 #define SDP2430_CS0_BASE	0x04000000
@@ -205,6 +206,7 @@ static void __init omap_2430sdp_init(void)
 	twl4030_mmc_init(mmc);
 	usb_musb_init();
 	board_smc91x_init();
+	sdp_flash_init();
 
 	/* Turn off secondary LCD backlight */
 	ret = gpio_request(SECONDARY_LCD_GPIO, "Secondary LCD backlight");
