@@ -340,7 +340,7 @@ static struct omap_clk omap34xx_clks[] = {
  * SDRC_MPURATE_LOOPS: Number of MPU loops to execute at
  * 2^MPURATE_BASE_SHIFT MHz for SDRC to stabilize
  */
-#define SDRC_MPURATE_LOOPS		96
+#define SDRC_MPURATE_LOOPS		24
 
 /*
  * DPLL5_FREQ_FOR_USBHOST: USBHOST and USBTLL are the only clocks
