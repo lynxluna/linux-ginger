@@ -202,8 +202,8 @@ static int sdp3430_twl4030_init(struct snd_soc_codec *codec)
 	/* SDP3430 connected pins */
 	snd_soc_dapm_enable_pin(codec, "Ext Mic");
 	snd_soc_dapm_enable_pin(codec, "Ext Spk");
-	snd_soc_dapm_disable_pin(codec, "Headset Mic");
-	snd_soc_dapm_disable_pin(codec, "Headset Stereophone");
+	snd_soc_dapm_enable_pin(codec, "Headset Mic");
+	snd_soc_dapm_enable_pin(codec, "Headset Stereophone");
 
 	/* TWL4030 not connected pins */
 	snd_soc_dapm_nc_pin(codec, "AUXL");
@@ -223,7 +223,7 @@ static int sdp3430_twl4030_init(struct snd_soc_codec *codec)
 	ret = snd_soc_dapm_sync(codec);
 	if (ret)
 		return ret;
-
+#if 0
 	/* Headset jack detection */
 	ret = snd_soc_jack_new(&snd_soc_sdp3430, "Headset Jack",
 				SND_JACK_HEADSET, &hs_jack);
@@ -237,7 +237,7 @@ static int sdp3430_twl4030_init(struct snd_soc_codec *codec)
 
 	ret = snd_soc_jack_add_gpios(&hs_jack, ARRAY_SIZE(hs_jack_gpios),
 				hs_jack_gpios);
-
+#endif
 	return ret;
 }
 
@@ -344,9 +344,10 @@ module_init(sdp3430_soc_init);
 
 static void __exit sdp3430_soc_exit(void)
 {
+#if 0
 	snd_soc_jack_free_gpios(&hs_jack, ARRAY_SIZE(hs_jack_gpios),
 				hs_jack_gpios);
-
+#endif
 	platform_device_unregister(sdp3430_snd_device);
 }
 module_exit(sdp3430_soc_exit);
