@@ -556,6 +556,7 @@ void isppreview_config_shadow_registers(struct isp_prev_device *isp_prev)
 	}
 
 	if (isp_prev->nf_update && isp_prev->nf_enable) {
+		isppreview_enable_noisefilter(isp_prev, 0);
 		isp_reg_writel(dev, 0xC00,
 			       OMAP3_ISP_IOMEM_PREV, ISPPRV_SET_TBL_ADDR);
 		isp_reg_writel(dev, isp_prev->prev_nf_t.spread,
