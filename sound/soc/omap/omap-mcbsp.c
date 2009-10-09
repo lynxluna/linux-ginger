@@ -235,6 +235,8 @@ static int omap_mcbsp_dai_trigger(struct snd_pcm_substream *substream, int cmd,
 	case SNDRV_PCM_TRIGGER_RESUME:
 		if (!mcbsp_data->active++) {
 			omap_mcbsp_enable_fclk(mcbsp_data->bus_id);
+			omap_mcbsp_config(mcbsp_data->bus_id,
+						&mcbsp_data->regs);
 			omap_mcbsp_start(mcbsp_data->bus_id, play, !play);
 		}
 		break;
