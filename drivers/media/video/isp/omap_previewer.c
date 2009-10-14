@@ -436,7 +436,7 @@ static int prev_do_preview(struct prev_device *device)
 
 	isp_enable_interrupts(device->isp, 0);
 
-	isppreview_enable(isp_prev);
+	isppreview_enable(isp_prev, 1);
 
 	wait_for_completion_interruptible(&device->wfc);
 
