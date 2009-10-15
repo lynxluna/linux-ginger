@@ -1095,8 +1095,16 @@ int ispccdc_try_pipeline(struct isp_ccdc_device *isp_ccdc,
 	}
 
 	pipe->ccdc_out_w_img = pipe->ccdc_out_w;
-	/* Round up to nearest 16 pixels. */
-	pipe->ccdc_out_w = ALIGN(pipe->ccdc_out_w, 0x10);
+
+	/* For CCDC out to MEM round up to nearest 32 pixels.
+	 * This allows Preview Wrapper to workaround an uncertainty
+	 * in silicon.
+	 * For everything else round up to nearest 16 pixels.
+	 */
+	if (pipe->ccdc_out == CCDC_OTHERS_VP_MEM)
+		pipe->ccdc_out_w = ALIGN(pipe->ccdc_out_w, 0x20);
+	else
+		pipe->ccdc_out_w = ALIGN(pipe->ccdc_out_w, 0x10);
 
 	return 0;
 }
