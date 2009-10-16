@@ -49,6 +49,10 @@
 #include <dspbridge/host_os.h>
 #include <linux/workqueue.h>
 
+#ifdef CONFIG_BRIDGE_DVFS
+#include <mach/omap-pm.h>
+#endif
+
 /*  ----------------------------------- DSP/BIOS Bridge */
 #include <dspbridge/std.h>
 #include <dspbridge/dbdefs.h>
