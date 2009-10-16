@@ -38,6 +38,11 @@
 #define ZOOM2_HEADSET_MUX_GPIO		(OMAP_MAX_GPIO_LINES + 15)
 #define ZOOM2_HEADSET_EXTMUTE_GPIO	153
 
+static struct snd_soc_dai_link zoom2_dai[];
+static int zoom2_hifi_playback_state;
+static int zoom2_voice_state;
+static int zoom2_capture_state;
+
 static int zoom2_hw_params(struct snd_pcm_substream *substream,
 				struct snd_pcm_hw_params *params)
 {
@@ -157,9 +162,132 @@ static const struct snd_soc_dapm_route audio_map[] = {
 	{"Aux In", NULL, "AUXR"},
 };
 
+static int zoom2_get_hifi_playback_state(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = zoom2_hifi_playback_state;
+	return 0;
+}
+
+static int zoom2_set_hifi_playback_state(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	int ret;
+
+	if (zoom2_hifi_playback_state == ucontrol->value.integer.value[0])
+		return 0;
+
+	if (ucontrol->value.integer.value[0]) {
+		ret = snd_soc_dapm_stream_event(zoom2_dai[0].codec_dai->codec,
+				zoom2_dai[0].codec_dai->playback.stream_name,
+				SND_SOC_DAPM_STREAM_START);
+	} else {
+		ret = snd_soc_dapm_stream_event(zoom2_dai[0].codec_dai->codec,
+				zoom2_dai[0].codec_dai->playback.stream_name,
+				SND_SOC_DAPM_STREAM_STOP);
+	}
+
+	if (ret != 0) {
+		printk(KERN_ERR "failed to set hifi playback state\n");
+		return 0;
+	}
+
+	zoom2_hifi_playback_state = ucontrol->value.integer.value[0];
+	return 1;
+}
+
+static int zoom2_get_voice_state(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = zoom2_voice_state;
+	return 0;
+}
+
+static int zoom2_set_voice_state(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	int ret;
+
+	if (zoom2_voice_state == ucontrol->value.integer.value[0])
+		return 0;
+
+	if (ucontrol->value.integer.value[0]) {
+		ret = snd_soc_dapm_stream_event(zoom2_dai[1].codec_dai->codec,
+				zoom2_dai[1].codec_dai->playback.stream_name,
+				SND_SOC_DAPM_STREAM_START);
+	} else {
+		ret = snd_soc_dapm_stream_event(zoom2_dai[1].codec_dai->codec,
+				zoom2_dai[1].codec_dai->playback.stream_name,
+				SND_SOC_DAPM_STREAM_STOP);
+	}
+
+	if (ret != 0) {
+		printk(KERN_ERR "failed to set voice playback state\n");
+		return 0;
+	}
+
+	zoom2_voice_state = ucontrol->value.integer.value[0];
+	return 1;
+}
+
+static int zoom2_get_capture_state(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = zoom2_capture_state;
+	return 0;
+}
+
+static int zoom2_set_capture_state(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	int ret;
+
+	if (zoom2_capture_state == ucontrol->value.integer.value[0])
+		return 0;
+
+	if (ucontrol->value.integer.value[0]) {
+		ret = snd_soc_dapm_stream_event(zoom2_dai[1].codec_dai->codec,
+				zoom2_dai[1].codec_dai->capture.stream_name,
+				SND_SOC_DAPM_STREAM_START);
+	} else {
+		ret = snd_soc_dapm_stream_event(zoom2_dai[1].codec_dai->codec,
+				zoom2_dai[1].codec_dai->capture.stream_name,
+				SND_SOC_DAPM_STREAM_STOP);
+	}
+
+	if (ret != 0) {
+		printk(KERN_ERR "failed to set capture state\n");
+		return 0;
+	}
+
+	zoom2_capture_state = ucontrol->value.integer.value[0];
+	return 1;
+}
+
+static const char *path_control[] = {"Off", "On"};
+
+static const struct soc_enum zoom2_enum[] = {
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(path_control), path_control),
+};
+
+static const struct snd_kcontrol_new zoom2_controls[] = {
+	SOC_ENUM_EXT("HIFI Playback Control", zoom2_enum[0],
+		zoom2_get_hifi_playback_state, zoom2_set_hifi_playback_state),
+	SOC_ENUM_EXT("Voice Control", zoom2_enum[0],
+		zoom2_get_voice_state, zoom2_set_voice_state),
+	SOC_ENUM_EXT("Capture Control", zoom2_enum[0],
+		zoom2_get_capture_state, zoom2_set_capture_state),
+};
+
 static int zoom2_twl4030_init(struct snd_soc_codec *codec)
 {
 	int ret;
+
+	/* Add ZOOM2 specific controls */
+	ret = snd_soc_add_controls(codec, zoom2_controls,
+				ARRAY_SIZE(zoom2_controls));
+	if (ret)
+		return ret;
 
 	/* Add Zoom2 specific widgets */
 	ret = snd_soc_dapm_new_controls(codec, zoom2_twl4030_dapm_widgets,
