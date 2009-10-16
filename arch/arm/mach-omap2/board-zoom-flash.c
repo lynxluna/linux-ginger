@@ -28,6 +28,8 @@
 
 #include <mach/board-zoom.h>
 
+#define NAND_CMD_LOCK		0x2A
+
 #define NAND_CMD_UNLOCK1	0x23
 #define NAND_CMD_UNLOCK2	0x24
 /**
@@ -39,7 +41,7 @@
  *
  * @return - unlock status
  */
-static int omap_ldp_nand_unlock(struct mtd_info *mtd, loff_t ofs, size_t len)
+static int omap_ldp_nand_unlock(struct mtd_info *mtd, loff_t ofs, uint64_t len)
 {
 	int ret = 0;
 	int chipnr;
@@ -89,6 +91,54 @@ static int omap_ldp_nand_unlock(struct mtd_info *mtd, loff_t ofs, size_t len)
 	if (status & 0x01) {
 		/* there was an error */
 		printk(KERN_ERR "nand_unlock: error status =0x%08x ", status);
+		ret = -EIO;
+		goto out;
+	}
+
+ out:
+	/* de-select the NAND device */
+	this->select_chip(mtd, -1);
+	return ret;
+}
+
+/**
+ * omap_ldp_nand_lock : Locks whole NAND device
+ *
+ * @param mtd - mtd info
+ * @param ofs - offset to start lock from
+ * @param len - length to lock
+ *
+ * @return - lock status
+ */
+static int omap_ldp_nand_lock(struct mtd_info *mtd, loff_t ofs, uint64_t len)
+{
+	int ret = 0;
+	int chipnr;
+	int status;
+	struct nand_chip *this = mtd->priv;
+	printk(KERN_INFO "nand_lock: start: %08x, length: %d!\n",
+			(int)ofs, (int)len);
+
+	/* select the NAND device */
+	chipnr = (int)(ofs >> this->chip_shift);
+	this->select_chip(mtd, chipnr);
+	/* check the WP bit */
+	this->cmdfunc(mtd, NAND_CMD_STATUS, -1, -1);
+	if ((this->read_byte(mtd) & 0x80) == 0) {
+		printk(KERN_ERR "nand_lock: Device is write protected!\n");
+		ret = -EINVAL;
+		goto out;
+	}
+	/* Lock whole device */
+	this->cmdfunc(mtd, NAND_CMD_LOCK, -1, -1);
+
+	/* call wait ready function */
+	status = this->waitfunc(mtd, this);
+	udelay(1000);
+	/* see if device thinks it succeeded */
+	if (status & 0x01) {
+		/* there was an error */
+		printk(KERN_ERR "nand_lock: error status =0x%08x ", status);
 		ret = -EIO;
 		goto out;
 	}
@@ -155,6 +205,7 @@ static struct omap_nand_platform_data ldp_nand_data = {
 	.nand_setup	= NULL,
 	.dma_channel	= -1,		/* disable DMA in OMAP NAND driver */
 	.dev_ready	= NULL,
+	.lock		= omap_ldp_nand_lock,
 	.unlock		= omap_ldp_nand_unlock,
 };
 

@@ -1027,6 +1027,11 @@ static int __devinit omap_nand_probe(struct platform_device *pdev)
 		}
 	}
 
+	if (pdata->unlock)
+		info->mtd.unlock = pdata->unlock;
+	if (pdata->lock)
+		info->mtd.lock = pdata->lock;
+
 #ifdef CONFIG_MTD_PARTITIONS
 	err = parse_mtd_partitions(&info->mtd, part_probes, &info->parts, 0);
 	if (err > 0)
