@@ -459,6 +459,10 @@ void omap_mcbsp_set_spi_mode(unsigned int id, const struct omap_mcbsp_spi_cfg * 
 /* Polled read/write functions */
 int omap_mcbsp_pollread(unsigned int id, u16 * buf);
 int omap_mcbsp_pollwrite(unsigned int id, u16 buf);
+
+int omap3_mcbsp_pollread(unsigned int id, u32 *buf);
+int omap3_mcbsp_pollwrite(unsigned int id, u32 buf);
+
 int omap_mcbsp_set_io_type(unsigned int id, omap_mcbsp_io_type_t io_type);
 
 #endif
