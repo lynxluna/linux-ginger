@@ -41,6 +41,8 @@ static struct device *zoom2cam_dev;
 
 #define CAMZOOM2_USE_XCLKB  	1
 
+#define ISP_IMX046_MCLK		216000000
+
 /* Sensor specific GPIO signals */
 #define IMX046_RESET_GPIO  	98
 #define IMX046_STANDBY_GPIO	58
@@ -148,6 +150,7 @@ static struct isp_interface_config imx046_if_config = {
 	.shutter 		= 0x0,
 	.wenlog 		= ISPCCDC_CFG_WENLOG_AND,
 	.wait_hs_vs		= 2,
+	.cam_mclk		= ISP_IMX046_MCLK,
 	.u.csi.crc 		= 0x0,
 	.u.csi.mode 		= 0x0,
 	.u.csi.edge 		= 0x0,
@@ -265,6 +268,8 @@ static int imx046_sensor_power_set(struct v4l2_int_device *s, enum v4l2_power po
 #ifdef CONFIG_OMAP_PM_SRF
 		omap_pm_set_min_bus_tput(vdev->cam->isp, OCP_INITIATOR_AGENT, 0);
 #endif
+		if (previous_power != V4L2_POWER_OFF)
+			isp_disable_mclk(isp);
 		break;
 	case V4L2_POWER_STANDBY:
 		printk(KERN_DEBUG "imx046_sensor_power_set(STANDBY)\n");
@@ -273,8 +278,13 @@ static int imx046_sensor_power_set(struct v4l2_int_device *s, enum v4l2_power po
 #ifdef CONFIG_OMAP_PM_SRF
 		omap_pm_set_min_bus_tput(vdev->cam->isp, OCP_INITIATOR_AGENT, 0);
 #endif
+
+
+		isp_disable_mclk(isp);
+
 		break;
 	}
+
 
 	/* Save powerstate to know what was before calling POWER_ON. */
 	previous_power = power;

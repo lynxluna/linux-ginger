@@ -208,6 +208,7 @@ struct isp_interface_config {
 	u32 prev_slv;
 	u32 wenlog;
 	int wait_hs_vs;
+	u32 cam_mclk;
 	unsigned int pixelclk;
 	union {
 		struct par {
@@ -435,6 +436,7 @@ struct isp_device {
 	struct isp_irq irq;
 	struct isp_pipeline pipeline;
 	u32 interrupts;
+	u32 mclk;
 	enum isp_running running;
 
 	/* ISP modules */
@@ -484,6 +486,10 @@ int isp_configure_interface(struct device *dev,
 struct device *isp_get(void);
 
 int isp_put(void);
+
+int isp_enable_mclk(struct device *dev);
+
+void isp_disable_mclk(struct isp_device *dev);
 
 int isp_queryctrl(struct v4l2_queryctrl *a);
 
