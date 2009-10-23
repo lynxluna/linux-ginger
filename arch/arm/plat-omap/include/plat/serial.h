@@ -59,6 +59,10 @@ extern void omap_uart_prepare_suspend(void);
 extern void omap_uart_prepare_idle(int num);
 extern void omap_uart_resume_idle(int num);
 extern void omap_uart_enable_irqs(int enable);
+
+#ifdef CONFIG_SERIAL_OMAP
+extern void __init omap_serial_hsuart_init(void);
+#endif
 #endif
 
 #endif
