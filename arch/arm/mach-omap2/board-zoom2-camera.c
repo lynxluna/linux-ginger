@@ -236,27 +236,25 @@ static int imx046_sensor_power_set(struct v4l2_int_device *s, enum v4l2_power po
 
 		isp_configure_interface(vdev->cam->isp, &imx046_if_config);
 
-		if (previous_power == V4L2_POWER_OFF) {
-			/* nRESET is active LOW. set HIGH to release reset */
-			gpio_set_value(IMX046_RESET_GPIO, 1);
+		/* nRESET is active LOW. set HIGH to release reset */
+		gpio_set_value(IMX046_RESET_GPIO, 1);
 
+		/* turn on analog power */
+		regulator_enable(zoom2_imx046_reg1);
+		regulator_enable(zoom2_imx046_reg2);
+		udelay(100);
 
-			/* turn on analog power */
-			regulator_enable(zoom2_imx046_reg1);
-			regulator_enable(zoom2_imx046_reg2);
-			udelay(100);
+		/* have to put sensor to reset to guarantee detection */
+		gpio_set_value(IMX046_RESET_GPIO, 0);
+		udelay(1500);
 
-			/* have to put sensor to reset to guarantee detection */
-			gpio_set_value(IMX046_RESET_GPIO, 0);
-			udelay(1500);
-
-			/* nRESET is active LOW. set HIGH to release reset */
-			gpio_set_value(IMX046_RESET_GPIO, 1);
-			udelay(300);
-		}
+		/* nRESET is active LOW. set HIGH to release reset */
+		gpio_set_value(IMX046_RESET_GPIO, 1);
+		udelay(300);
 		break;
 	case V4L2_POWER_OFF:
-		printk(KERN_DEBUG "imx046_sensor_power_set(OFF)\n");
+	case V4L2_POWER_STANDBY:
+		printk(KERN_DEBUG "imx046_sensor_power_set(OFF/STANDBY)\n");
 		/* Power Down Sequence */
 		isp_csi2_complexio_power(&isp->isp_csi2, ISP_CSI2_POWER_OFF);
 
@@ -268,20 +266,8 @@ static int imx046_sensor_power_set(struct v4l2_int_device *s, enum v4l2_power po
 #ifdef CONFIG_OMAP_PM_SRF
 		omap_pm_set_min_bus_tput(vdev->cam->isp, OCP_INITIATOR_AGENT, 0);
 #endif
-		if (previous_power != V4L2_POWER_OFF)
+		if (previous_power == V4L2_POWER_ON)
 			isp_disable_mclk(isp);
-		break;
-	case V4L2_POWER_STANDBY:
-		printk(KERN_DEBUG "imx046_sensor_power_set(STANDBY)\n");
-		isp_csi2_complexio_power(&isp->isp_csi2, ISP_CSI2_POWER_OFF);
-		/*TODO*/
-#ifdef CONFIG_OMAP_PM_SRF
-		omap_pm_set_min_bus_tput(vdev->cam->isp, OCP_INITIATOR_AGENT, 0);
-#endif
-
-
-		isp_disable_mclk(isp);
-
 		break;
 	}
 
