@@ -640,7 +640,12 @@ static void __init omap_3430sdp_init(void)
 	spi_register_board_info(sdp3430_spi_board_info,
 				ARRAY_SIZE(sdp3430_spi_board_info));
 	ads7846_dev_init();
+#ifndef CONFIG_SERIAL_OMAP
+	/* To be removed */
 	omap_serial_init();
+#else
+	omap_serial_hsuart_init();
+#endif
 	usb_musb_init();
 	board_smc91x_init();
 	sdp_flash_init();
