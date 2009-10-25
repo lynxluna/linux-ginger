@@ -1379,8 +1379,8 @@ static void InputMsg(struct IO_MGR *pIOMgr, struct MSG_MGR *hMsgMgr)
 					if (hMsgQueue->msgUsedList && pMsg) {
 						pMsg->msgData = msg;
 						LST_PutTail(hMsgQueue->
-						      msgUsedList,
-						      (struct LST_ELEM *)pMsg);
+						    msgUsedList,
+						    (struct list_head *)pMsg);
 						NTFY_Notify(hMsgQueue->hNtfy,
 							DSP_NODEMESSAGEREADY);
 						SYNC_SetEvent(hMsgQueue->
@@ -1401,7 +1401,7 @@ static void InputMsg(struct IO_MGR *pIOMgr, struct MSG_MGR *hMsgMgr)
 			if (!hMsgMgr->queueList || !hMsgQueue)
 				goto func_end;
 			hMsgQueue = (struct MSG_QUEUE *)LST_Next(hMsgMgr->
-				    queueList, (struct LST_ELEM *)hMsgQueue);
+				    queueList, (struct list_head *)hMsgQueue);
 		}
 	}
 	/* Set the post SWI flag */
@@ -1439,7 +1439,7 @@ static void NotifyChnlComplete(struct CHNL_OBJECT *pChnl,
 	 */
 	fSignalEvent = LST_IsEmpty(pChnl->pIOCompletions);
 	/* Enqueue the IO completion info for the client */
-	LST_PutTail(pChnl->pIOCompletions, (struct LST_ELEM *) pChirp);
+	LST_PutTail(pChnl->pIOCompletions, (struct list_head *)pChirp);
 	pChnl->cIOCs++;
 
 	if (pChnl->cIOCs > pChnl->cChirps)
@@ -1597,7 +1597,7 @@ static void OutputMsg(struct IO_MGR *pIOMgr, struct MSG_MGR *hMsgMgr)
 				if (!hMsgMgr->msgFreeList)
 					goto func_end;
 				LST_PutTail(hMsgMgr->msgFreeList,
-					   (struct LST_ELEM *) pMsg);
+					   (struct list_head *)pMsg);
 				SYNC_SetEvent(hMsgMgr->hSyncEvent);
 			} else {
 				DBG_Trace(DBG_LEVEL3, "pMsg is NULL\n");
