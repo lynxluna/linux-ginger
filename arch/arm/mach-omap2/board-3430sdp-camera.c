@@ -581,10 +581,60 @@ static u32 ov3640_sensor_set_xclk(struct v4l2_int_device *s, u32 xclkfreq)
 	return isp_set_xclk(vdev->cam->isp, xclkfreq, CAMKITV3_USE_XCLKB);
 }
 
+static int ov3640_csi2_cfg_vp_out_ctrl(struct v4l2_int_device *s,
+				       u8 vp_out_ctrl)
+{
+	struct omap34xxcam_videodev *vdev = s->u.slave->master->priv;
+	struct isp_device *isp = dev_get_drvdata(vdev->cam->isp);
+
+	return isp_csi2_ctrl_config_vp_out_ctrl(&isp->isp_csi2, vp_out_ctrl);
+}
+
+static int ov3640_csi2_ctrl_update(struct v4l2_int_device *s, bool force_update)
+{
+	struct omap34xxcam_videodev *vdev = s->u.slave->master->priv;
+	struct isp_device *isp = dev_get_drvdata(vdev->cam->isp);
+
+	return isp_csi2_ctrl_update(&isp->isp_csi2, force_update);
+}
+
+static int ov3640_csi2_cfg_virtual_id(struct v4l2_int_device *s, u8 ctx, u8 id)
+{
+	struct omap34xxcam_videodev *vdev = s->u.slave->master->priv;
+	struct isp_device *isp = dev_get_drvdata(vdev->cam->isp);
+
+	return isp_csi2_ctx_config_virtual_id(&isp->isp_csi2, ctx, id);
+}
+
+static int ov3640_csi2_ctx_update(struct v4l2_int_device *s, u8 ctx,
+				  bool force_update)
+{
+	struct omap34xxcam_videodev *vdev = s->u.slave->master->priv;
+	struct isp_device *isp = dev_get_drvdata(vdev->cam->isp);
+
+	return isp_csi2_ctx_update(&isp->isp_csi2, ctx, force_update);
+}
+
+static int ov3640_csi2_calc_phy_cfg0(struct v4l2_int_device *s,
+				     u32 mipiclk, u32 lbound_hs_settle,
+				     u32 ubound_hs_settle)
+{
+	struct omap34xxcam_videodev *vdev = s->u.slave->master->priv;
+	struct isp_device *isp = dev_get_drvdata(vdev->cam->isp);
+
+	return isp_csi2_calc_phy_cfg0(&isp->isp_csi2, mipiclk,
+				      lbound_hs_settle, ubound_hs_settle);
+}
+
 struct ov3640_platform_data sdp3430_ov3640_platform_data = {
-	.power_set	 = ov3640_sensor_power_set,
-	.priv_data_set	 = ov3640_sensor_set_prv_data,
-	.set_xclk	 = ov3640_sensor_set_xclk,
+	.power_set		= ov3640_sensor_power_set,
+	.priv_data_set		= ov3640_sensor_set_prv_data,
+	.set_xclk		= ov3640_sensor_set_xclk,
+	.csi2_cfg_vp_out_ctrl	= ov3640_csi2_cfg_vp_out_ctrl,
+	.csi2_ctrl_update	= ov3640_csi2_ctrl_update,
+	.csi2_cfg_virtual_id	= ov3640_csi2_cfg_virtual_id,
+	.csi2_ctx_update	= ov3640_csi2_ctx_update,
+	.csi2_calc_phy_cfg0	= ov3640_csi2_calc_phy_cfg0,
 };
 
 #endif
