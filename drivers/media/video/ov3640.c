@@ -1852,55 +1852,6 @@ static int ioctl_g_priv(struct v4l2_int_device *s, void *p)
 	return sensor->pdata->priv_data_set(s, p);
 }
 
-/*
- * ioctl_init - V4L2 sensor interface handler for VIDIOC_INT_INIT
- * @s: pointer to standard V4L2 device structure
- *
- * Initialize the sensor device (call ov3640_configure())
- */
-static int ioctl_init(struct v4l2_int_device *s)
-{
-	return 0;
-}
-
-/**
- * ioctl_dev_exit - V4L2 sensor interface handler for vidioc_int_dev_exit_num
- * @s: pointer to standard V4L2 device structure
- *
- * Delinitialise the dev. at slave detach.  The complement of ioctl_dev_init.
- */
-static int ioctl_dev_exit(struct v4l2_int_device *s)
-{
-	return 0;
-}
-
-/**
- * ioctl_dev_init - V4L2 sensor interface handler for vidioc_int_dev_init_num
- * @s: pointer to standard V4L2 device structure
- *
- * Initialise the device when slave attaches to the master.  Returns 0 if
- * ov3640 device could be found, otherwise returns appropriate error.
- */
-static int ioctl_dev_init(struct v4l2_int_device *s)
-{
-	struct ov3640_sensor *sensor = s->priv;
-	struct i2c_client *client = to_i2c_client(sensor->dev);
-	int err;
-
-	err = ov3640_detect(client);
-	if (err < 0) {
-		dev_err(&client->dev, "Unable to detect sensor, err %d\n",
-			err);
-		sensor->detected = 0;
-		return err;
-	}
-	sensor->detected = 1;
-	sensor->ver = err;
-	dev_dbg(&client->dev, "Chip version 0x%02x detected\n", sensor->ver);
-
-	return 0;
-}
-
 /**
  * ioctl_enum_framesizes - V4L2 sensor if handler for vidioc_int_enum_framesizes
  * @s: pointer to standard V4L2 device structure
@@ -1974,6 +1925,53 @@ static int ioctl_enum_frameintervals(struct v4l2_int_device *s,
 	return 0;
 }
 
+static int __ov3640_power_off_standby(struct v4l2_int_device *s,
+				      enum v4l2_power on)
+{
+	struct ov3640_sensor *sensor = s->priv;
+	struct i2c_client *client = to_i2c_client(sensor->dev);
+	int rval;
+
+	rval = sensor->pdata->power_set(s, on);
+	if (rval < 0) {
+		v4l_err(client, "Unable to set the power state: "
+			OV3640_DRIVER_NAME " sensor\n");
+		return rval;
+	}
+
+	sensor->pdata->set_xclk(s, 0);
+	return 0;
+}
+
+static int ov3640_power_off(struct v4l2_int_device *s)
+{
+	return __ov3640_power_off_standby(s, V4L2_POWER_OFF);
+}
+
+static int ov3640_power_standby(struct v4l2_int_device *s)
+{
+	return __ov3640_power_off_standby(s, V4L2_POWER_STANDBY);
+}
+
+static int ov3640_power_on(struct v4l2_int_device *s)
+{
+	struct ov3640_sensor *sensor = s->priv;
+	struct i2c_client *client = to_i2c_client(sensor->dev);
+	int rval;
+
+	sensor->pdata->set_xclk(s, OV3640_XCLK);
+
+	rval = sensor->pdata->power_set(s, V4L2_POWER_ON);
+	if (rval < 0) {
+		v4l_err(client, "Unable to set the power state: "
+			OV3640_DRIVER_NAME " sensor\n");
+		sensor->pdata->set_xclk(s, 0);
+		return rval;
+	}
+
+	return 0;
+}
+
 /*
  * ioctl_s_power - V4L2 sensor interface handler for vidioc_int_s_power_num
  * @s: pointer to standard V4L2 device structure
@@ -1983,40 +1981,82 @@ static int ioctl_enum_frameintervals(struct v4l2_int_device *s,
  */
 static int ioctl_s_power(struct v4l2_int_device *s, enum v4l2_power new_power)
 {
-	struct ov3640_sensor *sensor = s->priv;
 	int rval;
 
 	switch (new_power) {
 	case V4L2_POWER_ON:
-		rval = sensor->pdata->set_xclk(s, OV3640_XCLK);
-		if (rval == -EINVAL)
-			break;
-		rval = sensor->pdata->power_set(s, V4L2_POWER_ON);
+		rval = ov3640_power_on(s);
 		if (rval)
 			break;
 
-		if (sensor->detected)
-			ov3640_configure(s);
-		else {
-			rval = ioctl_dev_init(s);
-			if (rval)
-				goto err_on;
-		}
+		ov3640_configure(s);
 		break;
 	case V4L2_POWER_OFF:
-err_on:
-		rval = sensor->pdata->power_set(s, V4L2_POWER_OFF);
-		sensor->pdata->set_xclk(s, 0);
+		rval = ov3640_power_off(s);
 		break;
 	case V4L2_POWER_STANDBY:
-		rval = sensor->pdata->power_set(s, V4L2_POWER_STANDBY);
-		sensor->pdata->set_xclk(s, 0);
+		rval = ov3640_power_standby(s);
 		break;
 	default:
 		return -EINVAL;
 	}
 
 	return rval;
+}
+
+/*
+ * ioctl_init - V4L2 sensor interface handler for VIDIOC_INT_INIT
+ * @s: pointer to standard V4L2 device structure
+ *
+ * Initialize the sensor device (call ov3640_configure())
+ */
+static int ioctl_init(struct v4l2_int_device *s)
+{
+	return 0;
+}
+
+/**
+ * ioctl_dev_exit - V4L2 sensor interface handler for vidioc_int_dev_exit_num
+ * @s: pointer to standard V4L2 device structure
+ *
+ * Delinitialise the dev. at slave detach.  The complement of ioctl_dev_init.
+ */
+static int ioctl_dev_exit(struct v4l2_int_device *s)
+{
+	return 0;
+}
+
+/**
+ * ioctl_dev_init - V4L2 sensor interface handler for vidioc_int_dev_init_num
+ * @s: pointer to standard V4L2 device structure
+ *
+ * Initialise the device when slave attaches to the master.  Returns 0 if
+ * ov3640 device could be found, otherwise returns appropriate error.
+ */
+static int ioctl_dev_init(struct v4l2_int_device *s)
+{
+	struct ov3640_sensor *sensor = s->priv;
+	struct i2c_client *client = to_i2c_client(sensor->dev);
+	int err;
+
+	err = ov3640_power_on(s);
+	if (err)
+		return -ENODEV;
+
+	err = ov3640_detect(client);
+	if (err < 0) {
+		dev_err(&client->dev, "Unable to detect sensor, err %d\n",
+			err);
+		return err;
+	}
+	sensor->ver = err;
+	dev_dbg(&client->dev, "Chip version 0x%02x detected\n", sensor->ver);
+
+	err = ov3640_power_off(s);
+	if (err)
+		return -ENODEV;
+
+	return 0;
 }
 
 static struct v4l2_int_ioctl_desc ov3640_ioctl_desc[] = {
