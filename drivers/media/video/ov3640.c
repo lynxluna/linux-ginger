@@ -16,7 +16,6 @@
 #include <media/ov3640.h>
 #include "ov3640_regs.h"
 #include "omap34xxcam.h"
-#include "isp/ispcsi2.h"
 
 #define OV3640_DRIVER_NAME		 "ov3640"
 
@@ -1205,8 +1204,8 @@ static int ov3640_configure(struct v4l2_int_device *s)
 	 * Only set the sensors virtual channel after all other setup
 	 * for the sensor is complete.
 	 */
-	isp_csi2_ctx_config_virtual_id(0, OV3640_CSI2_VIRTUAL_ID);
-	isp_csi2_ctx_update(0, false);
+	sensor->pdata->csi2_cfg_virtual_id(s, 0, OV3640_CSI2_VIRTUAL_ID);
+	sensor->pdata->csi2_ctx_update(s, 0, false);
 
 	if (ov3640_find_size(pix->width, pix->height) == XGA)
 		isize = XGA;
@@ -1318,11 +1317,11 @@ static int ov3640_configure(struct v4l2_int_device *s)
 
 	/* Setup the ISP VP based on image format */
 	if (pix->pixelformat == V4L2_PIX_FMT_SGRBG10) {
-		isp_csi2_ctrl_config_vp_out_ctrl(2);
-		isp_csi2_ctrl_update(false);
+		sensor->pdata->csi2_cfg_vp_out_ctrl(s, 2);
+		sensor->pdata->csi2_ctrl_update(s, false);
 	} else {
-		isp_csi2_ctrl_config_vp_out_ctrl(1);
-		isp_csi2_ctrl_update(false);
+		sensor->pdata->csi2_cfg_vp_out_ctrl(s, 1);
+		sensor->pdata->csi2_ctrl_update(s, false);
 	}
 
 	/* Store image size */
@@ -1375,7 +1374,7 @@ static int ov3640_configure(struct v4l2_int_device *s)
 							1000000)) / 1000;
 
 	/* Send settings to ISP-CSI2 Receiver PHY */
-	isp_csi2_calc_phy_cfg0(mipiclk, lbound_hs_settle, ubound_hs_settle);
+	sensor->pdata->csi2_calc_phy_cfg0(s, mipiclk, lbound_hs_settle, ubound_hs_settle);
 
 	/* Set sensors virtual channel*/
 	ov3640_set_virtual_id(client, OV3640_CSI2_VIRTUAL_ID);
@@ -2114,6 +2113,12 @@ static int ov3640_probe(struct i2c_client *client,
 	sensor->pdata->power_set = pdata->power_set;
 	sensor->pdata->set_xclk = pdata->set_xclk;
 	sensor->pdata->priv_data_set = pdata->priv_data_set;
+
+	sensor->pdata->csi2_cfg_vp_out_ctrl = pdata->csi2_cfg_vp_out_ctrl;
+	sensor->pdata->csi2_ctrl_update = pdata->csi2_ctrl_update;
+	sensor->pdata->csi2_cfg_virtual_id = pdata->csi2_cfg_virtual_id;
+	sensor->pdata->csi2_ctx_update = pdata->csi2_ctx_update;
+	sensor->pdata->csi2_calc_phy_cfg0 = pdata->csi2_calc_phy_cfg0;
 
 	/* Set sensor default values */
 	sensor->timeperframe.numerator = 1;

@@ -24,6 +24,11 @@ struct ov3640_platform_data {
 	int (*power_set)(struct v4l2_int_device *s, enum v4l2_power power);
 	u32 (*set_xclk)(struct v4l2_int_device *s, u32 xclkfreq);
 	int (*priv_data_set)(struct v4l2_int_device *s, void *);
+	int (*csi2_cfg_vp_out_ctrl)(struct v4l2_int_device *s, u8 vp_out_ctrl);
+	int (*csi2_ctrl_update)(struct v4l2_int_device *s, bool);
+	int (*csi2_cfg_virtual_id)(struct v4l2_int_device *s, u8 ctx, u8 id);
+	int (*csi2_ctx_update)(struct v4l2_int_device *s, u8 ctx, bool);
+	int (*csi2_calc_phy_cfg0)(struct v4l2_int_device *s, u32, u32, u32);
 };
 
 #endif /* ifndef OV3640_H */
