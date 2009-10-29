@@ -26,7 +26,8 @@
 
 #define CTRL_CAMERA_FLASH_STROBE		0
 #define CTRL_CAMERA_FLASH_TIMEOUT		1
-#define CTRL_CAMERA_FLASH_TORCH_INTENSITY	2
+#define CTRL_CAMERA_FLASH_INTENSITY		2
+#define CTRL_CAMERA_TORCH_INTENSITY		3
 
 struct tps61059_flash {
 	struct device *dev;
@@ -100,7 +101,17 @@ static struct v4l2_queryctrl tps61059_ctrls[] = {
 		.flags		= V4L2_CTRL_FLAG_SLIDER,
 	},
 	{
-		.id		= V4L2_CID_FLASH_TORCH_INTENSITY,
+		.id		= V4L2_CID_FLASH_INTENSITY,
+		.type		= V4L2_CTRL_TYPE_INTEGER,
+		.name		= "Flash intensity",
+		.minimum	= 0,
+		.maximum	= 1,
+		.step		= 1,
+		.default_value	= 0,
+		.flags		= V4L2_CTRL_FLAG_SLIDER,
+	},
+	{
+		.id		= V4L2_CID_TORCH_INTENSITY,
 		.type		= V4L2_CTRL_TYPE_INTEGER,
 		.name		= "Torch intensity",
 		.minimum	= 0,
@@ -173,7 +184,8 @@ static int tps61059_ioctl_g_ctrl(struct v4l2_int_device *s,
 	case V4L2_CID_FLASH_TIMEOUT:
 		vc->value = flash->flash_timeout;
 		break;
-	case V4L2_CID_FLASH_TORCH_INTENSITY:
+	case V4L2_CID_FLASH_INTENSITY:
+	case V4L2_CID_TORCH_INTENSITY:
 		vc->value = flash->torch_intensity;
 		break;
 	default:
@@ -206,8 +218,12 @@ static int tps61059_ioctl_s_ctrl(struct v4l2_int_device *s,
 		ctrl = CTRL_CAMERA_FLASH_TIMEOUT;
 		value = &flash->flash_timeout;
 		break;
-	case V4L2_CID_FLASH_TORCH_INTENSITY:
-		ctrl = CTRL_CAMERA_FLASH_TORCH_INTENSITY;
+	case V4L2_CID_FLASH_INTENSITY:
+		ctrl = CTRL_CAMERA_FLASH_INTENSITY;
+		value = &flash->torch_intensity;
+		break;
+	case V4L2_CID_TORCH_INTENSITY:
+		ctrl = CTRL_CAMERA_TORCH_INTENSITY;
 		value = &flash->torch_intensity;
 		break;
 	default:
@@ -311,7 +327,7 @@ static int tps61059_probe(struct platform_device *pdev)
 	flash->flash_timeout = tps61059_ctrls
 			[CTRL_CAMERA_FLASH_TIMEOUT].default_value;
 	flash->torch_intensity = tps61059_ctrls
-			[CTRL_CAMERA_FLASH_TORCH_INTENSITY].default_value;
+			[CTRL_CAMERA_FLASH_INTENSITY].default_value;
 
 	flash->v4l2_int_device = &tps61059_int_device;
 	flash->v4l2_int_device->priv = flash;
