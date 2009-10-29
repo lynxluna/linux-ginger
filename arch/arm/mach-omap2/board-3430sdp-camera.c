@@ -43,6 +43,9 @@ static struct device *camkit_dev;
 #define CAMKITV3_USE_XCLKA		0
 #define CAMKITV3_USE_XCLKB		1
 
+#define ISP_MT9P012_MCLK	216000000
+#define ISP_OV3640_MCLK		216000000
+
 #define CAMKITV3_RESET_GPIO		98
 
 /* Sensor specific GPIO signals */
@@ -295,24 +298,24 @@ static int mt9p012_sensor_set_prv_data(struct v4l2_int_device *s, void *priv)
 }
 
 static struct isp_interface_config mt9p012_if_config = {
-	.ccdc_par_ser = ISP_PARLL,
-	.dataline_shift = 0x1,
-	.hsvs_syncdetect = ISPCTRL_SYNC_DETECT_VSRISE,
-	.strobe = 0x0,
-	.prestrobe = 0x0,
-	.shutter = 0x0,
-	.prev_sph = 2,
-	.prev_slv = 0,
-	.wenlog = ISPCCDC_CFG_WENLOG_AND,
-	.wait_hs_vs = 2,
-	.u.par.par_bridge = 0x0,
-	.u.par.par_clk_pol = 0x0,
+	.ccdc_par_ser		= ISP_PARLL,
+	.dataline_shift		= 0x1,
+	.hsvs_syncdetect	= ISPCTRL_SYNC_DETECT_VSRISE,
+	.strobe			= 0x0,
+	.prestrobe		= 0x0,
+	.shutter		= 0x0,
+	.wenlog			= ISPCCDC_CFG_WENLOG_AND,
+	.wait_hs_vs		= 2,
+	.cam_mclk		= ISP_MT9P012_MCLK,
+	.u.par.par_bridge	= 0x0,
+	.u.par.par_clk_pol	= 0x0,
 };
 
 static int mt9p012_sensor_power_set(struct v4l2_int_device *s,
 				    enum v4l2_power power)
 {
 	struct omap34xxcam_videodev *vdev = s->u.slave->master->priv;
+	struct isp_device *isp = dev_get_drvdata(vdev->cam->isp);
 
 	if (!cam_inited) {
 		printk(KERN_ERR "MT9P012: Unable to control board GPIOs!\n");
@@ -341,6 +344,8 @@ static int mt9p012_sensor_power_set(struct v4l2_int_device *s,
 #ifdef CONFIG_OMAP_PM_SRF
 		omap_pm_set_min_bus_tput(vdev->cam->isp, OCP_INITIATOR_AGENT, 0);
 #endif
+		if (mt9p012_previous_power == V4L2_POWER_ON)
+			isp_disable_mclk(isp);
 		break;
 	case V4L2_POWER_ON:
 
@@ -351,47 +356,42 @@ static int mt9p012_sensor_power_set(struct v4l2_int_device *s,
 		omap_pm_set_min_bus_tput(vdev->cam->isp, OCP_INITIATOR_AGENT, 324770);
 #endif
 
-		if (mt9p012_previous_power == V4L2_POWER_OFF) {
-			/* Power Up Sequence */
-			isp_configure_interface(vdev->cam->isp,
-						&mt9p012_if_config);
+		/* Power Up Sequence */
+		isp_configure_interface(vdev->cam->isp, &mt9p012_if_config);
 
-			/* set to output mode */
-			gpio_direction_output(MT9P012_STANDBY_GPIO, true);
-			/* set to output mode */
-			gpio_direction_output(CAMKITV3_RESET_GPIO, true);
+		/* set to output mode */
+		gpio_direction_output(MT9P012_STANDBY_GPIO, true);
+		/* set to output mode */
+		gpio_direction_output(CAMKITV3_RESET_GPIO, true);
 
-			/* STANDBY_GPIO is active HIGH for set LOW to release */
-			gpio_set_value(MT9P012_STANDBY_GPIO, 1);
+		/* STANDBY_GPIO is active HIGH for set LOW to release */
+		gpio_set_value(MT9P012_STANDBY_GPIO, 1);
 
-			/* nRESET is active LOW. set HIGH to release reset */
-			gpio_set_value(CAMKITV3_RESET_GPIO, 1);
+		/* nRESET is active LOW. set HIGH to release reset */
+		gpio_set_value(CAMKITV3_RESET_GPIO, 1);
 
-			/* turn on digital power */
-			enable_fpga_vio_1v8(1);
+		/* turn on digital power */
+		enable_fpga_vio_1v8(1);
 
-			/* turn on analog power */
-			regulator_enable(sdp3430_mt9p012_reg);
-		}
+		/* turn on analog power */
+		regulator_enable(sdp3430_mt9p012_reg);
 
 		/* out of standby */
 		gpio_set_value(MT9P012_STANDBY_GPIO, 0);
 		udelay(1000);
 
-		if (mt9p012_previous_power == V4L2_POWER_OFF) {
-			/* have to put sensor to reset to guarantee detection */
-			gpio_set_value(CAMKITV3_RESET_GPIO, 0);
+		/* have to put sensor to reset to guarantee detection */
+		gpio_set_value(CAMKITV3_RESET_GPIO, 0);
 
-			udelay(1500);
+		udelay(1500);
 
-			/* nRESET is active LOW. set HIGH to release reset */
-			gpio_set_value(CAMKITV3_RESET_GPIO, 1);
-			/* give sensor sometime to get out of the reset.
-			 * Datasheet says 2400 xclks. At 6 MHz, 400 usec is
-			 * enough
-			 */
-			udelay(300);
-		}
+		/* nRESET is active LOW. set HIGH to release reset */
+		gpio_set_value(CAMKITV3_RESET_GPIO, 1);
+		/* give sensor sometime to get out of the reset.
+		 * Datasheet says 2400 xclks. At 6 MHz, 400 usec is
+		 * enough
+		 */
+		udelay(300);
 		break;
 	case V4L2_POWER_STANDBY:
 		/* stand by */
@@ -399,6 +399,8 @@ static int mt9p012_sensor_power_set(struct v4l2_int_device *s,
 #ifdef CONFIG_OMAP_PM_SRF
 		omap_pm_set_min_bus_tput(vdev->cam->isp, OCP_INITIATOR_AGENT, 0);
 #endif
+		if (mt9p012_previous_power == V4L2_POWER_ON)
+			isp_disable_mclk(isp);
 		break;
 	}
 	/* Save powerstate to know what was before calling POWER_ON. */
@@ -430,27 +432,26 @@ static struct omap34xxcam_sensor_config ov3640_hwc = {
 };
 
 static struct isp_interface_config ov3640_if_config = {
-	.ccdc_par_ser = ISP_CSIA,
-	.dataline_shift = 0x0,
-	.hsvs_syncdetect = ISPCTRL_SYNC_DETECT_VSRISE,
-	.strobe = 0x0,
-	.prestrobe = 0x0,
-	.shutter = 0x0,
-	.prev_sph = 2,
-	.prev_slv = 0,
-	.wenlog = ISPCCDC_CFG_WENLOG_AND,
-	.wait_hs_vs = 2,
-	.u.csi.crc = 0x0,
-	.u.csi.mode = 0x0,
-	.u.csi.edge = 0x0,
-	.u.csi.signalling = 0x0,
+	.ccdc_par_ser		= ISP_CSIA,
+	.dataline_shift		= 0x0,
+	.hsvs_syncdetect	= ISPCTRL_SYNC_DETECT_VSRISE,
+	.strobe			= 0x0,
+	.prestrobe		= 0x0,
+	.shutter		= 0x0,
+	.wenlog			= ISPCCDC_CFG_WENLOG_AND,
+	.wait_hs_vs		= 2,
+	.cam_mclk		= ISP_OV3640_MCLK,
+	.u.csi.crc		= 0x0,
+	.u.csi.mode		= 0x0,
+	.u.csi.edge		= 0x0,
+	.u.csi.signalling	= 0x0,
 	.u.csi.strobe_clock_inv = 0x0,
-	.u.csi.vs_edge = 0x0,
-	.u.csi.channel = 0x1,
-	.u.csi.vpclk = 0x1,
-	.u.csi.data_start = 0x0,
-	.u.csi.data_size = 0x0,
-	.u.csi.format = V4L2_PIX_FMT_SGRBG10,
+	.u.csi.vs_edge		= 0x0,
+	.u.csi.channel		= 0x1,
+	.u.csi.vpclk		= 0x1,
+	.u.csi.data_start	= 0x0,
+	.u.csi.data_size	= 0x0,
+	.u.csi.format		= V4L2_PIX_FMT_SGRBG10,
 };
 
 static int ov3640_sensor_set_prv_data(struct v4l2_int_device *s, void *priv)
@@ -533,26 +534,24 @@ static int ov3640_sensor_power_set(struct v4l2_int_device *s,
 
 		isp_configure_interface(vdev->cam->isp, &ov3640_if_config);
 
-		if (previous_power == V4L2_POWER_OFF) {
-			/* turn on analog power */
-			regulator_enable(sdp3430_ov3640_reg);
-			udelay(100);
+		/* turn on analog power */
+		regulator_enable(sdp3430_ov3640_reg);
+		udelay(100);
 
-			/* Turn ON Omnivision sensor */
-			gpio_set_value(CAMKITV3_RESET_GPIO, 1);
-			gpio_set_value(OV3640_STANDBY_GPIO, 0);
-			udelay(100);
+		/* Turn ON Omnivision sensor */
+		gpio_set_value(CAMKITV3_RESET_GPIO, 1);
+		gpio_set_value(OV3640_STANDBY_GPIO, 0);
+		udelay(100);
 
-			/* RESET Omnivision sensor */
-			gpio_set_value(CAMKITV3_RESET_GPIO, 0);
-			udelay(100);
-			gpio_set_value(CAMKITV3_RESET_GPIO, 1);
+		/* RESET Omnivision sensor */
+		gpio_set_value(CAMKITV3_RESET_GPIO, 0);
+		udelay(100);
+		gpio_set_value(CAMKITV3_RESET_GPIO, 1);
 
-			/* Wait 10 ms */
-			mdelay(10);
-			enable_fpga_vio_1v8(1);
-			udelay(100);
-		}
+		/* Wait 10 ms */
+		mdelay(10);
+		enable_fpga_vio_1v8(1);
+		udelay(100);
 		break;
 	case V4L2_POWER_OFF:
 		/* Power Down Sequence */
@@ -563,11 +562,15 @@ static int ov3640_sensor_power_set(struct v4l2_int_device *s,
 #ifdef CONFIG_OMAP_PM_SRF
 		omap_pm_set_min_bus_tput(vdev->cam->isp, OCP_INITIATOR_AGENT, 0);
 #endif
+		if (previous_power == V4L2_POWER_ON)
+			isp_disable_mclk(isp);
 		break;
 	case V4L2_POWER_STANDBY:
 #ifdef CONFIG_OMAP_PM_SRF
 		omap_pm_set_min_bus_tput(vdev->cam->isp, OCP_INITIATOR_AGENT, 0);
 #endif
+		if (previous_power == V4L2_POWER_ON)
+			isp_disable_mclk(isp);
 		break;
 	}
 	previous_power = power;
