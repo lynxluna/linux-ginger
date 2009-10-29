@@ -469,6 +469,7 @@ static int ov3640_sensor_power_set(struct v4l2_int_device *s,
 				   enum v4l2_power power)
 {
 	struct omap34xxcam_videodev *vdev = s->u.slave->master->priv;
+	struct isp_device *isp = dev_get_drvdata(vdev->cam->isp);
 	struct isp_csi2_lanes_cfg lanecfg;
 	struct isp_csi2_phy_cfg phyconfig;
 	static enum v4l2_power previous_power = V4L2_POWER_OFF;
@@ -507,7 +508,7 @@ static int ov3640_sensor_power_set(struct v4l2_int_device *s,
 		omap_pm_set_min_bus_tput(vdev->cam->isp, OCP_INITIATOR_AGENT, 138240);
 #endif
 		if (previous_power == V4L2_POWER_OFF)
-			isp_csi2_reset();
+			isp_csi2_reset(&isp->isp_csi2);
 
 		lanecfg.clk.pol = OV3640_CSI2_CLOCK_POLARITY;
 		lanecfg.clk.pos = OV3640_CSI2_CLOCK_LANE;
@@ -519,16 +520,16 @@ static int ov3640_sensor_power_set(struct v4l2_int_device *s,
 		lanecfg.data[2].pos = 0;
 		lanecfg.data[3].pol = 0;
 		lanecfg.data[3].pos = 0;
-		isp_csi2_complexio_lanes_config(&lanecfg);
-		isp_csi2_complexio_lanes_update(true);
+		isp_csi2_complexio_lanes_config(&isp->isp_csi2, &lanecfg);
+		isp_csi2_complexio_lanes_update(&isp->isp_csi2, true);
 
 		phyconfig.ths_term = OV3640_CSI2_PHY_THS_TERM;
 		phyconfig.ths_settle = OV3640_CSI2_PHY_THS_SETTLE;
 		phyconfig.tclk_term = OV3640_CSI2_PHY_TCLK_TERM;
 		phyconfig.tclk_miss = OV3640_CSI2_PHY_TCLK_MISS;
 		phyconfig.tclk_settle = OV3640_CSI2_PHY_TCLK_SETTLE;
-		isp_csi2_phy_config(&phyconfig);
-		isp_csi2_phy_update(true);
+		isp_csi2_phy_config(&isp->isp_csi2, &phyconfig);
+		isp_csi2_phy_update(&isp->isp_csi2, true);
 
 		isp_configure_interface(vdev->cam->isp, &ov3640_if_config);
 
@@ -555,7 +556,7 @@ static int ov3640_sensor_power_set(struct v4l2_int_device *s,
 		break;
 	case V4L2_POWER_OFF:
 		/* Power Down Sequence */
-		isp_csi2_complexio_power(ISP_CSI2_POWER_OFF);
+		isp_csi2_complexio_power(&isp->isp_csi2, ISP_CSI2_POWER_OFF);
 		if (regulator_is_enabled(sdp3430_ov3640_reg))
 			regulator_disable(sdp3430_ov3640_reg);
 		enable_fpga_vio_1v8(0);
