@@ -378,6 +378,41 @@ static int ioctl_g_priv(struct v4l2_int_device *s, void *p)
 }
 
 /**
+ * ioctl_s_power - V4L2 sensor interface handler for vidioc_int_s_power_num
+ * @s: pointer to standard V4L2 device structure
+ * @on: power state to which device is to be set
+ *
+ * Sets devices power state to requrested state, if possible.
+ */
+static int ioctl_s_power(struct v4l2_int_device *s, enum v4l2_power new_power)
+{
+	struct dw9710_device *lens = s->priv;
+	int rval = 0;
+
+	switch (new_power) {
+	case V4L2_POWER_ON:
+		rval = lens->pdata->power_set(V4L2_POWER_ON);
+		if (rval)
+			break;
+
+		dw9710_af_setfocus(s, lens->current_lens_posn);
+		break;
+	case V4L2_POWER_OFF:
+		lens->pdata->power_set(V4L2_POWER_OFF);
+		break;
+	case V4L2_POWER_STANDBY:
+		rval = lens->pdata->power_set(V4L2_POWER_STANDBY);
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	if (!rval)
+		lens->power_state = new_power;
+	return rval;
+}
+
+/**
  * ioctl_dev_exit - V4L2 sensor interface handler for vidioc_int_dev_exit_num
  * @s: pointer to standard V4L2 device structure
  *
@@ -401,56 +436,22 @@ static int ioctl_dev_init(struct v4l2_int_device *s)
 	struct i2c_client *client = to_i2c_client(lens->dev);
 	int err;
 
+	err = lens->pdata->power_set(V4L2_POWER_ON);
+	if (err)
+		return -ENODEV;
+
 	err = dw9710_detect(client);
 	if (err < 0) {
 		dev_err(&client->dev, "Unable to detect lens\n");
-		lens->detected = 0;
 		return err;
 	}
-	lens->detected = 1;
 	dev_info(&client->dev, "Lens HW detected\n");
 
+	err = lens->pdata->power_set(V4L2_POWER_OFF);
+	if (err)
+		return -ENODEV;
+
 	return 0;
-}/**
- * ioctl_s_power - V4L2 sensor interface handler for vidioc_int_s_power_num
- * @s: pointer to standard V4L2 device structure
- * @on: power state to which device is to be set
- *
- * Sets devices power state to requrested state, if possible.
- */
-static int ioctl_s_power(struct v4l2_int_device *s, enum v4l2_power new_power)
-{
-	struct dw9710_device *lens = s->priv;
-	int rval = 0;
-
-	switch (new_power) {
-	case V4L2_POWER_ON:
-		rval = lens->pdata->power_set(V4L2_POWER_ON);
-		if (rval)
-			break;
-
-		if (lens->detected)
-			dw9710_af_setfocus(s, lens->current_lens_posn);
-		else {
-			rval = ioctl_dev_init(s);
-			if (rval)
-				goto err_on;
-		}
-		break;
-	case V4L2_POWER_OFF:
-err_on:
-		lens->pdata->power_set(V4L2_POWER_OFF);
-		break;
-	case V4L2_POWER_STANDBY:
-		rval = lens->pdata->power_set(V4L2_POWER_STANDBY);
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	if (!rval)
-		lens->power_state = new_power;
-	return rval;
 }
 
 static struct v4l2_int_ioctl_desc dw9710_ioctl_desc[] = {
