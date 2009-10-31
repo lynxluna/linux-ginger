@@ -114,6 +114,7 @@ DSP_STATUS handle_hibernation_fromDSP(struct WMD_DEV_CONTEXT *pDevContext)
 #ifdef CONFIG_PM
 	u16 timeout = PWRSTST_TIMEOUT / 10;
 	enum HW_PwrState_t pwrState;
+	u32  prev_state;
 #ifdef BRIDGE_NTFY_PWRERR
 	struct DEH_MGR *hDehMgr;
 #endif /* #ifdef BRIDGE_NTFY_PWRERR */
@@ -123,6 +124,9 @@ DSP_STATUS handle_hibernation_fromDSP(struct WMD_DEV_CONTEXT *pDevContext)
 	struct dspbridge_platform_data *pdata =
 				omap_dspbridge_dev->dev.platform_data;
 #endif
+
+	prev_state = pDevContext->dwBrdState;
+	pDevContext->dwBrdState = BRD_SLEEP_TRANSITION;
 
 	HW_PWR_IVA2StateGet(pDevContext->prmbase, HW_PWR_DOMAIN_DSP,
 			    &pwrState);
@@ -136,6 +140,7 @@ DSP_STATUS handle_hibernation_fromDSP(struct WMD_DEV_CONTEXT *pDevContext)
 				    &pwrState);
 	}
 	if (timeout == 0) {
+		pDevContext->dwBrdState = prev_state;
 		pr_err("Timed out waiting for DSP self hibernation\n");
 #ifdef BRIDGE_NTFY_PWRERR
 		DEV_GetDehMgr(pDevContext->hDevObject, &hDehMgr);
@@ -177,6 +182,7 @@ DSP_STATUS handle_hibernation_fromDSP(struct WMD_DEV_CONTEXT *pDevContext)
 			status = DSP_SOK;
 #endif /* CONFIG_BRIDGE_DVFS */
 		} else {
+			pDevContext->dwBrdState = prev_state;
 			DBG_Trace(DBG_LEVEL7,
 				 "handle_hibernation_fromDSP- FAILED\n");
 		}
@@ -198,6 +204,7 @@ DSP_STATUS SleepDSP(struct WMD_DEV_CONTEXT *pDevContext, IN u32 dwCmd,
 	struct DEH_MGR *hDehMgr;
 #endif /* CONFIG_BRIDGE_NTFY_PWRERR */
 	u16 timeout = PWRSTST_TIMEOUT / 10;
+	u32 prev_state;
 	enum HW_PwrState_t pwrState, targetPwrState;
 
 	DBG_Trace(DBG_LEVEL7, "SleepDSP- Enter function \n");
@@ -223,6 +230,7 @@ DSP_STATUS SleepDSP(struct WMD_DEV_CONTEXT *pDevContext, IN u32 dwCmd,
 					     MBX_PM_DSPRETENTION);
 			targetPwrState = HW_PWR_STATE_RET;
 		}
+		prev_state = BRD_RUNNING;
 		break;
 	case BRD_RETENTION:
 		status = HW_MBOX_saveSettings(pDevContext->dwMailBoxBase);
@@ -232,6 +240,8 @@ DSP_STATUS SleepDSP(struct WMD_DEV_CONTEXT *pDevContext, IN u32 dwCmd,
 			targetPwrState = HW_PWR_STATE_OFF;
 		} else
 			return DSP_SOK;
+
+		prev_state = BRD_RETENTION;
 		break;
 	case BRD_HIBERNATION:
 	case BRD_DSP_HIBERNATION:
@@ -248,7 +258,7 @@ DSP_STATUS SleepDSP(struct WMD_DEV_CONTEXT *pDevContext, IN u32 dwCmd,
 			 "SleepDSP- Bridge in Illegal state\n");
 			return DSP_EFAIL;
 	}
-
+	pDevContext->dwBrdState = BRD_SLEEP_TRANSITION;
 	/* Get the PRCM DSP power domain status */
 	HW_PWR_IVA2StateGet(pDevContext->prmbase, HW_PWR_DOMAIN_DSP,
 			&pwrState);
@@ -264,6 +274,7 @@ DSP_STATUS SleepDSP(struct WMD_DEV_CONTEXT *pDevContext, IN u32 dwCmd,
 	}
 
 	if (!timeout) {
+		pDevContext->dwBrdState = prev_state;
 		pr_err("Timed out waiting for DSP suspend %x\n", pwrState);
 #ifdef CONFIG_BRIDGE_NTFY_PWRERR
 		DEV_GetDehMgr(pDevContext->hDevObject, &hDehMgr);
@@ -506,7 +517,8 @@ DSP_STATUS PostScale_DSP(struct WMD_DEV_CONTEXT *pDevContext, IN void *pArgs)
 		voltage_domain, level);
 	if ((pDevContext->dwBrdState == BRD_HIBERNATION) ||
 			(pDevContext->dwBrdState == BRD_RETENTION) ||
-			(pDevContext->dwBrdState == BRD_DSP_HIBERNATION)) {
+			(pDevContext->dwBrdState == BRD_DSP_HIBERNATION) ||
+			(pDevContext->dwBrdState == BRD_SLEEP_TRANSITION)) {
 		/* Update the OPP value in shared memory */
 		IO_SHMsetting(hIOMgr, SHM_CURROPP, &level);
 		DBG_Trace(DBG_LEVEL7,
