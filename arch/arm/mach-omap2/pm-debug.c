@@ -625,4 +625,6 @@ arch_initcall(pm_dbg_init);
 
 #else
 void pm_dbg_update_time(struct powerdomain *pwrdm, int prev) {}
+int pm_dbg_regset_init(int reg_set) {}
+int pm_dbg_regset_save(int reg_set) {}
 #endif
