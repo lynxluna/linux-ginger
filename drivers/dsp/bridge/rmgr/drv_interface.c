@@ -97,7 +97,7 @@
 #endif
 
 #ifdef CONFIG_BRIDGE_DVFS
-#include <mach/omap-pm.h>
+#include <plat/omap-pm.h>
 #include <mach-omap2/omap3-opp.h>
 #endif
 

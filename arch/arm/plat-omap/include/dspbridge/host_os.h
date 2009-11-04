@@ -54,7 +54,7 @@
 #include <linux/ioport.h>
 #include <linux/platform_device.h>
 #include <dspbridge/dbtype.h>
-#include <mach/clock.h>
+#include <plat/clock.h>
 #include <linux/clk.h>
 #include <linux/pagemap.h>
 #include <asm/cacheflush.h>

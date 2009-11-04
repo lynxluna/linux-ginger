@@ -50,7 +50,7 @@
 #include <linux/workqueue.h>
 
 #ifdef CONFIG_BRIDGE_DVFS
-#include <mach/omap-pm.h>
+#include <plat/omap-pm.h>
 #endif
 
 /*  ----------------------------------- DSP/BIOS Bridge */
