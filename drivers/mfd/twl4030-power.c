@@ -190,7 +190,8 @@ static int __init config_wakeup_sequence(u8 address)
 	err |= twl4030_i2c_write_u8(TWL4030_MODULE_PM_MASTER, LVL_WAKEUP,
 					R_P3_SW_EVENTS);
 
-	if (machine_is_omap_3430sdp() || machine_is_omap_ldp()) {
+	if (machine_is_omap_3430sdp() || machine_is_omap_ldp() ||
+		machine_is_omap_zoom2() || machine_is_omap_zoom3()) {
 		/* Disabling AC charger effect on sleep-active transitions */
 		err = twl4030_i2c_read_u8(TWL4030_MODULE_PM_MASTER, &data,
 					R_CFG_P1_TRANSITION);
