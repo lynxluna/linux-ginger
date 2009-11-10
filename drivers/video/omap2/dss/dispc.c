@@ -2498,8 +2498,16 @@ retry:
 
 		goto found;
 	} else if (cpu_is_omap34xx()) {
-		for (cur.fck_div = 16; cur.fck_div > 0; --cur.fck_div) {
-			cur.fck = prate / cur.fck_div * 2;
+		if (cpu_is_omap3630())
+			cur.fck_div = 32;
+		else
+			cur.fck_div = 16;
+
+		for ( ; cur.fck_div > 0; --cur.fck_div) {
+			if (cpu_is_omap3630())
+				cur.fck = prate / cur.fck_div ;
+			else
+				cur.fck = prate / cur.fck_div * 2;
 
 			if (cur.fck > DISPC_MAX_FCK)
 				continue;
@@ -2584,7 +2592,10 @@ int dispc_get_clock_div(struct dispc_clock_info *cinfo)
 	if (cpu_is_omap34xx()) {
 		unsigned long prate;
 		prate = clk_get_rate(clk_get_parent(dispc.dpll4_m4_ck));
-		cinfo->fck_div = prate / (cinfo->fck / 2);
+ 		if(cpu_is_omap3630())
+	 		cinfo->fck_div = prate / cinfo->fck ;
+ 		else 
+			cinfo->fck_div = prate / (cinfo->fck / 2);
 	} else {
 		cinfo->fck_div = 0;
 	}
