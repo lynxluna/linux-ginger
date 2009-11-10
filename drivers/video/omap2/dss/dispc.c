@@ -2487,8 +2487,8 @@ int dispc_calc_clock_rates(unsigned long dispc_fclk_rate,
 
 int dispc_set_clock_div(struct dispc_clock_info *cinfo)
 {
-	DSSDBG("lck = %ld (%d)\n", cinfo->lck, cinfo->lck_div);
-	DSSDBG("pck = %ld (%d)\n", cinfo->pck, cinfo->pck_div);
+	DSSDBG("lck = %lu (%u)\n", cinfo->lck, cinfo->lck_div);
+	DSSDBG("pck = %lu (%u)\n", cinfo->pck, cinfo->pck_div);
 
 	dispc_set_lcd_divisor(cinfo->lck_div, cinfo->pck_div);
 
