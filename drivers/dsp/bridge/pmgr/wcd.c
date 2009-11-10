@@ -599,7 +599,7 @@ func_end:
  */
 u32 MGRWRAP_WaitForBridgeEvents(union Trapped_Args *args)
 {
-	DSP_STATUS status = DSP_SOK;
+	DSP_STATUS status = DSP_SOK, real_status = DSP_SOK;
 	struct DSP_NOTIFICATION *aNotifications[MAX_EVENTS];
 	struct DSP_NOTIFICATION notifications[MAX_EVENTS];
 	u32 uIndex, i;
@@ -623,11 +623,11 @@ u32 MGRWRAP_WaitForBridgeEvents(union Trapped_Args *args)
 		}
 	}
 	if (DSP_SUCCEEDED(status)) {
-		status = MGR_WaitForBridgeEvents(aNotifications, uCount,
+		real_status = MGR_WaitForBridgeEvents(aNotifications, uCount,
 			 &uIndex, args->ARGS_MGR_WAIT.uTimeout);
 	}
 	cp_to_usr(args->ARGS_MGR_WAIT.puIndex, &uIndex, status, 1);
-	return status;
+	return real_status;
 }
 
 
