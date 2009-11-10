@@ -31,4 +31,9 @@ config PANEL_TAAL
         help
           Taal DSI command mode panel from TPO.
 
+config PANEL_NEC
+        tristate "NEC Panel"
+        help
+          LCD Panel used in the Zoom2 board
+
 endmenu
