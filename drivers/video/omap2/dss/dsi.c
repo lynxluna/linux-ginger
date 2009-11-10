@@ -876,6 +876,8 @@ int dsi_pll_calc_clock_div_pck(bool is_tft, unsigned long req_pck,
 			dsi.cache_cinfo.clkin == dss_clk_fck2) {
 		DSSDBG("DSI clock info found from cache\n");
 		*dsi_cinfo = dsi.cache_cinfo;
+		dispc_find_clk_divs(is_tft, req_pck, dsi_cinfo->dsi1_pll_fclk,
+				dispc_cinfo);
 		return 0;
 	}
 
