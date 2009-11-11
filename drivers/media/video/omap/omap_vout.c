@@ -1800,6 +1800,7 @@ static int vidioc_streamon(struct file *file, void *fh,
 	struct omap_vout_device *vout = fh;
 	struct videobuf_queue *q = &vout->vbq;
 	u32 addr = 0;
+	unsigned int count;
 	int r = 0;
 	int t;
 	struct omapvideo_info *ovid = &vout->vid_info;
@@ -1836,6 +1837,9 @@ static int vidioc_streamon(struct file *file, void *fh,
 	vout->streaming = 1;
 
 	vout->first_int = 1;
+
+	count = vout->buffer_allocated;
+	omap_vout_vrfb_buffer_setup(vout, &count, 0);
 
 	if (omap_vout_calculate_offset(vout)) {
 		mutex_unlock(&vout->lock);
