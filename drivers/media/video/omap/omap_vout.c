@@ -456,7 +456,7 @@ static int omap_vout_vrfb_buffer_setup(struct omap_vout_device *vout,
 		omap_vrfb_setup(&vout->vrfb_context[i],
 				vout->smsshado_phy_addr[i],
 				vout->pix.width, vout->pix.height,
-				vout->bpp, yuv_mode);
+				vout->bpp, yuv_mode, vout->rotation);
 	}
 	return 0;
 }
@@ -543,7 +543,7 @@ static int omap_vout_calculate_offset(struct omap_vout_device *vout)
 	vout->line_length = line_length;
 	switch (rotation) {
 	case dss_rotation_90_degree:
-		offset = vout->vrfb_context[0].yoffset *
+		offset = vout->vrfb_context[0].xoffset *
 			vout->vrfb_context[0].bytespp;
 		temp_ps = ps / vr_ps;
 		if (mirroring == 0) {
@@ -571,7 +571,7 @@ static int omap_vout_calculate_offset(struct omap_vout_device *vout)
 		}
 		break;
 	case dss_rotation_270_degree:
-		offset = MAX_PIXELS_PER_LINE * vout->vrfb_context[0].xoffset *
+		offset = MAX_PIXELS_PER_LINE * vout->vrfb_context[0].yoffset *
 			vout->vrfb_context[0].bytespp;
 		temp_ps = ps / vr_ps;
 		if (mirroring == 0) {
@@ -1001,7 +1001,7 @@ static int omap_vout_buffer_prepare(struct videobuf_queue *q,
 
 	/* dest_port required only for OMAP1 */
 	omap_set_dma_dest_params(tx->dma_ch, 0, OMAP_DMA_AMODE_DOUBLE_IDX,
-			vout->vrfb_context[vb->i].paddr[0], dest_element_index,
+			vout->vrfb_context[vb->i].paddr[rotation], dest_element_index,
 			dest_frame_index);
 	/*set dma dest burst mode for VRFB */
 	omap_set_dma_dest_burst_mode(tx->dma_ch, OMAP_DMA_DATA_BURST_16);
@@ -1017,7 +1017,7 @@ static int omap_vout_buffer_prepare(struct videobuf_queue *q,
 	/* Store buffers physical address into an array. Addresses
 	 * from this array will be used to configure DSS */
 	vout->queued_buf_addr[vb->i] = (u8 *)
-		vout->vrfb_context[vb->i].paddr[rotation];
+		vout->vrfb_context[vb->i].paddr[0];
 	return 0;
 }
 

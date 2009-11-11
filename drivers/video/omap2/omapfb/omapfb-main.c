@@ -461,7 +461,7 @@ void set_fb_fix(struct fb_info *fbi)
 		omap_vrfb_setup(&rg->vrfb, rg->paddr,
 				var->xres_virtual,
 				var->yres_virtual,
-				bytespp, yuv_mode);
+				bytespp, yuv_mode, 0);
 	}
 }
 
