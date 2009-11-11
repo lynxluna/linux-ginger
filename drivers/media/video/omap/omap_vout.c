@@ -1898,7 +1898,8 @@ static int vidioc_streamoff(struct file *file, void *fh,
 
 			ovl->get_overlay_info(ovl, &info);
 			info.enabled = 0;
-			return ovl->set_overlay_info(ovl, &info);
+			if (ovl->set_overlay_info(ovl, &info))
+				return -EINVAL;
 		}
 	}
 
