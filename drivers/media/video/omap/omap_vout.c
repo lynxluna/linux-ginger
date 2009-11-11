@@ -2078,7 +2078,7 @@ static int __init omap_vout_setup_video_data(struct omap_vout_device *vout)
 	pix->bytesperline = pix->width * 2;
 	pix->sizeimage = pix->bytesperline * pix->height;
 	pix->priv = 0;
-	pix->colorspace = V4L2_COLORSPACE_JPEG;
+	pix->colorspace = V4L2_COLORSPACE_SRGB;
 
 	vout->bpp = RGB565_BPP;
 	vout->fbuf.fmt.width  =  display->panel.timings.x_res;
