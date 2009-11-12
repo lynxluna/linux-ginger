@@ -1,5 +1,5 @@
 /*
- * linux/arch/arm/mach-omap2/board-zoom2-camera.c
+ * linux/arch/arm/mach-omap2/board-zoom-camera.c
  *
  * Copyright (C) 2007 Texas Instruments
  *
@@ -28,7 +28,7 @@
 
 static int cam_inited;
 
-static struct device *zoom2cam_dev;
+static struct device *zoomcam_dev;
 
 #include <media/v4l2-int-device.h>
 #include <../drivers/media/video/omap34xxcam.h>
@@ -39,7 +39,7 @@ static struct device *zoom2cam_dev;
 #define FPGA_SPR_GPIO1_3v3	(0x1 << 14)
 #define FPGA_GPIO6_DIR_CTRL	(0x1 << 6)
 
-#define CAMZOOM2_USE_XCLKB  	1
+#define CAMZOOM_USE_XCLKB  	1
 
 #define ISP_IMX046_MCLK		216000000
 
@@ -48,8 +48,8 @@ static struct device *zoom2cam_dev;
 #define IMX046_STANDBY_GPIO	58
 #define LV8093_PS_GPIO		7
 
-static struct regulator *zoom2_imx046_reg1;
-static struct regulator *zoom2_imx046_reg2;
+static struct regulator *zoom_imx046_reg1;
+static struct regulator *zoom_imx046_reg2;
 
 #if defined(CONFIG_VIDEO_IMX046) || defined(CONFIG_VIDEO_IMX046_MODULE)
 #include <media/imx046.h>
@@ -115,7 +115,7 @@ static int lv8093_lens_set_prv_data(void *priv)
 	return 0;
 }
 
-struct lv8093_platform_data zoom2_lv8093_platform_data = {
+struct lv8093_platform_data zoom_lv8093_platform_data = {
 	.power_set      = lv8093_lens_power_set,
 	.priv_data_set  = lv8093_lens_set_prv_data,
 };
@@ -183,17 +183,17 @@ static int imx046_sensor_power_set(struct v4l2_int_device *s, enum v4l2_power po
 	 * Plug regulator consumer to respective VAUX supply
 	 * if not done before.
 	 */
-	if (!zoom2_imx046_reg1 && !zoom2_imx046_reg2) {
-		zoom2_imx046_reg1 = regulator_get(zoom2cam_dev, "vaux2_1");
-		if (IS_ERR(zoom2_imx046_reg1)) {
-			dev_err(zoom2cam_dev, "vaux2_1 regulator missing\n");
-			return PTR_ERR(zoom2_imx046_reg1);
+	if (!zoom_imx046_reg1 && !zoom_imx046_reg2) {
+		zoom_imx046_reg1 = regulator_get(zoomcam_dev, "vaux2_1");
+		if (IS_ERR(zoom_imx046_reg1)) {
+			dev_err(zoomcam_dev, "vaux2_1 regulator missing\n");
+			return PTR_ERR(zoom_imx046_reg1);
 		}
-		zoom2_imx046_reg2 = regulator_get(zoom2cam_dev, "vaux4_1");
-		if (IS_ERR(zoom2_imx046_reg2)) {
-			dev_err(zoom2cam_dev, "vaux4_1 regulator missing\n");
-			regulator_put(zoom2_imx046_reg1);
-			return PTR_ERR(zoom2_imx046_reg2);
+		zoom_imx046_reg2 = regulator_get(zoomcam_dev, "vaux4_1");
+		if (IS_ERR(zoom_imx046_reg2)) {
+			dev_err(zoomcam_dev, "vaux4_1 regulator missing\n");
+			regulator_put(zoom_imx046_reg1);
+			return PTR_ERR(zoom_imx046_reg2);
 		}
 	}
 
@@ -240,8 +240,8 @@ static int imx046_sensor_power_set(struct v4l2_int_device *s, enum v4l2_power po
 		gpio_set_value(IMX046_RESET_GPIO, 1);
 
 		/* turn on analog power */
-		regulator_enable(zoom2_imx046_reg1);
-		regulator_enable(zoom2_imx046_reg2);
+		regulator_enable(zoom_imx046_reg1);
+		regulator_enable(zoom_imx046_reg2);
 		udelay(100);
 
 		/* have to put sensor to reset to guarantee detection */
@@ -258,10 +258,10 @@ static int imx046_sensor_power_set(struct v4l2_int_device *s, enum v4l2_power po
 		/* Power Down Sequence */
 		isp_csi2_complexio_power(&isp->isp_csi2, ISP_CSI2_POWER_OFF);
 
-		if (regulator_is_enabled(zoom2_imx046_reg1))
-			regulator_disable(zoom2_imx046_reg1);
-		if (regulator_is_enabled(zoom2_imx046_reg2))
-			regulator_disable(zoom2_imx046_reg2);
+		if (regulator_is_enabled(zoom_imx046_reg1))
+			regulator_disable(zoom_imx046_reg1);
+		if (regulator_is_enabled(zoom_imx046_reg2))
+			regulator_disable(zoom_imx046_reg2);
 
 #ifdef CONFIG_OMAP_PM_SRF
 		omap_pm_set_min_bus_tput(vdev->cam->isp, OCP_INITIATOR_AGENT, 0);
@@ -281,7 +281,7 @@ static u32 imx046_sensor_set_xclk(struct v4l2_int_device *s, u32 xclkfreq)
 {
 	struct omap34xxcam_videodev *vdev = s->u.slave->master->priv;
 
-	return isp_set_xclk(vdev->cam->isp, xclkfreq, CAMZOOM2_USE_XCLKB);
+	return isp_set_xclk(vdev->cam->isp, xclkfreq, CAMZOOM_USE_XCLKB);
 }
 
 static int imx046_csi2_lane_count(struct v4l2_int_device *s, int count)
@@ -337,7 +337,7 @@ static int imx046_csi2_calc_phy_cfg0(struct v4l2_int_device *s,
 				      lbound_hs_settle, ubound_hs_settle);
 }
 
-struct imx046_platform_data zoom2_imx046_platform_data = {
+struct imx046_platform_data zoom_imx046_platform_data = {
 	.power_set            = imx046_sensor_power_set,
 	.priv_data_set        = imx046_sensor_set_prv_data,
 	.set_xclk             = imx046_sensor_set_xclk,
@@ -350,7 +350,7 @@ struct imx046_platform_data zoom2_imx046_platform_data = {
 };
 #endif
 
-static int zoom2_cam_probe(struct platform_device *pdev)
+static int zoom_cam_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 
@@ -382,7 +382,7 @@ static int zoom2_cam_probe(struct platform_device *pdev)
 	gpio_direction_output(LV8093_PS_GPIO, true);
 
 	cam_inited = 1;
-	zoom2cam_dev = &pdev->dev;
+	zoomcam_dev = &pdev->dev;
 	return 0;
 
 err_freegpio2:
@@ -394,14 +394,14 @@ err:
 	return ret;
 }
 
-static int zoom2_cam_remove(struct platform_device *pdev)
+static int zoom_cam_remove(struct platform_device *pdev)
 {
-	if (regulator_is_enabled(zoom2_imx046_reg1))
-		regulator_disable(zoom2_imx046_reg1);
-	regulator_put(zoom2_imx046_reg1);
-	if (regulator_is_enabled(zoom2_imx046_reg2))
-		regulator_disable(zoom2_imx046_reg2);
-	regulator_put(zoom2_imx046_reg2);
+	if (regulator_is_enabled(zoom_imx046_reg1))
+		regulator_disable(zoom_imx046_reg1);
+	regulator_put(zoom_imx046_reg1);
+	if (regulator_is_enabled(zoom_imx046_reg2))
+		regulator_disable(zoom_imx046_reg2);
+	regulator_put(zoom_imx046_reg2);
 
 	gpio_free(IMX046_STANDBY_GPIO);
 	gpio_free(IMX046_RESET_GPIO);
@@ -409,33 +409,33 @@ static int zoom2_cam_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static int zoom2_cam_suspend(struct device *dev)
+static int zoom_cam_suspend(struct device *dev)
 {
 	return 0;
 }
 
-static int zoom2_cam_resume(struct device *dev)
+static int zoom_cam_resume(struct device *dev)
 {
 	return 0;
 }
 
-static struct dev_pm_ops zoom2_cam_pm_ops = {
-	.suspend = zoom2_cam_suspend,
-	.resume  = zoom2_cam_resume,
+static struct dev_pm_ops zoom_cam_pm_ops = {
+	.suspend = zoom_cam_suspend,
+	.resume  = zoom_cam_resume,
 };
 
-static struct platform_driver zoom2_cam_driver = {
-	.probe		= zoom2_cam_probe,
-	.remove		= zoom2_cam_remove,
+static struct platform_driver zoom_cam_driver = {
+	.probe		= zoom_cam_probe,
+	.remove		= zoom_cam_remove,
 	.driver		= {
-		.name	= "zoom2_cam",
-		.pm	= &zoom2_cam_pm_ops,
+		.name	= "zoom_cam",
+		.pm	= &zoom_cam_pm_ops,
 	},
 };
 
-void __init zoom2_cam_init(void)
+void __init zoom_cam_init(void)
 {
 	cam_inited = 0;
-	platform_driver_register(&zoom2_cam_driver);
+	platform_driver_register(&zoom_cam_driver);
 }
 
