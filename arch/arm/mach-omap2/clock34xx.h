@@ -1282,6 +1282,7 @@ static struct clk sgx_fck = {
 	.clksel		= sgx_clksel,
 	.clkdm_name	= "sgx_clkdm",
 	.recalc		= &omap2_clksel_recalc,
+	.set_rate       = &omap2_clksel_set_rate,
 };
 
 static struct clk sgx_ick = {
