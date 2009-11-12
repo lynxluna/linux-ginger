@@ -31,6 +31,20 @@
 
 #define OMAP_SYNAPTICS_GPIO		163
 
+#include <media/v4l2-int-device.h>
+
+#if defined(CONFIG_VIDEO_IMX046) || defined(CONFIG_VIDEO_IMX046_MODULE)
+#include <media/imx046.h>
+extern struct imx046_platform_data zoom2_imx046_platform_data;
+#endif
+
+extern void zoom2_cam_init(void);
+
+#ifdef CONFIG_VIDEO_LV8093
+#include <media/lv8093.h>
+extern struct imx046_platform_data zoom2_lv8093_platform_data;
+#endif
+
 /* Zoom2 has Qwerty keyboard*/
 static int board_keymap[] = {
 	KEY(0, 0, KEY_E),
@@ -98,6 +112,25 @@ static struct twl4030_keypad_data zoom_kp_twl4030_data = {
 	.rep		= 1,
 };
 
+static struct platform_device zoom2_cam_device = {
+	.name		= "zoom2_cam",
+	.id		= -1,
+};
+
+static struct regulator_consumer_supply zoom2_vaux2_supplies[] = {
+	{
+		.supply		= "vaux2_1",
+		.dev		= &zoom2_cam_device.dev,
+	},
+};
+
+static struct regulator_consumer_supply zoom2_vaux4_supplies[] = {
+	{
+		.supply		= "vaux4_1",
+		.dev		= &zoom2_cam_device.dev,
+	},
+};
+
 static struct twl4030_madc_platform_data zoom_madc_data = {
 	.irq_line		= 1,
 };
@@ -134,6 +167,36 @@ static struct regulator_consumer_supply zoom_vmmc2_supply = {
 
 static struct regulator_consumer_supply zoom_vsim_supply = {
 	.supply		= "vmmc_aux",
+};
+
+/* VAUX2 for camera module */
+static struct regulator_init_data zoom2_vaux2 = {
+	.constraints = {
+		.min_uV			= 2800000,
+		.max_uV			= 2800000,
+		.apply_uV		= true,
+		.valid_modes_mask	= REGULATOR_MODE_NORMAL
+					| REGULATOR_MODE_STANDBY,
+		.valid_ops_mask		= REGULATOR_CHANGE_MODE
+					| REGULATOR_CHANGE_STATUS,
+	},
+	.num_consumer_supplies	= ARRAY_SIZE(zoom2_vaux2_supplies),
+	.consumer_supplies	= zoom2_vaux2_supplies,
+};
+
+/* VAUX4 for OMAP VDD_CSI2 (camera) */
+static struct regulator_init_data zoom2_vaux4 = {
+	.constraints = {
+		.min_uV			= 1800000,
+		.max_uV			= 1800000,
+		.apply_uV		= true,
+		.valid_modes_mask	= REGULATOR_MODE_NORMAL
+					| REGULATOR_MODE_STANDBY,
+		.valid_ops_mask		= REGULATOR_CHANGE_MODE
+					| REGULATOR_CHANGE_STATUS,
+	},
+	.num_consumer_supplies	= ARRAY_SIZE(zoom2_vaux4_supplies),
+	.consumer_supplies	= zoom2_vaux4_supplies,
 };
 
 /* VMMC1 for OMAP VDD_MMC1 (i/o) and MMC1 card */
@@ -339,8 +402,8 @@ static struct twl4030_platform_data zoom_twldata = {
 	.vmmc1          = &zoom_vmmc1,
 	.vmmc2          = &zoom_vmmc2,
 	/* .vaux1		= &zoom_vaux1,*/
-	/* .vaux2		= &zoom_vaux2,*/
-	/* .vaux4		= &zoom_vaux4,*/
+	.vaux2		= &zoom2_vaux2,
+	.vaux4		= &zoom2_vaux4,
 	.vsim           = &zoom_vsim,
 	/* .vdac		= &zoom_vdac,*/
 };
@@ -389,6 +452,18 @@ static struct i2c_board_info __initdata zoom2_i2c_boardinfo2[] = {
 		.platform_data = &synaptics_platform_data,
 		.irq = OMAP_GPIO_IRQ(OMAP_SYNAPTICS_GPIO),
 	},
+#if defined(CONFIG_VIDEO_IMX046) || defined(CONFIG_VIDEO_IMX046_MODULE)
+	{
+		I2C_BOARD_INFO("imx046", IMX046_I2C_ADDR),
+		.platform_data = &zoom2_imx046_platform_data,
+	},
+#endif
+#ifdef CONFIG_VIDEO_LV8093
+	{
+		I2C_BOARD_INFO(LV8093_NAME,  LV8093_AF_I2C_ADDR),
+		.platform_data = &zoom2_lv8093_platform_data,
+	},
+#endif
 };
 
 static int __init zoom_i2c_init(void)
@@ -396,12 +471,8 @@ static int __init zoom_i2c_init(void)
 	omap_register_i2c_bus(1, 2200, zoom_i2c_boardinfo,
 			ARRAY_SIZE(zoom_i2c_boardinfo));
 
-	/* TODO: I2C2 on zoom2/3:
-	 * Add Synaptic RMI controller
-	 * Add Camera sensor IMX046
-	 * Add Camera sensor LV8093
-	 */
-	omap_register_i2c_bus(2, 100, NULL, 0);
+	omap_register_i2c_bus(2, 100, zoom2_i2c_boardinfo2,
+			ARRAY_SIZE(zoom2_i2c_boardinfo2));
 
 	/* TODO: I2C3 on Zoom2/3:
 	 * Add: SIL9022 HDMI
@@ -410,11 +481,16 @@ static int __init zoom_i2c_init(void)
 	return 0;
 }
 
+static struct platform_device *zoom2_devices[] __initdata = {
+	&zoom2_cam_device,
+};
 
 void __init zoom_peripherals_init(void)
 {
 	zoom_i2c_init();
+	platform_add_devices(zoom2_devices, ARRAY_SIZE(zoom2_devices));
 	synaptics_dev_init();
 	omap_serial_init();
 	usb_musb_init();
+	zoom2_cam_init();
 }
