@@ -206,16 +206,17 @@ static void omap_vout_free_buffer(unsigned long virtaddr, u32 phys_addr,
 			 u32 buf_size)
 {
 	unsigned long addr = virtaddr;
-	u32 size;
+	u32 size, size_free;
 
 	size = PAGE_ALIGN(buf_size);
+	size_free = size;
 
 	while (size > 0) {
 		ClearPageReserved(virt_to_page(addr));
 		addr += PAGE_SIZE;
 		size -= PAGE_SIZE;
 	}
-	free_pages_exact((void *) virtaddr, size);
+	free_pages_exact((void *)virtaddr, size_free);
 }
 
 /* Function for allocating video buffers */
