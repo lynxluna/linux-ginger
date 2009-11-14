@@ -129,7 +129,6 @@ void __init omap_serial_init(void)
 			printk(KERN_ERR "Could not ioremap uart%i\n", i);
 			continue;
 		}
-
 		switch (i) {
 		case 0:
 			uart1_ck = clk_get(NULL, "uart1_ck");
