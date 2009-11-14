@@ -383,7 +383,7 @@ static struct synaptics_i2c_rmi_platform_data synaptics_platform_data[] = {
 	}
 };
 
-static struct i2c_board_info __initdata zoom2_i2c_boardinfo2[] = {
+static struct i2c_board_info __initdata zoom_i2c_boardinfo2[] = {
 	{
 		I2C_BOARD_INFO(SYNAPTICS_I2C_RMI_NAME,  0x20),
 		.platform_data = &synaptics_platform_data,
@@ -401,7 +401,8 @@ static int __init zoom_i2c_init(void)
 	 * Add Camera sensor IMX046
 	 * Add Camera sensor LV8093
 	 */
-	omap_register_i2c_bus(2, 100, NULL, 0);
+	omap_register_i2c_bus(2, 100, zoom_i2c_boardinfo2,
+			ARRAY_SIZE(zoom_i2c_boardinfo2));
 
 	/* TODO: I2C3 on Zoom2/3:
 	 * Add: SIL9022 HDMI
