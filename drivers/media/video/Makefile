@@ -48,6 +48,7 @@ obj-$(CONFIG_VIDEO_ADV7175) += adv7175.o
 obj-$(CONFIG_VIDEO_ADV7180) += adv7180.o
 obj-$(CONFIG_VIDEO_ADV7343) += adv7343.o
 obj-$(CONFIG_VIDEO_VPX3220) += vpx3220.o
+obj-$(CONFIG_VIDEO_SMIA_SENSOR)	+= smia-sensor.o
 obj-$(CONFIG_VIDEO_BT819) += bt819.o
 obj-$(CONFIG_VIDEO_BT856) += bt856.o
 obj-$(CONFIG_VIDEO_BT866) += bt866.o
@@ -119,6 +120,22 @@ obj-$(CONFIG_VIDEO_CX2341X) += cx2341x.o
 obj-$(CONFIG_VIDEO_CAFE_CCIC) += cafe_ccic.o
 
 obj-$(CONFIG_VIDEO_OMAP3_OUT) += omap/
+obj-y				+= isp/
+
+obj-$(CONFIG_VIDEO_OMAP3) += omap34xxcam.o
+
+obj-$(CONFIG_VIDEO_SMIAREGS)  += smiaregs.o
+
+obj-$(CONFIG_VIDEO_ET8EK8)    += et8ek8.o
+obj-$(CONFIG_VIDEO_AD5820)	+= ad5820.o
+obj-$(CONFIG_VIDEO_ADP1653)	+= adp1653.o
+
+obj-$(CONFIG_VIDEO_MT9P012)     += mt9p012.o
+obj-$(CONFIG_VIDEO_DW9710)	+= dw9710.o
+obj-$(CONFIG_VIDEO_TPS61059)    += tps61059.o
+obj-$(CONFIG_VIDEO_OV3640)	+= ov3640.o
+obj-$(CONFIG_VIDEO_IMX046)      += imx046.o
+obj-$(CONFIG_VIDEO_LV8093)      += lv8093.o
 
 obj-$(CONFIG_USB_DABUSB)        += dabusb.o
 obj-$(CONFIG_USB_OV511)         += ov511.o
