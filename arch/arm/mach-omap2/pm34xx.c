@@ -1073,7 +1073,7 @@ EXPORT_SYMBOL(omap3_get_min_vdd1_opp);
 int omap3_get_max_vdd2_opp(void)
 {
 	if (cpu_is_omap3630())
-		return VDD2_OPP3;
+		return VDD2_OPP2;
 	else /* Place holder for other 34xx (3430/3440) */
 		return VDD2_OPP3;
 
@@ -1083,9 +1083,9 @@ EXPORT_SYMBOL(omap3_get_max_vdd2_opp);
 int omap3_get_min_vdd2_opp(void)
 {
 	if (cpu_is_omap3630())
-		return VDD2_OPP2;
-	else /* Place holder for other 34xx (3430/3440) */
 		return VDD2_OPP1;
+	else /* Place holder for other 34xx (3430/3440) */
+		return VDD2_OPP2;
 
 }
 EXPORT_SYMBOL(omap3_get_min_vdd2_opp);
