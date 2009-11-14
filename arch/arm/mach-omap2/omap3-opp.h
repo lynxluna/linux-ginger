@@ -72,35 +72,35 @@ static struct omap_opp omap3_dsp_rate_table[] = {
 static struct omap_opp omap36xx_mpu_rate_table[] = {
        {0, 0, 0},
        /*OPP1 - 930mV - OPP50*/
-       {S300M, VDD1_OPP1, 0x1A},
+       {S300M, VDD1_OPP1, 0x1B},
        /*OPP2 - 1.100V - OPP100*/
        {S600M, VDD1_OPP2, 0x28},
        /*OPP3 - 1.260V - OPP-Turbo*/
-       {S800M, VDD1_OPP3, 0x34},
+       {S800M, VDD1_OPP3, 0x35},
        /*OPP4 - 1.310V - OPP-SB*/
-       {S1000M, VDD1_OPP4, 0x38},
+       {S1000M, VDD1_OPP4, 0x39},
        {0, 0, 0},
 };
 
 static struct omap_opp omap36xx_l3_rate_table[] = {
        {0, 0, 0},
        /*OPP1 - 930mV - OPP50 */
-       {S100M, VDD2_OPP1, 0x1A},
-       /*OPP2 - 1.375V - OPP100, OPP-Turbo, OPP-SB*/
-       {S200M, VDD2_OPP2, 0x3E},
+       {S100M, VDD2_OPP1, 0x1B},
+       /*OPP2 - 1.1375V - OPP100, OPP-Turbo, OPP-SB*/
+       {S200M, VDD2_OPP2, 0x2B},
        {0, 0, 0},
 };
 
 static struct omap_opp omap36xx_dsp_rate_table[] = {
        {0, 0, 0},
        /*OPP1 - OPP50*/
-       {S260M, VDD1_OPP1, 0x1A},
+       {S260M, VDD1_OPP1, 0x1B},
        /*OPP2 - OPP100*/
        {S520M, VDD1_OPP2, 0x28},
        /*OPP3 - OPP-Turbo*/
-       {S660M, VDD1_OPP3, 0x34},
+       {S660M, VDD1_OPP3, 0x35},
        /*OPP4 - OPP-SB*/
-       {S875M, VDD1_OPP4, 0x38},
+       {S875M, VDD1_OPP4, 0x39},
        {0, 0, 0},
 };
 
