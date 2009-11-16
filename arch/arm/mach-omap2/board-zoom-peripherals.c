@@ -31,6 +31,7 @@
 #include <linux/spi/spi.h>
 #include <plat/display.h>
 #include "mmc-twl4030.h"
+#include <mach/board-zoom.h>
 
 #define OMAP_SYNAPTICS_GPIO		163
 
@@ -699,6 +700,7 @@ void __init zoom_peripherals_init(void)
 				ARRAY_SIZE(zoom_spi_board_info));
 	omap_serial_init();
 	usb_musb_init();
+	zoom_flash_init();
 	zoom_lcd_tv_panel_init();
 	zoom_cam_init();
 }
