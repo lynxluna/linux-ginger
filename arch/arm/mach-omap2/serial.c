@@ -767,8 +767,15 @@ void __init omap_serial_early_init(void)
 
 		list_add_tail(&uart->node, &uart_list);
 
-		if (cpu_is_omap44xx())
-			uart->irq += 32;
+		if (cpu_is_omap44xx()) {
+			p->irq += 32;
+			/* Do not read empty UART fifo on omap4 */
+			p->flags |= UPF_NO_EMPTY_FIFO_READ;
+		}
+
+		/* Do not read empty UART fifo on omap3630 */
+		if (cpu_is_omap3630())
+			p->flags |= UPF_NO_EMPTY_FIFO_READ;
 
 		omap_uart_enable_clocks(uart);
 	}
