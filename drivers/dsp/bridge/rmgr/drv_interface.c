@@ -206,15 +206,18 @@ u32 vdd1_dsp_freq[6][4] = {
 };
 
 #ifdef CONFIG_BRIDGE_DVFS
-static int dspbridge_post_scale(struct notifier_block *op, unsigned long level,
-				void *ptr)
+static int dspbridge_scale_notification(struct notifier_block *op,
+		unsigned long val, void *ptr)
 {
-	PWR_PM_PostScale(PRCM_VDD1, level);
+	struct dspbridge_platform_data *pdata =
+					omap_dspbridge_dev->dev.platform_data;
+	if (CPUFREQ_POSTCHANGE == val && pdata->dsp_get_opp)
+		PWR_PM_PostScale(PRCM_VDD1, pdata->dsp_get_opp());
 	return 0;
 }
 
 static struct notifier_block iva_clk_notifier = {
-	.notifier_call = dspbridge_post_scale,
+	.notifier_call = dspbridge_scale_notification,
 	NULL,
 };
 #endif
@@ -350,12 +353,13 @@ static int __devinit omap34xx_bridge_probe(struct platform_device *pdev)
 			GT_0trace(driverTrace, GT_7CLASS,
 			"clk_get PASS to get iva2_ck \n");
 		}
-		if (!clk_notifier_register(clk_handle, &iva_clk_notifier)) {
+		if (!cpufreq_register_notifier(&iva_clk_notifier,
+						CPUFREQ_TRANSITION_NOTIFIER)) {
 			GT_0trace(driverTrace, GT_7CLASS,
-			"clk_notifier_register PASS for iva2_ck \n");
+			"cpufreq_register_notifier PASS for iva2_ck \n");
 		} else {
 			GT_0trace(driverTrace, GT_7CLASS,
-			"clk_notifier_register FAIL for iva2_ck \n");
+			"cpufreq_register_notifier FAIL for iva2_ck \n");
 		}
 #endif
 		driverContext = DSP_Init(&initStatus);
@@ -399,12 +403,13 @@ static int __devexit omap34xx_bridge_remove(struct platform_device *pdev)
 		goto func_cont;
 
 #ifdef CONFIG_BRIDGE_DVFS
-	if (!clk_notifier_unregister(clk_handle, &iva_clk_notifier)) {
+	if (!cpufreq_unregister_notifier(&iva_clk_notifier,
+						CPUFREQ_TRANSITION_NOTIFIER)) {
 		GT_0trace(driverTrace, GT_7CLASS,
-		"clk_notifier_unregister PASS for iva2_ck \n");
+		"cpufreq_unregister_notifier PASS for iva2_ck \n");
 	} else {
 		GT_0trace(driverTrace, GT_7CLASS,
-		"clk_notifier_unregister FAILED for iva2_ck \n");
+		"cpufreq_unregister_notifier FAILED for iva2_ck \n");
 	}
 #endif /* #ifdef CONFIG_BRIDGE_DVFS */
 
