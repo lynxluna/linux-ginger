@@ -1812,8 +1812,12 @@ DSP_STATUS IO_SHMsetting(IN struct IO_MGR *hIOMgr, IN enum SHM_DESCTYPE desc,
 		if (!pdata || !pdata->dsp_get_rate_table)
 			break;
 
-		vdd1_max_opps = omap_pm_get_max_vdd1_opp();
+		vdd1_max_opps = MAX_VDD1_OPP;
 		dsp_opp_table = (*pdata->dsp_get_rate_table)();
+		if (!dsp_opp_table) {
+			pr_err("Error could not get dsp_opp_table\n");
+			return DSP_EFAIL;
+		}
 
 		for (i = 0; i <= vdd1_max_opps; i++) {
 			hIOMgr->pSharedMem->oppTableStruct.oppPoint[i].voltage =
