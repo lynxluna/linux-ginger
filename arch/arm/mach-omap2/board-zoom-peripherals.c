@@ -285,6 +285,9 @@ static struct twl4030_platform_data zoom_twldata = {
 
 static void synaptics_dev_init(void)
 {
+	/* Set the ts_gpio pin mux */
+	omap_cfg_reg(H18_34XX_GPIO163);
+
 	if (gpio_request(OMAP_SYNAPTICS_GPIO, "touch") < 0) {
 		printk(KERN_ERR "can't get synaptics pen down GPIO\n");
 		return;
