@@ -16,6 +16,8 @@
 #include <linux/gpio.h>
 #include <linux/i2c/twl4030.h>
 #include <linux/regulator/machine.h>
+#include <linux/interrupt.h>
+#include <linux/i2c/synaptics_i2c_rmi.h>
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -27,6 +29,8 @@
 
 #include "mmc-twl4030.h"
 #include "twl4030-script.h"
+
+#define OMAP_SYNAPTICS_GPIO		163
 
 /* Zoom2 has Qwerty keyboard*/
 static int board_keymap[] = {
@@ -279,6 +283,40 @@ static struct twl4030_platform_data zoom_twldata = {
 
 };
 
+static void synaptics_dev_init(void)
+{
+	if (gpio_request(OMAP_SYNAPTICS_GPIO, "touch") < 0) {
+		printk(KERN_ERR "can't get synaptics pen down GPIO\n");
+		return;
+	}
+	gpio_direction_input(OMAP_SYNAPTICS_GPIO);
+	omap_set_gpio_debounce(OMAP_SYNAPTICS_GPIO, 1);
+	omap_set_gpio_debounce_time(OMAP_SYNAPTICS_GPIO, 0xa);
+}
+
+static int synaptics_power(int power_state)
+{
+	/* TODO: synaptics is powered by vbatt */
+	return 0;
+}
+
+static struct synaptics_i2c_rmi_platform_data synaptics_platform_data[] = {
+	{
+		.version        = 0x0,
+		.power          = &synaptics_power,
+		.flags          = SYNAPTICS_SWAP_XY,
+		.irqflags       = IRQF_TRIGGER_LOW,
+	}
+};
+
+static struct i2c_board_info __initdata zoom_i2c_boardinfo2[] = {
+	{
+		I2C_BOARD_INFO(SYNAPTICS_I2C_RMI_NAME,  0x20),
+		.platform_data = &synaptics_platform_data,
+		.irq = OMAP_GPIO_IRQ(OMAP_SYNAPTICS_GPIO),
+	},
+};
+
 static struct i2c_board_info __initdata zoom_i2c_boardinfo[] = {
 	{
 		I2C_BOARD_INFO("twl5030", 0x48),
@@ -292,7 +330,8 @@ static int __init omap_i2c_init(void)
 {
 	omap_register_i2c_bus(1, 2400, zoom_i2c_boardinfo,
 			ARRAY_SIZE(zoom_i2c_boardinfo));
-	omap_register_i2c_bus(2, 400, NULL, 0);
+	omap_register_i2c_bus(2, 100, zoom_i2c_boardinfo2,
+			ARRAY_SIZE(zoom_i2c_boardinfo2));
 	omap_register_i2c_bus(3, 400, NULL, 0);
 	return 0;
 }
@@ -305,6 +344,7 @@ static void enable_board_wakeup_source(void)
 void __init zoom_peripherals_init(void)
 {
 	omap_i2c_init();
+	synaptics_dev_init();
 	omap_serial_init();
 	usb_musb_init();
 	enable_board_wakeup_source();
