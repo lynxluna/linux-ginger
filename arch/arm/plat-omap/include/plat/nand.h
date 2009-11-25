@@ -21,4 +21,11 @@ struct omap_nand_platform_data {
 	int			dma_channel;
 	void __iomem		*gpmc_cs_baseaddr;
 	void __iomem		*gpmc_baseaddr;
+	unsigned long		start;
+	int			devsize;
 };
+
+extern int gpmc_nand_init(struct omap_nand_platform_data *d);
+
+/* size (4 KiB) for IO mapping */
+#define	NAND_IO_SIZE	SZ_4K
