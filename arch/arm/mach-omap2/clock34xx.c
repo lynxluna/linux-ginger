@@ -128,6 +128,7 @@ static struct omap_clk omap34xx_clks[] = {
 	CLK(NULL,	"emu_core_alwon_ck", &emu_core_alwon_ck, CK_3XXX),
 	CLK(NULL,	"dpll4_ck",	&dpll4_ck,	CK_3XXX),
 	CLK(NULL,	"dpll4_x2_ck",	&dpll4_x2_ck,	CK_3XXX),
+       CLK(NULL,       "omap_192m_alwon_ck", &omap_192m_alwon_ck, CK_363X),
 	CLK(NULL,	"omap_96m_alwon_fck", &omap_96m_alwon_fck, CK_3XXX),
 	CLK(NULL,	"omap_96m_fck",	&omap_96m_fck,	CK_3XXX),
 	CLK(NULL,	"cm_96m_fck",	&cm_96m_fck,	CK_3XXX),
@@ -1228,6 +1229,18 @@ int __init omap2_clk_init(void)
 			dpll4_dd.mult_mask = OMAP3630_PERIPH_DPLL_MULT_MASK;
 			cpu_mask |= RATE_IN_363X;
 			}
+
+		if (omap3_has_192mhz_clk()) {
+			omap_96m_alwon_fck.parent = &omap_192m_alwon_ck;
+			omap_96m_alwon_fck.init = &omap2_init_clksel_parent;
+			omap_96m_alwon_fck.clksel_reg =
+					OMAP_CM_REGADDR(CORE_MOD, CM_CLKSEL),
+			omap_96m_alwon_fck.clksel_mask =
+						OMAP3630_CLKSEL_96M_MASK;
+			omap_96m_alwon_fck.clksel = omap_96m_alwon_fck_clksel;
+			omap_96m_alwon_fck.recalc = &omap2_clksel_recalc;
+		}
+
 		if (cpu_is_omap3630())
 			cpu_clkflg |= CK_363X;
 	}

@@ -498,6 +498,7 @@ extern u32 omap3_features;
 #define OMAP3_HAS_NEON			BIT(3)
 #define OMAP3_HAS_ISP			BIT(4)
 #define OMAP3_HAS_JTYPE_DPLL4		BIT(5)
+#define OMAP3_HAS_192MHZ_CLK		BIT(6)
 
 #define OMAP3_HAS_FEATURE(feat,flag)			\
 static inline unsigned int omap3_has_ ##feat(void)	\
@@ -511,4 +512,5 @@ OMAP3_HAS_FEATURE(iva, IVA)
 OMAP3_HAS_FEATURE(neon, NEON)
 OMAP3_HAS_FEATURE(isp, ISP)
 OMAP3_HAS_FEATURE(jtype_dpll4, JTYPE_DPLL4)
+OMAP3_HAS_FEATURE(192mhz_clk, 192MHZ_CLK)
 #endif
