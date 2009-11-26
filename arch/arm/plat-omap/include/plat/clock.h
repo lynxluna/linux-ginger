@@ -93,7 +93,7 @@ struct clk {
 		defined(CONFIG_ARCH_OMAP4)
 	u8			fixed_div;
 	void __iomem		*clksel_reg;
-	u32			clksel_mask;
+	u32			clksel_mask, clksel_mask_3630;
 	const struct clksel	*clksel;
 	struct dpll_data	*dpll_data;
 	const char		*clkdm_name;
@@ -159,7 +159,7 @@ extern const struct clkops clkops_null;
 #define RATE_IN_243X		(1 << 2)
 #define RATE_IN_3XXX		(1 << 3)	/* rates common to all 343X */
 #define RATE_IN_3430ES2		(1 << 4)	/* 3430ES2 rates only */
-
+#define RATE_IN_363X		(1 << 5)        /* rates common to all 363X */
 #define RATE_IN_24XX		(RATE_IN_242X | RATE_IN_243X)
 
 

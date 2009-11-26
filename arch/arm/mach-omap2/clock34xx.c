@@ -43,6 +43,7 @@
 #include "prm-regbits-34xx.h"
 #include "cm.h"
 #include "cm-regbits-34xx.h"
+#include <plat/cpu.h>
 
 static const struct clkops clkops_noncore_dpll_ops;
 
@@ -97,6 +98,7 @@ struct omap_clk {
 #define CK_3XXX		(1 << 0)
 #define CK_3430ES1	(1 << 1)
 #define CK_3430ES2	(1 << 2)
+#define CK_363X		(1 << 3)
 
 static struct omap_clk omap34xx_clks[] = {
 	CLK(NULL,	"omap_32k_fck",	&omap_32k_fck,	CK_3XXX),
@@ -134,13 +136,13 @@ static struct omap_clk omap34xx_clks[] = {
 	CLK(NULL,	"omap_12m_fck",	&omap_12m_fck,	CK_3XXX),
 	CLK(NULL,	"dpll4_m2_ck",	&dpll4_m2_ck,	CK_3XXX),
 	CLK(NULL,	"dpll4_m2x2_ck", &dpll4_m2x2_ck, CK_3XXX),
-	CLK(NULL,	"dpll4_m3_ck",	&dpll4_m3_ck,	CK_3XXX),
+	CLK(NULL,	"dpll4_m3_ck",	&dpll4_m3_ck,	CK_3XXX | CK_363X),
 	CLK(NULL,	"dpll4_m3x2_ck", &dpll4_m3x2_ck, CK_3XXX),
-	CLK(NULL,	"dpll4_m4_ck",	&dpll4_m4_ck,	CK_3XXX),
+	CLK(NULL,	"dpll4_m4_ck",	&dpll4_m4_ck,	CK_3XXX | CK_363X),
 	CLK(NULL,	"dpll4_m4x2_ck", &dpll4_m4x2_ck, CK_3XXX),
-	CLK(NULL,	"dpll4_m5_ck",	&dpll4_m5_ck,	CK_3XXX),
+	CLK(NULL,	"dpll4_m5_ck",	&dpll4_m5_ck,	CK_3XXX | CK_363X),
 	CLK(NULL,	"dpll4_m5x2_ck", &dpll4_m5x2_ck, CK_3XXX),
-	CLK(NULL,	"dpll4_m6_ck",	&dpll4_m6_ck,	CK_3XXX),
+	CLK(NULL,	"dpll4_m6_ck",	&dpll4_m6_ck,	CK_3XXX | CK_363X),
 	CLK(NULL,	"dpll4_m6x2_ck", &dpll4_m6x2_ck, CK_3XXX),
 	CLK(NULL,	"emu_per_alwon_ck", &emu_per_alwon_ck, CK_3XXX),
 	CLK(NULL,	"dpll5_ck",	&dpll5_ck,	CK_3430ES2),
@@ -1223,7 +1225,11 @@ int __init omap2_clk_init(void)
 				OMAP3630_PERIPH_DPLL_DCO_SEL_MASK;
 			dpll4_ck.dpll_data->sd_div_mask =
 				OMAP3630_PERIPH_DPLL_SD_DIV_MASK;
+			dpll4_dd.mult_mask = OMAP3630_PERIPH_DPLL_MULT_MASK;
+			cpu_mask |= RATE_IN_363X;
 			}
+		if (cpu_is_omap3630())
+			cpu_clkflg |= CK_363X;
 	}
 
 	clk_init(&omap2_clk_functions);
@@ -1233,6 +1239,12 @@ int __init omap2_clk_init(void)
 
 	for (c = omap34xx_clks; c < omap34xx_clks + ARRAY_SIZE(omap34xx_clks); c++)
 		if (c->cpu & cpu_clkflg) {
+			/* for 3630, change the mask value for clocks which are
+				marked as CK_363X*/
+			if (cpu_is_omap3630() && (c->cpu & CK_363X)) {
+				c->lk.clk->clksel_mask =
+						c->lk.clk->clksel_mask_3630;
+			}
 			clkdev_add(&c->lk);
 			clk_register(c->lk.clk);
 			omap2_init_clk_clkdm(c->lk.clk);
