@@ -180,7 +180,7 @@ const struct omap_opp *omap_pm_dsp_get_opp_table(void)
 	 * array should have .rate = .opp_id = 0.
 	 */
 
-	return NULL;
+	return dsp_opps;
 }
 
 void omap_pm_dsp_set_min_opp(u8 opp_id)
