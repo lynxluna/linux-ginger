@@ -84,11 +84,11 @@ static struct powerdomain *core_pwrdm, *per_pwrdm;
 static struct powerdomain *cam_pwrdm;
 
 static struct prm_setup_vc prm_setup = {
-	.clksetup = 0xff,
-	.voltsetup_time1 = 0xfff,
-	.voltsetup_time2 = 0xfff,
-	.voltoffset = 0xff,
-	.voltsetup2 = 0xff,
+	.clksetup = 0x14A,
+	.voltsetup_time1 = 0x00B3,
+	.voltsetup_time2 = 0x00A0,
+	.voltoffset = 0x118,
+	.voltsetup2 = 0x32,
 	.vdd0_on = 0x30,	/* 1.2v */
 	.vdd0_onlp = 0x20,	/* 1.0v */
 	.vdd0_ret = 0x1e,	/* 0.975v */
@@ -418,12 +418,22 @@ void omap_sram_idle(void)
 		omap_uart_prepare_idle(0);
 		omap_uart_prepare_idle(1);
 		if (core_next_state == PWRDM_POWER_OFF) {
+			/* VOLT & CLK SETUPTIME for OFF */
+			prm_setup.clksetup = 0x14A,
+			prm_setup.voltsetup_time1 = 0x00B3,
+			prm_setup.voltsetup_time2 = 0x00A0,
+
 			prm_set_mod_reg_bits(OMAP3430_AUTO_OFF,
 					     OMAP3430_GR_MOD,
 					     OMAP3_PRM_VOLTCTRL_OFFSET);
 			omap3_core_save_context();
 			omap3_prcm_save_context();
 		} else if (core_next_state == PWRDM_POWER_RET) {
+			/* VOLT & CLK SETUPTIME for RET */
+			prm_setup.clksetup = 0x1,
+			prm_setup.voltsetup_time1 = 0x005B,
+			prm_setup.voltsetup_time2 = 0x0055,
+
 			prm_set_mod_reg_bits(OMAP3430_AUTO_RET,
 						OMAP3430_GR_MOD,
 						OMAP3_PRM_VOLTCTRL_OFFSET);

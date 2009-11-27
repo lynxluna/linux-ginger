@@ -71,6 +71,7 @@ static u8 twl4030_start_script_address = 0x2b;
 
 #define DEVGROUP_OFFSET		0
 #define TYPE_OFFSET		1
+#define REMAP_OFFSET		2
 
 /* Bit positions */
 #define DEVGROUP_SHIFT		5
@@ -316,6 +317,7 @@ static int __init twl4030_configure_resource(struct twl4030_resconfig *rconfig)
 	int rconfig_addr;
 	int err;
 	u8 type;
+	u8 remap;
 	u8 grp;
 
 	if (rconfig->resource > TOTAL_RESOURCES) {
@@ -372,6 +374,28 @@ static int __init twl4030_configure_resource(struct twl4030_resconfig *rconfig)
 		return err;
 	}
 
+
+	/* Set the remap sleep cmd */
+	err = twl4030_i2c_read_u8(TWL4030_MODULE_PM_RECEIVER, &remap,
+					rconfig_addr + REMAP_OFFSET);
+	if (err < 0) {
+		printk(KERN_ERR "TWL4030 Resource %d remap could not read\n",
+							rconfig->resource);
+		return err;
+	}
+
+	if (rconfig->remap_sleep >= 0) {
+		remap &= ~0xF;
+		remap |= rconfig->remap_sleep;
+	}
+
+	err = twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER, remap,
+				rconfig_addr + REMAP_OFFSET);
+	if (err < 0) {
+		pr_err("TWL4030 failed to program remap sleep cmd \n");
+		return err;
+	}
+
 	return 0;
 }
 
@@ -379,7 +403,6 @@ static int __init load_twl4030_script(struct twl4030_script *tscript,
 	       u8 address)
 {
 	int err;
-	static int order;
 
 	/* Make sure the script isn't going beyond last valid address (0x3f) */
 	if ((address + tscript->size) > END_OF_SCRIPT) {
@@ -400,7 +423,6 @@ static int __init load_twl4030_script(struct twl4030_script *tscript,
 		err = twl4030_config_wakeup12_sequence(address);
 		if (err)
 			goto out;
-		order = 1;
 	}
 	if (tscript->flags & TWL4030_WAKEUP3_SCRIPT) {
 		err = twl4030_config_wakeup3_sequence(address);
@@ -408,11 +430,8 @@ static int __init load_twl4030_script(struct twl4030_script *tscript,
 			goto out;
 	}
 	if (tscript->flags & TWL4030_SLEEP_SCRIPT)
-		if (order)
-			pr_warning("TWL4030: Bad order of scripts (sleep "\
-					"script before wakeup) Leads to boot"\
-					"failure on some boards\n");
 		err = twl4030_config_sleep_sequence(address);
+
 out:
 	return err;
 }
