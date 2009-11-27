@@ -197,7 +197,7 @@ DSP_STATUS WMD_IO_Create(OUT struct IO_MGR **phIOMgr,
 	 *  size of message buffer in shared memory is configurable in
 	 *  the base image.  */
 	DEV_GetWMDContext(hDevObject, &hWmdContext);
-	if(!hWmdContext) {
+	if (!hWmdContext) {
 		status = DSP_EHANDLE;
 		goto func_end;
 	}
@@ -1102,7 +1102,7 @@ func_end:
  */
 void IO_Schedule(struct IO_MGR *pIOMgr)
 {
-	if(!MEM_IsValidHandle(pIOMgr, IO_MGRSIGNATURE))
+	if (!MEM_IsValidHandle(pIOMgr, IO_MGRSIGNATURE))
 		return;
 
 	DPC_Schedule(pIOMgr->hDPC);
