@@ -98,10 +98,13 @@
 #define VDD2_OPP2	0x2
 #define VDD2_OPP3	0x3
 
-#define MIN_VDD1_OPP	VDD1_OPP1
-#define MAX_VDD1_OPP	VDD1_OPP5
-#define MIN_VDD2_OPP	VDD2_OPP1
-#define MAX_VDD2_OPP	VDD2_OPP3
+#define MIN_VDD1_OPP	omap3_get_min_vdd1_opp()
+#define MAX_VDD1_OPP	omap3_get_max_vdd1_opp()
+#define MIN_VDD2_OPP	omap3_get_min_vdd2_opp()
+#define MAX_VDD2_OPP	omap3_get_max_vdd2_opp()
+
+/* Max OPP's Available among chips that comes under OMAP34xx configuration */
+#define MAX_VDD1_OPPS	VDD1_OPP5
 
 #endif /* __ASM_ARCH_OMAP34XX_H */
 

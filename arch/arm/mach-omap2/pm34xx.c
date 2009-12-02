@@ -1069,6 +1069,45 @@ void omap3_pm_init_vc(struct prm_setup_vc *setup_vc)
 	prm_setup.vdd1_off = setup_vc->vdd1_off;
 }
 
+int omap3_get_max_vdd1_opp(void)
+{
+	if (cpu_is_omap3630())
+		return VDD1_OPP4;
+	else /* Place holder for other 34xx (3430/3440) */
+		return VDD1_OPP5;
+}
+EXPORT_SYMBOL(omap3_get_max_vdd1_opp);
+
+int omap3_get_min_vdd1_opp(void)
+{
+	if (cpu_is_omap3630())
+		return VDD1_OPP1;
+	else /* Place holder for other 34xx (3430/3440) */
+		return VDD1_OPP1;
+}
+EXPORT_SYMBOL(omap3_get_min_vdd1_opp);
+
+int omap3_get_max_vdd2_opp(void)
+{
+	if (cpu_is_omap3630())
+		return VDD2_OPP3;
+	else /* Place holder for other 34xx (3430/3440) */
+		return VDD2_OPP3;
+
+}
+EXPORT_SYMBOL(omap3_get_max_vdd2_opp);
+
+int omap3_get_min_vdd2_opp(void)
+{
+	if (cpu_is_omap3630())
+		return VDD2_OPP2;
+	else /* Place holder for other 34xx (3430/3440) */
+		return VDD2_OPP1;
+
+}
+EXPORT_SYMBOL(omap3_get_min_vdd2_opp);
+
+
 static int __init pwrdms_setup(struct powerdomain *pwrdm, void *unused)
 {
 	struct power_state *pwrst;
