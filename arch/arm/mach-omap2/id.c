@@ -176,6 +176,8 @@ void __init omap3_check_features(void)
 	OMAP3_CHECK_FEATURE(status, NEON);
 	OMAP3_CHECK_FEATURE(status, ISP);
 
+	if (cpu_is_omap3630())
+		omap3_features |= OMAP3_HAS_JTYPE_DPLL4;
 	/*
 	 * TODO: Get additional info (where applicable)
 	 *       e.g. Size of L2 cache.
@@ -316,7 +318,7 @@ void __init omap3_cpuinfo(void)
 	OMAP3_SHOW_FEATURE(sgx);
 	OMAP3_SHOW_FEATURE(neon);
 	OMAP3_SHOW_FEATURE(isp);
-
+	OMAP3_SHOW_FEATURE(jtype_dpll4);
 	printk(")\n");
 }
 
