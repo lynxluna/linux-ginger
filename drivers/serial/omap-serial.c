@@ -982,7 +982,7 @@ serial_omap_console_setup(struct console *co, char *options)
 }
 
 static struct console serial_omap_console = {
-	.name		= DEVICE_NAME,
+	.name		= OMAP_SERIAL_NAME,
 	.write		= serial_omap_console_write,
 	.device		= uart_console_device,
 	.setup		= serial_omap_console_setup,
@@ -1029,9 +1029,9 @@ struct uart_ops serial_omap_pops = {
 static struct uart_driver serial_omap_reg = {
 	.owner		= THIS_MODULE,
 	.driver_name	= "OMAP-SERIAL",
-	.dev_name	= DEVICE_NAME,
-	.major		= TTY_MAJOR,
-	.minor		= 64,
+	.dev_name	= OMAP_SERIAL_NAME,
+	.major		= OMAP_SERIAL_MAJOR,
+	.minor		= OMAP_SERIAL_MINOR,
 	.nr		= OMAP_MAX_HSUART_PORTS,
 	.cons		= OMAP_CONSOLE,
 };

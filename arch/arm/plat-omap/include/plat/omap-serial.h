@@ -24,17 +24,24 @@
 #define DRIVER_NAME	"omap-hsuart"
 
 /* *
- * tty device name used by omap-serial driver,
+ * Use tty device name as ttyO, [O -> OMAP]
  * in bootargs we specify as console=ttyO0 if uart1
  * is used as console uart.
+ * Use Major 204 and minor 64.
+ * This is necessary if we should coexist with the 8250 driver,
+ * if we have an external TI-16C750 UART. Ex.ZOOM2/3 Boards.
  */
-#define DEVICE_NAME	"ttyO"
+
+#define OMAP_SERIAL_NAME	"ttyO"
+#define OMAP_SERIAL_MAJOR	204
+#define OMAP_SERIAL_MINOR	64
 
 /* *
  * We default to IRQ0 for the "no irq" hack.   Some
  * machine types want others as well - they're free
  * to redefine this in their header file.
  */
+
 #define is_real_interrupt(irq)  ((irq) != 0)
 
 #if defined(CONFIG_SERIAL_OMAP_CONSOLE) && defined(CONFIG_MAGIC_SYSRQ)
