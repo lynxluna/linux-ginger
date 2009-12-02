@@ -82,7 +82,7 @@ struct omap_uart_state {
 
 static LIST_HEAD(uart_list);
 
-#ifdef CONFIG_SERIAL_8250
+#ifndef CONFIG_SERIAL_OMAP
 static struct plat_serial8250_port serial_platform_data0[] = {
 	{
 		.mapbase	= OMAP_UART1_BASE,
@@ -731,9 +731,12 @@ void __init omap_serial_early_init(void)
 
 	for (i = 0; i < ARRAY_SIZE(omap_uart); i++) {
 		struct omap_uart_state *uart = &omap_uart[i];
+
+#ifndef CONFIG_SERIAL_OMAP
 		struct platform_device *pdev = &uart->pdev;
 		struct device *dev = &pdev->dev;
 		struct plat_serial8250_port *p = dev->platform_data;
+#endif
 
 		uart->num = i;
 		omap_uart_port_init(uart);
@@ -773,7 +776,7 @@ void __init omap_serial_early_init(void)
 		if (cpu_is_omap44xx())
 			uart->irq += 32;
 
-#ifdef CONFIG_SERIAL_8250
+#ifndef CONFIG_SERIAL_OMAP
 		/* Do not read empty UART fifo on omap3630 & omap4*/
 		if (cpu_is_omap3630() || cpu_is_omap44xx())
 			p->flags |= UPF_NO_EMPTY_FIFO_READ;
@@ -790,7 +793,7 @@ void __init omap_serial_init(void)
 		struct omap_uart_state *uart = &omap_uart[i];
 		struct platform_device *pdev = &uart->pdev;
 		struct device *dev = &pdev->dev;
-#ifdef CONFIG_SERIAL_8250
+#ifndef CONFIG_SERIAL_OMAP
 		struct plat_serial8250_port *p = dev->platform_data;
 		p->membase = uart->membase;
 		p->private_data = uart;
