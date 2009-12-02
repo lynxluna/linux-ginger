@@ -297,7 +297,7 @@ int omap3_core_dpll_m2_set_rate(struct clk *clk, unsigned long rate)
 #if defined(CONFIG_ARCH_OMAP3)
 
 #ifdef CONFIG_CPU_FREQ
-static struct cpufreq_frequency_table freq_table[MAX_VDD1_OPP+1];
+static struct cpufreq_frequency_table freq_table[MAX_VDD1_OPPS+1];
 
 void omap2_clk_init_cpufreq_table(struct cpufreq_frequency_table **table)
 {

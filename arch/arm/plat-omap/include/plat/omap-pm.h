@@ -322,5 +322,32 @@ unsigned long omap_pm_cpu_get_freq(void);
  */
 int omap_pm_get_dev_context_loss_count(struct device *dev);
 
+/**
+ * omap3_get_max_opp - report Max OPP entries available for supplied VDD1 resource
+ *
+ * Returns the Max OPP entries available for supplied VDD resource.
+ */
+int omap3_get_max_vdd1_opp(void);
+
+/**
+ * omap3_get_min_opp - report Min OPP entries available for supplied VDD1 resource
+ *
+ * Returns the Min OPP entries available for supplied VDD resource.
+ */
+int omap3_get_min_vdd1_opp(void);
+
+/**
+ * omap3_get_max_opp - report Max OPP entries available for supplied VDD2 resource
+ *
+ * Returns the Max OPP entries available for supplied VDD resource.
+ */
+int omap3_get_max_vdd2_opp(void);
+
+/**
+ * omap3_get_min_opp - report Min OPP entries available for supplied VDD2 resource
+ *
+ * Returns the Min OPP entries available for supplied VDD resource.
+ */
+int omap3_get_min_vdd2_opp(void);
 
 #endif
