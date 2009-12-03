@@ -91,7 +91,7 @@ struct clk {
 	__s8			usecount;
 #if defined(CONFIG_ARCH_OMAP2) || defined(CONFIG_ARCH_OMAP3) || \
 		defined(CONFIG_ARCH_OMAP4)
-	u8			fixed_div;
+	u8			fixed_div, clksel_shift;
 	void __iomem		*clksel_reg;
 	u32			clksel_mask, clksel_mask_3630;
 	const struct clksel	*clksel;
