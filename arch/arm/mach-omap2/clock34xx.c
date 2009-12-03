@@ -56,6 +56,7 @@ static void omap3430es2_clk_hsotgusb_find_idlest(struct clk *clk,
 static void omap3430es2_clk_dss_usbhost_find_idlest(struct clk *clk,
 						    void __iomem **idlest_reg,
 						    u8 *idlest_bit);
+static int omap3_pwrdn_bug_clk_enable(struct clk *clk);
 
 static const struct clkops clkops_omap3430es2_ssi_wait = {
 	.enable		= omap2_dflt_clk_enable,
@@ -76,6 +77,13 @@ static const struct clkops clkops_omap3430es2_dss_usbhost_wait = {
 	.disable	= omap2_dflt_clk_disable,
 	.find_idlest	= omap3430es2_clk_dss_usbhost_find_idlest,
 	.find_companion = omap2_clk_dflt_find_companion,
+};
+
+const struct clkops clkops_omap3_pwrdn_bug_wait_restore = {
+	.enable		= omap3_pwrdn_bug_clk_enable,
+	.disable	= omap2_dflt_clk_disable,
+	.find_companion	= omap2_clk_dflt_find_companion,
+	.find_idlest	= omap2_clk_dflt_find_idlest,
 };
 
 #include "clock34xx.h"
@@ -661,7 +669,7 @@ static int omap3_noncore_dpll_enable(struct clk *clk)
 }
 
 /**
- * omap3_noncore_dpll_enable - instruct a DPLL to enter bypass or lock mode
+ * omap3_noncore_dpll_disable - instruct a DPLL to enter bypass or lock mode
  * @clk: pointer to a DPLL struct clk
  *
  * Instructs a non-CORE DPLL to enable, e.g., to enter bypass or lock.
@@ -1079,6 +1087,31 @@ static unsigned long omap3_clkoutx2_recalc(struct clk *clk)
 	return rate;
 }
 
+/** omap3_pwrdn_bug_clk_enable - enable clocks suffering from PWRDN bug
+ * @clk: DPLL output struct clk
+ *
+ * 3630 only: dpll3_m3_ck, dpll4_m2_ck, dpll4_m3_ck, dpll4_m4_ck, dpll4_m5_ck
+ * & dpll4_m6_ck dividers get lost after their respective PWRDN bits are set.
+ * Any write to the corresponding CM_CLKSEL register will refresh the
+ * dividers.  Only x2 clocks are affected, so it is safe to trust the parent
+ * clock information to refresh the CM_CLKSEL registers.
+ */
+int omap3_pwrdn_bug_clk_enable(struct clk *clk)
+{
+	u32 v, ret;
+	/* enable the clock */
+	ret = omap2_dflt_clk_enable(clk);
+
+	/* Restore the divideers */
+	v = __raw_readl(clk->parent->clksel_reg);
+	v += (1 << clk->parent->clksel_shift);
+	__raw_writel(v, clk->parent->clksel_reg);
+	v -= (1 << clk->parent->clksel_shift);
+	__raw_writel(v, clk->parent->clksel_reg);
+
+	return 0;
+}
+
 /* Common clock code */
 
 /*
@@ -1239,6 +1272,24 @@ int __init omap2_clk_init(void)
 						OMAP3630_CLKSEL_96M_MASK;
 			omap_96m_alwon_fck.clksel = omap_96m_alwon_fck_clksel;
 			omap_96m_alwon_fck.recalc = &omap2_clksel_recalc;
+			/* For 3630: override clkops_omap2_dflt_wait for the
+			 * clocks affected from PWRDN reset bug when DPLL4 is
+			 * configured to output 192MHz on M2 path */
+			if (omap_rev() == OMAP3630_REV_ES1_0) {
+				dpll3_m3x2_ck.ops =
+					&clkops_omap3_pwrdn_bug_wait_restore;
+				dpll4_m2x2_ck.ops =
+					&clkops_omap3_pwrdn_bug_wait_restore;
+				dpll4_m3x2_ck.ops =
+					&clkops_omap3_pwrdn_bug_wait_restore;
+				dpll4_m4x2_ck.ops =
+					&clkops_omap3_pwrdn_bug_wait_restore;
+				dpll4_m5x2_ck.ops =
+					&clkops_omap3_pwrdn_bug_wait_restore;
+				dpll4_m6x2_ck.ops =
+					&clkops_omap3_pwrdn_bug_wait_restore;
+			}
+
 		}
 
 		if (cpu_is_omap3630())
