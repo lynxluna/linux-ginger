@@ -86,10 +86,12 @@ static void zoom_lcd_tv_panel_init(void)
 	if (ret) {
 		printk(KERN_ERR "Failed to get lcd panel enable pin\n");
 	}
+#ifndef CONFIG_MACH_OMAP_3630SDP
 	ret = gpio_request(LCD_PANEL_BACKLIGHT_GPIO, "lcd backlight");
 	if (ret) {
 		printk(KERN_ERR "Failed to get lcd backlight pin\n");
 	}
+#endif
 	ret = gpio_request(TV_PANEL_ENABLE_GPIO, "tv panel");
 	if (ret) {
 		printk(KERN_ERR "Failed to get tv panel enable pin\n");
@@ -174,7 +176,11 @@ static struct omap_dss_device zoom_tv_device = {
 	.name                   = "tv",
 	.driver_name            = "venc",
 	.type                   = OMAP_DISPLAY_TYPE_VENC,
+#ifdef CONFIG_MACH_OMAP_3630SDP
+	.phy.venc.type          = OMAP_DSS_VENC_TYPE_SVIDEO,
+#else
 	.phy.venc.type          = OMAP_DSS_VENC_TYPE_COMPOSITE,
+#endif
 	.platform_enable        = zoom_panel_enable_tv,
 	.platform_disable       = zoom_panel_disable_tv,
 };
