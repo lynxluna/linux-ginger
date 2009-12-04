@@ -51,6 +51,10 @@
 #define ENABLE_VPLL2_DEV_GRP            0xE0
 #define TWL4030_VPLL2_DEV_GRP           0x33
 #define TWL4030_VPLL2_DEDICATED         0x36
+#define ENABLE_VDAC_DEDICATED		0x03
+#define ENABLE_VDAC_DEV_GRP		0x20
+#define DISABLE_VDAC_DEDICATED		0x00
+#define DISABLE_VDAC_DEV_GRP		0x00
 /* #define SIL9022_RESET_GPIO              97 */
 
 static void zoom_lcd_tv_panel_init(void)
@@ -135,6 +139,28 @@ static void zoom_panel_disable_lcd(struct omap_dss_device *dssdev)
 	gpio_direction_output(LCD_PANEL_BACKLIGHT_GPIO, 0);
 }
 
+static int zoom_panel_enable_tv(struct omap_dss_device *dssdev)
+{
+	int ret;
+
+	ret = twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
+				ENABLE_VDAC_DEDICATED, TWL4030_VDAC_DEDICATED);
+	ret |= twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
+				ENABLE_VDAC_DEV_GRP, TWL4030_VDAC_DEV_GRP);
+
+	return ret;
+}
+
+static void zoom_panel_disable_tv(struct omap_dss_device *dssdev)
+{
+	twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
+				DISABLE_VDAC_DEDICATED,
+				TWL4030_VDAC_DEDICATED);
+	twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
+				DISABLE_VDAC_DEV_GRP,
+				TWL4030_VDAC_DEV_GRP);
+}
+
 static struct omap_dss_device zoom_lcd_device = {
 	.name = "lcd",
 	.driver_name = "NEC_8048_panel",
@@ -142,12 +168,21 @@ static struct omap_dss_device zoom_lcd_device = {
 	.phy.dpi.data_lines = 24,
 	.platform_enable = zoom_panel_enable_lcd,
 	.platform_disable = zoom_panel_disable_lcd,
- };
+};
+
+static struct omap_dss_device zoom_tv_device = {
+	.name                   = "tv",
+	.driver_name            = "venc",
+	.type                   = OMAP_DISPLAY_TYPE_VENC,
+	.phy.venc.type          = OMAP_DSS_VENC_TYPE_COMPOSITE,
+	.platform_enable        = zoom_panel_enable_tv,
+	.platform_disable       = zoom_panel_disable_tv,
+};
 
 static struct omap_dss_device *zoom_dss_devices[] = {
 	&zoom_lcd_device,
-/*	&zoom_tv_device,
- *	#ifdef CONFIG_SIL9022
+	&zoom_tv_device,
+/*	#ifdef CONFIG_SIL9022
  *	&zoom_hdmi_device,
  *	#endif
  */
@@ -403,6 +438,10 @@ static int zoom_twl_gpio_setup(struct device *dev,
 	return 0;
 }
 
+#define ENABLE_VDAC_DEDICATED		0x03
+#define ENABLE_VDAC_DEV_GRP		0x20
+#define DISABLE_VDAC_DEDICATED		0x00
+#define DISABLE_VDAC_DEV_GRP		0x00
 
 static int zoom_batt_table[] = {
 /* 0 C*/
