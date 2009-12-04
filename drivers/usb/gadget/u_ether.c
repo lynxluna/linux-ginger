@@ -249,7 +249,6 @@ rx_submit(struct eth_dev *dev, struct usb_request *req, gfp_t gfp_flags)
 	 * but on at least one, checksumming fails otherwise.  Note:
 	 * RNDIS headers involve variable numbers of LE32 values.
 	 */
-	skb_reserve(skb, NET_IP_ALIGN);
 
 	req->buf = skb->data;
 	req->length = size;
@@ -500,6 +499,8 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 	unsigned long		flags;
 	struct usb_ep		*in;
 	u16			cdc_filter;
+	int			i = 0;
+
 
 	spin_lock_irqsave(&dev->lock, flags);
 	if (dev->port_usb) {
@@ -573,9 +574,6 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 
 		length = skb->len;
 	}
-	req->buf = skb->data;
-	req->context = skb;
-	req->complete = tx_complete;
 
 	/* use zlp framing on tx for strict CDC-Ether conformance,
 	 * though any robust network rx path ignores extra padding.
@@ -585,6 +583,14 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 	if (!dev->zlp && (length % in->maxpacket) == 0)
 		length++;
 
+	if ((int)skb->data & 0x2) {
+		skb_push(skb, 2);
+		for (i = 0; i < length; i++)
+			skb->data[i] = skb->data[i+2];
+	}
+	req->buf = skb->data;
+	req->context = skb;
+	req->complete = tx_complete;
 	req->length = length;
 
 	/* throttle highspeed IRQ rate back slightly */
