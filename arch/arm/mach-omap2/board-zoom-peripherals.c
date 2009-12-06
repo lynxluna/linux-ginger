@@ -33,6 +33,9 @@
 
 #include "mmc-twl4030.h"
 #include "twl4030-script.h"
+#ifdef CONFIG_PM
+#include "../drivers/media/video/omap/omap_voutdef.h"
+#endif
 
 #define OMAP_SYNAPTICS_GPIO		163
 #define LCD_PANEL_BACKLIGHT_GPIO        (15 + OMAP_MAX_GPIO_LINES)
@@ -538,7 +541,7 @@ static int __init omap_i2c_init(void)
 	return 0;
 }
 
-/*
+
 #ifdef CONFIG_PM
 struct vout_platform_data zoom_vout_data = {
 	.set_min_bus_tput = omap_pm_set_min_bus_tput,
@@ -546,29 +549,28 @@ struct vout_platform_data zoom_vout_data = {
 	.set_cpu_freq = omap_pm_cpu_set_freq,
 };
 #endif
-*/
 
 static struct platform_device zoom_vout_device = {
 	.name           = "omap_vout",
 	.num_resources  = ARRAY_SIZE(zoom_vout_resource),
 	.resource       = &zoom_vout_resource[0],
 	.id             = -1,
-/*
+
 #ifdef CONFIG_PM
 	.dev            = {
 		.platform_data = &zoom_vout_data,
 	}
 #else
-*/
+
 	.dev            = {
 		.platform_data = NULL,
 	}
-/*#endif*/
+#endif
 };
 
 static struct platform_device *zoom_devices[] __initdata = {
 	&zoom_dss_device,
-	/*&zoom_vout_device,*/
+	&zoom_vout_device,
 };
 
 static void enable_board_wakeup_source(void)
