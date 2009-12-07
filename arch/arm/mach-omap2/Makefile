@@ -115,16 +115,19 @@ obj-$(CONFIG_MACH_OMAP_ZOOM2)		+= board-zoom2.o \
 					   board-zoom-peripherals.o \
 					   mmc-twl4030.o \
 					   board-zoom-debugboard.o \
-					   twl4030-script.o
+					   twl4030-script.o \
+					   board-zoom-camera.o
 obj-$(CONFIG_MACH_OMAP_ZOOM3)		+= board-zoom3.o \
 					   board-zoom-flash.o \
 					   board-zoom-peripherals.o \
 					   mmc-twl4030.o \
 					   board-zoom-debugboard.o \
-					   twl4030-script.o
+					   twl4030-script.o \
+					   board-zoom-camera.o
 obj-$(CONFIG_MACH_OMAP_3630SDP)		+= board-3630sdp.o \
 					   board-sdp-flash.o \
 					   board-zoom-peripherals.o \
+					   board-zoom-camera.o \
 					   mmc-twl4030.o \
 					   twl4030-script.o
 obj-$(CONFIG_MACH_CM_T35)		+= board-cm-t35.o \
