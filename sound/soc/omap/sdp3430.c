@@ -46,6 +46,10 @@
 #define TWL4030_GPIO6_PWM0_MUTE(value)	(value << 2)
 
 static struct snd_soc_card snd_soc_sdp3430;
+static struct snd_soc_dai_link sdp3430_dai[];
+static int sdp3430_hifi_playback_state;
+static int sdp3430_voice_state;
+static int sdp3430_capture_state;
 
 static int sdp3430_hw_params(struct snd_pcm_substream *substream,
 	struct snd_pcm_hw_params *params)
@@ -186,9 +190,114 @@ static const struct snd_soc_dapm_route audio_map[] = {
 	{"Headset Stereophone", NULL, "HSOR"},
 };
 
+static int sdp3430_get_hifi_playback_state(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	#warning TODO : Fix checkpatch warnings for sound/soc/omap/sdp3430.c
+	ucontrol->value.integer.value[0] = sdp3430_hifi_playback_state;
+	return 0;
+}
+
+static int sdp3430_set_hifi_playback_state(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	if (sdp3430_hifi_playback_state == ucontrol->value.integer.value[0])
+		return 0;
+
+	if (ucontrol->value.integer.value[0]) {
+		snd_soc_dapm_stream_event(sdp3430_dai[0].codec_dai->codec,
+				"HiFi Playback",
+				SND_SOC_DAPM_STREAM_START);
+	} else {
+		snd_soc_dapm_stream_event(sdp3430_dai[0].codec_dai->codec,
+				"HiFi Playback",
+				SND_SOC_DAPM_STREAM_STOP);
+	}
+
+	sdp3430_hifi_playback_state = ucontrol->value.integer.value[0];
+
+	return 1;
+}
+
+static int sdp3430_get_voice_state(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = sdp3430_voice_state;
+	return 0;
+}
+
+static int sdp3430_set_voice_state(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	if (sdp3430_voice_state == ucontrol->value.integer.value[0])
+		return 0;
+
+	if (ucontrol->value.integer.value[0]) {
+		snd_soc_dapm_stream_event(sdp3430_dai[1].codec_dai->codec,
+				"Voice",
+				SND_SOC_DAPM_STREAM_START);
+	} else {
+		snd_soc_dapm_stream_event(sdp3430_dai[1].codec_dai->codec,
+				"Voice",
+				SND_SOC_DAPM_STREAM_STOP);
+	}
+
+	sdp3430_voice_state = ucontrol->value.integer.value[0];
+
+	return 1;
+}
+
+static int sdp3430_get_capture_state(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = sdp3430_capture_state;
+	return 0;
+}
+
+static int sdp3430_set_capture_state(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	if (sdp3430_capture_state == ucontrol->value.integer.value[0])
+		return 0;
+
+	if (ucontrol->value.integer.value[0]) {
+		snd_soc_dapm_stream_event(sdp3430_dai[1].codec_dai->codec,
+				"Capture",
+				SND_SOC_DAPM_STREAM_START);
+	} else {
+		snd_soc_dapm_stream_event(sdp3430_dai[1].codec_dai->codec,
+				"Capture",
+				SND_SOC_DAPM_STREAM_STOP);
+	}
+
+	sdp3430_capture_state = ucontrol->value.integer.value[0];
+
+	return 1;
+}
+
+static const char *path_control[] = {"Off", "On"};
+
+static const struct soc_enum sdp3430_enum[] = {
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(path_control), path_control),
+};
+
+static const struct snd_kcontrol_new sdp3430_controls[] = {
+	SOC_ENUM_EXT("HIFI Playback Control", sdp3430_enum[0],
+		sdp3430_get_hifi_playback_state, sdp3430_set_hifi_playback_state),
+	SOC_ENUM_EXT("Voice Control", sdp3430_enum[0],
+		sdp3430_get_voice_state, sdp3430_set_voice_state),
+	SOC_ENUM_EXT("Capture Control", sdp3430_enum[0],
+		sdp3430_get_capture_state, sdp3430_set_capture_state),
+};
+
 static int sdp3430_twl4030_init(struct snd_soc_codec *codec)
 {
 	int ret;
+	/* Add SDP3430 specific controls */
+	ret = snd_soc_add_controls(codec, sdp3430_controls,
+				ARRAY_SIZE(sdp3430_controls));
+	if (ret)
+		return ret;
 
 	/* Add SDP3430 specific widgets */
 	ret = snd_soc_dapm_new_controls(codec, sdp3430_twl4030_dapm_widgets,
@@ -282,6 +391,7 @@ static struct snd_soc_card snd_soc_sdp3430 = {
 	.num_links = ARRAY_SIZE(sdp3430_dai),
 };
 
+
 /* twl4030 setup */
 static struct twl4030_setup_data twl4030_setup = {
 	.ramp_delay_value = 3,
@@ -303,7 +413,7 @@ static int __init sdp3430_soc_init(void)
 	int ret;
 	u8 pin_mux;
 
-	if (!machine_is_omap_3430sdp()) {
+	if (!machine_is_omap_3430sdp() && !machine_is_omap_3630sdp()) {
 		pr_debug("Not SDP3430!\n");
 		return -ENODEV;
 	}
