@@ -100,6 +100,7 @@ config MACH_OMAP_3430SDP
 	bool "OMAP 3430 SDP board"
 	depends on ARCH_OMAP3 && ARCH_OMAP34XX
 	select OMAP_PACKAGE_CBB
+	select OMAP_MUX
 
 config MACH_NOKIA_N800
        bool
