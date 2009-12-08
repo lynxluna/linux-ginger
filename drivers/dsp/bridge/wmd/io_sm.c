@@ -1789,7 +1789,7 @@ DSP_STATUS IO_SHMsetting(IN struct IO_MGR *hIOMgr, IN enum SHM_DESCTYPE desc,
 			 IN void *pArgs)
 {
 #ifdef CONFIG_BRIDGE_DVFS
-	struct omap_opp *dsp_opp_table;
+	const struct omap_opp *dsp_opp_table;
 	u32 i, val;
 	u8 vdd1_max_opps, dsp_max_opps = 0;
 	struct dspbridge_platform_data *pdata =
