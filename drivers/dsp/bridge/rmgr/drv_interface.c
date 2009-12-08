@@ -263,10 +263,6 @@ static int __devinit omap34xx_bridge_probe(struct platform_device *pdev)
 
 	omap_dspbridge_dev = pdev;
 
-	/* There is no restriction for omap3630 */
-	if (cpu_is_omap3630())
-		min_active_opp = 1;
-
 	/* use 2.6 device model */
 	result = alloc_chrdev_region(&dev, driver_minor, 1, driver_name);
 	if (result < 0) {
