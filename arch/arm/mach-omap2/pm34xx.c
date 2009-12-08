@@ -84,11 +84,11 @@ static struct powerdomain *core_pwrdm, *per_pwrdm;
 static struct powerdomain *cam_pwrdm;
 
 static struct prm_setup_vc prm_setup = {
-	.clksetup = 0xff,
-	.voltsetup_time1 = 0xfff,
-	.voltsetup_time2 = 0xfff,
-	.voltoffset = 0xff,
-	.voltsetup2 = 0xff,
+	.clksetup = 0x14A,
+	.voltsetup_time1 = 0x00B3,
+	.voltsetup_time2 = 0x00A0,
+	.voltoffset = 0x118,
+	.voltsetup2 = 0x32,
 	.vdd0_on = 0x30,	/* 1.2v */
 	.vdd0_onlp = 0x20,	/* 1.0v */
 	.vdd0_ret = 0x1e,	/* 0.975v */
@@ -418,12 +418,22 @@ void omap_sram_idle(void)
 		omap_uart_prepare_idle(0);
 		omap_uart_prepare_idle(1);
 		if (core_next_state == PWRDM_POWER_OFF) {
+			/* VOLT & CLK SETUPTIME for OFF */
+			prm_setup.clksetup = 0x14A,
+			prm_setup.voltsetup_time1 = 0x00B3,
+			prm_setup.voltsetup_time2 = 0x00A0,
+
 			prm_set_mod_reg_bits(OMAP3430_AUTO_OFF,
 					     OMAP3430_GR_MOD,
 					     OMAP3_PRM_VOLTCTRL_OFFSET);
 			omap3_core_save_context();
 			omap3_prcm_save_context();
 		} else if (core_next_state == PWRDM_POWER_RET) {
+			/* VOLT & CLK SETUPTIME for RET */
+			prm_setup.clksetup = 0x1,
+			prm_setup.voltsetup_time1 = 0x005B,
+			prm_setup.voltsetup_time2 = 0x0055,
+
 			prm_set_mod_reg_bits(OMAP3430_AUTO_RET,
 						OMAP3430_GR_MOD,
 						OMAP3_PRM_VOLTCTRL_OFFSET);
@@ -802,6 +812,26 @@ static void __init omap3_d2d_idle(void)
 
 static void __init prcm_setup_regs(void)
 {
+	u32 cm_clksel1_mpu, cm_clksel1_iva2;
+	#warning TODO : Fix checkpatch warnings for arch/arm/mach-omap2/pm34xx.c
+
+	/*set Bypass clock dividers for MPU and IVA */
+	cm_clksel1_mpu = cm_read_mod_reg(MPU_MOD, CM_CLKSEL1);
+	cm_clksel1_iva2 = cm_read_mod_reg(OMAP3430_IVA2_MOD, CM_CLKSEL1);
+	if (cpu_is_omap3630()) {
+		cm_clksel1_iva2 = (cm_clksel1_iva2 & ~(OMAP3430_IVA2_CLK_SRC_MASK)) |
+					(0x2 << OMAP3430_IVA2_CLK_SRC_SHIFT);
+		cm_clksel1_mpu = (cm_clksel1_mpu & ~(OMAP3430_MPU_CLK_SRC_MASK)) |
+					(0x1 << OMAP3430_MPU_CLK_SRC_SHIFT);
+	} else if (cpu_is_omap34xx()) {
+		cm_clksel1_iva2 = (cm_clksel1_iva2 & ~(OMAP3430_IVA2_CLK_SRC_MASK)) |
+					(0x4 << OMAP3430_IVA2_CLK_SRC_SHIFT);
+		cm_clksel1_mpu = (cm_clksel1_mpu & ~(OMAP3430_MPU_CLK_SRC_MASK)) |
+					(0x2 << OMAP3430_MPU_CLK_SRC_SHIFT);
+		}
+	cm_write_mod_reg(cm_clksel1_iva2, OMAP3430_IVA2_MOD, CM_CLKSEL1);
+	cm_write_mod_reg(cm_clksel1_mpu, MPU_MOD, CM_CLKSEL1);
+
 	/* XXX Reset all wkdeps. This should be done when initializing
 	 * powerdomains */
 	prm_write_mod_reg(0, OMAP3430_IVA2_MOD, PM_WKDEP);
@@ -1058,6 +1088,45 @@ void omap3_pm_init_vc(struct prm_setup_vc *setup_vc)
 	prm_setup.vdd1_ret = setup_vc->vdd1_ret;
 	prm_setup.vdd1_off = setup_vc->vdd1_off;
 }
+
+int omap3_get_max_vdd1_opp(void)
+{
+	if (cpu_is_omap3630())
+		return VDD1_OPP2;
+	else /* Place holder for other 34xx (3430/3440) */
+		return VDD1_OPP5;
+}
+EXPORT_SYMBOL(omap3_get_max_vdd1_opp);
+
+int omap3_get_min_vdd1_opp(void)
+{
+	if (cpu_is_omap3630())
+		return VDD1_OPP1;
+	else /* Place holder for other 34xx (3430/3440) */
+		return VDD1_OPP1;
+}
+EXPORT_SYMBOL(omap3_get_min_vdd1_opp);
+
+int omap3_get_max_vdd2_opp(void)
+{
+	if (cpu_is_omap3630())
+		return VDD2_OPP2;
+	else /* Place holder for other 34xx (3430/3440) */
+		return VDD2_OPP3;
+
+}
+EXPORT_SYMBOL(omap3_get_max_vdd2_opp);
+
+int omap3_get_min_vdd2_opp(void)
+{
+	if (cpu_is_omap3630())
+		return VDD2_OPP1;
+	else /* Place holder for other 34xx (3430/3440) */
+		return VDD2_OPP2;
+
+}
+EXPORT_SYMBOL(omap3_get_min_vdd2_opp);
+
 
 static int __init pwrdms_setup(struct powerdomain *pwrdm, void *unused)
 {

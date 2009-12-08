@@ -1245,7 +1245,11 @@ static void autoconfig(struct uart_8250_port *up, unsigned int probeflags)
 #endif
 	serial_outp(up, UART_MCR, save_mcr);
 	serial8250_clear_fifos(up);
-	serial_in(up, UART_RX);
+	if (up->port.flags & UPF_NO_EMPTY_FIFO_READ) {
+		if (serial_inp(up, UART_LSR) & UART_LSR_DR)
+			serial_in(up, UART_RX);
+	} else
+		serial_in(up, UART_RX);
 	if (up->capabilities & UART_CAP_UUE)
 		serial_outp(up, UART_IER, UART_IER_UUE);
 	else
@@ -1289,7 +1293,11 @@ static void autoconfig_irq(struct uart_8250_port *up)
 	}
 	serial_outp(up, UART_IER, 0x0f);	/* enable all intrs */
 	(void)serial_inp(up, UART_LSR);
-	(void)serial_inp(up, UART_RX);
+	if (up->port.flags & UPF_NO_EMPTY_FIFO_READ) {
+		if (serial_inp(up, UART_LSR) & UART_LSR_DR)
+			(void)serial_inp(up, UART_RX);
+	} else
+		(void)serial_inp(up, UART_RX);
 	(void)serial_inp(up, UART_IIR);
 	(void)serial_inp(up, UART_MSR);
 	serial_outp(up, UART_TX, 0xFF);
@@ -1984,7 +1992,11 @@ static int serial8250_startup(struct uart_port *port)
 	 * Clear the interrupt registers.
 	 */
 	(void) serial_inp(up, UART_LSR);
-	(void) serial_inp(up, UART_RX);
+	if (up->port.flags & UPF_NO_EMPTY_FIFO_READ) {
+		if (serial_inp(up, UART_LSR) & UART_LSR_DR)
+			(void) serial_inp(up, UART_RX);
+	} else
+		(void) serial_inp(up, UART_RX);
 	(void) serial_inp(up, UART_IIR);
 	(void) serial_inp(up, UART_MSR);
 
@@ -2141,7 +2153,11 @@ dont_test_tx_en:
 	 * routines or the previous session.
 	 */
 	serial_inp(up, UART_LSR);
-	serial_inp(up, UART_RX);
+	if (up->port.flags & UPF_NO_EMPTY_FIFO_READ) {
+		if (serial_inp(up, UART_LSR) & UART_LSR_DR)
+			serial_inp(up, UART_RX);
+	} else
+		serial_inp(up, UART_RX);
 	serial_inp(up, UART_IIR);
 	serial_inp(up, UART_MSR);
 	up->lsr_saved_flags = 0;
@@ -2207,7 +2223,11 @@ static void serial8250_shutdown(struct uart_port *port)
 	 * Read data port to reset things, and then unlink from
 	 * the IRQ chain.
 	 */
-	(void) serial_in(up, UART_RX);
+	if (up->port.flags & UPF_NO_EMPTY_FIFO_READ) {
+		if (serial_inp(up, UART_LSR) & UART_LSR_DR)
+			(void) serial_inp(up, UART_RX);
+	} else
+		(void) serial_in(up, UART_RX);
 
 	del_timer_sync(&up->timer);
 	up->timer.function = serial8250_timeout;

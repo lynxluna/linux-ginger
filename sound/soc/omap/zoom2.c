@@ -38,6 +38,11 @@
 #define ZOOM2_HEADSET_MUX_GPIO		(OMAP_MAX_GPIO_LINES + 15)
 #define ZOOM2_HEADSET_EXTMUTE_GPIO	153
 
+static struct snd_soc_dai_link zoom2_dai[];
+static int zoom2_hifi_playback_state;
+static int zoom2_voice_state;
+static int zoom2_capture_state;
+
 static int zoom2_hw_params(struct snd_pcm_substream *substream,
 				struct snd_pcm_hw_params *params)
 {
@@ -124,6 +129,44 @@ static struct snd_soc_ops zoom2_voice_ops = {
 	.hw_params = zoom2_hw_voice_params,
 };
 
+/* Audio Sampling frequences supported by Triton */
+static const char *audio_sample_rates_txt[] = {
+	"8000", "11025", "12000", "16000", "22050",
+	"24000", "32000", "44100", "48000", "96000"
+	};
+
+/*
+ * APLL_RATE defined in CODEC_MODE register, which corresponds
+ * to the sampling rates defined above
+ */
+static const unsigned int audio_sample_rates_apll[] = {
+	0x0, 0x1, 0x2, 0x4, 0x5,
+	0x6, 0x8, 0x9, 0xa, 0xe
+	};
+
+/* Voice Sampling rates supported by Triton */
+static const char *voice_sample_rates_txt[] = {
+	"8000", "16000"
+	};
+
+/*
+ * SEL_16K defined in CODEC_MODE register, which corresponds
+ * to the voice sample rates defined above
+ */
+static const unsigned int voice_sample_rates_sel_16k[] = {
+	0x0, 0x1
+	};
+
+static const struct soc_enum twl4030_audio_sample_rates_enum =
+	SOC_VALUE_ENUM_SINGLE(TWL4030_REG_CODEC_MODE, 4, 0xf,
+			ARRAY_SIZE(audio_sample_rates_txt),
+			audio_sample_rates_txt, audio_sample_rates_apll);
+
+static const struct soc_enum twl4030_voice_sample_rates_enum =
+	SOC_VALUE_ENUM_SINGLE(TWL4030_REG_CODEC_MODE, 3, 0x1,
+			ARRAY_SIZE(voice_sample_rates_txt),
+			voice_sample_rates_txt, voice_sample_rates_sel_16k);
+
 /* Zoom2 machine DAPM */
 static const struct snd_soc_dapm_widget zoom2_twl4030_dapm_widgets[] = {
 	SND_SOC_DAPM_MIC("Ext Mic", NULL),
@@ -157,9 +200,136 @@ static const struct snd_soc_dapm_route audio_map[] = {
 	{"Aux In", NULL, "AUXR"},
 };
 
+static int zoom2_get_hifi_playback_state(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = zoom2_hifi_playback_state;
+	return 0;
+}
+
+static int zoom2_set_hifi_playback_state(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	int ret;
+
+	if (zoom2_hifi_playback_state == ucontrol->value.integer.value[0])
+		return 0;
+
+	if (ucontrol->value.integer.value[0]) {
+		ret = snd_soc_dapm_stream_event(zoom2_dai[0].codec_dai->codec,
+				zoom2_dai[0].codec_dai->playback.stream_name,
+				SND_SOC_DAPM_STREAM_START);
+	} else {
+		ret = snd_soc_dapm_stream_event(zoom2_dai[0].codec_dai->codec,
+				zoom2_dai[0].codec_dai->playback.stream_name,
+				SND_SOC_DAPM_STREAM_STOP);
+	}
+
+	if (ret != 0) {
+		printk(KERN_ERR "failed to set hifi playback state\n");
+		return 0;
+	}
+
+	zoom2_hifi_playback_state = ucontrol->value.integer.value[0];
+	return 1;
+}
+
+static int zoom2_get_voice_state(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = zoom2_voice_state;
+	return 0;
+}
+
+static int zoom2_set_voice_state(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	int ret;
+
+	if (zoom2_voice_state == ucontrol->value.integer.value[0])
+		return 0;
+
+	if (ucontrol->value.integer.value[0]) {
+		ret = snd_soc_dapm_stream_event(zoom2_dai[1].codec_dai->codec,
+				zoom2_dai[1].codec_dai->playback.stream_name,
+				SND_SOC_DAPM_STREAM_START);
+	} else {
+		ret = snd_soc_dapm_stream_event(zoom2_dai[1].codec_dai->codec,
+				zoom2_dai[1].codec_dai->playback.stream_name,
+				SND_SOC_DAPM_STREAM_STOP);
+	}
+
+	if (ret != 0) {
+		printk(KERN_ERR "failed to set voice playback state\n");
+		return 0;
+	}
+
+	zoom2_voice_state = ucontrol->value.integer.value[0];
+	return 1;
+}
+
+static int zoom2_get_capture_state(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = zoom2_capture_state;
+	return 0;
+}
+
+static int zoom2_set_capture_state(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	int ret;
+
+	if (zoom2_capture_state == ucontrol->value.integer.value[0])
+		return 0;
+
+	if (ucontrol->value.integer.value[0]) {
+		ret = snd_soc_dapm_stream_event(zoom2_dai[1].codec_dai->codec,
+				zoom2_dai[1].codec_dai->capture.stream_name,
+				SND_SOC_DAPM_STREAM_START);
+	} else {
+		ret = snd_soc_dapm_stream_event(zoom2_dai[1].codec_dai->codec,
+				zoom2_dai[1].codec_dai->capture.stream_name,
+				SND_SOC_DAPM_STREAM_STOP);
+	}
+
+	if (ret != 0) {
+		printk(KERN_ERR "failed to set capture state\n");
+		return 0;
+	}
+
+	zoom2_capture_state = ucontrol->value.integer.value[0];
+	return 1;
+}
+
+static const char *path_control[] = {"Off", "On"};
+
+static const struct soc_enum zoom2_enum[] = {
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(path_control), path_control),
+};
+
+static const struct snd_kcontrol_new zoom2_controls[] = {
+	SOC_ENUM_EXT("HIFI Playback Control", zoom2_enum[0],
+		zoom2_get_hifi_playback_state, zoom2_set_hifi_playback_state),
+	SOC_ENUM_EXT("Voice Control", zoom2_enum[0],
+		zoom2_get_voice_state, zoom2_set_voice_state),
+	SOC_ENUM_EXT("Capture Control", zoom2_enum[0],
+		zoom2_get_capture_state, zoom2_set_capture_state),
+	SOC_ENUM_EXT("Audio Sample Rate", twl4030_audio_sample_rates_enum,
+		snd_soc_get_value_enum_double, snd_soc_put_value_enum_double),
+	SOC_ENUM_EXT("Voice Sample Rate", twl4030_voice_sample_rates_enum,
+		snd_soc_get_value_enum_double, snd_soc_put_value_enum_double),
+};
+
 static int zoom2_twl4030_init(struct snd_soc_codec *codec)
 {
 	int ret;
+
+	/* Add ZOOM2 specific controls */
+	ret = snd_soc_add_controls(codec, zoom2_controls,
+				ARRAY_SIZE(zoom2_controls));
+	if (ret)
+		return ret;
 
 	/* Add Zoom2 specific widgets */
 	ret = snd_soc_dapm_new_controls(codec, zoom2_twl4030_dapm_widgets,
@@ -262,11 +432,11 @@ static int __init zoom2_soc_init(void)
 {
 	int ret;
 
-	if (!machine_is_omap_zoom2()) {
-		pr_debug("Not Zoom2!\n");
+	if (!machine_is_omap_zoom2() && !machine_is_omap_zoom3()) {
+		pr_debug("Not Zoom!\n");
 		return -ENODEV;
 	}
-	printk(KERN_INFO "Zoom2 SoC init\n");
+	pr_info("Zoom SoC init\n");
 
 	zoom2_snd_device = platform_device_alloc("soc-audio", -1);
 	if (!zoom2_snd_device) {

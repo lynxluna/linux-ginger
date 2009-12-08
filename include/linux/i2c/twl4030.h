@@ -86,6 +86,20 @@ int twl4030_i2c_read(u8 mod_no, u8 *value, u8 reg, unsigned num_bytes);
 
 /*----------------------------------------------------------------------*/
 
+/* Iterface Bit Register (INTBR) offsets
+ * (use TWL4030_MODULE_INTBR)
+ */
+
+#define REG_GPPUPDCTR1			0x0F
+
+/* I2C1 and I2C4(SR) SDA/SCL pull-up control bits */
+
+#define I2C_SCL_CTRL_PU			(1 << 0)
+#define I2C_SDA_CTRL_PU			(1 << 2)
+#define SR_I2C_SCL_CTRL_PU		(1 << 4)
+#define SR_I2C_SDA_CTRL_PU		(1 << 6)
+/*----------------------------------------------------------------------*/
+
 /*
  * NOTE:  at up to 1024 registers, this is a big chip.
  *
@@ -235,6 +249,7 @@ int twl4030_i2c_read(u8 mod_no, u8 *value, u8 reg, unsigned num_bytes);
 #define DEV_GRP_P1		0x1	/* P1: all OMAP devices */
 #define DEV_GRP_P2		0x2	/* P2: all Modem devices */
 #define DEV_GRP_P3		0x4	/* P3: all peripheral devices */
+#define DEV_GRP_ALL		0x7	/* P1/P2/P3: all devices */
 
 /* Resource groups */
 #define RES_GRP_RES		0x0	/* Reserved */
@@ -247,7 +262,10 @@ int twl4030_i2c_read(u8 mod_no, u8 *value, u8 reg, unsigned num_bytes);
 #define RES_GRP_ALL		0x7	/* All resource groups */
 
 #define RES_TYPE2_R0		0x0
+#define RES_TYPE2_R1		0x1
+#define RES_TYPE2_R2		0x2
 
+#define RES_TYPE_R0		0x0
 #define RES_TYPE_ALL		0x7
 
 #define RES_STATE_WRST		0xF
@@ -391,6 +409,7 @@ struct twl4030_resconfig {
 	u8 devgroup;	/* Processor group that Power resource belongs to */
 	u8 type;	/* Power resource addressed, 6 / broadcast message */
 	u8 type2;	/* Power resource addressed, 3 / broadcast message */
+	u8 remap_sleep;	/* Sleep command send to Power chip */
 };
 
 struct twl4030_power_data {

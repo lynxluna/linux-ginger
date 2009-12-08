@@ -22,6 +22,7 @@
 #include <plat/usb.h>
 
 #include "sdram-hynix-h8mbx00u0mer-0em.h"
+#include "omap3-opp.h"
 
 #if defined(CONFIG_SMC91X) || defined(CONFIG_SMC91X_MODULE)
 
@@ -76,7 +77,9 @@ static void __init omap_sdp_init_irq(void)
 	omap_board_config_size = ARRAY_SIZE(sdp_config);
 	omap2_init_common_hw(h8mbx00u0mer0em_sdrc_params,
 			     h8mbx00u0mer0em_sdrc_params,
-                             NULL, NULL, NULL);
+			     omap36xx_mpu_rate_table,
+			     omap36xx_dsp_rate_table,
+			     omap36xx_l3_rate_table);
 	omap_init_irq();
 	omap_gpio_init();
 }

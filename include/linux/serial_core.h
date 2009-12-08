@@ -179,6 +179,9 @@
 /* BCM63xx family SoCs */
 #define PORT_BCM63XX	89
 
+/* TI OMAP-UART */
+#define PORT_OMAP	90
+
 #ifdef __KERNEL__
 
 #include <linux/compiler.h>
@@ -308,6 +311,7 @@ struct uart_port {
 #define UPF_SPD_WARP		((__force upf_t) (0x1010))
 #define UPF_SKIP_TEST		((__force upf_t) (1 << 6))
 #define UPF_AUTO_IRQ		((__force upf_t) (1 << 7))
+#define UPF_NO_EMPTY_FIFO_READ	((__force upf_t) (1 << 8))
 #define UPF_HARDPPS_CD		((__force upf_t) (1 << 11))
 #define UPF_LOW_LATENCY		((__force upf_t) (1 << 13))
 #define UPF_BUGGY_UART		((__force upf_t) (1 << 14))

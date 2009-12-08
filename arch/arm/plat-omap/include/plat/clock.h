@@ -60,6 +60,9 @@ struct dpll_data {
 	void __iomem		*idlest_reg;
 	u32			autoidle_mask;
 	u32			freqsel_mask;
+	u32			dco_sel_mask;
+	u32			sd_div_mask;
+	u8			jtype;
 	u32			idlest_mask;
 	u8			auto_recal_bit;
 	u8			recal_en_bit;
@@ -88,9 +91,9 @@ struct clk {
 	__s8			usecount;
 #if defined(CONFIG_ARCH_OMAP2) || defined(CONFIG_ARCH_OMAP3) || \
 		defined(CONFIG_ARCH_OMAP4)
-	u8			fixed_div;
+	u8			fixed_div, clksel_shift;
 	void __iomem		*clksel_reg;
-	u32			clksel_mask;
+	u32			clksel_mask, clksel_mask_3630;
 	const struct clksel	*clksel;
 	struct dpll_data	*dpll_data;
 	const char		*clkdm_name;
@@ -154,9 +157,9 @@ extern const struct clkops clkops_null;
 #define DEFAULT_RATE		(1 << 0)
 #define RATE_IN_242X		(1 << 1)
 #define RATE_IN_243X		(1 << 2)
-#define RATE_IN_343X		(1 << 3)	/* rates common to all 343X */
+#define RATE_IN_3XXX		(1 << 3)	/* rates common to all 343X */
 #define RATE_IN_3430ES2		(1 << 4)	/* 3430ES2 rates only */
-
+#define RATE_IN_363X		(1 << 5)        /* rates common to all 363X */
 #define RATE_IN_24XX		(RATE_IN_242X | RATE_IN_243X)
 
 

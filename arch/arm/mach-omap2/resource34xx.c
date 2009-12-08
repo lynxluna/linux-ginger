@@ -242,9 +242,30 @@ static int program_opp_freq(int res, int target_level, int current_level)
 {
 	int ret = 0, l3_div;
 	int *curr_opp;
+	u32 cm_clksel1_mpu;
+	#warning TODO : Fix checkpatch warnings for arch/arm/mach-omap2/resource34xx.c
 
 	lock_scratchpad_sem();
 	if (res == VDD1_OPP) {
+		if (target_level == VDD1_OPP1) {
+			cm_clksel1_mpu = cm_read_mod_reg(MPU_MOD, CM_CLKSEL1);
+			if (cpu_is_omap3630())
+				cm_clksel1_mpu = (cm_clksel1_mpu & ~(OMAP3430_MPU_CLK_SRC_MASK)) |
+							(0x2 << OMAP3430_MPU_CLK_SRC_SHIFT);
+			else if (cpu_is_omap34xx())
+				cm_clksel1_mpu = (cm_clksel1_mpu & ~(OMAP3430_MPU_CLK_SRC_MASK)) |
+							(0x4 << OMAP3430_MPU_CLK_SRC_SHIFT);
+			cm_write_mod_reg(cm_clksel1_mpu, MPU_MOD, CM_CLKSEL1);
+		} else if ((current_level == VDD1_OPP1) && (target_level != VDD1_OPP1)) {
+			cm_clksel1_mpu = cm_read_mod_reg(MPU_MOD, CM_CLKSEL1);
+			if (cpu_is_omap3630())
+				cm_clksel1_mpu = (cm_clksel1_mpu & ~(OMAP3430_MPU_CLK_SRC_MASK)) |
+							(0x1 << OMAP3430_MPU_CLK_SRC_SHIFT);
+			else if (cpu_is_omap34xx())
+				cm_clksel1_mpu = (cm_clksel1_mpu & ~(OMAP3430_MPU_CLK_SRC_MASK)) |
+							(0x2 << OMAP3430_MPU_CLK_SRC_SHIFT);
+			cm_write_mod_reg(cm_clksel1_mpu, MPU_MOD, CM_CLKSEL1);
+		}
 		curr_opp = &curr_vdd1_opp;
 		clk_set_rate(dpll1_clk, mpu_opps[target_level].rate);
 		clk_set_rate(dpll2_clk, dsp_opps[target_level].rate);
@@ -372,7 +393,7 @@ int set_opp(struct shared_resource *resp, u32 target_level)
 	int ind;
 
 	if (resp == vdd1_resp) {
-		if (target_level < 3)
+		if (target_level < MAX_VDD2_OPP)
 			resource_release("vdd2_opp", &vdd2_dev);
 
 		resource_set_opp_level(VDD1_OPP, target_level, 0);
@@ -381,8 +402,9 @@ int set_opp(struct shared_resource *resp, u32 target_level)
 		 * is at 100Mhz or above.
 		 * throughput in KiB/s for 100 Mhz = 100 * 1000 * 4.
 		 */
-		if (target_level >= 3)
-			resource_request("vdd2_opp", &vdd2_dev, 400000);
+		if (target_level > MIN_VDD2_OPP)
+			resource_request("vdd2_opp", &vdd2_dev,
+				(4 * (l3_opps + MAX_VDD2_OPP)->rate / 1000));
 
 	} else if (resp == vdd2_resp) {
 		tput = target_level;
@@ -390,7 +412,7 @@ int set_opp(struct shared_resource *resp, u32 target_level)
 		/* Convert the tput in KiB/s to Bus frequency in MHz */
 		req_l3_freq = (tput * 1000)/4;
 
-		for (ind = 2; ind <= MAX_VDD2_OPP; ind++)
+		for (ind = MIN_VDD2_OPP; ind <= MAX_VDD2_OPP; ind++)
 			if ((l3_opps + ind)->rate >= req_l3_freq) {
 				target_level = ind;
 				break;

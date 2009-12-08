@@ -120,12 +120,12 @@ static struct clk virt_38_4m_ck = {
 };
 
 static const struct clksel_rate osc_sys_12m_rates[] = {
-	{ .div = 1, .val = 0, .flags = RATE_IN_343X | DEFAULT_RATE },
+	{ .div = 1, .val = 0, .flags = RATE_IN_3XXX | DEFAULT_RATE },
 	{ .div = 0 }
 };
 
 static const struct clksel_rate osc_sys_13m_rates[] = {
-	{ .div = 1, .val = 1, .flags = RATE_IN_343X | DEFAULT_RATE },
+	{ .div = 1, .val = 1, .flags = RATE_IN_3XXX | DEFAULT_RATE },
 	{ .div = 0 }
 };
 
@@ -135,17 +135,17 @@ static const struct clksel_rate osc_sys_16_8m_rates[] = {
 };
 
 static const struct clksel_rate osc_sys_19_2m_rates[] = {
-	{ .div = 1, .val = 2, .flags = RATE_IN_343X | DEFAULT_RATE },
+	{ .div = 1, .val = 2, .flags = RATE_IN_3XXX | DEFAULT_RATE },
 	{ .div = 0 }
 };
 
 static const struct clksel_rate osc_sys_26m_rates[] = {
-	{ .div = 1, .val = 3, .flags = RATE_IN_343X | DEFAULT_RATE },
+	{ .div = 1, .val = 3, .flags = RATE_IN_3XXX | DEFAULT_RATE },
 	{ .div = 0 }
 };
 
 static const struct clksel_rate osc_sys_38_4m_rates[] = {
-	{ .div = 1, .val = 4, .flags = RATE_IN_343X | DEFAULT_RATE },
+	{ .div = 1, .val = 4, .flags = RATE_IN_3XXX | DEFAULT_RATE },
 	{ .div = 0 }
 };
 
@@ -174,8 +174,8 @@ static struct clk osc_sys_ck = {
 };
 
 static const struct clksel_rate div2_rates[] = {
-	{ .div = 1, .val = 1, .flags = RATE_IN_343X | DEFAULT_RATE },
-	{ .div = 2, .val = 2, .flags = RATE_IN_343X },
+	{ .div = 1, .val = 1, .flags = RATE_IN_3XXX | DEFAULT_RATE },
+	{ .div = 2, .val = 2, .flags = RATE_IN_3XXX },
 	{ .div = 0 }
 };
 
@@ -224,22 +224,58 @@ static struct clk sys_clkout1 = {
 /* CM CLOCKS */
 
 static const struct clksel_rate div16_dpll_rates[] = {
-	{ .div = 1, .val = 1, .flags = RATE_IN_343X | DEFAULT_RATE },
-	{ .div = 2, .val = 2, .flags = RATE_IN_343X },
-	{ .div = 3, .val = 3, .flags = RATE_IN_343X },
-	{ .div = 4, .val = 4, .flags = RATE_IN_343X },
-	{ .div = 5, .val = 5, .flags = RATE_IN_343X },
-	{ .div = 6, .val = 6, .flags = RATE_IN_343X },
-	{ .div = 7, .val = 7, .flags = RATE_IN_343X },
-	{ .div = 8, .val = 8, .flags = RATE_IN_343X },
-	{ .div = 9, .val = 9, .flags = RATE_IN_343X },
-	{ .div = 10, .val = 10, .flags = RATE_IN_343X },
-	{ .div = 11, .val = 11, .flags = RATE_IN_343X },
-	{ .div = 12, .val = 12, .flags = RATE_IN_343X },
-	{ .div = 13, .val = 13, .flags = RATE_IN_343X },
-	{ .div = 14, .val = 14, .flags = RATE_IN_343X },
-	{ .div = 15, .val = 15, .flags = RATE_IN_343X },
-	{ .div = 16, .val = 16, .flags = RATE_IN_343X },
+	{ .div = 1, .val = 1, .flags = RATE_IN_3XXX | DEFAULT_RATE },
+	{ .div = 2, .val = 2, .flags = RATE_IN_3XXX },
+	{ .div = 3, .val = 3, .flags = RATE_IN_3XXX },
+	{ .div = 4, .val = 4, .flags = RATE_IN_3XXX },
+	{ .div = 5, .val = 5, .flags = RATE_IN_3XXX },
+	{ .div = 6, .val = 6, .flags = RATE_IN_3XXX },
+	{ .div = 7, .val = 7, .flags = RATE_IN_3XXX },
+	{ .div = 8, .val = 8, .flags = RATE_IN_3XXX },
+	{ .div = 9, .val = 9, .flags = RATE_IN_3XXX },
+	{ .div = 10, .val = 10, .flags = RATE_IN_3XXX },
+	{ .div = 11, .val = 11, .flags = RATE_IN_3XXX },
+	{ .div = 12, .val = 12, .flags = RATE_IN_3XXX },
+	{ .div = 13, .val = 13, .flags = RATE_IN_3XXX },
+	{ .div = 14, .val = 14, .flags = RATE_IN_3XXX },
+	{ .div = 15, .val = 15, .flags = RATE_IN_3XXX },
+	{ .div = 16, .val = 16, .flags = RATE_IN_3XXX },
+	{ .div = 0 }
+};
+
+static const struct clksel_rate div32_dpll_rates[] = {
+	{ .div = 1, .val = 1, .flags = RATE_IN_3XXX | DEFAULT_RATE },
+	{ .div = 2, .val = 2, .flags = RATE_IN_3XXX },
+	{ .div = 3, .val = 3, .flags = RATE_IN_3XXX },
+	{ .div = 4, .val = 4, .flags = RATE_IN_3XXX },
+	{ .div = 5, .val = 5, .flags = RATE_IN_3XXX },
+	{ .div = 6, .val = 6, .flags = RATE_IN_3XXX },
+	{ .div = 7, .val = 7, .flags = RATE_IN_3XXX },
+	{ .div = 8, .val = 8, .flags = RATE_IN_3XXX },
+	{ .div = 9, .val = 9, .flags = RATE_IN_3XXX },
+	{ .div = 10, .val = 10, .flags = RATE_IN_3XXX },
+	{ .div = 11, .val = 11, .flags = RATE_IN_3XXX },
+	{ .div = 12, .val = 12, .flags = RATE_IN_3XXX },
+	{ .div = 13, .val = 13, .flags = RATE_IN_3XXX },
+	{ .div = 14, .val = 14, .flags = RATE_IN_3XXX },
+	{ .div = 15, .val = 15, .flags = RATE_IN_3XXX },
+	{ .div = 16, .val = 16, .flags = RATE_IN_3XXX },
+	{ .div = 17, .val = 17, .flags = RATE_IN_363X },
+	{ .div = 18, .val = 18, .flags = RATE_IN_363X },
+	{ .div = 19, .val = 19, .flags = RATE_IN_363X },
+	{ .div = 20, .val = 20, .flags = RATE_IN_363X },
+	{ .div = 21, .val = 21, .flags = RATE_IN_363X },
+	{ .div = 22, .val = 22, .flags = RATE_IN_363X },
+	{ .div = 23, .val = 23, .flags = RATE_IN_363X },
+	{ .div = 24, .val = 24, .flags = RATE_IN_363X },
+	{ .div = 25, .val = 25, .flags = RATE_IN_363X },
+	{ .div = 26, .val = 26, .flags = RATE_IN_363X },
+	{ .div = 27, .val = 27, .flags = RATE_IN_363X },
+	{ .div = 28, .val = 28, .flags = RATE_IN_363X },
+	{ .div = 29, .val = 29, .flags = RATE_IN_363X },
+	{ .div = 30, .val = 30, .flags = RATE_IN_363X },
+	{ .div = 31, .val = 31, .flags = RATE_IN_363X },
+	{ .div = 32, .val = 32, .flags = RATE_IN_363X },
 	{ .div = 0 }
 };
 
@@ -425,8 +461,8 @@ static struct clk dpll3_x2_ck = {
 };
 
 static const struct clksel_rate div31_dpll3_rates[] = {
-	{ .div = 1, .val = 1, .flags = RATE_IN_343X | DEFAULT_RATE },
-	{ .div = 2, .val = 2, .flags = RATE_IN_343X },
+	{ .div = 1, .val = 1, .flags = RATE_IN_3XXX | DEFAULT_RATE },
+	{ .div = 2, .val = 2, .flags = RATE_IN_3XXX },
 	{ .div = 3, .val = 3, .flags = RATE_IN_3430ES2 },
 	{ .div = 4, .val = 4, .flags = RATE_IN_3430ES2 },
 	{ .div = 5, .val = 5, .flags = RATE_IN_3430ES2 },
@@ -508,6 +544,7 @@ static struct clk dpll3_m3_ck = {
 	.init		= &omap2_init_clksel_parent,
 	.clksel_reg	= OMAP_CM_REGADDR(OMAP3430_EMU_MOD, CM_CLKSEL1),
 	.clksel_mask	= OMAP3430_DIV_DPLL3_MASK,
+	.clksel_shift	= OMAP3430_DIV_DPLL3_SHIFT,
 	.clksel		= div16_dpll3_clksel,
 	.clkdm_name	= "dpll3_clkdm",
 	.recalc		= &omap2_clksel_recalc,
@@ -588,6 +625,11 @@ static const struct clksel div16_dpll4_clksel[] = {
 	{ .parent = NULL }
 };
 
+static const struct clksel div32_dpll4_clksel[] = {
+	{ .parent = &dpll4_ck, .rates = div32_dpll_rates },
+	{ .parent = NULL }
+};
+
 /* This virtual clock is the source for dpll4_m2x2_ck */
 static struct clk dpll4_m2_ck = {
 	.name		= "dpll4_m2_ck",
@@ -596,6 +638,7 @@ static struct clk dpll4_m2_ck = {
 	.init		= &omap2_init_clksel_parent,
 	.clksel_reg	= OMAP_CM_REGADDR(PLL_MOD, OMAP3430_CM_CLKSEL3),
 	.clksel_mask	= OMAP3430_DIV_96M_MASK,
+	.clksel_shift	= OMAP3430_DIV_96M_SHIFT,
 	.clksel		= div16_dpll4_clksel,
 	.clkdm_name	= "dpll4_clkdm",
 	.recalc		= &omap2_clksel_recalc,
@@ -613,12 +656,31 @@ static struct clk dpll4_m2x2_ck = {
 	.recalc		= &omap3_clkoutx2_recalc,
 };
 
+/* Adding 192MHz Clock node needed by SGX */
+static struct clk omap_192m_alwon_ck = {
+	.name           = "omap_192m_alwon_ck",
+	.ops            = &clkops_null,
+	.parent         = &dpll4_m2x2_ck,
+	.recalc         = &followparent_recalc,
+};
+
 /*
  * DPLL4 generates DPLL4_M2X2_CLK which is then routed into the PRM as
  * PRM_96M_ALWON_(F)CLK.  Two clocks then emerge from the PRM:
  * 96M_ALWON_FCLK (called "omap_96m_alwon_fck" below) and
  * CM_96K_(F)CLK.
  */
+static const struct clksel_rate omap_96m_alwon_fck_rates[] = {
+	{ .div = 1, .val = 1, .flags = RATE_IN_363X },
+	{ .div = 2, .val = 2, .flags = RATE_IN_363X | DEFAULT_RATE },
+	{ .div = 0 }
+};
+
+static const struct clksel omap_96m_alwon_fck_clksel[] = {
+	{ .parent = &omap_192m_alwon_ck, .rates = omap_96m_alwon_fck_rates },
+	{ .parent = NULL }
+};
+
 static struct clk omap_96m_alwon_fck = {
 	.name		= "omap_96m_alwon_fck",
 	.ops		= &clkops_null,
@@ -634,12 +696,12 @@ static struct clk cm_96m_fck = {
 };
 
 static const struct clksel_rate omap_96m_dpll_rates[] = {
-	{ .div = 1, .val = 0, .flags = RATE_IN_343X | DEFAULT_RATE },
+	{ .div = 1, .val = 0, .flags = RATE_IN_3XXX | DEFAULT_RATE },
 	{ .div = 0 }
 };
 
 static const struct clksel_rate omap_96m_sys_rates[] = {
-	{ .div = 1, .val = 1, .flags = RATE_IN_343X | DEFAULT_RATE },
+	{ .div = 1, .val = 1, .flags = RATE_IN_3XXX | DEFAULT_RATE },
 	{ .div = 0 }
 };
 
@@ -668,7 +730,9 @@ static struct clk dpll4_m3_ck = {
 	.init		= &omap2_init_clksel_parent,
 	.clksel_reg	= OMAP_CM_REGADDR(OMAP3430_DSS_MOD, CM_CLKSEL),
 	.clksel_mask	= OMAP3430_CLKSEL_TV_MASK,
-	.clksel		= div16_dpll4_clksel,
+	.clksel_mask_3630 = OMAP3630_CLKSEL_TV_MASK,
+	.clksel_shift = OMAP3430_CLKSEL_TV_SHIFT,
+	.clksel		= div32_dpll4_clksel,
 	.clkdm_name	= "dpll4_clkdm",
 	.recalc		= &omap2_clksel_recalc,
 };
@@ -687,12 +751,12 @@ static struct clk dpll4_m3x2_ck = {
 };
 
 static const struct clksel_rate omap_54m_d4m3x2_rates[] = {
-	{ .div = 1, .val = 0, .flags = RATE_IN_343X | DEFAULT_RATE },
+	{ .div = 1, .val = 0, .flags = RATE_IN_3XXX | DEFAULT_RATE },
 	{ .div = 0 }
 };
 
 static const struct clksel_rate omap_54m_alt_rates[] = {
-	{ .div = 1, .val = 1, .flags = RATE_IN_343X | DEFAULT_RATE },
+	{ .div = 1, .val = 1, .flags = RATE_IN_3XXX | DEFAULT_RATE },
 	{ .div = 0 }
 };
 
@@ -713,12 +777,12 @@ static struct clk omap_54m_fck = {
 };
 
 static const struct clksel_rate omap_48m_cm96m_rates[] = {
-	{ .div = 2, .val = 0, .flags = RATE_IN_343X | DEFAULT_RATE },
+	{ .div = 2, .val = 0, .flags = RATE_IN_3XXX | DEFAULT_RATE },
 	{ .div = 0 }
 };
 
 static const struct clksel_rate omap_48m_alt_rates[] = {
-	{ .div = 1, .val = 1, .flags = RATE_IN_343X | DEFAULT_RATE },
+	{ .div = 1, .val = 1, .flags = RATE_IN_3XXX | DEFAULT_RATE },
 	{ .div = 0 }
 };
 
@@ -754,7 +818,9 @@ static struct clk dpll4_m4_ck = {
 	.init		= &omap2_init_clksel_parent,
 	.clksel_reg	= OMAP_CM_REGADDR(OMAP3430_DSS_MOD, CM_CLKSEL),
 	.clksel_mask	= OMAP3430_CLKSEL_DSS1_MASK,
-	.clksel		= div16_dpll4_clksel,
+	.clksel_mask_3630 = OMAP3630_CLKSEL_DSS1_MASK,
+	.clksel_shift	= OMAP3430_CLKSEL_DSS1_SHIFT,
+	.clksel		= div32_dpll4_clksel,
 	.clkdm_name	= "dpll4_clkdm",
 	.recalc		= &omap2_clksel_recalc,
 	.set_rate	= &omap2_clksel_set_rate,
@@ -781,7 +847,9 @@ static struct clk dpll4_m5_ck = {
 	.init		= &omap2_init_clksel_parent,
 	.clksel_reg	= OMAP_CM_REGADDR(OMAP3430_CAM_MOD, CM_CLKSEL),
 	.clksel_mask	= OMAP3430_CLKSEL_CAM_MASK,
-	.clksel		= div16_dpll4_clksel,
+	.clksel_mask_3630 = OMAP3630_CLKSEL_CAM_MASK,
+	.clksel_shift	= OMAP3430_CLKSEL_CAM_SHIFT,
+	.clksel		= div32_dpll4_clksel,
 	.clkdm_name	= "dpll4_clkdm",
 	.recalc		= &omap2_clksel_recalc,
 };
@@ -806,7 +874,9 @@ static struct clk dpll4_m6_ck = {
 	.init		= &omap2_init_clksel_parent,
 	.clksel_reg	= OMAP_CM_REGADDR(OMAP3430_EMU_MOD, CM_CLKSEL1),
 	.clksel_mask	= OMAP3430_DIV_DPLL4_MASK,
-	.clksel		= div16_dpll4_clksel,
+	.clksel_mask_3630 = OMAP3630_DIV_DPLL4_MASK,
+	.clksel_shift	= OMAP3430_DIV_DPLL4_SHIFT,
+	.clksel		= div32_dpll4_clksel,
 	.clkdm_name	= "dpll4_clkdm",
 	.recalc		= &omap2_clksel_recalc,
 };
@@ -890,22 +960,22 @@ static struct clk dpll5_m2_ck = {
 /* CM EXTERNAL CLOCK OUTPUTS */
 
 static const struct clksel_rate clkout2_src_core_rates[] = {
-	{ .div = 1, .val = 0, .flags = RATE_IN_343X | DEFAULT_RATE },
+	{ .div = 1, .val = 0, .flags = RATE_IN_3XXX | DEFAULT_RATE },
 	{ .div = 0 }
 };
 
 static const struct clksel_rate clkout2_src_sys_rates[] = {
-	{ .div = 1, .val = 1, .flags = RATE_IN_343X | DEFAULT_RATE },
+	{ .div = 1, .val = 1, .flags = RATE_IN_3XXX | DEFAULT_RATE },
 	{ .div = 0 }
 };
 
 static const struct clksel_rate clkout2_src_96m_rates[] = {
-	{ .div = 1, .val = 2, .flags = RATE_IN_343X | DEFAULT_RATE },
+	{ .div = 1, .val = 2, .flags = RATE_IN_3XXX | DEFAULT_RATE },
 	{ .div = 0 }
 };
 
 static const struct clksel_rate clkout2_src_54m_rates[] = {
-	{ .div = 1, .val = 3, .flags = RATE_IN_343X | DEFAULT_RATE },
+	{ .div = 1, .val = 3, .flags = RATE_IN_3XXX | DEFAULT_RATE },
 	{ .div = 0 }
 };
 
@@ -931,11 +1001,11 @@ static struct clk clkout2_src_ck = {
 };
 
 static const struct clksel_rate sys_clkout2_rates[] = {
-	{ .div = 1, .val = 0, .flags = RATE_IN_343X | DEFAULT_RATE },
-	{ .div = 2, .val = 1, .flags = RATE_IN_343X },
-	{ .div = 4, .val = 2, .flags = RATE_IN_343X },
-	{ .div = 8, .val = 3, .flags = RATE_IN_343X },
-	{ .div = 16, .val = 4, .flags = RATE_IN_343X },
+	{ .div = 1, .val = 0, .flags = RATE_IN_3XXX | DEFAULT_RATE },
+	{ .div = 2, .val = 1, .flags = RATE_IN_3XXX },
+	{ .div = 4, .val = 2, .flags = RATE_IN_3XXX },
+	{ .div = 8, .val = 3, .flags = RATE_IN_3XXX },
+	{ .div = 16, .val = 4, .flags = RATE_IN_3XXX },
 	{ .div = 0 },
 };
 
@@ -966,9 +1036,9 @@ static struct clk corex2_fck = {
 /* DPLL power domain clock controls */
 
 static const struct clksel_rate div4_rates[] = {
-	{ .div = 1, .val = 1, .flags = RATE_IN_343X | DEFAULT_RATE },
-	{ .div = 2, .val = 2, .flags = RATE_IN_343X },
-	{ .div = 4, .val = 4, .flags = RATE_IN_343X },
+	{ .div = 1, .val = 1, .flags = RATE_IN_3XXX | DEFAULT_RATE },
+	{ .div = 2, .val = 2, .flags = RATE_IN_3XXX },
+	{ .div = 4, .val = 4, .flags = RATE_IN_3XXX },
 	{ .div = 0 }
 };
 
@@ -1002,8 +1072,8 @@ static struct clk mpu_ck = {
 
 /* arm_fck is divided by two when DPLL1 locked; otherwise, passthrough mpu_ck */
 static const struct clksel_rate arm_fck_rates[] = {
-	{ .div = 1, .val = 0, .flags = RATE_IN_343X | DEFAULT_RATE },
-	{ .div = 2, .val = 1, .flags = RATE_IN_343X },
+	{ .div = 1, .val = 0, .flags = RATE_IN_3XXX | DEFAULT_RATE },
+	{ .div = 2, .val = 1, .flags = RATE_IN_3XXX },
 	{ .div = 0 },
 };
 
@@ -1175,20 +1245,34 @@ static struct clk gfx_cg2_ck = {
 /* SGX power domain - 3430ES2 only */
 
 static const struct clksel_rate sgx_core_rates[] = {
-	{ .div = 3, .val = 0, .flags = RATE_IN_343X | DEFAULT_RATE },
-	{ .div = 4, .val = 1, .flags = RATE_IN_343X },
-	{ .div = 6, .val = 2, .flags = RATE_IN_343X },
+	{ .div = 2, .val = 5, .flags = RATE_IN_363X },
+	{ .div = 3, .val = 0, .flags = RATE_IN_3XXX | DEFAULT_RATE },
+	{ .div = 4, .val = 1, .flags = RATE_IN_3XXX },
+	{ .div = 6, .val = 2, .flags = RATE_IN_3XXX },
+	{ .div = 0 },
+};
+
+static const struct clksel_rate sgx_192m_rates[] = {
+	{ .div = 1,  .val = 4, .flags = RATE_IN_363X | DEFAULT_RATE },
+	{ .div = 0 },
+};
+
+static const struct clksel_rate sgx_corex2_rates[] = {
+	{ .div = 3, .val = 6, .flags = RATE_IN_363X | DEFAULT_RATE },
+	{ .div = 5, .val = 7, .flags = RATE_IN_363X },
 	{ .div = 0 },
 };
 
 static const struct clksel_rate sgx_96m_rates[] = {
-	{ .div = 1,  .val = 3, .flags = RATE_IN_343X | DEFAULT_RATE },
+	{ .div = 1,  .val = 3, .flags = RATE_IN_3XXX | DEFAULT_RATE },
 	{ .div = 0 },
 };
 
 static const struct clksel sgx_clksel[] = {
 	{ .parent = &core_ck,	 .rates = sgx_core_rates },
 	{ .parent = &cm_96m_fck, .rates = sgx_96m_rates },
+	{ .parent = &omap_192m_alwon_ck, .rates = sgx_192m_rates },
+	{ .parent = &corex2_fck, .rates = sgx_corex2_rates },
 	{ .parent = NULL },
 };
 
@@ -1203,6 +1287,8 @@ static struct clk sgx_fck = {
 	.clksel		= sgx_clksel,
 	.clkdm_name	= "sgx_clkdm",
 	.recalc		= &omap2_clksel_recalc,
+	.set_rate	= &omap2_clksel_set_rate,
+	.round_rate 	= &omap2_clksel_round_rate,
 };
 
 static struct clk sgx_ick = {
@@ -1408,12 +1494,12 @@ static struct clk i2c1_fck = {
  * MCBSP 2, 3, 4 get their 96MHz clock from per_96m_fck.
  */
 static const struct clksel_rate common_mcbsp_96m_rates[] = {
-	{ .div = 1, .val = 0, .flags = RATE_IN_343X | DEFAULT_RATE },
+	{ .div = 1, .val = 0, .flags = RATE_IN_3XXX | DEFAULT_RATE },
 	{ .div = 0 }
 };
 
 static const struct clksel_rate common_mcbsp_mcbsp_rates[] = {
-	{ .div = 1, .val = 1, .flags = RATE_IN_343X | DEFAULT_RATE },
+	{ .div = 1, .val = 1, .flags = RATE_IN_3XXX | DEFAULT_RATE },
 	{ .div = 0 }
 };
 
@@ -1550,12 +1636,12 @@ static struct clk hdq_fck = {
 /* DPLL3-derived clock */
 
 static const struct clksel_rate ssi_ssr_corex2_rates[] = {
-	{ .div = 1, .val = 1, .flags = RATE_IN_343X | DEFAULT_RATE },
-	{ .div = 2, .val = 2, .flags = RATE_IN_343X },
-	{ .div = 3, .val = 3, .flags = RATE_IN_343X },
-	{ .div = 4, .val = 4, .flags = RATE_IN_343X },
-	{ .div = 6, .val = 6, .flags = RATE_IN_343X },
-	{ .div = 8, .val = 8, .flags = RATE_IN_343X },
+	{ .div = 1, .val = 1, .flags = RATE_IN_3XXX | DEFAULT_RATE },
+	{ .div = 2, .val = 2, .flags = RATE_IN_3XXX },
+	{ .div = 3, .val = 3, .flags = RATE_IN_3XXX },
+	{ .div = 4, .val = 4, .flags = RATE_IN_3XXX },
+	{ .div = 6, .val = 6, .flags = RATE_IN_3XXX },
+	{ .div = 8, .val = 8, .flags = RATE_IN_3XXX },
 	{ .div = 0 }
 };
 
@@ -2200,18 +2286,18 @@ static struct clk usbhost_ick = {
 /* WKUP */
 
 static const struct clksel_rate usim_96m_rates[] = {
-	{ .div = 2,  .val = 3, .flags = RATE_IN_343X | DEFAULT_RATE },
-	{ .div = 4,  .val = 4, .flags = RATE_IN_343X },
-	{ .div = 8,  .val = 5, .flags = RATE_IN_343X },
-	{ .div = 10, .val = 6, .flags = RATE_IN_343X },
+	{ .div = 2,  .val = 3, .flags = RATE_IN_3XXX | DEFAULT_RATE },
+	{ .div = 4,  .val = 4, .flags = RATE_IN_3XXX },
+	{ .div = 8,  .val = 5, .flags = RATE_IN_3XXX },
+	{ .div = 10, .val = 6, .flags = RATE_IN_3XXX },
 	{ .div = 0 },
 };
 
 static const struct clksel_rate usim_120m_rates[] = {
-	{ .div = 4,  .val = 7,	.flags = RATE_IN_343X | DEFAULT_RATE },
-	{ .div = 8,  .val = 8,	.flags = RATE_IN_343X },
-	{ .div = 16, .val = 9,	.flags = RATE_IN_343X },
-	{ .div = 20, .val = 10, .flags = RATE_IN_343X },
+	{ .div = 4,  .val = 7,	.flags = RATE_IN_3XXX | DEFAULT_RATE },
+	{ .div = 8,  .val = 8,	.flags = RATE_IN_3XXX },
+	{ .div = 16, .val = 9,	.flags = RATE_IN_3XXX },
+	{ .div = 20, .val = 10, .flags = RATE_IN_3XXX },
 	{ .div = 0 },
 };
 
@@ -2804,22 +2890,22 @@ static struct clk mcbsp4_fck = {
 /* More information: ARM Cortex-A8 Technical Reference Manual, sect 10.1 */
 
 static const struct clksel_rate emu_src_sys_rates[] = {
-	{ .div = 1, .val = 0, .flags = RATE_IN_343X | DEFAULT_RATE },
+	{ .div = 1, .val = 0, .flags = RATE_IN_3XXX | DEFAULT_RATE },
 	{ .div = 0 },
 };
 
 static const struct clksel_rate emu_src_core_rates[] = {
-	{ .div = 1, .val = 1, .flags = RATE_IN_343X | DEFAULT_RATE },
+	{ .div = 1, .val = 1, .flags = RATE_IN_3XXX | DEFAULT_RATE },
 	{ .div = 0 },
 };
 
 static const struct clksel_rate emu_src_per_rates[] = {
-	{ .div = 1, .val = 2, .flags = RATE_IN_343X | DEFAULT_RATE },
+	{ .div = 1, .val = 2, .flags = RATE_IN_3XXX | DEFAULT_RATE },
 	{ .div = 0 },
 };
 
 static const struct clksel_rate emu_src_mpu_rates[] = {
-	{ .div = 1, .val = 3, .flags = RATE_IN_343X | DEFAULT_RATE },
+	{ .div = 1, .val = 3, .flags = RATE_IN_3XXX | DEFAULT_RATE },
 	{ .div = 0 },
 };
 
@@ -2848,10 +2934,10 @@ static struct clk emu_src_ck = {
 };
 
 static const struct clksel_rate pclk_emu_rates[] = {
-	{ .div = 2, .val = 2, .flags = RATE_IN_343X | DEFAULT_RATE },
-	{ .div = 3, .val = 3, .flags = RATE_IN_343X },
-	{ .div = 4, .val = 4, .flags = RATE_IN_343X },
-	{ .div = 6, .val = 6, .flags = RATE_IN_343X },
+	{ .div = 2, .val = 2, .flags = RATE_IN_3XXX | DEFAULT_RATE },
+	{ .div = 3, .val = 3, .flags = RATE_IN_3XXX },
+	{ .div = 4, .val = 4, .flags = RATE_IN_3XXX },
+	{ .div = 6, .val = 6, .flags = RATE_IN_3XXX },
 	{ .div = 0 },
 };
 
@@ -2872,9 +2958,9 @@ static struct clk pclk_fck = {
 };
 
 static const struct clksel_rate pclkx2_emu_rates[] = {
-	{ .div = 1, .val = 1, .flags = RATE_IN_343X | DEFAULT_RATE },
-	{ .div = 2, .val = 2, .flags = RATE_IN_343X },
-	{ .div = 3, .val = 3, .flags = RATE_IN_343X },
+	{ .div = 1, .val = 1, .flags = RATE_IN_3XXX | DEFAULT_RATE },
+	{ .div = 2, .val = 2, .flags = RATE_IN_3XXX },
+	{ .div = 3, .val = 3, .flags = RATE_IN_3XXX },
 	{ .div = 0 },
 };
 
@@ -2922,9 +3008,9 @@ static struct clk traceclk_src_fck = {
 };
 
 static const struct clksel_rate traceclk_rates[] = {
-	{ .div = 1, .val = 1, .flags = RATE_IN_343X | DEFAULT_RATE },
-	{ .div = 2, .val = 2, .flags = RATE_IN_343X },
-	{ .div = 4, .val = 4, .flags = RATE_IN_343X },
+	{ .div = 1, .val = 1, .flags = RATE_IN_3XXX | DEFAULT_RATE },
+	{ .div = 2, .val = 2, .flags = RATE_IN_3XXX },
+	{ .div = 4, .val = 4, .flags = RATE_IN_3XXX },
 	{ .div = 0 },
 };
 

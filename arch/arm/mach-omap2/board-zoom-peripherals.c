@@ -16,15 +16,22 @@
 #include <linux/gpio.h>
 #include <linux/i2c/twl4030.h>
 #include <linux/regulator/machine.h>
+#include <linux/interrupt.h>
+#include <linux/i2c/synaptics_i2c_rmi.h>
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
 
+#include <plat/mux.h>
 #include <plat/common.h>
 #include <plat/usb.h>
+#include <plat/control.h>
 
 #include "mmc-twl4030.h"
+#include "twl4030-script.h"
+
+#define OMAP_SYNAPTICS_GPIO		163
 
 /* Zoom2 has Qwerty keyboard*/
 static int board_keymap[] = {
@@ -93,6 +100,40 @@ static struct twl4030_keypad_data zoom_kp_twl4030_data = {
 	.rep		= 1,
 };
 
+static struct twl4030_resconfig twl4030_rconfig[] = {
+	{ .resource = RES_VPLL1, .devgroup = DEV_GRP_P1, .type = 3,
+		.type2 = 1, .remap_sleep = RES_STATE_OFF },
+	{ .resource = RES_VINTANA1, .devgroup = DEV_GRP_ALL, .type = 1,
+		.type2 = 2, .remap_sleep = RES_STATE_SLEEP },
+	{ .resource = RES_VINTANA2, .devgroup = DEV_GRP_ALL, .type = 0,
+		.type2 = 2, .remap_sleep = RES_STATE_SLEEP },
+	{ .resource = RES_VINTDIG, .devgroup = DEV_GRP_ALL, .type = 1,
+		.type2 = 2, .remap_sleep = RES_STATE_SLEEP },
+	{ .resource = RES_VIO, .devgroup = DEV_GRP_ALL, .type = 2,
+		.type2 = 2, .remap_sleep = RES_STATE_SLEEP },
+	{ .resource = RES_VDD1, .devgroup = DEV_GRP_P1,
+		.type = 4, .type2 = 1, .remap_sleep = RES_STATE_OFF },
+	{ .resource = RES_VDD2, .devgroup = DEV_GRP_P1,
+		.type = 3, .type2 = 1, .remap_sleep = RES_STATE_OFF },
+	{ .resource = RES_REGEN, .devgroup = DEV_GRP_ALL, .type = 2,
+		.type2 = 1, .remap_sleep = RES_STATE_SLEEP },
+	{ .resource = RES_NRES_PWRON, .devgroup = DEV_GRP_ALL, .type = 0,
+		.type2 = 1, .remap_sleep = RES_STATE_SLEEP },
+	{ .resource = RES_CLKEN, .devgroup = DEV_GRP_ALL, .type = 3,
+		.type2 = 2, .remap_sleep = RES_STATE_SLEEP },
+	{ .resource = RES_SYSEN, .devgroup = DEV_GRP_ALL, .type = 6,
+		.type2 = 1, .remap_sleep = RES_STATE_SLEEP },
+	{ .resource = RES_HFCLKOUT, .devgroup = DEV_GRP_P3,
+		.type = 0, .type2 = 2, .remap_sleep = RES_STATE_SLEEP },
+	{ 0, 0},
+};
+
+static struct twl4030_power_data zoom_t2scripts_data __initdata = {
+	.scripts	= twl4030_scripts,
+	.num		= ARRAY_SIZE(twl4030_scripts),
+	.resource_config = twl4030_rconfig,
+};
+
 static struct regulator_consumer_supply zoom_vmmc1_supply = {
 	.supply		= "vmmc",
 };
@@ -152,14 +193,20 @@ static struct regulator_init_data zoom_vsim = {
 
 static struct twl4030_hsmmc_info mmc[] __initdata = {
 	{
+		.name		= "external",
 		.mmc		= 1,
 		.wires		= 4,
 		.gpio_wp	= -EINVAL,
+		.power_saving	= true,
 	},
 	{
+		.name		= "internal",
 		.mmc		= 2,
-		.wires		= 4,
+		.wires		= 8,
+		.gpio_cd	= -EINVAL,
 		.gpio_wp	= -EINVAL,
+		.nonremovable	= true,
+		.power_saving	= true,
 	},
 	{}      /* Terminator */
 };
@@ -167,11 +214,8 @@ static struct twl4030_hsmmc_info mmc[] __initdata = {
 static int zoom_twl_gpio_setup(struct device *dev,
 		unsigned gpio, unsigned ngpio)
 {
-	/* gpio + 0 is "mmc0_cd" (input/IRQ),
-	 * gpio + 1 is "mmc1_cd" (input/IRQ)
-	 */
+	/* gpio + 0 is "mmc0_cd" (input/IRQ) */
 	mmc[0].gpio_cd = gpio + 0;
-	mmc[1].gpio_cd = gpio + 1;
 	twl4030_mmc_init(mmc);
 
 	/* link regulators to MMC adapters ... we "know" the
@@ -235,10 +279,49 @@ static struct twl4030_platform_data zoom_twldata = {
 	.usb		= &zoom_usb_data,
 	.gpio		= &zoom_gpio_data,
 	.keypad		= &zoom_kp_twl4030_data,
+	.power		= &zoom_t2scripts_data,
 	.codec		= &zoom_codec_data,
+	.vmmc1          = &zoom_vmmc1,
 	.vmmc2          = &zoom_vmmc2,
 	.vsim           = &zoom_vsim,
 
+};
+
+static void synaptics_dev_init(void)
+{
+	/* Set the ts_gpio pin mux */
+	omap_cfg_reg(H18_34XX_GPIO163);
+
+	if (gpio_request(OMAP_SYNAPTICS_GPIO, "touch") < 0) {
+		printk(KERN_ERR "can't get synaptics pen down GPIO\n");
+		return;
+	}
+	gpio_direction_input(OMAP_SYNAPTICS_GPIO);
+	omap_set_gpio_debounce(OMAP_SYNAPTICS_GPIO, 1);
+	omap_set_gpio_debounce_time(OMAP_SYNAPTICS_GPIO, 0xa);
+}
+
+static int synaptics_power(int power_state)
+{
+	/* TODO: synaptics is powered by vbatt */
+	return 0;
+}
+
+static struct synaptics_i2c_rmi_platform_data synaptics_platform_data[] = {
+	{
+		.version        = 0x0,
+		.power          = &synaptics_power,
+		.flags          = SYNAPTICS_SWAP_XY,
+		.irqflags       = IRQF_TRIGGER_LOW,
+	}
+};
+
+static struct i2c_board_info __initdata zoom_i2c_boardinfo2[] = {
+	{
+		I2C_BOARD_INFO(SYNAPTICS_I2C_RMI_NAME,  0x20),
+		.platform_data = &synaptics_platform_data,
+		.irq = OMAP_GPIO_IRQ(OMAP_SYNAPTICS_GPIO),
+	},
 };
 
 static struct i2c_board_info __initdata zoom_i2c_boardinfo[] = {
@@ -252,16 +335,46 @@ static struct i2c_board_info __initdata zoom_i2c_boardinfo[] = {
 
 static int __init omap_i2c_init(void)
 {
+/* Disable OMAP 3630 internal pull-ups for I2Ci */
+	if (cpu_is_omap3630()) {
+
+		u32 prog_io;
+		prog_io = omap_ctrl_readl(OMAP343X_CONTROL_PROG_IO1);
+		/* Program (bit 19)=1 to disable internal pull-up on I2C1 */
+		prog_io |= OMAP3630_PRG_I2C1_PULLUPRESX;
+		/* Program (bit 0)=1 to disable internal pull-up on I2C2 */
+		prog_io |= OMAP3630_PRG_I2C2_PULLUPRESX;
+		omap_ctrl_writel(prog_io, OMAP343X_CONTROL_PROG_IO1);
+
+		prog_io = omap_ctrl_readl(OMAP36XX_CONTROL_PROG_IO2);
+		/* Program (bit 7)=1 to disable internal pull-up on I2C3 */
+		prog_io |= OMAP3630_PRG_I2C3_PULLUPRESX;
+		omap_ctrl_writel(prog_io, OMAP36XX_CONTROL_PROG_IO2);
+
+		prog_io = omap_ctrl_readl(OMAP36XX_CONTROL_PROG_IO_WKUP1);
+		/* Program (bit 5)=1 to disable internal pull-up on I2C4(SR) */
+		prog_io |= OMAP3630_PRG_SR_PULLUPRESX;
+		omap_ctrl_writel(prog_io, OMAP36XX_CONTROL_PROG_IO_WKUP1);
+	}
+
 	omap_register_i2c_bus(1, 2400, zoom_i2c_boardinfo,
 			ARRAY_SIZE(zoom_i2c_boardinfo));
-	omap_register_i2c_bus(2, 400, NULL, 0);
+	omap_register_i2c_bus(2, 100, zoom_i2c_boardinfo2,
+			ARRAY_SIZE(zoom_i2c_boardinfo2));
 	omap_register_i2c_bus(3, 400, NULL, 0);
 	return 0;
+}
+
+static void enable_board_wakeup_source(void)
+{
+	omap_cfg_reg(AF26_34XX_SYS_NIRQ); /* T2 interrupt line */
 }
 
 void __init zoom_peripherals_init(void)
 {
 	omap_i2c_init();
+	synaptics_dev_init();
 	omap_serial_init();
 	usb_musb_init();
+	enable_board_wakeup_source();
 }
