@@ -127,6 +127,17 @@ static int zoom_panel_enable_lcd(struct omap_dss_device *dssdev)
 		return ret;
 	}
 
+        ret = gpio_request(LCD_PANEL_ENABLE_GPIO, "lcd panel");
+        if (ret) {
+                printk(KERN_ERR "Failed to get lcd panel enable pin\n");
+        }
+
+#ifndef CONFIG_MACH_OMAP_3630SDP
+        ret = gpio_request(LCD_PANEL_BACKLIGHT_GPIO, "lcd backlight");
+        if (ret) {
+                printk(KERN_ERR "Failed to get lcd backlight pin\n");
+        }
+#endif
 	gpio_direction_output(LCD_PANEL_ENABLE_GPIO, 1);
 	gpio_direction_output(LCD_PANEL_BACKLIGHT_GPIO, 1);
 
@@ -135,7 +146,21 @@ static int zoom_panel_enable_lcd(struct omap_dss_device *dssdev)
 
 static void zoom_panel_disable_lcd(struct omap_dss_device *dssdev)
 {
+	int ret;
+
 	zoom_panel_power_enable(0);
+
+        ret = gpio_request(LCD_PANEL_ENABLE_GPIO, "lcd panel");
+        if (ret) {
+                printk(KERN_ERR "Failed to get lcd panel enable pin\n");
+        }
+
+#ifndef CONFIG_MACH_OMAP_3630SDP
+        ret = gpio_request(LCD_PANEL_BACKLIGHT_GPIO, "lcd backlight");
+        if (ret) {
+                printk(KERN_ERR "Failed to get lcd backlight pin\n");
+        }
+#endif
 
 	gpio_direction_output(LCD_PANEL_ENABLE_GPIO, 0);
 	gpio_direction_output(LCD_PANEL_BACKLIGHT_GPIO, 0);
@@ -213,6 +238,7 @@ static struct regulator_consumer_supply zoom_vdda_dac_supply = {
 	.dev            = &zoom_dss_device.dev,
 };
 
+/*
 #ifdef CONFIG_FB_OMAP2
 static struct resource zoom_vout_resource[3 - CONFIG_FB_OMAP2_NUM_FBS] = {
 };
@@ -220,6 +246,7 @@ static struct resource zoom_vout_resource[3 - CONFIG_FB_OMAP2_NUM_FBS] = {
 static struct resource zoom_vout_resource[2] = {
 };
 #endif
+*/
 
 static struct omap2_mcspi_device_config dss_lcd_mcspi_config = {
 	.turbo_mode             = 0,
@@ -586,7 +613,7 @@ static int __init omap_i2c_init(void)
 	return 0;
 }
 
-
+/*
 #ifdef CONFIG_PM
 struct vout_platform_data zoom_vout_data = {
 	.set_min_bus_tput = omap_pm_set_min_bus_tput,
@@ -612,10 +639,11 @@ static struct platform_device zoom_vout_device = {
 	}
 #endif
 };
+*/
 
 static struct platform_device *zoom_devices[] __initdata = {
 	&zoom_dss_device,
-	&zoom_vout_device,
+//	&zoom_vout_device,
 };
 
 static void enable_board_wakeup_source(void)
