@@ -52,6 +52,7 @@
 #define ENABLE_VDAC_DEV_GRP		0x20
 #define DISABLE_VDAC_DEDICATED		0x00
 #define DISABLE_VDAC_DEV_GRP		0x00
+#define SIL9022_RESET_GPIO              97
 
 static void zoom_lcd_tv_panel_init(void)
 {
@@ -106,6 +107,9 @@ static int zoom_panel_enable_lcd(struct omap_dss_device *dssdev)
 	gpio_request(LCD_PANEL_BACKLIGHT_GPIO, "lcd backlight");
 	gpio_direction_output(LCD_PANEL_BACKLIGHT_GPIO, 1);
 #endif
+#ifdef CONFIG_SIL9022
+#include <linux/sil9022.h>
+#endif
 
 	return 0;
 }
@@ -143,6 +147,40 @@ static void zoom_panel_disable_tv(struct omap_dss_device *dssdev)
 				TWL4030_VDAC_DEV_GRP);
 }
 
+#ifdef CONFIG_SIL9022
+static void zoom_hdmi_reset_enable(int level)
+{
+	/* Set GPIO_97 to high to pull SiI9022 HDMI transmitter out of reset
+	* and low to disable it.
+	*/
+	gpio_request(SIL9022_RESET_GPIO, "hdmi reset");
+	gpio_direction_output(SIL9022_RESET_GPIO, level);
+}
+
+static int zoom_panel_enable_hdmi(struct omap_dss_device *dssdev)
+{
+	zoom_panel_power_enable(1);
+	zoom_hdmi_reset_enable(1);
+
+	return 0;
+}
+
+static void zoom_panel_disable_hdmi(struct omap_dss_device *dssdev)
+{
+	zoom_hdmi_reset_enable(0);
+	zoom_panel_power_enable(0);
+}
+
+static struct omap_dss_device zoom_hdmi_device = {
+	.name = "hdmi",
+	.driver_name = "hdmi_panel",
+	.type = OMAP_DISPLAY_TYPE_HDMI,
+	.phy.dpi.data_lines = 24,
+	.platform_enable = zoom_panel_enable_hdmi,
+	.platform_disable = zoom_panel_disable_hdmi,
+};
+#endif
+
 static struct omap_dss_device zoom_lcd_device = {
 	.name = "lcd",
 	.driver_name = "NEC_8048_panel",
@@ -168,6 +206,9 @@ static struct omap_dss_device zoom_tv_device = {
 static struct omap_dss_device *zoom_dss_devices[] = {
 	&zoom_lcd_device,
 	&zoom_tv_device,
+	#ifdef CONFIG_SIL9022
+	&zoom_hdmi_device,
+	#endif
 };
 
 static struct omap_dss_board_info zoom_dss_data = {
@@ -575,6 +616,14 @@ static struct synaptics_i2c_rmi_platform_data synaptics_platform_data[] = {
 	}
 };
 
+static struct i2c_board_info __initdata zoom_i2c_bus3_info[] = {
+#ifdef CONFIG_SIL9022
+	{
+		I2C_BOARD_INFO(SIL9022_DRV_NAME,  SI9022_I2CSLAVEADDRESS),
+	},
+#endif
+};
+
 static struct i2c_board_info __initdata zoom_i2c_boardinfo2[] = {
 	{
 		I2C_BOARD_INFO(SYNAPTICS_I2C_RMI_NAME,  0x20),
@@ -633,7 +682,8 @@ static int __init omap_i2c_init(void)
 			ARRAY_SIZE(zoom_i2c_boardinfo));
 	omap_register_i2c_bus(2, 100, zoom_i2c_boardinfo2,
 			ARRAY_SIZE(zoom_i2c_boardinfo2));
-	omap_register_i2c_bus(3, 400, NULL, 0);
+	omap_register_i2c_bus(3, 400, zoom_i2c_bus3_info,
+			ARRAY_SIZE(zoom_i2c_bus3_info));
 	return 0;
 }
 
@@ -654,6 +704,9 @@ void __init zoom_peripherals_init(void)
 	spi_register_board_info(nec_8048_spi_board_info,
 				ARRAY_SIZE(nec_8048_spi_board_info));
 	zoom_lcd_tv_panel_init();
+	#ifdef CONFIG_SIL9022
+	zoom_hdmi_reset_enable(1);
+	#endif
 	synaptics_dev_init();
 	omap_serial_init();
 	usb_musb_init();
