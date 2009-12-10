@@ -33,9 +33,6 @@
 
 #include "mmc-twl4030.h"
 #include "twl4030-script.h"
-#ifdef CONFIG_PM
-#include "../drivers/media/video/omap/omap_voutdef.h"
-#endif
 
 #define OMAP_SYNAPTICS_GPIO		163
 #define LCD_PANEL_BACKLIGHT_GPIO        (15 + OMAP_MAX_GPIO_LINES)
@@ -55,12 +52,10 @@
 #define ENABLE_VDAC_DEV_GRP		0x20
 #define DISABLE_VDAC_DEDICATED		0x00
 #define DISABLE_VDAC_DEV_GRP		0x00
-/* #define SIL9022_RESET_GPIO              97 */
 
 static void zoom_lcd_tv_panel_init(void)
 {
 	unsigned char lcd_panel_reset_gpio;
-	int ret;
 
 	if (omap_rev() > OMAP3430_REV_ES3_0) {
 		/* Production Zoom2 Board:
@@ -74,108 +69,68 @@ static void zoom_lcd_tv_panel_init(void)
 		lcd_panel_reset_gpio = 55;
 	}
 
-	ret = gpio_request(lcd_panel_reset_gpio, "lcd reset");
-	if (ret) {
-		printk(KERN_ERR "Failed to get lcd reset pin\n");
-	}
-	ret = gpio_request(LCD_PANEL_QVGA_GPIO, "lcd qvga");
-	if (ret) {
-		printk(KERN_ERR "Failed to get lcd qvga pin\n");
-	}
-	ret = gpio_request(LCD_PANEL_ENABLE_GPIO, "lcd panel");
-	if (ret) {
-		printk(KERN_ERR "Failed to get lcd panel enable pin\n");
-	}
-#ifndef CONFIG_MACH_OMAP_3630SDP
-	ret = gpio_request(LCD_PANEL_BACKLIGHT_GPIO, "lcd backlight");
-	if (ret) {
-		printk(KERN_ERR "Failed to get lcd backlight pin\n");
-	}
-#endif
-	ret = gpio_request(TV_PANEL_ENABLE_GPIO, "tv panel");
-	if (ret) {
-		printk(KERN_ERR "Failed to get tv panel enable pin\n");
-	}
-
+	gpio_request(lcd_panel_reset_gpio, "lcd reset");
 	gpio_direction_output(lcd_panel_reset_gpio, 1);
+	gpio_request(LCD_PANEL_QVGA_GPIO, "lcd qvga");
 	gpio_direction_output(LCD_PANEL_QVGA_GPIO, 1);
+	gpio_request(LCD_PANEL_ENABLE_GPIO, "lcd panel");
 	gpio_direction_output(LCD_PANEL_ENABLE_GPIO, 0);
+#ifndef CONFIG_MACH_OMAP_3630SDP
+	gpio_request(LCD_PANEL_BACKLIGHT_GPIO, "lcd backlight");
 	gpio_direction_output(LCD_PANEL_BACKLIGHT_GPIO, 0);
+#endif
+	gpio_request(TV_PANEL_ENABLE_GPIO, "tv panel");
 	gpio_direction_output(TV_PANEL_ENABLE_GPIO, 0);
 }
 
 static int zoom_panel_power_enable(int enable)
 {
-	int ret;
-
-	ret = twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
+	twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
 				(enable) ? ENABLE_VPLL2_DEDICATED : 0,
 				TWL4030_VPLL2_DEDICATED);
-	ret = twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
+	twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
 				(enable) ? ENABLE_VPLL2_DEV_GRP : 0,
 				TWL4030_VPLL2_DEV_GRP);
-	return ret;
+	return 0;
 }
 
 static int zoom_panel_enable_lcd(struct omap_dss_device *dssdev)
 {
-	int ret;
 
-	ret = zoom_panel_power_enable(1);
-	if (ret) {
-		printk(KERN_ERR "LCD power enable failed\n");
-		return ret;
-	}
+	zoom_panel_power_enable(1);
 
-        ret = gpio_request(LCD_PANEL_ENABLE_GPIO, "lcd panel");
-        if (ret) {
-                printk(KERN_ERR "Failed to get lcd panel enable pin\n");
-        }
+	gpio_request(LCD_PANEL_ENABLE_GPIO, "lcd panel");
+	gpio_direction_output(LCD_PANEL_ENABLE_GPIO, 1);
 
 #ifndef CONFIG_MACH_OMAP_3630SDP
-        ret = gpio_request(LCD_PANEL_BACKLIGHT_GPIO, "lcd backlight");
-        if (ret) {
-                printk(KERN_ERR "Failed to get lcd backlight pin\n");
-        }
-#endif
-	gpio_direction_output(LCD_PANEL_ENABLE_GPIO, 1);
+	gpio_request(LCD_PANEL_BACKLIGHT_GPIO, "lcd backlight");
 	gpio_direction_output(LCD_PANEL_BACKLIGHT_GPIO, 1);
+#endif
 
 	return 0;
 }
 
 static void zoom_panel_disable_lcd(struct omap_dss_device *dssdev)
 {
-	int ret;
-
 	zoom_panel_power_enable(0);
 
-        ret = gpio_request(LCD_PANEL_ENABLE_GPIO, "lcd panel");
-        if (ret) {
-                printk(KERN_ERR "Failed to get lcd panel enable pin\n");
-        }
+        gpio_request(LCD_PANEL_ENABLE_GPIO, "lcd panel");
+	gpio_direction_output(LCD_PANEL_ENABLE_GPIO, 0);
 
 #ifndef CONFIG_MACH_OMAP_3630SDP
-        ret = gpio_request(LCD_PANEL_BACKLIGHT_GPIO, "lcd backlight");
-        if (ret) {
-                printk(KERN_ERR "Failed to get lcd backlight pin\n");
-        }
-#endif
-
-	gpio_direction_output(LCD_PANEL_ENABLE_GPIO, 0);
+	gpio_request(LCD_PANEL_BACKLIGHT_GPIO, "lcd backlight");
 	gpio_direction_output(LCD_PANEL_BACKLIGHT_GPIO, 0);
+#endif
 }
 
 static int zoom_panel_enable_tv(struct omap_dss_device *dssdev)
 {
-	int ret;
-
-	ret = twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
+	twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
 				ENABLE_VDAC_DEDICATED, TWL4030_VDAC_DEDICATED);
-	ret |= twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
+	twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
 				ENABLE_VDAC_DEV_GRP, TWL4030_VDAC_DEV_GRP);
 
-	return ret;
+	return 0;
 }
 
 static void zoom_panel_disable_tv(struct omap_dss_device *dssdev)
@@ -213,10 +168,6 @@ static struct omap_dss_device zoom_tv_device = {
 static struct omap_dss_device *zoom_dss_devices[] = {
 	&zoom_lcd_device,
 	&zoom_tv_device,
-/*	#ifdef CONFIG_SIL9022
- *	&zoom_hdmi_device,
- *	#endif
- */
 };
 
 static struct omap_dss_board_info zoom_dss_data = {
@@ -237,16 +188,6 @@ static struct regulator_consumer_supply zoom_vdda_dac_supply = {
 	.supply         = "vdda_dac",
 	.dev            = &zoom_dss_device.dev,
 };
-
-/*
-#ifdef CONFIG_FB_OMAP2
-static struct resource zoom_vout_resource[3 - CONFIG_FB_OMAP2_NUM_FBS] = {
-};
-#else
-static struct resource zoom_vout_resource[2] = {
-};
-#endif
-*/
 
 static struct omap2_mcspi_device_config dss_lcd_mcspi_config = {
 	.turbo_mode             = 0,
@@ -613,37 +554,8 @@ static int __init omap_i2c_init(void)
 	return 0;
 }
 
-/*
-#ifdef CONFIG_PM
-struct vout_platform_data zoom_vout_data = {
-	.set_min_bus_tput = omap_pm_set_min_bus_tput,
-	.set_max_mpu_wakeup_lat =  omap_pm_set_max_mpu_wakeup_lat,
-	.set_cpu_freq = omap_pm_cpu_set_freq,
-};
-#endif
-
-static struct platform_device zoom_vout_device = {
-	.name           = "omap_vout",
-	.num_resources  = ARRAY_SIZE(zoom_vout_resource),
-	.resource       = &zoom_vout_resource[0],
-	.id             = -1,
-
-#ifdef CONFIG_PM
-	.dev            = {
-		.platform_data = &zoom_vout_data,
-	}
-#else
-
-	.dev            = {
-		.platform_data = NULL,
-	}
-#endif
-};
-*/
-
 static struct platform_device *zoom_devices[] __initdata = {
 	&zoom_dss_device,
-//	&zoom_vout_device,
 };
 
 static void enable_board_wakeup_source(void)
