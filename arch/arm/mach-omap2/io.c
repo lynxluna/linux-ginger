@@ -22,17 +22,18 @@
 #include <linux/init.h>
 #include <linux/io.h>
 #include <linux/clk.h>
+#include <linux/omapfb.h>
 
 #include <asm/tlb.h>
 
 #include <asm/mach/map.h>
 
 #include <plat/mux.h>
-#include <plat/omapfb.h>
 #include <plat/sram.h>
 #include <plat/sdrc.h>
 #include <plat/gpmc.h>
 #include <plat/serial.h>
+#include <plat/vram.h>
 
 #ifndef CONFIG_ARCH_OMAP4	/* FIXME: Remove this once clkdev is ready */
 #include "clock.h"
@@ -267,6 +268,7 @@ void __init omap2_map_common_io(void)
 	omap_sram_init();
 	omapfb_reserve_sdram();
 	dspbridge_reserve_sdram();
+	omap_vram_reserve_sdram();
 }
 
 /*
