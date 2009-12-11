@@ -348,3 +348,11 @@ omap3_cm_iclken1_core1:
 
 ENTRY(omap3_sram_configure_core_dpll_warmreset_sz)
 	.word   . - omap3_sram_configure_core_dpll_warmreset
+
+ENTRY(__sram_wait_delay)
+	subs 	r0, r0, #1
+	bne	__sram_wait_delay
+	bx	lr
+
+ENTRY(__sram_wait_delay_sz)
+	.word	. - __sram_wait_delay

@@ -37,6 +37,8 @@
 #include <asm/div64.h>
 #include <asm/clkdev.h>
 
+#include <plat/pmc.h>
+
 #include <plat/sdrc.h>
 #include "clock.h"
 #include "prm.h"
@@ -46,6 +48,8 @@
 #include <plat/cpu.h>
 
 static const struct clkops clkops_noncore_dpll_ops;
+
+unsigned int delay_sram;
 
 static void omap3430es2_clk_ssi_find_idlest(struct clk *clk,
 					    void __iomem **idlest_reg,
@@ -344,14 +348,8 @@ static struct omap_clk omap34xx_clks[] = {
 /* Scale factor for fixed-point arith in omap3_core_dpll_m2_set_rate() */
 #define SDRC_MPURATE_SCALE		8
 
-/* 2^SDRC_MPURATE_BASE_SHIFT: MPU MHz that SDRC_MPURATE_LOOPS is defined for */
-#define SDRC_MPURATE_BASE_SHIFT		9
-
-/*
- * SDRC_MPURATE_LOOPS: Number of MPU loops to execute at
- * 2^MPURATE_BASE_SHIFT MHz for SDRC to stabilize
- */
-#define SDRC_MPURATE_LOOPS		96
+/* SDRC_TIME_STABILIZE: Time for SDRC to stabilize in us */
+#define	SDRC_TIME_STABILIZE		6
 
 /*
  * DPLL5_FREQ_FOR_USBHOST: USBHOST and USBTLL are the only clocks
@@ -924,16 +922,10 @@ static int omap3_core_dpll_m2_set_rate(struct clk *clk, unsigned long rate)
 		unlock_dll = 1;
 	}
 
-	/*
-	 * XXX This only needs to be done when the CPU frequency changes
-	 */
+	/* Calculate the number of MPU cycles to wait for SDRC to stabilize */
+
 	mpurate = arm_fck.rate / CYCLES_PER_MHZ;
-	c = (mpurate << SDRC_MPURATE_SCALE) >> SDRC_MPURATE_BASE_SHIFT;
-	c += 1;  /* for safety */
-	c *= SDRC_MPURATE_LOOPS;
-	c >>= SDRC_MPURATE_SCALE;
-	if (c == 0)
-		c = 1;
+	c = ((SDRC_TIME_STABILIZE * mpurate) / (delay_sram * 2));
 
 	pr_debug("clock: changing CORE DPLL rate from %lu to %lu\n", clk->rate,
 		 validrate);
@@ -1354,6 +1346,11 @@ int __init omap2_clk_init(void)
 	vclk = clk_get(NULL, "virt_prcm_set");
 	sclk = clk_get(NULL, "sys_ck");
 #endif
+
+	/* Measure sram delay */
+	delay_sram = measure_sram_delay(10000)/(10000*2);
+	pr_debug("SRAM delay: %d\n", delay_sram);
+
 	return 0;
 }
 
