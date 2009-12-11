@@ -35,7 +35,6 @@
 #include "twl4030-script.h"
 
 #define OMAP_SYNAPTICS_GPIO		163
-#define LCD_PANEL_BACKLIGHT_GPIO        (15 + OMAP_MAX_GPIO_LINES)
 #define LCD_PANEL_ENABLE_GPIO           (7 + OMAP_MAX_GPIO_LINES)
 #define LCD_PANEL_RESET_GPIO            55
 #define LCD_PANEL_QVGA_GPIO             56
@@ -75,10 +74,6 @@ static void zoom_lcd_tv_panel_init(void)
 	gpio_direction_output(LCD_PANEL_QVGA_GPIO, 1);
 	gpio_request(LCD_PANEL_ENABLE_GPIO, "lcd panel");
 	gpio_direction_output(LCD_PANEL_ENABLE_GPIO, 0);
-#ifndef CONFIG_MACH_OMAP_3630SDP
-	gpio_request(LCD_PANEL_BACKLIGHT_GPIO, "lcd backlight");
-	gpio_direction_output(LCD_PANEL_BACKLIGHT_GPIO, 0);
-#endif
 	gpio_request(TV_PANEL_ENABLE_GPIO, "tv panel");
 	gpio_direction_output(TV_PANEL_ENABLE_GPIO, 0);
 }
@@ -102,11 +97,6 @@ static int zoom_panel_enable_lcd(struct omap_dss_device *dssdev)
 	gpio_request(LCD_PANEL_ENABLE_GPIO, "lcd panel");
 	gpio_direction_output(LCD_PANEL_ENABLE_GPIO, 1);
 
-#ifndef CONFIG_MACH_OMAP_3630SDP
-	gpio_request(LCD_PANEL_BACKLIGHT_GPIO, "lcd backlight");
-	gpio_direction_output(LCD_PANEL_BACKLIGHT_GPIO, 1);
-#endif
-
 	return 0;
 }
 
@@ -117,10 +107,6 @@ static void zoom_panel_disable_lcd(struct omap_dss_device *dssdev)
         gpio_request(LCD_PANEL_ENABLE_GPIO, "lcd panel");
 	gpio_direction_output(LCD_PANEL_ENABLE_GPIO, 0);
 
-#ifndef CONFIG_MACH_OMAP_3630SDP
-	gpio_request(LCD_PANEL_BACKLIGHT_GPIO, "lcd backlight");
-	gpio_direction_output(LCD_PANEL_BACKLIGHT_GPIO, 0);
-#endif
 }
 
 static int zoom_panel_enable_tv(struct omap_dss_device *dssdev)
