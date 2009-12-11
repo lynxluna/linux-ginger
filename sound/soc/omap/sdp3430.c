@@ -162,6 +162,44 @@ static struct snd_soc_jack_gpio hs_jack_gpios[] = {
 	},
 };
 
+/* Audio Sampling frequences supported by Triton */ static const char
+*audio_sample_rates_txt[] = {
+	"8000", "11025", "12000", "16000", "22050",
+	"24000", "32000", "44100", "48000", "96000"
+	};
+
+/*
+ * APLL_RATE defined in CODEC_MODE register, which corresponds
+ * to the sampling rates defined above
+ */
+static const unsigned int audio_sample_rates_apll[] = {
+	0x0, 0x1, 0x2, 0x4, 0x5,
+	0x6, 0x8, 0x9, 0xa, 0xe
+	};
+
+/* Voice Sampling rates supported by Triton */ static const char
+*voice_sample_rates_txt[] = {
+	"8000", "16000"
+	};
+
+/*
+ * SEL_16K defined in CODEC_MODE register, which corresponds
+ * to the voice sample rates defined above  */ static const unsigned
+int voice_sample_rates_sel_16k[] = {
+	0x0, 0x1
+	};
+
+static const struct soc_enum twl4030_audio_sample_rates_enum =
+	SOC_VALUE_ENUM_SINGLE(TWL4030_REG_CODEC_MODE, 4, 0xf,
+			ARRAY_SIZE(audio_sample_rates_txt),
+			audio_sample_rates_txt, audio_sample_rates_apll);
+
+static const struct soc_enum twl4030_voice_sample_rates_enum =
+	SOC_VALUE_ENUM_SINGLE(TWL4030_REG_CODEC_MODE, 3, 0x1,
+			ARRAY_SIZE(voice_sample_rates_txt),
+			voice_sample_rates_txt, voice_sample_rates_sel_16k);
+
+
 /* SDP3430 machine DAPM */
 static const struct snd_soc_dapm_widget sdp3430_twl4030_dapm_widgets[] = {
 	SND_SOC_DAPM_MIC("Ext Mic", NULL),
@@ -288,6 +326,10 @@ static const struct snd_kcontrol_new sdp3430_controls[] = {
 		sdp3430_get_voice_state, sdp3430_set_voice_state),
 	SOC_ENUM_EXT("Capture Control", sdp3430_enum[0],
 		sdp3430_get_capture_state, sdp3430_set_capture_state),
+	SOC_ENUM_EXT("Audio Sample Rate", twl4030_audio_sample_rates_enum,
+		snd_soc_get_value_enum_double, snd_soc_put_value_enum_double),
+	SOC_ENUM_EXT("Voice Sample Rate", twl4030_voice_sample_rates_enum,
+		snd_soc_get_value_enum_double, snd_soc_put_value_enum_double),
 };
 
 static int sdp3430_twl4030_init(struct snd_soc_codec *codec)
