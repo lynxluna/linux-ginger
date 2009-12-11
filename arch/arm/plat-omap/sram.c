@@ -29,8 +29,11 @@
 #include <plat/board.h>
 #include <plat/cpu.h>
 #include <plat/vram.h>
-
 #include <plat/control.h>
+
+#ifdef CONFIG_ARCH_OMAP3
+#include <plat/pmc.h>
+#endif
 
 #if defined(CONFIG_ARCH_OMAP2) || defined(CONFIG_ARCH_OMAP3)
 # include "../mach-omap2/prm.h"
@@ -429,6 +432,24 @@ void omap3_sram_restore_context(void)
 	omap_push_sram_idle();
 }
 #endif /* CONFIG_PM */
+
+#ifdef CONFIG_ARCH_OMAP3
+unsigned int measure_sram_delay(unsigned int loop)
+{
+	unsigned int start = 0, end = 0;
+	void (*_omap3_sram_delay)(unsigned long);
+	_omap3_sram_delay = omap_sram_push(__sram_wait_delay,
+						__sram_wait_delay_sz);
+	start_perf_counter();
+	start_cycle_counter();
+	start = cycle_count();
+	_omap3_sram_delay(loop);
+	end = cycle_count();
+	stop_cycle_counter();
+	stop_perf_counter();
+	return end - start;
+}
+#endif
 
 int __init omap34xx_sram_init(void)
 {
