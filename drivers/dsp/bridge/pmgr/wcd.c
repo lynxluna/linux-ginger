@@ -273,7 +273,7 @@ static struct WCD_Cmd WCD_cmdTable[] = {
 inline DSP_STATUS WCD_CallDevIOCtl(u32 cmd, union Trapped_Args *args,
 				    u32 *pResult)
 {
-	if ((cmd < (sizeof(WCD_cmdTable) / sizeof(struct WCD_Cmd)))) {
+	if (cmd < ARRAY_SIZE(WCD_cmdTable)) {
 		/* make the fxn call via the cmd table */
 		*pResult = (*WCD_cmdTable[cmd].fxn) (args);
 		return DSP_SOK;
@@ -324,7 +324,7 @@ bool WCD_Init(void)
 #ifdef DEBUG
 	/* runtime check of Device IOCtl array. */
 	u32 i;
-	for (i = 1; i < (sizeof(WCD_cmdTable) / sizeof(struct WCD_Cmd)); i++)
+	for (i = 1; i < ARRAY_SIZE(WCD_cmdTable); i++)
 		DBC_Assert(WCD_cmdTable[i - 1].dwIndex == i);
 
 #endif
