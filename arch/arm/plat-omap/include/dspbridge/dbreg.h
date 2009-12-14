@@ -88,7 +88,6 @@
 #define WMDFILENAME      "MiniDriver"	/* WMD entry name */
 #define CHIPTYPE         "ChipType"	/* Chip type */
 #define CHIPNUM          "NumChips"	/* Number of chips */
-#define NUMPROCS         "NumOfProcessors"	/* Number of processors */
 #define DEFEXEC          "DefaultExecutable"	/* Default executable */
 #define AUTOSTART        "AutoStart"	/* Statically load flag */
 #define IVAAUTOSTART     "IvaAutoStart"	/* Statically load flag */
@@ -107,7 +106,5 @@
 #define TCWORDSWAP       "TCWordSwap"	/* Traffic Contoller Word Swap */
 #define DSPRESOURCES     "DspTMSResources"	/* C55 DSP resurces on OMAP */
 #define IVA1RESOURCES    "ARM7IvaResources"	/* ARM7 IVA resurces on OMAP */
-#define PHYSMEMPOOLBASE  "PhysicalMemBase"   /* Physical mem passed to driver */
-#define PHYSMEMPOOLSIZE  "PhysicalMemSize"   /* Physical mem passed to driver */
 
 #endif				/* DBREG_ */
