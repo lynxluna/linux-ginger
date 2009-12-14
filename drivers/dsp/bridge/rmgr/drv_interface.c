@@ -557,7 +557,7 @@ static int bridge_open(struct inode *ip, struct file *filp)
 		DRV_InsertProcContext(hDrvObject, &pr_ctxt);
 		if (pr_ctxt) {
 			DRV_ProcUpdatestate(pr_ctxt, PROC_RES_ALLOCATED);
-			DRV_ProcSetPID(pr_ctxt, current->pid);
+			DRV_ProcSetPID(pr_ctxt, current->tgid);
 		} else {
 			status = -ENOMEM;
 		}

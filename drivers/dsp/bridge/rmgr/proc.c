@@ -212,7 +212,7 @@ DSP_STATUS PROC_CleanupAllResources(void)
 		goto func_end;
 	DRV_GetProcCtxtList(&pCtxtclosed, (struct DRV_OBJECT *)hDrvObject);
 	while (pCtxtclosed != NULL) {
-		if (current->pid != pCtxtclosed->pid) {
+		if (current->tgid != pCtxtclosed->pid) {
 			GT_1trace(PROC_DebugMask, GT_5CLASS,
 				 "***Cleanup of "
 				 "process***%d\n", pCtxtclosed->pid);
@@ -305,8 +305,8 @@ PROC_Attach(u32 uProcessor, OPTIONAL CONST struct DSP_PROCESSORATTRIN *pAttrIn,
 	pProcObject->hMgrObject = hMgrObject;
 	pProcObject->uProcessor = devType;
 	/* Get Caller Process and store it */
-       /* Return PID instead of process handle */
-       pProcObject->hProcess = current->pid;
+	/* Return TGID instead of process handle */
+	pProcObject->hProcess = current->tgid;
 
 	if (pAttrIn)
 		pProcObject->uTimeout = pAttrIn->uTimeout;
@@ -382,8 +382,8 @@ func_end:
 	if (DSP_FAILED(status))
 		goto func_cont;
 
-       /* Return PID instead of process handle */
-       hProcess = current->pid;
+	/* Return TGID instead of process handle */
+	hProcess = current->tgid;
 
 	res_status = CFG_GetObject((u32 *)&hDRVObject, REG_DRV_OBJECT);
 	if (DSP_FAILED(res_status))
@@ -399,8 +399,8 @@ func_end:
 		}
 	}
 func_cont:
-       /* Return PID instead of process handle */
-       hProcess = current->pid;
+	/* Return TGID instead of process handle */
+	hProcess = current->tgid;
 
 	res_status = CFG_GetObject((u32 *)&hDRVObject, REG_DRV_OBJECT);
 	if (DSP_SUCCEEDED(res_status)) {
@@ -648,7 +648,7 @@ DSP_STATUS PROC_Detach(DSP_HPROCESSOR hProcessor)
 
 	if (MEM_IsValidHandle(pProcObject, PROC_SIGNATURE)) {
 #ifndef RES_CLEANUP_DISABLE
-		/* Return PID instead of process handle */
+		/* Return TGID instead of process handle */
 		hProcess = pProcObject->hProcess;
 		res_status = CFG_GetObject((u32 *)&hDRVObject, REG_DRV_OBJECT);
 		if (DSP_SUCCEEDED(res_status)) {
@@ -1478,8 +1478,8 @@ DSP_STATUS PROC_Map(DSP_HPROCESSOR hProcessor, void *pMpuAddr, u32 ulSize,
 #ifndef RES_CLEANUP_DISABLE
 	if (DSP_SUCCEEDED(status)) {
 		/* Update the node and stream resource status */
-               /* Return PID instead of process handle */
-               hProcess = current->pid;
+		/* Return TGID instead of process handle */
+		hProcess = current->tgid;
 
 		res_status = CFG_GetObject((u32 *)&hDrvObject,
 					  REG_DRV_OBJECT);
@@ -1857,8 +1857,8 @@ DSP_STATUS PROC_UnMap(DSP_HPROCESSOR hProcessor, void *pMapAddr)
 		goto func_end;
 
 	/* Update the node and stream resource status */
-       /* Return PID instead of process handle */
-       hProcess = current->pid;
+	/* Return TGID instead of process handle */
+	hProcess = current->tgid;
 
 	res_status = CFG_GetObject((u32 *)&hDrvObject, REG_DRV_OBJECT);
 	if (DSP_FAILED(res_status))

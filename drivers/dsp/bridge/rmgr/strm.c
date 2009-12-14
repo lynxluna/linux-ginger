@@ -202,8 +202,8 @@ DSP_STATUS STRM_AllocateBuffer(struct STRM_OBJECT *hStrm, u32 uSize,
 	if (DSP_FAILED(status))
 		goto func_end;
 
-       /* Return PID instead of process handle */
-       hProcess = current->pid;
+	/* Return TGID instead of process handle */
+	hProcess = current->tgid;
 
 	res_status = CFG_GetObject((u32 *)&hDrvObject, REG_DRV_OBJECT);
 	if (DSP_FAILED(res_status))
@@ -276,8 +276,8 @@ DSP_STATUS STRM_Close(struct STRM_OBJECT *hStrm)
 		goto func_end;
 
 	/* Update the node and stream resource status */
-       /* Return PID instead of process handle */
-       hProcess = current->pid;
+	/* Return TGID instead of process handle */
+	hProcess = current->tgid;
 
 	res_status = CFG_GetObject((u32 *)&hDrvObject, REG_DRV_OBJECT);
 	if (DSP_FAILED(res_status))
@@ -429,8 +429,8 @@ DSP_STATUS STRM_FreeBuffer(struct STRM_OBJECT *hStrm, u8 **apBuffer,
 	}
 #ifndef RES_CLEANUP_DISABLE
 	/* Update the node and stream resource status */
-       /* Return PID instead of process handle */
-       hProcess = current->pid;
+	/* Return TGID instead of process handle */
+	hProcess = current->tgid;
 
 	res_status = CFG_GetObject((u32 *)&hDrvObject, REG_DRV_OBJECT);
 	if (DSP_SUCCEEDED(res_status)) {
@@ -778,8 +778,8 @@ func_cont:
 		(void)DeleteStrm(pStrm);
 
 #ifndef RES_CLEANUP_DISABLE
-       /* Return PID instead of process handle */
-       hProcess = current->pid;
+	/* Return TGID instead of process handle */
+	hProcess = current->tgid;
 
 	res_status = CFG_GetObject((u32 *)&hDrvObject, REG_DRV_OBJECT);
 	if (DSP_SUCCEEDED(res_status)) {
