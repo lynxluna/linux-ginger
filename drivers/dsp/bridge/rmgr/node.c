@@ -780,8 +780,8 @@ func_cont2:
 
 #ifndef RES_CLEANUP_DISABLE
 	if (DSP_SUCCEEDED(status)) {
-               /* Return PID instead of process handle */
-               hProcess = current->pid;
+		/* Return TGID instead of process handle */
+		hProcess = current->tgid;
 
 		res_status = CFG_GetObject((u32 *)&hDrvObject,
 					  REG_DRV_OBJECT);
@@ -804,8 +804,8 @@ func_cont2:
 		}
 	}
 	if (DSP_SUCCEEDED(status)) {
-               /* Return PID instead of process handle */
-               hProcess = current->pid;
+		/* Return TGID instead of process handle */
+		hProcess = current->tgid;
 		res_status = CFG_GetObject((u32 *)&hDrvObject,
 					REG_DRV_OBJECT);
 		if (DSP_SUCCEEDED(res_status)) {
@@ -1767,8 +1767,8 @@ func_cont1:
 	 /*  Free host-side resources allocated by NODE_Create()
 	 *  DeleteNode() fails if SM buffers not freed by client!  */
 #ifndef RES_CLEANUP_DISABLE
-       /* Return PID instead of process handle */
-       hProcess = current->pid;
+	/* Return TGID instead of process handle */
+	hProcess = current->tgid;
 	res_status = CFG_GetObject((u32 *)&hDrvObject, REG_DRV_OBJECT);
 	if (DSP_FAILED(res_status))
 		goto func_cont;
