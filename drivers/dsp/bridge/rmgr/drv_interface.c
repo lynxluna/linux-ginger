@@ -127,7 +127,6 @@ static s32 driver_major;
 static s32 driver_minor;
 static char *base_img;
 char *iva_img;
-static char *num_procs = "C55=1";
 static s32 shm_size = 0x500000;	/* 5 MB */
 static u32 phys_mempool_base;
 static u32 phys_mempool_size;
@@ -337,7 +336,6 @@ static int __devinit omap34xx_bridge_probe(struct platform_device *pdev)
 		REG_SetValue(AUTOSTART, (u8 *)&temp, sizeof(temp));
 		REG_SetValue(DEFEXEC, (u8 *) "\0", (u32)2);
 	}
-	REG_SetValue(NUMPROCS, (u8 *) num_procs, strlen(num_procs) + 1);
 
 	if (shm_size >= 0x10000) {	/* 64 KB */
 		initStatus = REG_SetValue(SHMSIZE, (u8 *)&shm_size,
@@ -356,19 +354,9 @@ static int __devinit omap34xx_bridge_probe(struct platform_device *pdev)
 		phys_mempool_size = pdata->phys_mempool_size;
 	}
 
-	if (phys_mempool_base > 0x0) {
-		initStatus = REG_SetValue(PHYSMEMPOOLBASE,
-					 (u8 *)&phys_mempool_base,
-					 sizeof(phys_mempool_base));
-	}
 	GT_1trace(driverTrace, GT_7CLASS, "phys_mempool_base = 0x%x \n",
 		 phys_mempool_base);
 
-	if (phys_mempool_size > 0x0) {
-		initStatus = REG_SetValue(PHYSMEMPOOLSIZE,
-					 (u8 *)&phys_mempool_size,
-					 sizeof(phys_mempool_size));
-	}
 	GT_1trace(driverTrace, GT_7CLASS, "phys_mempool_size = 0x%x\n",
 		 phys_mempool_base);
 	if ((phys_mempool_base > 0x0) && (phys_mempool_size > 0x0))
