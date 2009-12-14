@@ -157,7 +157,7 @@ EXPORT_SYMBOL(omap_vrfb_max_height);
 
 void omap_vrfb_setup(struct vrfb *vrfb, unsigned long paddr,
 		u16 width, u16 height,
-		unsigned bytespp, bool yuv_mode)
+		unsigned bytespp, enum omap_color_mode color_mode, int rotation)
 {
 	unsigned pixel_size_exp;
 	u16 vrfb_width;
@@ -167,11 +167,12 @@ void omap_vrfb_setup(struct vrfb *vrfb, unsigned long paddr,
 	u32 control;
 
 	DBG("omapfb_set_vrfb(%d, %lx, %dx%d, %d, %d)\n", ctx, paddr,
-			width, height, bytespp, yuv_mode);
+			width, height, bytespp, color_mode);
 
 	/* For YUV2 and UYVY modes VRFB needs to handle pixels a bit
 	 * differently. See TRM. */
-	if (yuv_mode) {
+	if (color_mode == OMAP_DSS_COLOR_YUV2 ||
+			color_mode == OMAP_DSS_COLOR_UYVY) {
 		bytespp *= 2;
 		width /= 2;
 	}
@@ -182,6 +183,13 @@ void omap_vrfb_setup(struct vrfb *vrfb, unsigned long paddr,
 		pixel_size_exp = 1;
 	else
 		BUG();
+
+	/* for vdma */
+	/* TODO: VDMA support for RGB16 mode */
+	if (cpu_is_omap3630())
+		if (color_mode == OMAP_DSS_COLOR_YUV2)
+			if ((rotation == 1) || (rotation == 3))
+				pixel_size_exp = 2;
 
 	vrfb_width = ALIGN(width * bytespp, VRFB_PAGE_WIDTH) / bytespp;
 	vrfb_height = ALIGN(height, VRFB_PAGE_HEIGHT);
@@ -211,7 +219,9 @@ void omap_vrfb_setup(struct vrfb *vrfb, unsigned long paddr,
 	vrfb->xoffset = vrfb_width - width;
 	vrfb->yoffset = vrfb_height - height;
 	vrfb->bytespp = bytespp;
-	vrfb->yuv_mode = yuv_mode;
+	if (color_mode == OMAP_DSS_COLOR_YUV2 ||
+			color_mode == OMAP_DSS_COLOR_UYVY)
+		vrfb->yuv_mode = true;
 }
 EXPORT_SYMBOL(omap_vrfb_setup);
 

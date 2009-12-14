@@ -23,6 +23,8 @@
 
 #define OMAP_VRFB_LINE_LEN 2048
 
+#include <plat/display.h>
+
 struct vrfb {
 	u8 context;
 	void __iomem *vaddr[4];
@@ -42,8 +44,8 @@ extern void omap_vrfb_adjust_size(u16 *width, u16 *height,
 extern u32 omap_vrfb_min_phys_size(u16 width, u16 height, u8 bytespp);
 extern u16 omap_vrfb_max_height(u32 phys_size, u16 width, u8 bytespp);
 extern void omap_vrfb_setup(struct vrfb *vrfb, unsigned long paddr,
-		u16 width, u16 height,
-		unsigned bytespp, bool yuv_mode);
+		u16 width, u16 height, unsigned bytespp,
+		enum omap_color_mode color_mode, int rotation);
 extern int omap_vrfb_map_angle(struct vrfb *vrfb, u16 height, u8 rot);
 extern void omap_vrfb_restore_context(void);
 
