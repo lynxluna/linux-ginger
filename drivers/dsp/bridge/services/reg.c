@@ -48,9 +48,6 @@
 /*  ----------------------------------- OS Adaptation Layer */
 #include <dspbridge/mem.h>
 
-/*  ----------------------------------- Others */
-#include <dspbridge/dbreg.h>
-
 /*  ----------------------------------- This */
 #include <dspbridge/reg.h>
 #include <regsup.h>
