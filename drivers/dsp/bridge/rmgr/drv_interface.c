@@ -592,7 +592,8 @@ static int bridge_release(struct inode *ip, struct file *filp)
 		if (DSP_SUCCEEDED(dsp_status)) {
 			flush_signals(current);
 			DRV_RemoveAllResources(pr_ctxt);
-			PROC_Detach(pr_ctxt->hProcessor);
+			if (pr_ctxt->hProcessor)
+				PROC_Detach(pr_ctxt->hProcessor);
 			DRV_RemoveProcContext((struct DRV_OBJECT *)hDrvObject,
 					pr_ctxt, (void *)pr_ctxt->pid);
 		} else {
