@@ -35,7 +35,6 @@
 #include "twl4030-script.h"
 
 #define OMAP_SYNAPTICS_GPIO		163
-#define LCD_PANEL_BACKLIGHT_GPIO        (15 + OMAP_MAX_GPIO_LINES)
 #define LCD_PANEL_ENABLE_GPIO           (7 + OMAP_MAX_GPIO_LINES)
 #define LCD_PANEL_RESET_GPIO            55
 #define LCD_PANEL_QVGA_GPIO             56
@@ -52,6 +51,7 @@
 #define ENABLE_VDAC_DEV_GRP		0x20
 #define DISABLE_VDAC_DEDICATED		0x00
 #define DISABLE_VDAC_DEV_GRP		0x00
+#define SIL9022_RESET_GPIO              97
 
 static void zoom_lcd_tv_panel_init(void)
 {
@@ -75,10 +75,6 @@ static void zoom_lcd_tv_panel_init(void)
 	gpio_direction_output(LCD_PANEL_QVGA_GPIO, 1);
 	gpio_request(LCD_PANEL_ENABLE_GPIO, "lcd panel");
 	gpio_direction_output(LCD_PANEL_ENABLE_GPIO, 0);
-#ifndef CONFIG_MACH_OMAP_3630SDP
-	gpio_request(LCD_PANEL_BACKLIGHT_GPIO, "lcd backlight");
-	gpio_direction_output(LCD_PANEL_BACKLIGHT_GPIO, 0);
-#endif
 	gpio_request(TV_PANEL_ENABLE_GPIO, "tv panel");
 	gpio_direction_output(TV_PANEL_ENABLE_GPIO, 0);
 }
@@ -102,9 +98,8 @@ static int zoom_panel_enable_lcd(struct omap_dss_device *dssdev)
 	gpio_request(LCD_PANEL_ENABLE_GPIO, "lcd panel");
 	gpio_direction_output(LCD_PANEL_ENABLE_GPIO, 1);
 
-#ifndef CONFIG_MACH_OMAP_3630SDP
-	gpio_request(LCD_PANEL_BACKLIGHT_GPIO, "lcd backlight");
-	gpio_direction_output(LCD_PANEL_BACKLIGHT_GPIO, 1);
+#ifdef CONFIG_SIL9022
+#include <linux/sil9022.h>
 #endif
 
 	return 0;
@@ -117,10 +112,6 @@ static void zoom_panel_disable_lcd(struct omap_dss_device *dssdev)
         gpio_request(LCD_PANEL_ENABLE_GPIO, "lcd panel");
 	gpio_direction_output(LCD_PANEL_ENABLE_GPIO, 0);
 
-#ifndef CONFIG_MACH_OMAP_3630SDP
-	gpio_request(LCD_PANEL_BACKLIGHT_GPIO, "lcd backlight");
-	gpio_direction_output(LCD_PANEL_BACKLIGHT_GPIO, 0);
-#endif
 }
 
 static int zoom_panel_enable_tv(struct omap_dss_device *dssdev)
@@ -142,6 +133,40 @@ static void zoom_panel_disable_tv(struct omap_dss_device *dssdev)
 				DISABLE_VDAC_DEV_GRP,
 				TWL4030_VDAC_DEV_GRP);
 }
+
+#ifdef CONFIG_SIL9022
+static void zoom_hdmi_reset_enable(int level)
+{
+	/* Set GPIO_97 to high to pull SiI9022 HDMI transmitter out of reset
+	* and low to disable it.
+	*/
+	gpio_request(SIL9022_RESET_GPIO, "hdmi reset");
+	gpio_direction_output(SIL9022_RESET_GPIO, level);
+}
+
+static int zoom_panel_enable_hdmi(struct omap_dss_device *dssdev)
+{
+	zoom_panel_power_enable(1);
+	zoom_hdmi_reset_enable(1);
+
+	return 0;
+}
+
+static void zoom_panel_disable_hdmi(struct omap_dss_device *dssdev)
+{
+	zoom_hdmi_reset_enable(0);
+	zoom_panel_power_enable(0);
+}
+
+static struct omap_dss_device zoom_hdmi_device = {
+	.name = "hdmi",
+	.driver_name = "hdmi_panel",
+	.type = OMAP_DISPLAY_TYPE_HDMI,
+	.phy.dpi.data_lines = 24,
+	.platform_enable = zoom_panel_enable_hdmi,
+	.platform_disable = zoom_panel_disable_hdmi,
+};
+#endif
 
 static struct omap_dss_device zoom_lcd_device = {
 	.name = "lcd",
@@ -168,6 +193,9 @@ static struct omap_dss_device zoom_tv_device = {
 static struct omap_dss_device *zoom_dss_devices[] = {
 	&zoom_lcd_device,
 	&zoom_tv_device,
+	#ifdef CONFIG_SIL9022
+	&zoom_hdmi_device,
+	#endif
 };
 
 static struct omap_dss_board_info zoom_dss_data = {
@@ -575,6 +603,14 @@ static struct synaptics_i2c_rmi_platform_data synaptics_platform_data[] = {
 	}
 };
 
+static struct i2c_board_info __initdata zoom_i2c_bus3_info[] = {
+#ifdef CONFIG_SIL9022
+	{
+		I2C_BOARD_INFO(SIL9022_DRV_NAME,  SI9022_I2CSLAVEADDRESS),
+	},
+#endif
+};
+
 static struct i2c_board_info __initdata zoom_i2c_boardinfo2[] = {
 	{
 		I2C_BOARD_INFO(SYNAPTICS_I2C_RMI_NAME,  0x20),
@@ -633,7 +669,8 @@ static int __init omap_i2c_init(void)
 			ARRAY_SIZE(zoom_i2c_boardinfo));
 	omap_register_i2c_bus(2, 100, zoom_i2c_boardinfo2,
 			ARRAY_SIZE(zoom_i2c_boardinfo2));
-	omap_register_i2c_bus(3, 400, NULL, 0);
+	omap_register_i2c_bus(3, 400, zoom_i2c_bus3_info,
+			ARRAY_SIZE(zoom_i2c_bus3_info));
 	return 0;
 }
 
@@ -654,6 +691,9 @@ void __init zoom_peripherals_init(void)
 	spi_register_board_info(nec_8048_spi_board_info,
 				ARRAY_SIZE(nec_8048_spi_board_info));
 	zoom_lcd_tv_panel_init();
+	#ifdef CONFIG_SIL9022
+	zoom_hdmi_reset_enable(1);
+	#endif
 	synaptics_dev_init();
 	omap_serial_init();
 	usb_musb_init();

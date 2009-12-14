@@ -461,7 +461,7 @@ static int omap_vout_vrfb_buffer_setup(struct omap_vout_device *vout,
 		omap_vrfb_setup(&vout->vrfb_context[i],
 				vout->smsshado_phy_addr[i],
 				vout->pix.width, vout->pix.height,
-				vout->bpp, yuv_mode);
+				vout->bpp, vout->dss_mode, vout->rotation);
 	}
 	return 0;
 }
