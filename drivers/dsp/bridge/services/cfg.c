@@ -84,9 +84,6 @@
 /*  ----------------------------------- OS Adaptation Layer */
 #include <dspbridge/reg.h>
 
-/*  ----------------------------------- Others */
-#include <dspbridge/dbreg.h>
-
 /*  ----------------------------------- This */
 #include <dspbridge/cfg.h>
 #include <dspbridge/list.h>

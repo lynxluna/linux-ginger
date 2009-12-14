@@ -79,7 +79,6 @@
 #include <dspbridge/wcdioctl.h>
 #include <dspbridge/_dcd.h>
 #include <dspbridge/dspdrv.h>
-#include <dspbridge/dbreg.h>
 
 /*  ----------------------------------- Resource Manager */
 #include <dspbridge/pwr.h>
@@ -96,7 +95,6 @@
 #include <dspbridge/dev.h>
 #include <dspbridge/drvdefs.h>
 #include <dspbridge/drv.h>
-#include <dspbridge/dbreg.h>
 #endif
 
 #include <mach/omap-pm.h>
