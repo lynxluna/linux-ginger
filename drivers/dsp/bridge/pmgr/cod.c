@@ -199,7 +199,7 @@ static s32 COD_fRead(void __user *pBuffer, s32 cSize, s32 cCount,
 
 static s32 COD_fSeek(struct file *hFile, s32 lOffset, s32 cOrigin)
 {
-	u32 dwCurPos;
+	loff_t dwCurPos;
 
 	/* check for valid file handle */
 	if (!hFile)
@@ -217,7 +217,7 @@ static s32 COD_fSeek(struct file *hFile, s32 lOffset, s32 cOrigin)
 
 static s32 COD_fTell(struct file *hFile)
 {
-	u32 dwCurPos;
+	loff_t dwCurPos;
 
 	if (!hFile)
 		return DSP_EHANDLE;
