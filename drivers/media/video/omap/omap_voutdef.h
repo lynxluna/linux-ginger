@@ -37,9 +37,9 @@
  */
 enum dss_rotation {
 	dss_rotation_0_degree	= 0,
-	dss_rotation_90_degree	= 1,
+	dss_rotation_90_degree	= 3,
 	dss_rotation_180_degree	= 2,
-	dss_rotation_270_degree = 3,
+	dss_rotation_270_degree = 1,
 };
 /*
  * This structure is used to store the DMA transfer parameters
