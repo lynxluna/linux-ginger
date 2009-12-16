@@ -159,13 +159,9 @@ DSP_STATUS STRM_AllocateBuffer(struct STRM_OBJECT *hStrm, u32 uSize,
 	DSP_STATUS status = DSP_SOK;
 	u32 uAllocated = 0;
 	u32 i;
-	#ifndef RES_CLEANUP_DISABLE
-	DSP_STATUS res_status = DSP_SOK;
-       u32                  hProcess;
-	HANDLE	     pCtxt = NULL;
-	HANDLE	     hDrvObject;
+#ifndef RES_CLEANUP_DISABLE
 	HANDLE hSTRMRes;
-	#endif
+#endif
 	DBC_Require(cRefs > 0);
 	DBC_Require(apBuffer != NULL);
 
@@ -203,21 +199,9 @@ DSP_STATUS STRM_AllocateBuffer(struct STRM_OBJECT *hStrm, u32 uSize,
 	if (DSP_FAILED(status))
 		goto func_end;
 
-	/* Return TGID instead of process handle */
-	hProcess = current->tgid;
-
-	res_status = CFG_GetObject((u32 *)&hDrvObject, REG_DRV_OBJECT);
-	if (DSP_FAILED(res_status))
-		goto func_end;
-
-       DRV_GetProcContext(hProcess, (struct DRV_OBJECT *)hDrvObject,
-			 &pCtxt, NULL, 0);
-	if (pCtxt != NULL) {
-		if (DRV_GetSTRMResElement(hStrm, &hSTRMRes, pCtxt) !=
-		   DSP_ENOTFOUND) {
-			DRV_ProcUpdateSTRMRes(uNumBufs, hSTRMRes, pCtxt);
-		}
-	}
+	if (DRV_GetSTRMResElement(hStrm, &hSTRMRes, pr_ctxt) !=
+			DSP_ENOTFOUND)
+		DRV_ProcUpdateSTRMRes(uNumBufs, hSTRMRes, pr_ctxt);
 #endif
 func_end:
 	return status;
@@ -235,15 +219,9 @@ DSP_STATUS STRM_Close(struct STRM_OBJECT *hStrm,
 	struct CHNL_INFO chnlInfo;
 	DSP_STATUS status = DSP_SOK;
 
-
 #ifndef RES_CLEANUP_DISABLE
-    u32                      hProcess;
-    HANDLE	      pCtxt = NULL;
-    HANDLE	      hDrvObject;
     HANDLE	      hSTRMRes;
-    DSP_STATUS	  res_status = DSP_SOK;
 #endif
-
 
 	DBC_Require(cRefs > 0);
 
@@ -277,22 +255,9 @@ DSP_STATUS STRM_Close(struct STRM_OBJECT *hStrm,
 	if (DSP_FAILED(status))
 		goto func_end;
 
-	/* Update the node and stream resource status */
-	/* Return TGID instead of process handle */
-	hProcess = current->tgid;
-
-	res_status = CFG_GetObject((u32 *)&hDrvObject, REG_DRV_OBJECT);
-	if (DSP_FAILED(res_status))
-		goto func_end;
-
-       DRV_GetProcContext(hProcess, (struct DRV_OBJECT *)hDrvObject,
-			 &pCtxt, NULL, 0);
-	if (pCtxt != NULL) {
-		if (DRV_GetSTRMResElement(hStrm, &hSTRMRes, pCtxt) !=
-		   DSP_ENOTFOUND) {
-			DRV_ProcRemoveSTRMResElement(hSTRMRes, pCtxt);
-		}
-	}
+	if (DRV_GetSTRMResElement(hStrm, &hSTRMRes, pr_ctxt) !=
+			DSP_ENOTFOUND)
+		DRV_ProcRemoveSTRMResElement(hSTRMRes, pr_ctxt);
 func_end:
 #endif
 	DBC_Ensure(status == DSP_SOK || status == DSP_EHANDLE ||
@@ -400,13 +365,9 @@ DSP_STATUS STRM_FreeBuffer(struct STRM_OBJECT *hStrm, u8 **apBuffer,
 	DSP_STATUS status = DSP_SOK;
 	u32 i = 0;
 
-	#ifndef RES_CLEANUP_DISABLE
-	DSP_STATUS res_status = DSP_SOK;
-       u32                  hProcess;
-	HANDLE	     pCtxt = NULL;
-	HANDLE	     hDrvObject;
-	HANDLE 		    hSTRMRes = NULL;
-	#endif
+#ifndef RES_CLEANUP_DISABLE
+	HANDLE hSTRMRes = NULL;
+#endif
 	DBC_Require(cRefs > 0);
 	DBC_Require(apBuffer != NULL);
 
@@ -430,23 +391,9 @@ DSP_STATUS STRM_FreeBuffer(struct STRM_OBJECT *hStrm, u8 **apBuffer,
 		}
 	}
 #ifndef RES_CLEANUP_DISABLE
-	/* Update the node and stream resource status */
-	/* Return TGID instead of process handle */
-	hProcess = current->tgid;
-
-	res_status = CFG_GetObject((u32 *)&hDrvObject, REG_DRV_OBJECT);
-	if (DSP_SUCCEEDED(res_status)) {
-               DRV_GetProcContext(hProcess,
-				 (struct DRV_OBJECT *)hDrvObject, &pCtxt,
-				 NULL, 0);
-		if (pCtxt != NULL) {
-			if (DRV_GetSTRMResElement(hStrm, hSTRMRes, pCtxt) !=
-			   DSP_ENOTFOUND) {
-				DRV_ProcUpdateSTRMRes(uNumBufs-i, hSTRMRes,
-						     pCtxt);
-			}
-		}
-	}
+	if (DRV_GetSTRMResElement(hStrm, hSTRMRes, pr_ctxt) !=
+			DSP_ENOTFOUND)
+		DRV_ProcUpdateSTRMRes(uNumBufs-i, hSTRMRes, pr_ctxt);
 #endif
 	return status;
 }
@@ -640,13 +587,9 @@ DSP_STATUS STRM_Open(struct NODE_OBJECT *hNode, u32 uDir, u32 uIndex,
 	DSP_STATUS status = DSP_SOK;
 	struct CMM_OBJECT *hCmmMgr = NULL;	/* Shared memory manager hndl */
 
-	#ifndef RES_CLEANUP_DISABLE
-	DSP_STATUS res_status = DSP_SOK;
-       u32                  hProcess;
-	HANDLE	     pCtxt = NULL;
-	HANDLE	     hDrvObject;
-	HANDLE 		    hSTRMRes;
-	#endif
+#ifndef RES_CLEANUP_DISABLE
+	HANDLE hSTRMRes;
+#endif
 	DBC_Require(cRefs > 0);
 	DBC_Require(phStrm != NULL);
 	DBC_Require(pAttr != NULL);
@@ -782,18 +725,7 @@ func_cont:
 		(void)DeleteStrm(pStrm);
 
 #ifndef RES_CLEANUP_DISABLE
-	/* Return TGID instead of process handle */
-	hProcess = current->tgid;
-
-	res_status = CFG_GetObject((u32 *)&hDrvObject, REG_DRV_OBJECT);
-	if (DSP_SUCCEEDED(res_status)) {
-               DRV_GetProcContext(hProcess,
-				 (struct DRV_OBJECT *)hDrvObject, &pCtxt,
-				 hNode, 0);
-		if (pCtxt != NULL)
-			DRV_ProcInsertSTRMResElement(*phStrm, &hSTRMRes, pCtxt);
-
-	}
+	DRV_ProcInsertSTRMResElement(*phStrm, &hSTRMRes, pr_ctxt);
 #endif
 
 	 /* ensure we return a documented error code */

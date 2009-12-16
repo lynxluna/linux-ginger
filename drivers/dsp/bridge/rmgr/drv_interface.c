@@ -421,6 +421,7 @@ static int __devexit omap34xx_bridge_remove(struct platform_device *pdev)
 	HANDLE	     hDrvObject = NULL;
 	struct PROCESS_CONTEXT	*pTmp = NULL;
 	struct PROCESS_CONTEXT    *pCtxtclosed = NULL;
+	struct PROC_OBJECT *proc_obj_ptr, *temp;
 
 	GT_0trace(driverTrace, GT_ENTER, "-> driver_exit\n");
 
@@ -443,10 +444,13 @@ static int __devexit omap34xx_bridge_remove(struct platform_device *pdev)
 		GT_1trace(driverTrace, GT_5CLASS, "***Cleanup of "
 			 "process***%d\n", pCtxtclosed->pid);
 		DRV_RemoveAllResources(pCtxtclosed);
-		PROC_Detach(pCtxtclosed->hProcessor, pCtxtclosed);
+		list_for_each_entry_safe(proc_obj_ptr, temp,
+				&pCtxtclosed->processor_list, proc_object) {
+			PROC_Detach(proc_obj_ptr, pCtxtclosed);
+		}
 		pTmp = pCtxtclosed->next;
 		DRV_RemoveProcContext((struct DRV_OBJECT *)hDrvObject,
-				     pCtxtclosed, (void *)pCtxtclosed->pid);
+				     pCtxtclosed);
 		pCtxtclosed = pTmp;
 	}
 
@@ -581,6 +585,7 @@ static int bridge_release(struct inode *ip, struct file *filp)
 	DSP_STATUS dsp_status;
 	HANDLE hDrvObject;
 	struct PROCESS_CONTEXT *pr_ctxt;
+	struct PROC_OBJECT *proc_obj_ptr, *temp;
 
 	GT_0trace(driverTrace, GT_ENTER, "-> bridge_release\n");
 
@@ -592,10 +597,13 @@ static int bridge_release(struct inode *ip, struct file *filp)
 		if (DSP_SUCCEEDED(dsp_status)) {
 			flush_signals(current);
 			DRV_RemoveAllResources(pr_ctxt);
-			if (pr_ctxt->hProcessor)
-				PROC_Detach(pr_ctxt->hProcessor, pr_ctxt);
+			list_for_each_entry_safe(proc_obj_ptr, temp,
+					&pr_ctxt->processor_list,
+					proc_object) {
+				PROC_Detach(proc_obj_ptr, pr_ctxt);
+			}
 			DRV_RemoveProcContext((struct DRV_OBJECT *)hDrvObject,
-					pr_ctxt, (void *)pr_ctxt->pid);
+					pr_ctxt);
 		} else {
 			status = -EIO;
 		}
