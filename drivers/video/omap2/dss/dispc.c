@@ -1507,7 +1507,8 @@ static int dispc_is_vdma_req(u8 rotation, enum omap_color_mode color_mode)
 {
 /* TODO: VDMA support for RGB16 mode */
 	if (cpu_is_omap3630())
-		if (color_mode == OMAP_DSS_COLOR_YUV2)
+		if ((color_mode == OMAP_DSS_COLOR_YUV2) ||
+			(color_mode == OMAP_DSS_COLOR_UYVY))
 			if ((rotation == 1) || (rotation == 3))
 				return true;
 	return false;
