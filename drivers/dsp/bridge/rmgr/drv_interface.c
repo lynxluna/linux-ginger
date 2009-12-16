@@ -443,7 +443,7 @@ static int __devexit omap34xx_bridge_remove(struct platform_device *pdev)
 		GT_1trace(driverTrace, GT_5CLASS, "***Cleanup of "
 			 "process***%d\n", pCtxtclosed->pid);
 		DRV_RemoveAllResources(pCtxtclosed);
-		PROC_Detach(pCtxtclosed->hProcessor);
+		PROC_Detach(pCtxtclosed->hProcessor, pCtxtclosed);
 		pTmp = pCtxtclosed->next;
 		DRV_RemoveProcContext((struct DRV_OBJECT *)hDrvObject,
 				     pCtxtclosed, (void *)pCtxtclosed->pid);
@@ -593,7 +593,7 @@ static int bridge_release(struct inode *ip, struct file *filp)
 			flush_signals(current);
 			DRV_RemoveAllResources(pr_ctxt);
 			if (pr_ctxt->hProcessor)
-				PROC_Detach(pr_ctxt->hProcessor);
+				PROC_Detach(pr_ctxt->hProcessor, pr_ctxt);
 			DRV_RemoveProcContext((struct DRV_OBJECT *)hDrvObject,
 					pr_ctxt, (void *)pr_ctxt->pid);
 		} else {
