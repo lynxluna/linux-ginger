@@ -545,14 +545,11 @@ static int bridge_open(struct inode *ip, struct file *filp)
 	 * process context list.
 	 */
 	pr_ctxt = MEM_Calloc(sizeof(struct PROCESS_CONTEXT), MEM_PAGED);
-	if (pr_ctxt) {
-		spin_lock_init(&(pr_ctxt->proc_list_lock));
-		INIT_LIST_HEAD(&(pr_ctxt->processor_list));
+	if (pr_ctxt)
 		DRV_ProcUpdatestate(pr_ctxt, PROC_RES_ALLOCATED);
-		DRV_ProcSetPID(pr_ctxt, current->tgid);
-	} else {
+	else
 		status = -ENOMEM;
-	}
+
 	filp->private_data = pr_ctxt;
 
 err:
@@ -570,7 +567,6 @@ static int bridge_release(struct inode *ip, struct file *filp)
 	DSP_STATUS dsp_status;
 	HANDLE hDrvObject;
 	struct PROCESS_CONTEXT *pr_ctxt;
-	struct PROC_OBJECT *proc_obj_ptr, *temp;
 
 	GT_0trace(driverTrace, GT_ENTER, "-> bridge_release\n");
 
@@ -584,11 +580,7 @@ static int bridge_release(struct inode *ip, struct file *filp)
 	if (DSP_SUCCEEDED(dsp_status)) {
 		flush_signals(current);
 		DRV_RemoveAllResources(pr_ctxt);
-		list_for_each_entry_safe(proc_obj_ptr, temp,
-				&pr_ctxt->processor_list,
-				proc_object) {
-			PROC_Detach(proc_obj_ptr, pr_ctxt);
-		}
+		PROC_Detach(pr_ctxt);
 		MEM_Free(pr_ctxt);
 	} else {
 		status = -EIO;
