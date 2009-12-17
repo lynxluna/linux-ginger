@@ -553,24 +553,25 @@ static int bridge_open(struct inode *ip, struct file *filp)
 	GT_0trace(driverTrace, GT_ENTER, "-> bridge_open\n");
 
 	dsp_status = CFG_GetObject((u32 *)&hDrvObject, REG_DRV_OBJECT);
-	if (DSP_SUCCEEDED(dsp_status)) {
-		/*
-		 * Allocate a new process context and insert it into global
-		 * process context list.
-		 */
-		DRV_InsertProcContext(hDrvObject, &pr_ctxt);
-		if (pr_ctxt) {
-			DRV_ProcUpdatestate(pr_ctxt, PROC_RES_ALLOCATED);
-			DRV_ProcSetPID(pr_ctxt, current->tgid);
-		} else {
-			status = -ENOMEM;
-		}
-	} else {
+	if (DSP_FAILED(dsp_status)) {
 		status = -EIO;
+		goto err;
 	}
 
+	/*
+	 * Allocate a new process context and insert it into global
+	 * process context list.
+	 */
+	DRV_InsertProcContext(hDrvObject, &pr_ctxt);
+	if (pr_ctxt) {
+		DRV_ProcUpdatestate(pr_ctxt, PROC_RES_ALLOCATED);
+		DRV_ProcSetPID(pr_ctxt, current->tgid);
+	} else {
+		status = -ENOMEM;
+	}
 	filp->private_data = pr_ctxt;
 
+err:
 	GT_0trace(driverTrace, GT_ENTER, "<- bridge_open\n");
 	return status;
 }
@@ -591,25 +592,27 @@ static int bridge_release(struct inode *ip, struct file *filp)
 
 	if (!filp->private_data) {
 		status = -EIO;
-	} else {
-		pr_ctxt = filp->private_data;
-		dsp_status = CFG_GetObject((u32 *)&hDrvObject, REG_DRV_OBJECT);
-		if (DSP_SUCCEEDED(dsp_status)) {
-			flush_signals(current);
-			DRV_RemoveAllResources(pr_ctxt);
-			list_for_each_entry_safe(proc_obj_ptr, temp,
-					&pr_ctxt->processor_list,
-					proc_object) {
-				PROC_Detach(proc_obj_ptr, pr_ctxt);
-			}
-			DRV_RemoveProcContext((struct DRV_OBJECT *)hDrvObject,
-					pr_ctxt);
-		} else {
-			status = -EIO;
-		}
-		filp->private_data = NULL;
+		goto err;
 	}
 
+	pr_ctxt = filp->private_data;
+	dsp_status = CFG_GetObject((u32 *)&hDrvObject, REG_DRV_OBJECT);
+	if (DSP_SUCCEEDED(dsp_status)) {
+		flush_signals(current);
+		DRV_RemoveAllResources(pr_ctxt);
+		list_for_each_entry_safe(proc_obj_ptr, temp,
+				&pr_ctxt->processor_list,
+				proc_object) {
+			PROC_Detach(proc_obj_ptr, pr_ctxt);
+		}
+		DRV_RemoveProcContext((struct DRV_OBJECT *)hDrvObject,
+				pr_ctxt);
+	} else {
+		status = -EIO;
+	}
+	filp->private_data = NULL;
+
+err:
 	GT_0trace(driverTrace, GT_ENTER, "<- bridge_release\n");
 	return status;
 }
