@@ -418,10 +418,7 @@ static int __devexit omap34xx_bridge_remove(struct platform_device *pdev)
 	dev_t devno;
 	bool ret;
 	DSP_STATUS dsp_status = DSP_SOK;
-	HANDLE	     hDrvObject = NULL;
-	struct PROCESS_CONTEXT	*pTmp = NULL;
-	struct PROCESS_CONTEXT    *pCtxtclosed = NULL;
-	struct PROC_OBJECT *proc_obj_ptr, *temp;
+	HANDLE hDrvObject = NULL;
 
 	GT_0trace(driverTrace, GT_ENTER, "-> driver_exit\n");
 
@@ -438,21 +435,6 @@ static int __devexit omap34xx_bridge_remove(struct platform_device *pdev)
 		"clk_notifier_unregister FAILED for iva2_ck \n");
 	}
 #endif /* #ifdef CONFIG_BRIDGE_DVFS */
-
-	DRV_GetProcCtxtList(&pCtxtclosed, (struct DRV_OBJECT *)hDrvObject);
-	while (pCtxtclosed != NULL) {
-		GT_1trace(driverTrace, GT_5CLASS, "***Cleanup of "
-			 "process***%d\n", pCtxtclosed->pid);
-		DRV_RemoveAllResources(pCtxtclosed);
-		list_for_each_entry_safe(proc_obj_ptr, temp,
-				&pCtxtclosed->processor_list, proc_object) {
-			PROC_Detach(proc_obj_ptr, pCtxtclosed);
-		}
-		pTmp = pCtxtclosed->next;
-		DRV_RemoveProcContext((struct DRV_OBJECT *)hDrvObject,
-				     pCtxtclosed);
-		pCtxtclosed = pTmp;
-	}
 
 	if (driverContext) {
 		/* Put the DSP in reset state */
@@ -562,8 +544,10 @@ static int bridge_open(struct inode *ip, struct file *filp)
 	 * Allocate a new process context and insert it into global
 	 * process context list.
 	 */
-	DRV_InsertProcContext(hDrvObject, &pr_ctxt);
+	pr_ctxt = MEM_Calloc(sizeof(struct PROCESS_CONTEXT), MEM_PAGED);
 	if (pr_ctxt) {
+		spin_lock_init(&(pr_ctxt->proc_list_lock));
+		INIT_LIST_HEAD(&(pr_ctxt->processor_list));
 		DRV_ProcUpdatestate(pr_ctxt, PROC_RES_ALLOCATED);
 		DRV_ProcSetPID(pr_ctxt, current->tgid);
 	} else {
@@ -605,8 +589,7 @@ static int bridge_release(struct inode *ip, struct file *filp)
 				proc_object) {
 			PROC_Detach(proc_obj_ptr, pr_ctxt);
 		}
-		DRV_RemoveProcContext((struct DRV_OBJECT *)hDrvObject,
-				pr_ctxt);
+		MEM_Free(pr_ctxt);
 	} else {
 		status = -EIO;
 	}
