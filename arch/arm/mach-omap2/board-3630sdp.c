@@ -23,6 +23,23 @@
 
 #include "sdram-hynix-h8mbx00u0mer-0em.h"
 #include "omap3-opp.h"
+#include "pm.h"
+/* Update with the optimal setup values to be used on 3630sdp */
+static struct prm_setup_vc omap3_setuptime_table = {
+	.clksetup = 0x14A,
+	.voltsetup_time1 = 0x00B3,
+	.voltsetup_time2 = 0x00A0,
+	.voltoffset = 0x118,
+	.voltsetup2 = 0x32,
+	.vdd0_on = 0x28,	/* 1.1v */
+	.vdd0_onlp = 0x20,	/* 1.0v */
+	.vdd0_ret = 0x12,	/* 0.83v */
+	.vdd0_off = 0x00,	/* 0.6v */
+	.vdd1_on = 0x2B,	/* 1.1375v */
+	.vdd1_onlp = 0x20,	/* 1.0v */
+	.vdd1_ret = 0x14,	/* 0.85v */
+	.vdd1_off = 0x00,	/* 0.6v */
+};
 
 #if defined(CONFIG_SMC91X) || defined(CONFIG_SMC91X_MODULE)
 
@@ -75,6 +92,7 @@ static void __init omap_sdp_init_irq(void)
 {
 	omap_board_config = sdp_config;
 	omap_board_config_size = ARRAY_SIZE(sdp_config);
+	omap3_pm_init_vc(&omap3_setuptime_table);
 	omap2_init_common_hw(h8mbx00u0mer0em_sdrc_params,
 			     h8mbx00u0mer0em_sdrc_params,
 			     omap36xx_mpu_rate_table,
