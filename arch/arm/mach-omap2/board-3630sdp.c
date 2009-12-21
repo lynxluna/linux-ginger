@@ -26,6 +26,7 @@
 #include "mux.h"
 #include "sdram-hynix-h8mbx00u0mer-0em.h"
 #include "pm.h"
+#include "omap3-opp.h"
 
 /* Update with the optimal setup values to be used on 3630sdp */
 static struct prm_setup_vc omap3_setuptime_table = {
@@ -100,7 +101,9 @@ static void __init omap_sdp_init_irq(void)
 	omap3_pm_init_vc(&omap3_setuptime_table);
 	omap2_init_common_hw(h8mbx00u0mer0em_sdrc_params,
 			     h8mbx00u0mer0em_sdrc_params,
-                             NULL, NULL, NULL);
+			     omap36xx_mpu_rate_table,
+			     omap36xx_dsp_rate_table,
+			     omap36xx_l3_rate_table);
 	omap_init_irq();
 	omap_gpio_init();
 }
