@@ -59,8 +59,6 @@
 #include <linux/moduleparam.h>
 #include <linux/cdev.h>
 
-#include <mach/board-3430sdp.h>
-
 /*  ----------------------------------- DSP/BIOS Bridge */
 #include <dspbridge/std.h>
 #include <dspbridge/dbdefs.h>
@@ -97,7 +95,6 @@
 #endif
 
 #ifdef CONFIG_BRIDGE_DVFS
-#include <mach/omap-pm.h>
 #include <mach-omap2/omap3-opp.h>
 #endif
 

@@ -67,7 +67,6 @@
 #include <mach-omap2/cm-regbits-34xx.h>
 
 #ifdef CONFIG_PM
-#include <mach/board-3430sdp.h>
 extern s32 dsp_test_sleepstate;
 #endif
 extern struct MAILBOX_CONTEXT mboxsetting;
