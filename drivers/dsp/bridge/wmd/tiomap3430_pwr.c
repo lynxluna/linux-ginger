@@ -80,18 +80,13 @@ DSP_STATUS handle_constraints_set(struct WMD_DEV_CONTEXT *pDevContext,
 {
 #ifdef CONFIG_BRIDGE_DVFS
 	u32 *pConstraintVal;
-	DSP_STATUS status = DSP_SOK;
-	struct CFG_HOSTRES resources;
 	struct dspbridge_platform_data *pdata =
 		omap_dspbridge_dev->dev.platform_data;
-	status = CFG_GetHostResources(
-		(struct CFG_DEVNODE *)DRV_GetFirstDevExtension(), &resources);
 
 	pConstraintVal = (u32 *)(pArgs);
 	/* Read the target value requested by DSP  */
 	DBG_Trace(DBG_LEVEL7, "handle_constraints_set:"
 		"opp requested = 0x%x\n", (u32)*(pConstraintVal+1));
-	status = HW_MBOX_saveSettings(resources.dwMboxBase);
 
 	/* Set the new opp value */
 	if (pdata->dsp_set_min_opp)
