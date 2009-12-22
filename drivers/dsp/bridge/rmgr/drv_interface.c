@@ -96,8 +96,10 @@
 #include <dspbridge/drv.h>
 #endif
 
+#ifdef CONFIG_BRIDGE_DVFS
 #include <mach/omap-pm.h>
 #include <mach-omap2/omap3-opp.h>
+#endif
 
 #define BRIDGE_NAME "C6410"
 /*  ----------------------------------- Globals */
@@ -147,7 +149,6 @@ static int omap34xxbridge_suspend_lockout(
 	}
 	return 0;
 }
-
 #endif
 
 #ifdef DEBUG
@@ -459,8 +460,10 @@ static int __devexit omap34xx_bridge_remove(struct platform_device *pdev)
 		DBC_Assert(ret == true);
 	}
 
+#ifdef CONFIG_BRIDGE_DVFS
 	clk_put(clk_handle);
 	clk_handle = NULL;
+#endif /* #ifdef CONFIG_BRIDGE_DVFS */
 
 func_cont:
 	MEM_ExtPhysPoolRelease();
