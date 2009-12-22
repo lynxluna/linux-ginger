@@ -161,9 +161,6 @@ static void omap_uart_save_context(struct omap_uart_state *uart)
 	u16 lcr = 0;
 	struct plat_serial8250_port *p = uart->p;
 
-	if (!enable_off_mode)
-		return;
-
 	lcr = serial_read_reg(p, UART_LCR);
 	serial_write_reg(p, UART_LCR, 0xBF);
 	uart->dll = serial_read_reg(p, UART_DLL);
@@ -181,9 +178,6 @@ static void omap_uart_restore_context(struct omap_uart_state *uart)
 {
 	u16 efr = 0;
 	struct plat_serial8250_port *p = uart->p;
-
-	if (!enable_off_mode)
-		return;
 
 	if (!uart->context_valid)
 		return;
@@ -228,12 +222,13 @@ static inline void omap_uart_enable_clocks(struct omap_uart_state *uart)
 
 #ifdef CONFIG_PM
 
-static inline void omap_uart_disable_clocks(struct omap_uart_state *uart)
+static inline void omap_uart_disable_clocks(struct omap_uart_state *uart,
+							int power_state)
 {
 	if (!uart->clocked)
 		return;
-
-	omap_uart_save_context(uart);
+	if (power_state == PWRDM_POWER_OFF)
+		omap_uart_save_context(uart);
 	uart->clocked = 0;
 	clk_disable(uart->ick);
 	clk_disable(uart->fck);
@@ -322,13 +317,13 @@ static void omap_uart_idle_timer(unsigned long data)
 	omap_uart_allow_sleep(uart);
 }
 
-void omap_uart_prepare_idle(int num)
+void omap_uart_prepare_idle(int num, int power_state)
 {
 	struct omap_uart_state *uart;
 
 	list_for_each_entry(uart, &uart_list, node) {
 		if (num == uart->num && uart->can_sleep) {
-			omap_uart_disable_clocks(uart);
+			omap_uart_disable_clocks(uart, power_state);
 			return;
 		}
 	}

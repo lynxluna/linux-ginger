@@ -14,6 +14,7 @@
 #include <plat/powerdomain.h>
 
 extern u32 enable_off_mode;
+extern u32 enable_oswr_ret;
 extern u32 sleep_while_idle;
 extern u32 voltage_off_while_idle;
 
