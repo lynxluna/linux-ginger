@@ -68,8 +68,8 @@
 
 #ifdef CONFIG_PM
 #include <mach/board-3430sdp.h>
-#endif
 extern s32 dsp_test_sleepstate;
+#endif
 extern struct MAILBOX_CONTEXT mboxsetting;
 
 /*
