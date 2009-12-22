@@ -91,7 +91,6 @@ DSP_STATUS handle_constraints_set(struct WMD_DEV_CONTEXT *pDevContext,
 	/* Set the new opp value */
 	if (pdata->dsp_set_min_opp)
 		(*pdata->dsp_set_min_opp)((u32)*(pConstraintVal+1));
-	return DSP_SOK;
 #endif /* #ifdef CONFIG_BRIDGE_DVFS */
 	return DSP_SOK;
 }
