@@ -380,6 +380,7 @@ void omap_sram_idle(void)
 	int mpu_logic_state, mpu_mem_state, core_logic_state, core_mem_state;
 	u32 sdrc_pwr = 0;
 	int per_state_modified = 0;
+	u32 fclk_status;
 
 	if (!_omap_sram_idle)
 		return;
@@ -446,15 +447,6 @@ void omap_sram_idle(void)
 	if (pwrdm_read_pwrst(cam_pwrdm) == PWRDM_POWER_ON)
 		omap2_clkdm_deny_idle(mpu_pwrdm->pwrdm_clkdms[0]);
 
-	/*
-	 * Disable smartreflex before entering WFI.
-	 * Only needed if we are going to enter retention or off.
-	 */
-	if (mpu_next_state <= PWRDM_POWER_RET)
-		disable_smartreflex(SR1);
-	if (core_next_state <= PWRDM_POWER_RET)
-		disable_smartreflex(SR2);
-
 	/* CORE */
 	if (core_next_state < PWRDM_POWER_ON) {
 		omap_uart_prepare_idle(0, core_next_state & core_logic_state);
@@ -499,6 +491,21 @@ void omap_sram_idle(void)
 		omap3_enable_io_chain();
 	}
 	omap3_intc_prepare_idle();
+
+	/*
+	 * Disable smartreflex before entering WFI.
+	 * Only needed if we are going to enter retention or off.
+	 */
+	fclk_status = cm_read_mod_reg(OMAP3430_PER_MOD, CM_FCLKEN) |
+			cm_read_mod_reg(CORE_MOD, CM_FCLKEN1) |
+			cm_read_mod_reg(CORE_MOD, OMAP3430ES2_CM_FCLKEN3);
+
+	if (!fclk_status) {
+		if (mpu_next_state <= PWRDM_POWER_RET)
+			disable_smartreflex(SR1);
+		if (core_next_state <= PWRDM_POWER_RET)
+			disable_smartreflex(SR2);
+	}
 
 	/*
 	* On EMU/HS devices ROM code restores a SRDC value
@@ -586,11 +593,12 @@ void omap_sram_idle(void)
 	 * Enable smartreflex after WFI. Only needed if we entered
 	 * retention or off
 	 */
-	if (mpu_next_state <= PWRDM_POWER_RET)
-		enable_smartreflex(SR1);
-	if (core_next_state <= PWRDM_POWER_RET)
-		enable_smartreflex(SR2);
-
+	if (!fclk_status) {
+		if (mpu_next_state <= PWRDM_POWER_RET)
+			enable_smartreflex(SR1);
+		if (core_next_state <= PWRDM_POWER_RET)
+			enable_smartreflex(SR2);
+	}
 	/* PER */
 	if (per_next_state < PWRDM_POWER_ON) {
 		if (per_next_state == PWRDM_POWER_OFF) {
