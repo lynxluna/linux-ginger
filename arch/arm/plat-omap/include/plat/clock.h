@@ -62,6 +62,7 @@ struct dpll_data {
 	void __iomem		*idlest_reg;
 	u32			autoidle_mask;
 	u32			freqsel_mask;
+	u8			flags;
 	u32			idlest_mask;
 	u8			auto_recal_bit;
 	u8			recal_en_bit;

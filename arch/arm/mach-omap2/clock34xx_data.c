@@ -3241,6 +3241,8 @@ int __init omap2_clk_init(void)
 			cpu_clkflg |= CK_3430ES2;
 		}
 	}
+	if (cpu_is_omap3630())
+		dpll4_ck.dpll_data->flags |= DPLL_J_TYPE;
 
 	clk_init(&omap2_clk_functions);
 
