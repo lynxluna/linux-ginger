@@ -980,6 +980,7 @@ static struct dpll_data dpll_usb_dd = {
 	.max_multiplier	= OMAP4430_MAX_DPLL_MULT,
 	.max_divider	= OMAP4430_MAX_DPLL_DIV,
 	.min_divider	= 1,
+	.flags	= DPLL_J_TYPE | DPLL_NO_DCO_SEL
 };
 
 
@@ -2736,7 +2737,6 @@ int __init omap2_clk_init(void)
 	if (cpu_is_omap44xx()) {
 		cpu_mask = RATE_IN_4430;
 		cpu_clkflg = CK_443X;
-		dpll_usb_ck.dpll_data->flags |= DPLL_NO_DCO_SEL | DPLL_J_TYPE;
 	}
 
 	clk_init(&omap2_clk_functions);

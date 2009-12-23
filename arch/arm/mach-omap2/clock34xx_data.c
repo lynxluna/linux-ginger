@@ -236,6 +236,42 @@ static const struct clksel_rate div16_dpll_rates[] = {
 	{ .div = 0 }
 };
 
+static const struct clksel_rate div32_dpll_rates[] = {
+	{ .div = 1, .val = 1, .flags = RATE_IN_36XX | DEFAULT_RATE },
+	{ .div = 2, .val = 2, .flags = RATE_IN_36XX },
+	{ .div = 3, .val = 3, .flags = RATE_IN_36XX },
+	{ .div = 4, .val = 4, .flags = RATE_IN_36XX },
+	{ .div = 5, .val = 5, .flags = RATE_IN_36XX },
+	{ .div = 6, .val = 6, .flags = RATE_IN_36XX },
+	{ .div = 7, .val = 7, .flags = RATE_IN_36XX },
+	{ .div = 8, .val = 8, .flags = RATE_IN_36XX },
+	{ .div = 9, .val = 9, .flags = RATE_IN_36XX },
+	{ .div = 10, .val = 10, .flags = RATE_IN_36XX },
+	{ .div = 11, .val = 11, .flags = RATE_IN_36XX },
+	{ .div = 12, .val = 12, .flags = RATE_IN_36XX },
+	{ .div = 13, .val = 13, .flags = RATE_IN_36XX },
+	{ .div = 14, .val = 14, .flags = RATE_IN_36XX },
+	{ .div = 15, .val = 15, .flags = RATE_IN_36XX },
+	{ .div = 16, .val = 16, .flags = RATE_IN_36XX },
+	{ .div = 17, .val = 17, .flags = RATE_IN_36XX },
+	{ .div = 18, .val = 18, .flags = RATE_IN_36XX },
+	{ .div = 19, .val = 19, .flags = RATE_IN_36XX },
+	{ .div = 20, .val = 20, .flags = RATE_IN_36XX },
+	{ .div = 21, .val = 21, .flags = RATE_IN_36XX },
+	{ .div = 22, .val = 22, .flags = RATE_IN_36XX },
+	{ .div = 23, .val = 23, .flags = RATE_IN_36XX },
+	{ .div = 24, .val = 24, .flags = RATE_IN_36XX },
+	{ .div = 25, .val = 25, .flags = RATE_IN_36XX },
+	{ .div = 26, .val = 26, .flags = RATE_IN_36XX },
+	{ .div = 27, .val = 27, .flags = RATE_IN_36XX },
+	{ .div = 28, .val = 28, .flags = RATE_IN_36XX },
+	{ .div = 29, .val = 29, .flags = RATE_IN_36XX },
+	{ .div = 30, .val = 30, .flags = RATE_IN_36XX },
+	{ .div = 31, .val = 31, .flags = RATE_IN_36XX },
+	{ .div = 32, .val = 32, .flags = RATE_IN_36XX },
+	{ .div = 0 }
+};
+
 /* DPLL1 */
 /* MPU clock source */
 /* Type: DPLL */
@@ -552,11 +588,49 @@ static struct dpll_data dpll4_dd = {
 	.rate_tolerance = DEFAULT_DPLL_RATE_TOLERANCE
 };
 
+/* DPLL4 */
+/* Supplies 96MHz, 54Mhz TV DAC, DSS fclk, CAM sensor clock, emul trace clk */
+/* Type: DPLL */
+static struct dpll_data dpll4_dd_3630 = {
+	.mult_div1_reg	= OMAP_CM_REGADDR(PLL_MOD, CM_CLKSEL2),
+	.mult_mask	= OMAP3630_PERIPH_DPLL_MULT_MASK,
+	.div1_mask	= OMAP3430_PERIPH_DPLL_DIV_MASK,
+	.clk_bypass	= &sys_ck,
+	.clk_ref	= &sys_ck,
+	.freqsel_mask	= OMAP3430_PERIPH_DPLL_FREQSEL_MASK,
+	.control_reg	= OMAP_CM_REGADDR(PLL_MOD, CM_CLKEN),
+	.enable_mask	= OMAP3430_EN_PERIPH_DPLL_MASK,
+	.modes		= (1 << DPLL_LOW_POWER_STOP) | (1 << DPLL_LOCKED),
+	.auto_recal_bit	= OMAP3430_EN_PERIPH_DPLL_DRIFTGUARD_SHIFT,
+	.recal_en_bit	= OMAP3430_PERIPH_DPLL_RECAL_EN_SHIFT,
+	.recal_st_bit	= OMAP3430_PERIPH_DPLL_ST_SHIFT,
+	.autoidle_reg	= OMAP_CM_REGADDR(PLL_MOD, CM_AUTOIDLE),
+	.autoidle_mask	= OMAP3430_AUTO_PERIPH_DPLL_MASK,
+	.idlest_reg	= OMAP_CM_REGADDR(PLL_MOD, CM_IDLEST),
+	.idlest_mask	= OMAP3430_ST_PERIPH_CLK_MASK,
+	.max_multiplier = OMAP3_MAX_DPLL_MULT,
+	.min_divider	= 1,
+	.max_divider	= OMAP3_MAX_DPLL_DIV,
+	.rate_tolerance = DEFAULT_DPLL_RATE_TOLERANCE,
+	.flags	= DPLL_J_TYPE
+};
+
 static struct clk dpll4_ck = {
 	.name		= "dpll4_ck",
 	.ops		= &clkops_noncore_dpll_ops,
 	.parent		= &sys_ck,
 	.dpll_data	= &dpll4_dd,
+	.round_rate	= &omap2_dpll_round_rate,
+	.set_rate	= &omap3_dpll4_set_rate,
+	.clkdm_name	= "dpll4_clkdm",
+	.recalc		= &omap3_dpll_recalc,
+};
+
+static struct clk dpll4_ck_3630 = {
+	.name		= "dpll4_ck",
+	.ops		= &clkops_noncore_dpll_ops,
+	.parent		= &sys_ck,
+	.dpll_data	= &dpll4_dd_3630,
 	.round_rate	= &omap2_dpll_round_rate,
 	.set_rate	= &omap3_dpll4_set_rate,
 	.clkdm_name	= "dpll4_clkdm",
@@ -581,6 +655,11 @@ static const struct clksel div16_dpll4_clksel[] = {
 	{ .parent = NULL }
 };
 
+static const struct clksel div32_dpll4_clksel[] = {
+	{ .parent = &dpll4_ck, .rates = div32_dpll_rates },
+	{ .parent = NULL }
+};
+
 /* This virtual clock is the source for dpll4_m2x2_ck */
 static struct clk dpll4_m2_ck = {
 	.name		= "dpll4_m2_ck",
@@ -590,6 +669,18 @@ static struct clk dpll4_m2_ck = {
 	.clksel_reg	= OMAP_CM_REGADDR(PLL_MOD, OMAP3430_CM_CLKSEL3),
 	.clksel_mask	= OMAP3430_DIV_96M_MASK,
 	.clksel		= div16_dpll4_clksel,
+	.clkdm_name	= "dpll4_clkdm",
+	.recalc		= &omap2_clksel_recalc,
+};
+
+static struct clk dpll4_m2_ck_3630 = {
+	.name		= "dpll4_m2_ck",
+	.ops		= &clkops_null,
+	.parent		= &dpll4_ck,
+	.init		= &omap2_init_clksel_parent,
+	.clksel_reg	= OMAP_CM_REGADDR(PLL_MOD, OMAP3430_CM_CLKSEL3),
+	.clksel_mask	= OMAP3630_DIV_96M_MASK,
+	.clksel		= div32_dpll4_clksel,
 	.clkdm_name	= "dpll4_clkdm",
 	.recalc		= &omap2_clksel_recalc,
 };
@@ -662,6 +753,18 @@ static struct clk dpll4_m3_ck = {
 	.clksel_reg	= OMAP_CM_REGADDR(OMAP3430_DSS_MOD, CM_CLKSEL),
 	.clksel_mask	= OMAP3430_CLKSEL_TV_MASK,
 	.clksel		= div16_dpll4_clksel,
+	.clkdm_name	= "dpll4_clkdm",
+	.recalc		= &omap2_clksel_recalc,
+};
+
+static struct clk dpll4_m3_ck_3630 = {
+	.name		= "dpll4_m3_ck",
+	.ops		= &clkops_null,
+	.parent		= &dpll4_ck,
+	.init		= &omap2_init_clksel_parent,
+	.clksel_reg	= OMAP_CM_REGADDR(OMAP3430_DSS_MOD, CM_CLKSEL),
+	.clksel_mask	= OMAP3630_CLKSEL_TV_MASK,
+	.clksel		= div32_dpll4_clksel,
 	.clkdm_name	= "dpll4_clkdm",
 	.recalc		= &omap2_clksel_recalc,
 };
@@ -754,6 +857,20 @@ static struct clk dpll4_m4_ck = {
 	.round_rate	= &omap2_clksel_round_rate,
 };
 
+static struct clk dpll4_m4_ck_3630 = {
+	.name		= "dpll4_m4_ck",
+	.ops		= &clkops_null,
+	.parent		= &dpll4_ck,
+	.init		= &omap2_init_clksel_parent,
+	.clksel_reg	= OMAP_CM_REGADDR(OMAP3430_DSS_MOD, CM_CLKSEL),
+	.clksel_mask	= OMAP3630_CLKSEL_DSS1_MASK,
+	.clksel		= div32_dpll4_clksel,
+	.clkdm_name	= "dpll4_clkdm",
+	.recalc		= &omap2_clksel_recalc,
+	.set_rate	= &omap2_clksel_set_rate,
+	.round_rate	= &omap2_clksel_round_rate,
+};
+
 /* The PWRDN bit is apparently only available on 3430ES2 and above */
 static struct clk dpll4_m4x2_ck = {
 	.name		= "dpll4_m4x2_ck",
@@ -779,6 +896,18 @@ static struct clk dpll4_m5_ck = {
 	.recalc		= &omap2_clksel_recalc,
 };
 
+static struct clk dpll4_m5_ck_3630 = {
+	.name		= "dpll4_m5_ck",
+	.ops		= &clkops_null,
+	.parent		= &dpll4_ck,
+	.init		= &omap2_init_clksel_parent,
+	.clksel_reg	= OMAP_CM_REGADDR(OMAP3430_CAM_MOD, CM_CLKSEL),
+	.clksel_mask	= OMAP3630_CLKSEL_CAM_MASK,
+	.clksel		= div32_dpll4_clksel,
+	.clkdm_name	= "dpll4_clkdm",
+	.recalc		= &omap2_clksel_recalc,
+};
+
 /* The PWRDN bit is apparently only available on 3430ES2 and above */
 static struct clk dpll4_m5x2_ck = {
 	.name		= "dpll4_m5x2_ck",
@@ -800,6 +929,18 @@ static struct clk dpll4_m6_ck = {
 	.clksel_reg	= OMAP_CM_REGADDR(OMAP3430_EMU_MOD, CM_CLKSEL1),
 	.clksel_mask	= OMAP3430_DIV_DPLL4_MASK,
 	.clksel		= div16_dpll4_clksel,
+	.clkdm_name	= "dpll4_clkdm",
+	.recalc		= &omap2_clksel_recalc,
+};
+
+static struct clk dpll4_m6_ck_3630 = {
+	.name		= "dpll4_m6_ck",
+	.ops		= &clkops_null,
+	.parent		= &dpll4_ck,
+	.init		= &omap2_init_clksel_parent,
+	.clksel_reg	= OMAP_CM_REGADDR(OMAP3430_EMU_MOD, CM_CLKSEL1),
+	.clksel_mask	= OMAP3630_DIV_DPLL4_MASK,
+	.clksel		= div32_dpll4_clksel,
 	.clkdm_name	= "dpll4_clkdm",
 	.recalc		= &omap2_clksel_recalc,
 };
@@ -3241,8 +3382,16 @@ int __init omap2_clk_init(void)
 			cpu_clkflg |= CK_3430ES2;
 		}
 	}
-	if (cpu_is_omap3630())
-		dpll4_ck.dpll_data->flags |= DPLL_J_TYPE;
+	if (cpu_is_omap3630()) {
+		cpu_mask |= RATE_IN_36XX;
+		cpu_clkflg |= CK_36XX;
+		dpll4_ck = dpll4_ck_3630;
+		dpll4_m2_ck = dpll4_m2_ck_3630;
+		dpll4_m3_ck = dpll4_m3_ck_3630;
+		dpll4_m4_ck = dpll4_m4_ck_3630;
+		dpll4_m5_ck = dpll4_m5_ck_3630;
+		dpll4_m6_ck = dpll4_m6_ck_3630;
+	}
 
 	clk_init(&omap2_clk_functions);
 
