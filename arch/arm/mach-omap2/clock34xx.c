@@ -147,6 +147,42 @@ const struct clkops clkops_omap3430es2_hsotgusb_wait = {
 	.find_companion = omap2_clk_dflt_find_companion,
 };
 
+/** omap3_pwrdn_clk_enable_with_hsdiv_restore - enable clocks suffering
+ *         from HSDivider problem.
+ * @clk: DPLL output struct clk
+ *
+ * 3630 only: dpll3_m3_ck, dpll4_m2_ck, dpll4_m3_ck, dpll4_m4_ck, dpll4_m5_ck
+ * & dpll4_m6_ck dividers get lost after their respective PWRDN bits are set.
+ * Any write to the corresponding CM_CLKSEL register will refresh the
+ * dividers.  Only x2 clocks are affected, so it is safe to trust the parent
+ * clock information to refresh the CM_CLKSEL registers.
+ */
+int omap3_pwrdn_clk_enable_with_hsdiv_restore(struct clk *clk)
+{
+	u32 v;
+	int ret;
+
+	/* enable the clock */
+	ret = omap2_dflt_clk_enable(clk);
+
+	/* Restore the dividers */
+	if (!ret) {
+		v = __raw_readl(clk->parent->clksel_reg);
+		v += (1 << clk->parent->clksel_shift);
+		__raw_writel(v, clk->parent->clksel_reg);
+		v -= (1 << clk->parent->clksel_shift);
+		__raw_writel(v, clk->parent->clksel_reg);
+	}
+	return ret;
+}
+
+const struct clkops clkops_omap3_pwrdn_with_hsdiv_wait_restore = {
+	.enable		= omap3_pwrdn_clk_enable_with_hsdiv_restore,
+	.disable	= omap2_dflt_clk_disable,
+	.find_companion	= omap2_clk_dflt_find_companion,
+	.find_idlest	= omap2_clk_dflt_find_idlest,
+};
+
 const struct clkops clkops_noncore_dpll_ops = {
 	.enable		= omap3_noncore_dpll_enable,
 	.disable	= omap3_noncore_dpll_disable,
