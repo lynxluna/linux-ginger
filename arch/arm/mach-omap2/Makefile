@@ -100,6 +100,7 @@ obj-$(CONFIG_MACH_OMAP_ZOOM3)		+= board-zoom3.o \
 					   mmc-twl4030.o \
 					   board-zoom-debugboard.o \
 					   board-zoom-camera.o
+obj-$(CONFIG_MMC_EMBEDDED_SDIO)		+= board-zoom3-wifi.o
 obj-$(CONFIG_MACH_OMAP_3630SDP)		+= board-3630sdp.o \
 					   board-zoom-peripherals.o \
 					   mmc-twl4030.o \

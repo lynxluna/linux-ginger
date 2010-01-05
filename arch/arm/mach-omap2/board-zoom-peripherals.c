@@ -2,6 +2,8 @@
  * Copyright (C) 2009 Texas Instruments Inc.
  *
  * Modified from mach-omap2/board-zoom2.c
+ * Support for WLAN-device reset by:
+ *	Ohad Ben-Cohen          <ohad@bencohen.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -33,6 +35,10 @@
 
 #include "mmc-twl4030.h"
 #include "twl4030-script.h"
+
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+#include <plat/wifi_tiwlan.h>
+#endif
 
 #define OMAP_SYNAPTICS_GPIO		163
 #define LCD_PANEL_ENABLE_GPIO           (7 + OMAP_MAX_GPIO_LINES)
@@ -433,6 +439,12 @@ static struct twl4030_hsmmc_info mmc[] __initdata = {
 		.nonremovable	= true,
 		.power_saving	= true,
 	},
+	{
+		.mmc		= 3,
+		.wires		= 4,
+		.gpio_wp	= -EINVAL,
+		.gpio_cd	= -EINVAL,
+	},
 	{}      /* Terminator */
 };
 
@@ -633,12 +645,27 @@ static struct platform_device *zoom_devices[] __initdata = {
 	&zoom_cam_device,
 };
 
+#ifdef CONFIG_WLAN_1273
+void wlan_1273_reset()
+{
+       if (gpio_request(OMAP_ZOOM3_WIFI_PMENA_GPIO, NULL) != 0)
+		pr_err("GPIO 101 request failed\n");
+       gpio_direction_output(OMAP_ZOOM3_WIFI_PMENA_GPIO, 0);
+       return;
+}
+#else
+#define wlan_1273_reset() do { } while (0)
+#endif
+
 void __init zoom_peripherals_init(void)
 {
 	omap_i2c_init();
 	platform_add_devices(zoom_devices, ARRAY_SIZE(zoom_devices));
 	spi_register_board_info(nec_8048_spi_board_info,
 				ARRAY_SIZE(nec_8048_spi_board_info));
+
+	wlan_1273_reset();
+
 	zoom_lcd_tv_panel_init();
 	synaptics_dev_init();
 	omap_serial_init();
