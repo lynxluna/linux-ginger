@@ -65,6 +65,12 @@ config MACH_OMAP3EVM
 	bool "OMAP 3530 EVM board"
 	depends on ARCH_OMAP3 && ARCH_OMAP34XX
 
+config WLAN_1273
+	bool "TI WLAN 1273 support"
+	select TIWLAN_SDIO
+	help
+	Enables 1273 support
+
 config MACH_OMAP3517EVM
 	bool "OMAP3517/ AM3517 EVM board"
 	depends on ARCH_OMAP3 && ARCH_OMAP34XX
@@ -108,6 +114,29 @@ config MACH_CM_T35
 config MACH_OMAP_ZOOM3
 	bool "OMAP3630 Zoom3 board"
 	depends on ARCH_OMAP3 && ARCH_OMAP34XX
+
+config WIFI_CONTROL_FUNC
+        bool "Enable WiFi control function abstraction"
+        select MMC_EMBEDDED_SDIO
+        help
+        Enables Power/Reset/Carddetect function abstraction
+
+config TIWLAN_SDIO
+        bool "TI WLAN Enhanced SDIO Contoller support"
+        select WIFI_CONTROL_FUNC
+        help
+        Say Y here if you want to be able to use TI's WLAN device using the
+        SDIO interface. If unsure, say N.
+
+config TIWLAN_MMC_CONTROLLER
+        int "MMC Controller number that TI WLAN chip is connected to"
+        range 1 3
+        depends on TIWLAN_SDIO || MMC_EMBEDDED_SDIO
+        default "3"
+        help
+        Choose the number of the MMC controller that TI WLAN chip is
+        connected to. TI WLAN has SDIO host controller that will control
+        this MMC port.
 
 config MACH_OMAP_3630SDP
 	bool "OMAP3630 SDP board"
