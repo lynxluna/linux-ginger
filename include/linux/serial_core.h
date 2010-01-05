@@ -182,6 +182,9 @@
 /* Aeroflex Gaisler GRLIB APBUART */
 #define PORT_APBUART    90
 
+/* TI OMAP-UART */
+#define PORT_OMAP	91
+
 #ifdef __KERNEL__
 
 #include <linux/compiler.h>
