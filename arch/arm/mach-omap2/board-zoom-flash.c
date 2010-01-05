@@ -45,6 +45,7 @@ void __init zoom_flash_init(struct flash_partitions zoom_nand_parts[], int cs)
 	zoom_nand_data.cs		= cs;
 	zoom_nand_data.parts		= zoom_nand_parts[0].parts;
 	zoom_nand_data.nr_parts		= zoom_nand_parts[0].nr_parts;
+	zoom_nand_data.ecc_opt		= 0x1; /* HW ECC in default layout */
 	zoom_nand_data.gpmc_baseaddr	= (void *)(gpmc_base_add);
 	zoom_nand_data.gpmc_cs_baseaddr	= (void *)(gpmc_base_add +
 						GPMC_CS0_BASE +
