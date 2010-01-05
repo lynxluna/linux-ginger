@@ -165,6 +165,7 @@ void omap_vrfb_setup(struct vrfb *vrfb, unsigned long paddr,
 	u8 ctx = vrfb->context;
 	u32 size;
 	u32 control;
+	u16 temp;
 
 	DBG("omapfb_set_vrfb(%d, %lx, %dx%d, %d, %d)\n", ctx, paddr,
 			width, height, bytespp, color_mode);
@@ -175,6 +176,13 @@ void omap_vrfb_setup(struct vrfb *vrfb, unsigned long paddr,
 			color_mode == OMAP_DSS_COLOR_UYVY) {
 		bytespp *= 2;
 		width /= 2;
+	}
+
+	/* Configure the vrfb buffer for rotation*/
+	if (rotation == 1 || rotation == 3) {
+		temp = width;
+		width = height;
+		height = temp;
 	}
 
 	if (bytespp == 4)
