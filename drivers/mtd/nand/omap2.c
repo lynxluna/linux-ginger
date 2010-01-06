@@ -145,6 +145,39 @@ struct omap_nand_info {
 	int				dma_ch;
 };
 
+static struct nand_ecclayout hw_x8_romcode_oob_64 = {
+	.eccbytes = 12,
+	.eccpos = {
+		    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
+		  },
+	.oobfree = {
+			{.offset = 13,
+			 .length = 51}
+		   }
+};
+
+/* Define some generic bad / good block scan pattern which are used
+ * while scanning a device for factory marked good / bad blocks
+ */
+static uint8_t scan_ff_pattern[] = { 0xff };
+static struct nand_bbt_descr bb_descrip_flashbased = {
+	.options = NAND_BBT_SCANEMPTY | NAND_BBT_SCANALLPAGES,
+	.offs = 0,
+	.len = 1,
+	.pattern = scan_ff_pattern,
+};
+
+static struct nand_ecclayout hw_x16_romcode_oob_64 = {
+	.eccbytes = 12,
+	.eccpos = {
+		    2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13
+		  },
+	.oobfree = {
+			{.offset = 14,
+			 .length = 50}
+		   }
+};
+
 /**
  * omap_nand_wp - This function enable or disable the Write Protect feature
  * @mtd: MTD device structure
@@ -984,6 +1017,15 @@ static int __devinit omap_nand_probe(struct platform_device *pdev)
 	info->nand.verify_buf = omap_verify_buf;
 
 	if (pdata->ecc_opt & 0x3) {
+		if (pdata->ecc_opt == 0x2) {
+			if (info->nand.options & NAND_BUSWIDTH_16) {
+				info->nand.ecc.layout = &hw_x16_romcode_oob_64;
+			} else {
+				info->nand.ecc.layout = &hw_x8_romcode_oob_64;
+				info->nand.badblock_pattern =
+							&bb_descrip_flashbased;
+			}
+		}
 		info->nand.ecc.bytes		= 3;
 		info->nand.ecc.size		= 512;
 		info->nand.ecc.calculate	= omap_calculate_ecc;
