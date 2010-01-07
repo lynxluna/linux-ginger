@@ -530,17 +530,9 @@ static void __exit bridge_exit(void)
 static int bridge_open(struct inode *ip, struct file *filp)
 {
 	int status = 0;
-	DSP_STATUS dsp_status;
-	HANDLE hDrvObject;
 	struct PROCESS_CONTEXT *pr_ctxt = NULL;
 
 	GT_0trace(driverTrace, GT_ENTER, "-> bridge_open\n");
-
-	dsp_status = CFG_GetObject((u32 *)&hDrvObject, REG_DRV_OBJECT);
-	if (DSP_FAILED(dsp_status)) {
-		status = -EIO;
-		goto err;
-	}
 
 	/*
 	 * Allocate a new process context and insert it into global
@@ -554,7 +546,6 @@ static int bridge_open(struct inode *ip, struct file *filp)
 
 	filp->private_data = pr_ctxt;
 
-err:
 	GT_0trace(driverTrace, GT_ENTER, "<- bridge_open\n");
 	return status;
 }
@@ -566,8 +557,6 @@ err:
 static int bridge_release(struct inode *ip, struct file *filp)
 {
 	int status = 0;
-	DSP_STATUS dsp_status;
-	HANDLE hDrvObject;
 	struct PROCESS_CONTEXT *pr_ctxt;
 
 	GT_0trace(driverTrace, GT_ENTER, "-> bridge_release\n");
@@ -578,15 +567,11 @@ static int bridge_release(struct inode *ip, struct file *filp)
 	}
 
 	pr_ctxt = filp->private_data;
-	dsp_status = CFG_GetObject((u32 *)&hDrvObject, REG_DRV_OBJECT);
-	if (DSP_SUCCEEDED(dsp_status)) {
-		flush_signals(current);
-		DRV_RemoveAllResources(pr_ctxt);
-		PROC_Detach(pr_ctxt);
-		MEM_Free(pr_ctxt);
-	} else {
-		status = -EIO;
-	}
+	flush_signals(current);
+	DRV_RemoveAllResources(pr_ctxt);
+	PROC_Detach(pr_ctxt);
+	MEM_Free(pr_ctxt);
+
 	filp->private_data = NULL;
 
 err:
