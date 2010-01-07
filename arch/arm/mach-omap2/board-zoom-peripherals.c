@@ -28,6 +28,7 @@
 
 #include "mux.h"
 #include "mmc-twl4030.h"
+#include "twl4030-script.h"
 #include "pm.h"
 
 /* FIXME: These are not the optimal setup values */
@@ -122,78 +123,6 @@ static struct twl4030_keypad_data zoom_kp_twl4030_data = {
 	.rep		= 1,
 };
 
-static struct twl4030_ins __initdata sleep_on_seq[] = {
-	/* Broadcast message to put res to sleep */
-	{MSG_BROADCAST(DEV_GRP_NULL, RES_GRP_ALL, RES_TYPE_R0, RES_TYPE2_R1,
-							RES_STATE_SLEEP), 2},
-	{MSG_BROADCAST(DEV_GRP_NULL, RES_GRP_ALL, RES_TYPE_R0, RES_TYPE2_R2,
-							RES_STATE_SLEEP), 2},
-};
-
-static struct twl4030_script sleep_on_script __initdata = {
-	.script	= sleep_on_seq,
-	.size	= ARRAY_SIZE(sleep_on_seq),
-	.flags	= TWL4030_SLEEP_SCRIPT,
-};
-
-static struct twl4030_ins wakeup_p12_seq[] __initdata = {
-	/* Broadcast message to put res to active */
-	{MSG_BROADCAST(DEV_GRP_NULL, RES_GRP_ALL, RES_TYPE_R0, RES_TYPE2_R1,
-							RES_STATE_ACTIVE), 2},
-};
-
-static struct twl4030_script wakeup_p12_script __initdata = {
-	.script	= wakeup_p12_seq,
-	.size	= ARRAY_SIZE(wakeup_p12_seq),
-	.flags	= TWL4030_WAKEUP12_SCRIPT,
-};
-
-static struct twl4030_ins wakeup_p3_seq[] __initdata = {
-	/* Broadcast message to put res to active */
-	{MSG_BROADCAST(DEV_GRP_NULL, RES_GRP_ALL, RES_TYPE_R0, RES_TYPE2_R2,
-							RES_STATE_ACTIVE), 2},
-};
-
-static struct twl4030_script wakeup_p3_script __initdata = {
-	.script = wakeup_p3_seq,
-	.size   = ARRAY_SIZE(wakeup_p3_seq),
-	.flags  = TWL4030_WAKEUP3_SCRIPT,
-};
-
-static struct twl4030_ins wrst_seq[] __initdata = {
-/*
- * Reset twl4030.
- * Reset Main_Ref.
- * Reset All type2_group2.
- * Reset VUSB_3v1.
- * Reset All type2_group1.
- * Reset RC.
- * Reenable twl4030.
- */
-	{MSG_SINGULAR(DEV_GRP_NULL, 0x1b, RES_STATE_OFF), 2},
-	{MSG_SINGULAR(DEV_GRP_NULL, 0x1c, RES_STATE_WRST), 2},
-	{MSG_BROADCAST(DEV_GRP_NULL, RES_GRP_ALL, RES_TYPE_R0, RES_TYPE2_R2,
-							RES_STATE_WRST), 2},
-	{MSG_SINGULAR(DEV_GRP_NULL, 0x13, RES_STATE_WRST), 2},
-	{MSG_BROADCAST(DEV_GRP_NULL, RES_GRP_ALL, RES_TYPE_R0, RES_TYPE2_R1,
-							RES_STATE_WRST), 2},
-	{MSG_BROADCAST(DEV_GRP_NULL, RES_GRP_RC, RES_TYPE_ALL, RES_TYPE2_R0,
-							RES_STATE_WRST), 2},
-	{MSG_SINGULAR(DEV_GRP_NULL, 0x1b, RES_STATE_ACTIVE), 2},
-};
-static struct twl4030_script wrst_script __initdata = {
-	.script = wrst_seq,
-	.size   = ARRAY_SIZE(wrst_seq),
-	.flags  = TWL4030_WRST_SCRIPT,
-};
-
-static struct twl4030_script *twl4030_scripts[] __initdata = {
-	&sleep_on_script,
-	&wakeup_p12_script,
-	&wakeup_p3_script,
-	&wrst_script,
-};
-
 static struct twl4030_resconfig twl4030_rconfig[] = {
 	{ .resource = RES_VPLL1, .devgroup = DEV_GRP_P1, .type = 3,
 		.type2 = 1, .remap_sleep = RES_STATE_OFF },
@@ -223,10 +152,28 @@ static struct twl4030_resconfig twl4030_rconfig[] = {
 };
 
 static struct twl4030_power_data zoom_t2scripts_data __initdata = {
-	.scripts	= twl4030_scripts,
-	.num		= ARRAY_SIZE(twl4030_scripts),
 	.resource_config = twl4030_rconfig,
 };
+
+#ifdef CONFIG_TWL4030_POWER
+static void use_generic_twl4030_script(void)
+{
+	omap3_setuptime_table.voltsetup_time1_ret =
+				twl4030_voltsetup_time.voltsetup_time1_ret;
+	omap3_setuptime_table.voltsetup_time2_ret =
+				twl4030_voltsetup_time.voltsetup_time2_ret;
+	omap3_setuptime_table.voltsetup_time1_off =
+				twl4030_voltsetup_time.voltsetup_time1_off;
+	omap3_setuptime_table.voltsetup_time2_off =
+				twl4030_voltsetup_time.voltsetup_time1_off;
+
+	omap3_setuptime_table.voltoffset = twl4030_voltsetup_time.voltoffset;
+	omap3_setuptime_table.voltsetup2 = twl4030_voltsetup_time.voltsetup2;
+
+	zoom_t2scripts_data.scripts = twl4030_generic_script.scripts;
+	zoom_t2scripts_data.num = twl4030_generic_script.num;
+}
+#endif
 
 static struct regulator_consumer_supply zoom_vmmc1_supply = {
 	.supply		= "vmmc",
@@ -446,6 +393,9 @@ static void enable_board_wakeup_source(void)
 
 void __init zoom_peripherals_init(void)
 {
+#ifdef CONFIG_TWL4030_POWER
+	use_generic_twl4030_script();
+#endif
 	omap_i2c_init();
 	synaptics_dev_init();
 	omap_serial_init();
