@@ -97,11 +97,17 @@ static struct powerdomain *core_pwrdm, *per_pwrdm;
 static struct powerdomain *cam_pwrdm;
 
 static struct prm_setup_vc prm_setup = {
-	.clksetup = 0xff,
-	.voltsetup_time1 = 0xfff,
-	.voltsetup_time2 = 0xfff,
+	/* CLK SETUPTIME for RET & OFF */
+	.clksetup_ret = 0xff,
+	.clksetup_off = 0xff,
+	/* VOLT SETUPTIME for RET & OFF */
+	.voltsetup_time1_ret = 0xfff,
+	.voltsetup_time2_ret = 0xfff,
+	.voltsetup_time1_off = 0xfff,
+	.voltsetup_time2_off = 0xfff,
 	.voltoffset = 0xff,
 	.voltsetup2 = 0xff,
+	/* VC COMMAND VALUES for VDD1/VDD2 */
 	.vdd0_on = 0x30,	/* 1.2v */
 	.vdd0_onlp = 0x20,	/* 1.0v */
 	.vdd0_ret = 0x1e,	/* 0.975v */
@@ -381,6 +387,9 @@ void omap_sram_idle(void)
 	u32 sdrc_pwr = 0;
 	int per_state_modified = 0;
 	u32 fclk_status;
+	u16 clksetup = 0xff;
+	u16 voltsetup_time1 = 0xfff;
+	u16 voltsetup_time2 = 0xfff;
 
 	if (!_omap_sram_idle)
 		return;
@@ -452,6 +461,11 @@ void omap_sram_idle(void)
 		omap_uart_prepare_idle(0, core_next_state & core_logic_state);
 		omap_uart_prepare_idle(1, core_next_state & core_logic_state);
 		if (core_next_state == PWRDM_POWER_OFF) {
+			/* VOLT & CLK SETUPTIME for OFF */
+			clksetup = prm_setup.clksetup_off;
+			voltsetup_time1 = prm_setup.voltsetup_time1_off;
+			voltsetup_time2 = prm_setup.voltsetup_time2_off;
+
 			u32 voltctrl = OMAP3430_AUTO_OFF;
 
 			if (voltage_off_while_idle)
@@ -482,10 +496,24 @@ void omap_sram_idle(void)
 						OMAP3430_GR_MOD,
 						OMAP3_PRM_VOLTCTRL_OFFSET);
 		} else if (core_next_state == PWRDM_POWER_RET) {
+			/* VOLT & CLK SETUPTIME for RET */
+			clksetup = prm_setup.clksetup_ret;
+			voltsetup_time1 = prm_setup.voltsetup_time1_ret;
+			voltsetup_time2 = prm_setup.voltsetup_time2_ret;
+
 			prm_set_mod_reg_bits(OMAP3430_AUTO_RET,
 						OMAP3430_GR_MOD,
 						OMAP3_PRM_VOLTCTRL_OFFSET);
 		}
+		/* Write setup times */
+		prm_write_mod_reg(clksetup, OMAP3430_GR_MOD,
+				OMAP3_PRM_CLKSETUP_OFFSET);
+		prm_write_mod_reg((voltsetup_time2 <<
+				OMAP3430_SETUP_TIME2_SHIFT) |
+				(voltsetup_time1 <<
+				OMAP3430_SETUP_TIME1_SHIFT),
+				OMAP3430_GR_MOD, OMAP3_PRM_VOLTSETUP1_OFFSET);
+
 		/* Enable IO-PAD and IO-CHAIN wakeups */
 		prm_set_mod_reg_bits(OMAP3430_EN_IO, WKUP_MOD, PM_WKEN);
 		omap3_enable_io_chain();
@@ -1160,10 +1188,16 @@ void omap3_pm_init_vc(struct prm_setup_vc *setup_vc)
 {
 	if (!setup_vc)
 		return;
+	/* CLK SETUPTIME for RET & OFF */
+	prm_setup.clksetup_ret = setup_vc->clksetup_ret;
+	prm_setup.clksetup_off = setup_vc->clksetup_off;
+	/* VOLT SETUPTIME for RET & OFF */
+	prm_setup.voltsetup_time1_ret = setup_vc->voltsetup_time1_ret;
+	prm_setup.voltsetup_time2_ret = setup_vc->voltsetup_time2_ret;
+	prm_setup.voltsetup_time1_off = setup_vc->voltsetup_time1_off;
+	prm_setup.voltsetup_time2_off = setup_vc->voltsetup_time2_off;
 
-	prm_setup.clksetup = setup_vc->clksetup;
-	prm_setup.voltsetup_time1 = setup_vc->voltsetup_time1;
-	prm_setup.voltsetup_time2 = setup_vc->voltsetup_time2;
+	/* VC COMMAND VALUES for VDD1/VDD2 */
 	prm_setup.voltoffset = setup_vc->voltoffset;
 	prm_setup.voltsetup2 = setup_vc->voltsetup2;
 	prm_setup.vdd0_on = setup_vc->vdd0_on;
@@ -1381,11 +1415,11 @@ static void __init configure_vc(void)
 			  OMAP3_PRM_VC_I2C_CFG_OFFSET);
 
 	/* Write setup times */
-	prm_write_mod_reg(prm_setup.clksetup, OMAP3430_GR_MOD,
+	prm_write_mod_reg(prm_setup.clksetup_ret, OMAP3430_GR_MOD,
 			OMAP3_PRM_CLKSETUP_OFFSET);
-	prm_write_mod_reg((prm_setup.voltsetup_time2 <<
+	prm_write_mod_reg((prm_setup.voltsetup_time2_ret <<
 			OMAP3430_SETUP_TIME2_SHIFT) |
-			(prm_setup.voltsetup_time1 <<
+			(prm_setup.voltsetup_time1_ret <<
 			OMAP3430_SETUP_TIME1_SHIFT),
 			OMAP3430_GR_MOD, OMAP3_PRM_VOLTSETUP1_OFFSET);
 

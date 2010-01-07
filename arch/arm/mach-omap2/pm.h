@@ -42,9 +42,14 @@ inline void omap3_pm_init_cpuidle(struct cpuidle_params *cpuidle_board_params)
 #endif
 
 struct prm_setup_vc {
-	u16 clksetup;
-	u16 voltsetup_time1;
-	u16 voltsetup_time2;
+/* CLK SETUPTIME for RET & OFF */
+	u16 clksetup_ret;
+	u16 clksetup_off;
+/* VOLT SETUPTIME for RET & OFF */
+	u16 voltsetup_time1_ret;
+	u16 voltsetup_time2_ret;
+	u16 voltsetup_time1_off;
+	u16 voltsetup_time2_off;
 	u16 voltoffset;
 	u16 voltsetup2;
 /* PRM_VC_CMD_VAL_0 specific bits */
