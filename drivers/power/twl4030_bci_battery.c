@@ -21,7 +21,7 @@
 #include <linux/interrupt.h>
 #include <linux/delay.h>
 #include <linux/platform_device.h>
-#include <linux/i2c/twl4030.h>
+#include <linux/i2c/twl.h>
 #include <linux/power_supply.h>
 #include <linux/i2c/twl4030-madc.h>
 
@@ -178,7 +178,7 @@ static inline int twl4030charger_presence_evt(void)
 	u8 chg_sts, set = 0, clear = 0;
 
 	/* read charger power supply status */
-	ret = twl4030_i2c_read_u8(TWL4030_MODULE_PM_MASTER, &chg_sts,
+	ret = twl_i2c_read_u8(TWL4030_MODULE_PM_MASTER, &chg_sts,
 		REG_STS_HW_CONDITIONS);
 	if (ret)
 		return IRQ_NONE;
@@ -233,13 +233,13 @@ static int twl4030battery_presence_evt(void)
 	u8 batstsmchg, batstspchg;
 
 	/* check for the battery presence in main charge*/
-	ret = twl4030_i2c_read_u8(TWL4030_MODULE_MAIN_CHARGE,
+	ret = twl_i2c_read_u8(TWL4030_MODULE_MAIN_CHARGE,
 			&batstsmchg, REG_BCIMFSTS3);
 	if (ret)
 		return ret;
 
 	/* check for the battery presence in precharge */
-	ret = twl4030_i2c_read_u8(TWL4030_MODULE_PRECHARGE,
+	ret = twl_i2c_read_u8(TWL4030_MODULE_PRECHARGE,
 			&batstspchg, REG_BCIMFSTS1);
 	if (ret)
 		return ret;
@@ -274,7 +274,7 @@ static int twl4030battery_level_evt(void)
 	u8 mfst;
 
 	/* checking for threshold event */
-	ret = twl4030_i2c_read_u8(TWL4030_MODULE_MAIN_CHARGE,
+	ret = twl_i2c_read_u8(TWL4030_MODULE_MAIN_CHARGE,
 			&mfst, REG_BCIMFSTS2);
 	if (ret)
 		return ret;
@@ -326,12 +326,12 @@ static irqreturn_t twl4030battery_interrupt(int irq, void *_di)
 	local_irq_enable();
 #endif
 
-	ret = twl4030_i2c_read_u8(TWL4030_MODULE_INTERRUPTS, &isr1a_val,
+	ret = twl_i2c_read_u8(TWL4030_MODULE_INTERRUPTS, &isr1a_val,
 				REG_BCIISR1A);
 	if (ret)
 		return IRQ_NONE;
 
-	ret = twl4030_i2c_read_u8(TWL4030_MODULE_INTERRUPTS, &isr2a_val,
+	ret = twl_i2c_read_u8(TWL4030_MODULE_INTERRUPTS, &isr2a_val,
 				REG_BCIISR2A);
 	if (ret)
 		return IRQ_NONE;
@@ -340,12 +340,12 @@ static irqreturn_t twl4030battery_interrupt(int irq, void *_di)
 	clear_1a = (isr1a_val & BATSTS_ISR1) ? (BATSTS_ISR1) : 0;
 
 	/* cleaning BCI interrupt status flags */
-	ret = twl4030_i2c_write_u8(TWL4030_MODULE_INTERRUPTS,
+	ret = twl_i2c_write_u8(TWL4030_MODULE_INTERRUPTS,
 			clear_1a , REG_BCIISR1A);
 	if (ret)
 		return IRQ_NONE;
 
-	ret = twl4030_i2c_write_u8(TWL4030_MODULE_INTERRUPTS,
+	ret = twl_i2c_write_u8(TWL4030_MODULE_INTERRUPTS,
 			clear_2a , REG_BCIISR2A);
 	if (ret)
 		return IRQ_NONE;
@@ -484,7 +484,7 @@ int twl4030charger_usb_en(int enable)
 		while ((!(value & PHY_DPLL_CLK)) &&
 			time_before(jiffies, timeout)) {
 			udelay(10);
-			ret = twl4030_i2c_read_u8(TWL4030_MODULE_USB, &value,
+			ret = twl_i2c_read_u8(TWL4030_MODULE_USB, &value,
 				REG_PHY_CLK_CTRL_STS);
 			if (ret)
 				return ret;
@@ -531,7 +531,7 @@ static int twl4030battery_temperature(void)
 	volt = (ret * TEMP_STEP_SIZE) / TEMP_PSR_R;
 
 	/* Getting and calculating the supply current in micro ampers */
-	ret = twl4030_i2c_read_u8(TWL4030_MODULE_MAIN_CHARGE, &val,
+	ret = twl_i2c_read_u8(TWL4030_MODULE_MAIN_CHARGE, &val,
 		 REG_BCICTL2);
 	if (ret)
 		return 0;
@@ -581,7 +581,7 @@ static int twl4030battery_current(void)
 	int ret, curr = read_bci_val(T2_BATTERY_CUR);
 	u8 val;
 
-	ret = twl4030_i2c_read_u8(TWL4030_MODULE_MAIN_CHARGE, &val,
+	ret = twl_i2c_read_u8(TWL4030_MODULE_MAIN_CHARGE, &val,
 		REG_BCICTL1);
 	if (ret)
 		return ret;
@@ -626,7 +626,7 @@ static int twl4030charger_presence(void)
 	int ret;
 	u8 hwsts;
 
-	ret = twl4030_i2c_read_u8(TWL4030_MODULE_PM_MASTER, &hwsts,
+	ret = twl_i2c_read_u8(TWL4030_MODULE_PM_MASTER, &hwsts,
 		REG_STS_HW_CONDITIONS);
 	if (ret) {
 		pr_err("twl4030_bci: error reading STS_HW_CONDITIONS\n");
@@ -654,7 +654,7 @@ static int twl4030bci_status(void)
 	int ret;
 	u8 status;
 
-	ret = twl4030_i2c_read_u8(TWL4030_MODULE_MAIN_CHARGE,
+	ret = twl_i2c_read_u8(TWL4030_MODULE_MAIN_CHARGE,
 		&status, REG_BCIMSTATEC);
 	if (ret) {
 		pr_err("twl4030_bci: error reading BCIMSTATEC\n");
@@ -670,7 +670,7 @@ static int read_bci_val(u8 reg)
 	u8 val;
 
 	/* reading MSB */
-	ret = twl4030_i2c_read_u8(TWL4030_MODULE_MAIN_CHARGE, &val,
+	ret = twl_i2c_read_u8(TWL4030_MODULE_MAIN_CHARGE, &val,
 		reg + 1);
 	if (ret)
 		return ret;
@@ -678,7 +678,7 @@ static int read_bci_val(u8 reg)
 	temp = ((int)(val & 0x03)) << 8;
 
 	/* reading LSB */
-	ret = twl4030_i2c_read_u8(TWL4030_MODULE_MAIN_CHARGE, &val,
+	ret = twl_i2c_read_u8(TWL4030_MODULE_MAIN_CHARGE, &val,
 		reg);
 	if (ret)
 		return ret;
@@ -729,7 +729,7 @@ static inline int clear_n_set(u8 mod_no, u8 clear, u8 set, u8 reg)
 	u8 val = 0;
 
 	/* Gets the initial register value */
-	ret = twl4030_i2c_read_u8(mod_no, &val, reg);
+	ret = twl_i2c_read_u8(mod_no, &val, reg);
 	if (ret)
 		return ret;
 
@@ -740,7 +740,7 @@ static inline int clear_n_set(u8 mod_no, u8 clear, u8 set, u8 reg)
 	val |= set;
 
 	/* Update the register */
-	ret = twl4030_i2c_write_u8(mod_no, val, reg);
+	ret = twl_i2c_write_u8(mod_no, val, reg);
 	if (ret)
 		return ret;
 
