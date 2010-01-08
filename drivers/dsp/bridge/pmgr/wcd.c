@@ -456,6 +456,8 @@ DSP_STATUS WCD_InitComplete2(void)
 	return status;
 }
 
+/* TODO: Remove deprecated and not implemented ioctl wrappers */
+
 /*
  * ======== MGRWRAP_EnumNode_Info ========
  */
@@ -634,21 +636,11 @@ u32 MGRWRAP_WaitForBridgeEvents(union Trapped_Args *args, void *pr_ctxt)
 /*
  * ======== MGRWRAP_GetProcessResourceInfo ========
  */
-u32 MGRWRAP_GetProcessResourcesInfo(union Trapped_Args *args, void *pr_ctxt)
+u32 __deprecated MGRWRAP_GetProcessResourcesInfo(union Trapped_Args *args,
+						void *pr_ctxt)
 {
-    DSP_STATUS status = DSP_SOK;
-    u32 uSize = 0;
-    u8 *pBuf = MEM_Alloc(8092, MEM_NONPAGED);
-    GT_1trace(WCD_debugMask, GT_ENTER,
-	     "MGRWRAP_GetProcessResourcesInfo:uSize=%d :\n", uSize);
-    cp_to_usr(args->ARGS_PROC_GETTRACE.pBuf, pBuf, status, uSize);
-    GT_0trace(WCD_debugMask, GT_ENTER, "\n***********"
-	     "123MGRWRAP_GetProcessResourcesInfo:**************\n");
-    GT_0trace(WCD_debugMask, GT_ENTER, "\n***********"
-	     "456MGRWRAP_GetProcessResourcesInfo:**************\n");
-    cp_to_usr(args->ARGS_PROC_GETTRACE.pSize, &uSize, status, 1);
-    MEM_Free(pBuf);
-    return status;
+	pr_err("%s: deprecated dspbridge ioctl\n", __func__);
+	return DSP_SOK;
 }
 #endif
 
@@ -732,14 +724,10 @@ func_end:
 /*
  * ======== PROCWRAP_Detach ========
  */
-u32 PROCWRAP_Detach(union Trapped_Args *args, void *pr_ctxt)
+u32 __deprecated PROCWRAP_Detach(union Trapped_Args *args, void *pr_ctxt)
 {
-	GT_1trace(WCD_debugMask, GT_ENTER,
-		 "PROCWRAP_Detach: entered args\n0x%x "
-		 "hProceesor \n", args->ARGS_PROC_DETACH.hProcessor);
-
 	/* PROC_Detach called at bridge_release only */
-
+	pr_err("%s: deprecated dspbridge ioctl\n", __func__);
 	return DSP_SOK;
 }
 
@@ -1540,8 +1528,10 @@ u32 STRMWRAP_FreeBuffer(union Trapped_Args *args, void *pr_ctxt)
 /*
  * ======== STRMWRAP_GetEventHandle ========
  */
-u32 STRMWRAP_GetEventHandle(union Trapped_Args *args, void *pr_ctxt)
+u32 __deprecated STRMWRAP_GetEventHandle(union Trapped_Args *args,
+					void *pr_ctxt)
 {
+	pr_err("%s: deprecated dspbridge ioctl\n", __func__);
 	return DSP_ENOTIMPL;
 }
 
@@ -1703,18 +1693,20 @@ u32 STRMWRAP_Select(union Trapped_Args *args, void *pr_ctxt)
 /*
  * ======== CMMWRAP_CallocBuf ========
  */
-u32 CMMWRAP_CallocBuf(union Trapped_Args *args, void *pr_ctxt)
+u32 __deprecated CMMWRAP_CallocBuf(union Trapped_Args *args, void *pr_ctxt)
 {
 	/* This operation is done in kernel */
+	pr_err("%s: deprecated dspbridge ioctl\n", __func__);
 	return DSP_ENOTIMPL;
 }
 
 /*
  * ======== CMMWRAP_FreeBuf ========
  */
-u32 CMMWRAP_FreeBuf(union Trapped_Args *args, void *pr_ctxt)
+u32 __deprecated CMMWRAP_FreeBuf(union Trapped_Args *args, void *pr_ctxt)
 {
 	/* This operation is done in kernel */
+	pr_err("%s: deprecated dspbridge ioctl\n", __func__);
 	return DSP_ENOTIMPL;
 }
 
