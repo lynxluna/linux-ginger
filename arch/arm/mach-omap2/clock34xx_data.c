@@ -930,6 +930,8 @@ static struct clk dpll4_m5_ck = {
 	.clksel		= div16_dpll4_clksel,
 	.clkdm_name	= "dpll4_clkdm",
 	.recalc		= &omap2_clksel_recalc,
+	.set_rate	= &omap2_clksel_set_rate,
+	.round_rate	= &omap2_clksel_round_rate,
 };
 
 static struct clk dpll4_m5_ck_3630 = {
