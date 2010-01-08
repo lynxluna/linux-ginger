@@ -114,6 +114,7 @@ obj-$(CONFIG_MACH_OMAP_ZOOM3)		+= board-zoom3.o \
 					   board-zoom-debugboard.o \
 					   twl4030-script.o
 obj-$(CONFIG_MACH_OMAP_3630SDP)		+= board-3630sdp.o \
+					   board-sdp-flash.o \
 					   board-zoom-peripherals.o \
 					   mmc-twl4030.o \
 					   twl4030-script.o

@@ -136,6 +136,9 @@ __init board_nand_init(struct flash_partitions sdp_nand_parts, u8 cs)
 	sdp_nand_data.parts		= sdp_nand_parts.parts;
 	sdp_nand_data.nr_parts		= sdp_nand_parts.nr_parts;
 	sdp_nand_data.ecc_opt		= 0x2; /* HW ECC in romcode layout */
+	if (cpu_is_omap3630()) {
+		sdp_nand_data.devsize = 1; /* '0' for 8-bit, '1' for 16-bit device */
+	}
 
 	sdp_nand_data.gpmc_cs_baseaddr	= (void *)(OMAP34XX_GPMC_VIRT +
 							GPMC_CS0_BASE +
