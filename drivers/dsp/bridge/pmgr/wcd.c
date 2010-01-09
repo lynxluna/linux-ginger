@@ -321,13 +321,7 @@ bool WCD_Init(void)
 	bool fInit = true;
 	bool fDRV, fDEV, fCOD, fSERVICES, fCHNL, fMSG, fIO;
 	bool fMGR, fPROC, fNODE, fDISP, fNTFY, fSTRM, fRMM;
-#ifdef DEBUG
-	/* runtime check of Device IOCtl array. */
-	u32 i;
-	for (i = 1; i < ARRAY_SIZE(WCD_cmdTable); i++)
-		DBC_Assert(WCD_cmdTable[i - 1].dwIndex == i);
 
-#endif
 	if (WCD_cRefs == 0) {
 		/* initialize all SERVICES modules */
 		fSERVICES = SERVICES_Init();
