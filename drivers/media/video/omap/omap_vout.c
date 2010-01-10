@@ -99,6 +99,7 @@ static u32 video2_bufsize = OMAP_VOUT_MAX_BUF_SIZE;
 static u32 vid1_static_vrfb_alloc;
 static u32 vid2_static_vrfb_alloc;
 static int debug;
+struct vout_platform_data *pdata;
 
 /* Module parameters */
 module_param(video1_numbuffers, uint, S_IRUGO);
@@ -1804,6 +1805,8 @@ static int vidioc_streamon(struct file *file, void *fh,
 {
 	struct omap_vout_device *vout = fh;
 	struct videobuf_queue *q = &vout->vbq;
+	struct vout_platform_data *pdata =
+		(((vout->vid_dev)->v4l2_dev).dev)->platform_data;
 	u32 addr = 0;
 	unsigned int count;
 	int r = 0;
@@ -1853,6 +1856,20 @@ static int vidioc_streamon(struct file *file, void *fh,
 	addr = (unsigned long) vout->queued_buf_addr[vout->cur_frm->i]
 	+ vout->cropped_offset;
 
+#ifdef CONFIG_PM
+	if (pdata->set_min_bus_tput) {
+		if (cpu_is_omap3630()) {
+			pdata->set_min_bus_tput(
+				((vout->vid_dev)->v4l2_dev).dev ,
+					OCP_INITIATOR_AGENT, 200 * 1000 * 4);
+		} else {
+			pdata->set_min_bus_tput(
+				((vout->vid_dev)->v4l2_dev).dev ,
+					OCP_INITIATOR_AGENT, 166 * 1000 * 4);
+		}
+	}
+#endif
+
 	mask = DISPC_IRQ_VSYNC | DISPC_IRQ_EVSYNC_EVEN |
 			DISPC_IRQ_EVSYNC_ODD;
 
@@ -1889,6 +1906,8 @@ static int vidioc_streamoff(struct file *file, void *fh,
 	struct omap_vout_device *vout = fh;
 	int t, r = 0;
 	struct omapvideo_info *ovid = &vout->vid_info;
+	struct vout_platform_data *pdata =
+		(((vout->vid_dev)->v4l2_dev).dev)->platform_data;
 	u32 mask = 0;
 
 	if (!vout->streaming)
@@ -1899,6 +1918,13 @@ static int vidioc_streamoff(struct file *file, void *fh,
 		DISPC_IRQ_EVSYNC_ODD;
 
 	omap_dispc_unregister_isr(omap_vout_isr, vout, mask);
+
+#ifdef CONFIG_PM
+	if (pdata->set_min_bus_tput)
+		pdata->set_min_bus_tput(
+			((vout->vid_dev)->v4l2_dev).dev,
+				OCP_INITIATOR_AGENT, 0);
+#endif
 
 	for (t = 0; t < ovid->num_overlays; t++) {
 		struct omap_overlay *ovl = ovid->overlays[t];
