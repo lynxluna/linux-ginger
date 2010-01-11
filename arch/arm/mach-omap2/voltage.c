@@ -30,7 +30,8 @@
 #include "voltage.h"
 #include "pm.h"
 
-#define VP_IDLE_TIMEOUT 200
+#define VP_IDLE_TIMEOUT 	200
+#define VP_TRANXDONE_TIMEOUT	300
 
 /**
  * OMAP3 Voltage controller SR parameters. TODO: Pass this info as part of
@@ -50,6 +51,7 @@ struct vp_reg_info {
 	void __iomem *vp_vlimitto_reg;
 	void __iomem *vp_status_reg;
 	void __iomem *vp_voltage_reg;
+	void __iomem *prm_irqstatus_reg;
 	/* actual values for various fields */
 	u32 vp_erroroffset;
 	u32 vp_errorgain;
@@ -60,6 +62,7 @@ struct vp_reg_info {
 	u32 vp_vddmin;
 	u32 vp_vddmax;
 	u32 vp_timeout;
+	u32 vp_tranxdone_status;
 };
 
 static struct vp_reg_info vp_reg[NO_SCALABLE_VDD + 1];
@@ -296,6 +299,8 @@ static void __init vp_reg_offs_configure(int vp_id)
 					OMAP3430_VDDMIN_SHIFT);
 			vp_reg[vp_id].vp_vddmax = (OMAP3_VP1_VLIMITTO_VDDMAX <<
 					OMAP3430_VDDMAX_SHIFT);
+			vp_reg[vp_id].vp_tranxdone_status =
+					OMAP3430_VP1_TRANXDONE_ST;
 		} else if (vp_id == VP2) {
 			vp_reg[vp_id].vp_vonfig_reg =
 					OMAP3430_PRM_VP2_CONFIG;
@@ -320,12 +325,15 @@ static void __init vp_reg_offs_configure(int vp_id)
 					OMAP3430_VDDMIN_SHIFT);
 			vp_reg[vp_id].vp_vddmax = (OMAP3_VP2_VLIMITTO_VDDMAX <<
 					OMAP3430_VDDMAX_SHIFT);
+			vp_reg[vp_id].vp_tranxdone_status =
+					OMAP3430_VP2_TRANXDONE_ST;
 		} else {
 			pr_warning("Voltage processor%d does not exisit\
 					in OMAP3 \n", vp_id);
 			return;
 		}
 
+		vp_reg[vp_id].prm_irqstatus_reg	= OMAP3430_PRM_IRQSTATUS_MPU;
 		vp_reg[vp_id].vp_erroroffset = (OMAP3_VP_CONFIG_ERROROFFSET <<
 					OMAP3430_INITVOLTAGE_SHIFT);
 		vp_reg[vp_id].vp_smpswaittimemin =
@@ -357,6 +365,113 @@ static void __init vp_reg_offs_configure(int vp_id)
 	/* TODO Extend this for OMAP4 ?? Or need a separate file  */
 }
 
+#ifdef CONFIG_OMAP_VOLT_VPFORCEUPDATE
+/* VP force update method of voltage scaling */
+static int vp_forceupdate_scale_voltage(u32 vdd, u8 target_vsel,
+				u8 current_vsel)
+{
+	u32 smps_steps = 0, smps_delay = 0;
+	int timeout = 0;
+
+	if (!((vdd == VDD1_OPP) || (vdd == VDD2_OPP))) {
+		pr_warning("Wrong vdd id passed to vp forceupdate\n");
+		return false;
+	}
+
+	smps_steps = abs(target_vsel - current_vsel);
+
+	/* OMAP3430 has errorgain varying btw higher and lower opp's */
+	if (cpu_is_omap34xx()) {
+		if (vdd == VDD1_OPP)
+			vp_reg[vdd].vp_errorgain = (((get_vdd1_opp() > 2) ?
+					(OMAP3_VP_CONFIG_ERRORGAIN_HIGHOPP) :
+					(OMAP3_VP_CONFIG_ERRORGAIN_LOWOPP)) <<
+					OMAP3430_ERRORGAIN_SHIFT);
+		else if (vdd == VDD2_OPP)
+			vp_reg[vdd].vp_errorgain = (((get_vdd2_opp() > 2) ?
+					(OMAP3_VP_CONFIG_ERRORGAIN_HIGHOPP) :
+					(OMAP3_VP_CONFIG_ERRORGAIN_LOWOPP)) <<
+					OMAP3430_ERRORGAIN_SHIFT);
+	}
+
+	/* Clear all pending TransactionDone interrupt/status. Typical latency
+	 * is <3us
+	 */
+	while (timeout++ < VP_TRANXDONE_TIMEOUT) {
+		voltage_modify_reg(vp_reg[vdd].prm_irqstatus_reg,
+				vp_reg[vdd].vp_tranxdone_status,
+				vp_reg[vdd].vp_tranxdone_status);
+		if (!(voltage_read_reg(vp_reg[vdd].prm_irqstatus_reg) &
+				vp_reg[vdd].vp_tranxdone_status))
+				break;
+		udelay(1);
+	}
+
+	if (timeout >= VP_TRANXDONE_TIMEOUT) {
+		pr_warning("VP%d TRANXDONE timeout exceeded. Voltage change \
+				aborted", vdd);
+		return false;
+	}
+
+	/* Configure for VP-Force Update */
+	voltage_modify_reg(vp_reg[vdd].vp_vonfig_reg, (VP_CONFIG_INITVDD |
+			VP_FORCEUPDATE | VP_INITVOLTAGE_MASK |
+			VP_ERRORGAIN_MASK), ((target_vsel <<
+			VP_INITVOLTAGE_SHIFT) | vp_reg[vdd].vp_errorgain));
+
+	/* Trigger initVDD value copy to voltage processor */
+	voltage_modify_reg(vp_reg[vdd].vp_vonfig_reg, VP_CONFIG_INITVDD,
+			VP_CONFIG_INITVDD);
+
+	/* Force update of voltage */
+	voltage_modify_reg(vp_reg[vdd].vp_vonfig_reg, VP_FORCEUPDATE,
+			VP_FORCEUPDATE);
+
+	timeout = 0;
+	/* Wait for TransactionDone. Typical latency is <200us.
+	 * Depends on SMPSWAITTIMEMIN/MAX and voltage change
+	 */
+	while ((timeout++ < VP_TRANXDONE_TIMEOUT) &&
+			(!(voltage_read_reg(vp_reg[vdd].prm_irqstatus_reg) &
+			vp_reg[vdd].vp_tranxdone_status)))
+		udelay(1);
+
+	if (timeout >= VP_TRANXDONE_TIMEOUT)
+		pr_warning("VP%d TRANXDONE timeout exceeded. TRANXDONE never \
+			got set after the voltage update.Serious error!!!!\n",
+			vdd);
+
+	/* Wait for voltage to settle with SW wait-loop */
+	smps_delay = ((smps_steps * 125) / 40) + 2;
+	udelay(smps_delay);
+
+	/* Disable TransactionDone interrupt , clear all status, clear
+	 * control registers
+	 */
+	timeout = 0;
+	while (timeout++ < VP_TRANXDONE_TIMEOUT) {
+		voltage_modify_reg(vp_reg[vdd].prm_irqstatus_reg,
+				vp_reg[vdd].vp_tranxdone_status,
+				vp_reg[vdd].vp_tranxdone_status);
+		if (!(voltage_read_reg(vp_reg[vdd].prm_irqstatus_reg) &
+				vp_reg[vdd].vp_tranxdone_status))
+				break;
+		udelay(1);
+	}
+	if (timeout >= VP_TRANXDONE_TIMEOUT)
+		pr_warning("VP%d TRANXDONE timeout exceeded while trying to \
+			clear the TRANXDONE status\n", vdd);
+
+	/* Clear initVDD copy trigger bit */
+	voltage_modify_reg(vp_reg[vdd].vp_vonfig_reg, VP_CONFIG_INITVDD, 0x0);
+	/* Clear force bit */
+	voltage_modify_reg(vp_reg[vdd].vp_vonfig_reg, VP_FORCEUPDATE, 0x0);
+
+	return true;
+}
+#endif
+
+#ifdef CONFIG_OMAP_VOLT_VCBYPASS
 /**
  * vc_bypass_scale_voltage - VC bypass method of voltage scaling
  */
@@ -399,7 +514,7 @@ static int vc_bypass_scale_voltage(u32 vdd, u8 target_vsel, u8 current_vsel)
 	/* OMAP3430 has errorgain varying btw higher and lower opp's */
 	if (cpu_is_omap34xx())
 		voltage_modify_reg(vp_reg[vdd].vp_vonfig_reg,
-			OMAP3430_ERRORGAIN_MASK, vp_reg[vdd].vp_errorgain);
+			VP_ERRORGAIN_MASK, vp_reg[vdd].vp_errorgain);
 
 	vc_bypass_value = (target_vsel << VC_DATA_SHIFT) |
 			(reg_addr << VC_REGADDR_SHIFT) |
@@ -433,7 +548,7 @@ static int vc_bypass_scale_voltage(u32 vdd, u8 target_vsel, u8 current_vsel)
 	udelay(smps_delay);
 	return true;
 }
-
+#endif
 
 static void __init init_voltageprocessors(void)
 {
@@ -462,10 +577,12 @@ void omap_voltageprocessor_enable(int vp_id)
 				VP_CONFIG_VPENABLE)
 		return;
 
+#ifdef CONFIG_OMAP_VOLT_VCBYPASS
 	/* This latching is required only if VC bypass method is used for
 	 * voltage scaling during dvfs.
 	 */
 	vp_latch_vsel(vp_id);
+#endif
 	/* Enable VP */
 	voltage_modify_reg(vp_reg[vp_id].vp_vonfig_reg, VP_CONFIG_VPENABLE,
 				VP_CONFIG_VPENABLE);
@@ -512,11 +629,12 @@ void omap_voltageprocessor_disable(int vp_id)
  * for a particular voltage domain during dvfs or any other situation.
  */
 int omap_voltage_scale(int vdd, u8 target_vsel, u8 current_vsel)
-{	/**
-	 * TODO add VP force update method of voltage scaling
-	 * and choose btw the two
-	 */
+{
+#ifdef CONFIG_OMAP_VOLT_VCBYPASS
 	return vc_bypass_scale_voltage(vdd, target_vsel, current_vsel);
+#elif CONFIG_OMAP_VOLT_VPFORCEUPDATE
+	return vp_forceupdate_scale_voltage(vdd, target_vsel, current_vsel);
+#endif
 }
 
 /**

@@ -27,6 +27,7 @@ extern int get_vdd2_opp(void);
 #define VP_CONFIG_INITVDD	OMAP3430_INITVDD
 #define VP_FORCEUPDATE		OMAP3430_FORCEUPDATE
 #define VP_CONFIG_VPENABLE	OMAP3430_VPENABLE
+#define VP_ERRORGAIN_MASK	OMAP3430_ERRORGAIN_MASK
 #define VP_INITVOLTAGE_MASK	OMAP3430_INITVOLTAGE_MASK
 #define VP_INITVOLTAGE_SHIFT	OMAP3430_INITVOLTAGE_SHIFT
 
@@ -50,7 +51,6 @@ extern int get_vdd2_opp(void);
 #define VC_MCODE_SHIFT		OMAP3430_MCODE_SHIFT
 #define VC_HSEN			OMAP3430_HSEN
 #define VC_VALID		OMAP3430_VALID
-
 
 /* Omap 3430 VP registerspecific values. Maybe these need to come from
  * board file or PMIC data structure

@@ -83,6 +83,25 @@ config OMAP_SMARTREFLEX_TESTING
 
 	  WARNING: Enabling this option may cause your device to hang!
 
+choice
+	prompt "Choose Voltage Scale method"
+	depends on ARCH_OMAP34XX && PM
+	default OMAP_VOLT_VPFORCEUPDATE
+
+config OMAP_VOLT_VPFORCEUPDATE
+	bool "Voltage scaling via VP force update method"
+	help
+	 Say Y if you want to enable VP force update method
+	 of voltage scaling. This is the h/w recomended way
+	 of voltage scaling in OMAP3.
+
+config OMAP_VOLT_VCBYPASS
+	bool "Voltage Scale via Voltage controller in bypass"
+	help
+	 Say Y if you want to enable VC Bypass method of voltage scaling.
+	 Not the default recommended method.
+endchoice
+
 config OMAP_RESET_CLOCKS
 	bool "Reset unused clocks during boot"
 	depends on ARCH_OMAP
