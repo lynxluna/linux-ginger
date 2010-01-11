@@ -24,6 +24,7 @@
 #include <linux/io.h>
 #include <linux/list.h>
 #include <linux/debugfs.h>
+#include <linux/delay.h>
 
 #include <plat/opp.h>
 #include <plat/opp_twl_tps.h>
@@ -32,6 +33,7 @@
 #include "smartreflex.h"
 
 #define SMARTREFLEX_NAME_LEN	16
+#define SR_DISABLE_TIMEOUT	200
 
 struct omap_sr {
 	int			srid;
@@ -69,8 +71,17 @@ static inline void sr_modify_reg(struct omap_sr *sr, unsigned offset, u32 mask,
 
 	reg_val = __raw_readl(SR_REGADDR(offset));
 	reg_val &= ~mask;
-	reg_val |= value;
+	/* Smartreflex error config register is special as it contains
+	 * certain status bits which if written a 1 into means a clear
+	 * of those bits. So in order to make sure no accidental write of
+	 * 1 happens to those status bits, do a clear of them in the read
+	 * value. Now if there is an actual reguest to write to these bits
+	 * they will be set in the nex step.
+	 */
+	if (offset == ERRCONFIG)
+		reg_val &= ~ERRCONFIG_STATUS_MASK;
 
+	reg_val |= value;
 	__raw_writel(reg_val, SR_REGADDR(offset));
 }
 
@@ -109,6 +120,7 @@ static void sr_clk_disable(struct omap_sr *sr)
 {
 	struct omap_smartreflex_data *pdata = sr->pdev->dev.platform_data;
 
+	sr->is_sr_reset = 1;
 	if (pdata->device_idle)
 		pdata->device_idle(sr->pdev);
 }
@@ -197,11 +209,9 @@ static void sr_set_regfields(struct omap_sr *sr)
 		sr->err_maxlimit = OMAP3430_SR_ERRMAXLIMIT;
 		sr->accum_data = OMAP3430_SR_ACCUMDATA;
 		if (sr->srid == SR1) {
-			sr->err_minlimit = OMAP3430_SR1_ERRMINLIMIT;
 			sr->senn_avgweight = OMAP3430_SR1_SENNAVGWEIGHT;
 			sr->senp_avgweight = OMAP3430_SR1_SENPAVGWEIGHT;
 		} else {
-			sr->err_minlimit = OMAP3430_SR2_ERRMINLIMIT;
 			sr->senn_avgweight = OMAP3430_SR2_SENNAVGWEIGHT;
 			sr->senp_avgweight = OMAP3430_SR2_SENPAVGWEIGHT;
 		}
@@ -325,11 +335,6 @@ static void sr_start_vddautocomap(int srid)
 		return;
 	}
 
-	if (sr->is_sr_reset == 1) {
-		sr_clk_enable(sr);
-		sr_configure(sr);
-	}
-
 	if (sr->is_autocomp_active == 1)
 		return;
 
@@ -408,6 +413,18 @@ int sr_enable(int srid, u32 target_opp_no)
 		return false;
 	}
 
+	/* For OMAP3430 errminlimit is dependent on opp. So choose
+	* it appropriately
+	*/
+	if (cpu_is_omap343x())
+		sr->err_minlimit = (target_opp_no > 2) ?
+			OMAP3430_SR_ERRMINLIMIT_HIGHOPP :
+			OMAP3430_SR_ERRMINLIMIT_LOWOPP;
+
+	/*Enable the clocks and configure SR*/
+	sr_clk_enable(sr);
+	sr_configure(sr);
+
 	nvalue_reciprocal = pdata->sr_nvalue[target_opp_no - 1];
 	if (nvalue_reciprocal == 0) {
 		pr_notice("OPP%d doesn't support SmartReflex\n",
@@ -432,11 +449,44 @@ int sr_enable(int srid, u32 target_opp_no)
 void sr_disable(int srid)
 {
 	struct omap_sr *sr = _sr_lookup(srid);
+	int timeout = 0;
 
-	sr->is_sr_reset = 1;
+	/* Check if SR Ris already disabled. If yes do nothing */
+	if (!(sr_read_reg(sr, SRCONFIG) & SRCONFIG_SRENABLE))
+		return;
+
+	/* Enable MCUDisableAcknowledge interrupt */
+	sr_modify_reg(sr, ERRCONFIG,
+			ERRCONFIG_MCUDISACKINTEN, ERRCONFIG_MCUDISACKINTEN);
 
 	/* SRCONFIG - disable SR */
 	sr_modify_reg(sr, SRCONFIG, SRCONFIG_SRENABLE, ~SRCONFIG_SRENABLE);
+
+	/* Disable all other SR interrupts and clear the status */
+	sr_modify_reg(sr, ERRCONFIG,
+			(ERRCONFIG_MCUACCUMINTEN | ERRCONFIG_MCUVALIDINTEN |
+			ERRCONFIG_MCUBOUNDINTEN | ERRCONFIG_VPBOUNDINTEN),
+			(ERRCONFIG_MCUACCUMINTST | ERRCONFIG_MCUVALIDINTST |
+			ERRCONFIG_MCUBOUNDINTST | ERRCONFIG_VPBOUNDINTST));
+
+	/* Wait for SR to be disabled.
+	 * wait until ERRCONFIG.MCUDISACKINTST = 1. Typical latency is 1us.
+	 */
+	while ((timeout < SR_DISABLE_TIMEOUT) &&
+		(!(sr_read_reg(sr, ERRCONFIG) & ERRCONFIG_MCUDISACKINTST))) {
+
+		udelay(1);
+		timeout++;
+	}
+
+	if (timeout == SR_DISABLE_TIMEOUT)
+		pr_warning("SR%d disable timedout\n", srid);
+
+	/* Disable MCUDisableAcknowledge interrupt & clear pending interrupt
+	 * Also enable VPBOUND interrrupt
+	 */
+	sr_modify_reg(sr, ERRCONFIG, ERRCONFIG_MCUDISACKINTEN,
+			ERRCONFIG_MCUDISACKINTST);
 }
 
 /**
@@ -465,10 +515,6 @@ void omap_smartreflex_enable(int srid)
 	}
 	if (sr->is_autocomp_active == 1) {
 		if (sr->is_sr_reset == 1) {
-			/* Enable SR clks */
-			sr_clk_enable(sr);
-			sr_configure(sr);
-
 			if (!sr_class->enable(srid))
 				sr_clk_disable(sr);
 		}

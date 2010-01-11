@@ -19,6 +19,7 @@
 #include <linux/pm.h>
 #include <linux/delay.h>
 #include <linux/io.h>
+#include <linux/clk.h>
 
 #include <plat/omap-pm.h>
 #include <plat/omap34xx.h>
@@ -29,7 +30,7 @@
 #include "voltage.h"
 #include "pm.h"
 
-#define MAX_TRIES 100
+#define VP_IDLE_TIMEOUT 200
 
 /**
  * OMAP3 Voltage controller SR parameters. TODO: Pass this info as part of
@@ -267,6 +268,9 @@ static void __init vp_configure(int vp_id)
 
 static void __init vp_reg_offs_configure(int vp_id)
 {
+	struct clk *sys_ck;
+	u32 sys_clk_speed, timeout_val;
+
 	if (cpu_is_omap34xx()) {
 		if (vp_id == VP1) {
 			vp_reg[vp_id].vp_vonfig_reg =
@@ -281,6 +285,13 @@ static void __init vp_reg_offs_configure(int vp_id)
 					OMAP3430_PRM_VP1_STATUS;
 			vp_reg[vp_id].vp_voltage_reg =
 					OMAP3430_PRM_VP1_VOLTAGE;
+			/* OMAP3430 has error gain varying btw higher and
+			 * lower opp's
+			 */
+			vp_reg[vp_id].vp_errorgain = (((get_vdd1_opp() > 2) ?
+					(OMAP3_VP_CONFIG_ERRORGAIN_HIGHOPP) :
+					(OMAP3_VP_CONFIG_ERRORGAIN_LOWOPP)) <<
+					OMAP3430_ERRORGAIN_SHIFT);
 			vp_reg[vp_id].vp_vddmin = (OMAP3_VP1_VLIMITTO_VDDMIN <<
 					OMAP3430_VDDMIN_SHIFT);
 			vp_reg[vp_id].vp_vddmax = (OMAP3_VP1_VLIMITTO_VDDMAX <<
@@ -298,6 +309,13 @@ static void __init vp_reg_offs_configure(int vp_id)
 					OMAP3430_PRM_VP2_STATUS;
 			vp_reg[vp_id].vp_voltage_reg =
 					OMAP3430_PRM_VP2_VOLTAGE;
+			/* OMAP3430 has error gain varying btw higher and
+			 * lower opp's
+			 */
+			vp_reg[vp_id].vp_errorgain = (((get_vdd2_opp() > 2) ?
+					(OMAP3_VP_CONFIG_ERRORGAIN_HIGHOPP) :
+					(OMAP3_VP_CONFIG_ERRORGAIN_LOWOPP)) <<
+					OMAP3430_ERRORGAIN_SHIFT);
 			vp_reg[vp_id].vp_vddmin = (OMAP3_VP2_VLIMITTO_VDDMIN <<
 					OMAP3430_VDDMIN_SHIFT);
 			vp_reg[vp_id].vp_vddmax = (OMAP3_VP2_VLIMITTO_VDDMAX <<
@@ -310,8 +328,6 @@ static void __init vp_reg_offs_configure(int vp_id)
 
 		vp_reg[vp_id].vp_erroroffset = (OMAP3_VP_CONFIG_ERROROFFSET <<
 					OMAP3430_INITVOLTAGE_SHIFT);
-		vp_reg[vp_id].vp_errorgain = (OMAP3_VP_CONFIG_ERRORGAIN <<
-					OMAP3430_ERRORGAIN_SHIFT);
 		vp_reg[vp_id].vp_smpswaittimemin =
 					(OMAP3_VP_VSTEPMIN_SMPSWAITTIMEMIN <<
 					OMAP3430_SMPSWAITTIMEMIN_SHIFT);
@@ -322,7 +338,20 @@ static void __init vp_reg_offs_configure(int vp_id)
 					OMAP3430_VSTEPMIN_SHIFT);
 		vp_reg[vp_id].vp_stepmax = (OMAP3_VP_VSTEPMAX_VSTEPMAX <<
 					OMAP3430_VSTEPMAX_SHIFT);
-		vp_reg[vp_id].vp_timeout = (OMAP3_VP_VLIMITTO_TIMEOUT <<
+
+		/* Use sys clk speed to convet the VP timeout in us to no of
+		 * clock cycles
+		 */
+		sys_ck = clk_get(NULL, "sys_ck");
+		sys_clk_speed = clk_get_rate(sys_ck);
+		clk_put(sys_ck);
+
+		/* Divide to avoid overflow */
+		sys_clk_speed /= 1000;
+		timeout_val = (sys_clk_speed * OMAP3_VP_VLIMITTO_TIMEOUT_US) /
+					1000;
+
+		vp_reg[vp_id].vp_timeout = (timeout_val <<
 					OMAP3430_TIMEOUT_SHIFT);
 	}
 	/* TODO Extend this for OMAP4 ?? Or need a separate file  */
@@ -345,16 +374,32 @@ static int vc_bypass_scale_voltage(u32 vdd, u8 target_vsel, u8 current_vsel)
 		voltage_modify_reg(vc_reg.vc_cmdval0_reg, VC_CMD_ON_MASK,
 				(target_vsel << VC_CMD_ON_SHIFT));
 		reg_addr = R_VDD1_SR_CONTROL;
-
+		/* OMAP3430 has errorgain varying btw higher and lower opp's */
+		if (cpu_is_omap34xx())
+			vp_reg[vdd].vp_errorgain = (((get_vdd1_opp() > 2) ?
+					(OMAP3_VP_CONFIG_ERRORGAIN_HIGHOPP) :
+					(OMAP3_VP_CONFIG_ERRORGAIN_LOWOPP)) <<
+					OMAP3430_ERRORGAIN_SHIFT);
 	} else if (vdd == VDD2_OPP) {
 		voltage_modify_reg(vc_reg.vc_cmdval1_reg, VC_CMD_ON_MASK,
 				(target_vsel << VC_CMD_ON_SHIFT));
 		reg_addr = R_VDD2_SR_CONTROL;
+		/* OMAP3430 has errorgain varying btw higher and lower opp's */
+		if (cpu_is_omap34xx())
+			vp_reg[vdd].vp_errorgain = (((get_vdd2_opp() > 2) ?
+					(OMAP3_VP_CONFIG_ERRORGAIN_HIGHOPP) :
+					(OMAP3_VP_CONFIG_ERRORGAIN_LOWOPP)) <<
+					OMAP3430_ERRORGAIN_SHIFT);
 	} else {
 		pr_warning("Wrong VDD passed in vc_bypass_scale_voltage %d\n",
 				vdd);
 		return false;
 	}
+
+	/* OMAP3430 has errorgain varying btw higher and lower opp's */
+	if (cpu_is_omap34xx())
+		voltage_modify_reg(vp_reg[vdd].vp_vonfig_reg,
+			OMAP3430_ERRORGAIN_MASK, vp_reg[vdd].vp_errorgain);
 
 	vc_bypass_value = (target_vsel << VC_DATA_SHIFT) |
 			(reg_addr << VC_REGADDR_SHIFT) |
@@ -412,6 +457,11 @@ static void __init init_voltageprocessors(void)
  */
 void omap_voltageprocessor_enable(int vp_id)
 {
+	/* If VP is already enabled, do nothing. Return */
+	if (voltage_read_reg(vp_reg[vp_id].vp_vonfig_reg) &
+				VP_CONFIG_VPENABLE)
+		return;
+
 	/* This latching is required only if VC bypass method is used for
 	 * voltage scaling during dvfs.
 	 */
@@ -430,21 +480,26 @@ void omap_voltageprocessor_enable(int vp_id)
  */
 void omap_voltageprocessor_disable(int vp_id)
 {
-	int i = 0;
+	int timeout = 0;
 
-	/* Wait for VP idle before disabling VP */
-	while ((!voltage_read_reg(vp_reg[vp_id].vp_status_reg)) && i++ <
-			MAX_TRIES)
-		udelay(1);
+	/* If VP is already disabled, do nothing. Return */
+	if (!(voltage_read_reg(vp_reg[vp_id].vp_vonfig_reg) &
+				VP_CONFIG_VPENABLE))
+		return;
 
-	if (i >= MAX_TRIES)
-		pr_warning("VP1 not idle, still going ahead with \
-						VP1 disable\n");
-
-	/* Disable VP1 */
+	/* Disable VP */
 	voltage_modify_reg(vp_reg[vp_id].vp_vonfig_reg, VP_CONFIG_VPENABLE,
 				0x0);
 
+	/* Wait for VP idle Typical latency is <2us. Maximum latency is ~100us
+	 */
+	while ((timeout++ < VP_IDLE_TIMEOUT) &&
+			(!(voltage_read_reg(vp_reg[vp_id].vp_status_reg))))
+		udelay(1);
+
+	if (timeout >= VP_IDLE_TIMEOUT)
+		pr_warning("VP%d idle timedout\n", vp_id);
+	return;
 }
 
 /**
