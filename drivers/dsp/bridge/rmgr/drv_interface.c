@@ -101,6 +101,7 @@
 #define BRIDGE_NAME "C6410"
 /*  ----------------------------------- Globals */
 #define DRIVER_NAME  "DspBridge"
+#define DSPBRIDGE_VERSION	"0.1"
 s32 dsp_debug;
 
 struct platform_device *omap_dspbridge_dev;
@@ -177,6 +178,7 @@ MODULE_PARM_DESC(tc_wordswapon, "TC Word Swap Option. default = 0");
 
 MODULE_AUTHOR("Texas Instruments");
 MODULE_LICENSE("GPL");
+MODULE_VERSION(DSPBRIDGE_VERSION);
 
 static char *driver_name = DRIVER_NAME;
 
