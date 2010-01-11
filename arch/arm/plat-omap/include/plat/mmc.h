@@ -2,7 +2,10 @@
  * MMC definitions for OMAP2
  *
  * Copyright (C) 2006 Nokia Corporation
+ * embedded_sdio_data contribution from San Mehat
  *
+ * Support for embedded_sdio
+ * 	San Mehat		<san@google.com>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
@@ -14,6 +17,10 @@
 #include <linux/types.h>
 #include <linux/device.h>
 #include <linux/mmc/host.h>
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+#include <linux/mmc/card.h>
+#include <linux/mmc/sdio_func.h>
+#endif
 
 #include <plat/board.h>
 
@@ -42,6 +49,16 @@
 #define HSMMC1			(1 << 0)
 
 #define OMAP_MMC_MAX_SLOTS	2
+
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+struct embedded_sdio_data {
+	struct sdio_cis cis;
+	struct sdio_cccr cccr;
+	struct sdio_embedded_func *funcs;
+	int num_funcs;
+	unsigned int quirks;
+};
+#endif
 
 struct omap_mmc_platform_data {
 	/* back-link to device */
@@ -121,6 +138,12 @@ struct omap_mmc_platform_data {
 		int (* card_detect)(int irq);
 
 		unsigned int ban_openended:1;
+
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+		struct embedded_sdio_data *embedded_sdio;
+		int (*register_status_notify)
+			(void (*callback)(int , void *), void *);
+#endif
 
 	} slots[OMAP_MMC_MAX_SLOTS];
 };
