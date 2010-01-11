@@ -92,7 +92,7 @@ static int zoom_panel_power_enable(int enable)
 	int ret;
 	struct regulator *vpll2_reg;
 
-	vpll2_reg = regulator_get(NULL, "vpll2");
+	vpll2_reg = regulator_get(NULL, "vdds_dsi");
 	if (IS_ERR(vpll2_reg)) {
 		pr_err("Unable to get vpll2 regulator\n");
 		return PTR_ERR(vpll2_reg);
@@ -132,7 +132,9 @@ static int zoom_panel_enable_lcd(struct omap_dss_device *dssdev)
 
 static void zoom_panel_disable_lcd(struct omap_dss_device *dssdev)
 {
+#ifndef CONFIG_OMAP2_DSS_USE_DSI_PLL_FOR_HDMI
 	zoom_panel_power_enable(0);
+#endif
 	gpio_set_value(LCD_PANEL_ENABLE_GPIO, 0);
 }
 
@@ -184,7 +186,9 @@ static int zoom_panel_enable_hdmi(struct omap_dss_device *dssdev)
 static void zoom_panel_disable_hdmi(struct omap_dss_device *dssdev)
 {
 	zoom_hdmi_reset_enable(0);
+#ifndef CONFIG_OMAP2_DSS_USE_DSI_PLL_FOR_HDMI
 	zoom_panel_power_enable(0);
+#endif
 }
 
 static struct omap_dss_device zoom_hdmi_device = {

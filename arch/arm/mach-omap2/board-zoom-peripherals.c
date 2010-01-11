@@ -233,25 +233,12 @@ static struct twl4030_hsmmc_info mmc[] __initdata = {
 	{}      /* Terminator */
 };
 
-static struct regulator_consumer_supply zoom_vpll2_supply = {
-	.supply         = "vpll2",
-};
-
 static struct regulator_consumer_supply zoom_vdda_dac_supply = {
 	.supply         = "vdda_dac",
 };
 
-static struct regulator_init_data zoom_vpll2 = {
-	.constraints = {
-		.min_uV                 = 1800000,
-		.max_uV                 = 1800000,
-		.valid_modes_mask       = REGULATOR_MODE_NORMAL
-					| REGULATOR_MODE_STANDBY,
-		.valid_ops_mask         = REGULATOR_CHANGE_MODE
-					| REGULATOR_CHANGE_STATUS,
-	},
-	.num_consumer_supplies  = 1,
-	.consumer_supplies      = &zoom_vpll2_supply,
+static struct regulator_consumer_supply zoom_vdds_dsi_supply = {
+	.supply		= "vdds_dsi",
 };
 
 static struct regulator_init_data zoom_vdac = {
@@ -265,6 +252,19 @@ static struct regulator_init_data zoom_vdac = {
 	},
 	.num_consumer_supplies  = 1,
 	.consumer_supplies      = &zoom_vdda_dac_supply,
+};
+
+static struct regulator_init_data zoom_vdsi = {
+	.constraints = {
+		.min_uV                 = 1800000,
+		.max_uV                 = 1800000,
+		.valid_modes_mask       = REGULATOR_MODE_NORMAL
+					| REGULATOR_MODE_STANDBY,
+		.valid_ops_mask         = REGULATOR_CHANGE_MODE
+					| REGULATOR_CHANGE_STATUS,
+	},
+	.num_consumer_supplies  = 1,
+	.consumer_supplies      = &zoom_vdds_dsi_supply,
 };
 
 static int zoom_twl_gpio_setup(struct device *dev,
@@ -340,7 +340,7 @@ static struct twl4030_platform_data zoom_twldata = {
 	.vmmc1          = &zoom_vmmc1,
 	.vmmc2          = &zoom_vmmc2,
 	.vsim           = &zoom_vsim,
-	.vpll2		= &zoom_vpll2,
+	.vpll2		= &zoom_vdsi,
 	.vdac		= &zoom_vdac,
 
 };
