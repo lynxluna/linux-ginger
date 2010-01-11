@@ -2,6 +2,8 @@
  *  linux/drivers/mmc/sdio.c
  *
  *  Copyright 2006-2007 Pierre Ossman
+ *  Support for embedded sdio card quirks by:
+ *	San Mehat		<san@google.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -227,7 +229,7 @@ static int mmc_sdio_init_card(struct mmc_host *host, u32 ocr,
 			      struct mmc_card *oldcard)
 {
 	struct mmc_card *card;
-	int err;
+	int err, funcs;
 
 	BUG_ON(!host);
 	WARN_ON(!host->claimed);
@@ -247,7 +249,16 @@ static int mmc_sdio_init_card(struct mmc_host *host, u32 ocr,
 		if (err)
 			goto err;
 	}
+/*
+ *	The number of functions on the card is encoded inside
+ *	the ocr.
+ */
+	funcs = (ocr & 0x70000000) >> 28;
 
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+	if (host->embedded_sdio_data.funcs)
+		funcs = host->embedded_sdio_data.num_funcs;
+#endif
 	/*
 	 * Allocate card structure.
 	 */
@@ -256,8 +267,13 @@ static int mmc_sdio_init_card(struct mmc_host *host, u32 ocr,
 		err = PTR_ERR(card);
 		goto err;
 	}
+	card->sdio_funcs = funcs;
 
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+	card->quirks = host->embedded_sdio_data.quirks;
+#endif
 	card->type = MMC_TYPE_SDIO;
+	host->card = card;
 
 	/*
 	 * For native busses:  set card RCA and quit open drain mode.
@@ -282,16 +298,33 @@ static int mmc_sdio_init_card(struct mmc_host *host, u32 ocr,
 	/*
 	 * Read the common registers.
 	 */
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+	if (host->embedded_sdio_data.cccr)
+		memcpy(&card->cccr, host->embedded_sdio_data.cccr,
+			sizeof(struct sdio_cccr));
+	else {
+#endif
 	err = sdio_read_cccr(card);
 	if (err)
 		goto remove;
-
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+	}
+#endif
 	/*
 	 * Read the common CIS tuples.
 	 */
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+	if (host->embedded_sdio_data.cis)
+		memcpy(&card->cis, host->embedded_sdio_data.cis,
+			sizeof(struct sdio_cis));
+	else {
+#endif
 	err = sdio_read_common_cis(card);
 	if (err)
 		goto remove;
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+	}
+#endif
 
 	if (oldcard) {
 		int same = (card->cis.vendor == oldcard->cis.vendor &&
@@ -493,7 +526,18 @@ int mmc_attach_sdio(struct mmc_host *host, u32 ocr)
 		       mmc_hostname(host));
 		ocr &= ~0x7F;
 	}
-
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+	if (!host->embedded_sdio_data.quirks & MMC_QUIRK_VDD_165_195) {
+#endif
+		if (ocr & MMC_VDD_165_195) {
+			pr_warning("%s: "
+			"SDIO: claims to support 'low voltage range' Ignore it"
+			"\n", mmc_hostname(host));
+			ocr &= ~MMC_VDD_165_195;
+		}
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+	}
+#endif
 	host->ocr = mmc_select_voltage(host, ocr);
 
 	/*
@@ -513,25 +557,38 @@ int mmc_attach_sdio(struct mmc_host *host, u32 ocr)
 	card = host->card;
 
 	/*
-	 * The number of functions on the card is encoded inside
-	 * the ocr.
-	 */
-	card->sdio_funcs = funcs = (ocr & 0x70000000) >> 28;
-
-	/*
 	 * If needed, disconnect card detection pull-up resistor.
 	 */
 	err = sdio_disable_cd(card);
 	if (err)
 		goto remove;
 
+	funcs = card->sdio_funcs;
 	/*
 	 * Initialize (but don't add) all present functions.
 	 */
 	for (i = 0;i < funcs;i++) {
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+		if (host->embedded_sdio_data.funcs) {
+			struct sdio_func *tmp;
+			tmp = sdio_alloc_func(host->card);
+			if (IS_ERR(tmp))
+				goto remove;
+			tmp->num = (i + 1);
+			card->sdio_func[i] = tmp;
+			tmp->class = host->embedded_sdio_data.funcs[i].f_class;
+			tmp->max_blksize =
+				host->embedded_sdio_data.funcs[i].f_maxblksize;
+			tmp->vendor = card->cis.vendor;
+			tmp->device = card->cis.device;
+		} else {
+#endif
 		err = sdio_init_func(host->card, i + 1);
 		if (err)
 			goto remove;
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+		}
+#endif
 	}
 
 	mmc_release_host(host);

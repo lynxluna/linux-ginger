@@ -5,6 +5,8 @@
  *  SD support Copyright (C) 2004 Ian Molton, All Rights Reserved.
  *  Copyright (C) 2005-2008 Pierre Ossman, All Rights Reserved.
  *  MMCv4 support Copyright (C) 2006 Philip Langdale, All Rights Reserved.
+ *  Support for embedded_sdio_data by:
+ * 	San Mehat		<san@google.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -1326,6 +1328,22 @@ int mmc_resume_host(struct mmc_host *host)
 
 EXPORT_SYMBOL(mmc_resume_host);
 
+#endif
+
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+void mmc_set_embedded_sdio_data(struct mmc_host *host,
+				struct sdio_cis *cis,
+				struct sdio_cccr *cccr,
+				struct sdio_embedded_func *funcs,
+				int num_funcs, unsigned int quirks)
+{
+       host->embedded_sdio_data.cis = cis;
+       host->embedded_sdio_data.cccr = cccr;
+       host->embedded_sdio_data.funcs = funcs;
+       host->embedded_sdio_data.num_funcs = num_funcs;
+       host->embedded_sdio_data.quirks = quirks;
+}
+EXPORT_SYMBOL(mmc_set_embedded_sdio_data);
 #endif
 
 static int __init mmc_init(void)
