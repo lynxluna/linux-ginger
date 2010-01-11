@@ -32,6 +32,7 @@
 #include <linux/io.h>
 #include <linux/device.h>
 
+#include <plat/vrfb.h>
 #include <plat/display.h>
 #include <plat/clock.h>
 
@@ -84,6 +85,8 @@ int dss_need_ctx_restore(void)
 {
 	int id = dss_get_ctx_id();
 
+	if (id == 0)
+		return is_dss_control_reset();
 	if (id < 0 || id != core.ctx_id) {
 		DSSDBG("ctx id %d -> id %d\n",
 				core.ctx_id, id);
@@ -120,6 +123,7 @@ static void restore_all_ctx(void)
 #ifdef CONFIG_OMAP2_DSS_DSI
 	dsi_restore_context();
 #endif
+	omap_vrfb_restore_context();
 
 	dss_clk_disable_all_no_ctx();
 }

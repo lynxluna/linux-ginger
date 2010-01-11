@@ -40,6 +40,7 @@
 #else
 #define FCK_MAX_DIV			16
 #endif
+#define VENC_CLOCK_4X_ENABLE		1<<4
 
 struct dss_reg {
 	u16 idx;
@@ -91,6 +92,14 @@ static inline u32 dss_read_reg(const struct dss_reg idx)
 	dss.ctx[(DSS_##reg).idx / sizeof(u32)] = dss_read_reg(DSS_##reg)
 #define RR(reg) \
 	dss_write_reg(DSS_##reg, dss.ctx[(DSS_##reg).idx / sizeof(u32)])
+
+int is_dss_control_reset(void)
+{
+	if (!(dss_read_reg(DSS_CONTROL) & VENC_CLOCK_4X_ENABLE))
+		return 1;
+
+	return 0;
+}
 
 void dss_save_context(void)
 {
@@ -558,11 +567,9 @@ int dss_init(bool skip_init)
 	/* Select DPLL */
 	REG_FLD_MOD(DSS_CONTROL, 0, 0, 0);
 
-#ifdef CONFIG_OMAP2_DSS_VENC
 	REG_FLD_MOD(DSS_CONTROL, 1, 4, 4);	/* venc dac demen */
 	REG_FLD_MOD(DSS_CONTROL, 1, 3, 3);	/* venc clock 4x enable */
 	REG_FLD_MOD(DSS_CONTROL, 0, 2, 2);	/* venc clock mode = normal */
-#endif
 
 	r = request_irq(INT_24XX_DSS_IRQ,
 			cpu_is_omap24xx()
