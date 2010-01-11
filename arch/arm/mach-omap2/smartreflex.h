@@ -115,6 +115,7 @@
 #define SR_TESTING_NVALUES 	0
 #endif
 
+extern struct dentry *pm_dbg_main_dir;
 #ifdef CONFIG_OMAP_SMARTREFLEX
 /**
  * omap_smartreflex_class_data : Structure to be populated by

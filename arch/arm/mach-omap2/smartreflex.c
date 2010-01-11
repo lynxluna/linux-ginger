@@ -19,17 +19,19 @@
 #include <linux/module.h>
 #include <linux/err.h>
 #include <linux/clk.h>
-#include <linux/sysfs.h>
 #include <linux/kobject.h>
 #include <linux/i2c/twl.h>
 #include <linux/io.h>
 #include <linux/list.h>
+#include <linux/debugfs.h>
 
 #include <plat/opp.h>
 #include <plat/opp_twl_tps.h>
 #include <plat/omap_device.h>
 
 #include "smartreflex.h"
+
+#define SMARTREFLEX_NAME_LEN	16
 
 struct omap_sr {
 	int			srid;
@@ -261,6 +263,9 @@ static void sr_start_vddautocomap(int srid)
 		sr_configure(sr);
 	}
 
+	if (sr->is_autocomp_active == 1)
+		return;
+
 	sr->is_autocomp_active = 1;
 	if (!sr_class->enable(srid)) {
 		sr->is_autocomp_active = 0;
@@ -459,6 +464,8 @@ void omap_smartreflex_disable(int srid)
  */
 void omap_sr_register_class(struct omap_smartreflex_class_data *class_data)
 {
+	struct omap_sr *sr_info;
+
 	if (!class_data) {
 		pr_warning("Smartreflex class data passed is NULL\n");
 		return;
@@ -468,93 +475,48 @@ void omap_sr_register_class(struct omap_smartreflex_class_data *class_data)
 		return;
 	}
 	sr_class = class_data;
-}
 
-/* Sysfs interface to select SR VDD1 auto compensation */
-static ssize_t omap_sr_vdd1_autocomp_show(struct kobject *kobj,
-					struct kobj_attribute *attr, char *buf)
-{
-	struct omap_sr *sr_info = _sr_lookup(SR1);
-
-	if (!sr_info) {
-		pr_warning("omap_sr struct corresponding to SR1 not found\n");
-		return 0;
+	/* Check if any SR module needs to be enabled as part of init.
+	 * In case the probe for the SR module is not yet called the enable
+	 * will not be done here but will be done in the probe whenever
+	 * it gets called.
+	 */
+	list_for_each_entry(sr_info, &sr_list, node) {
+		struct omap_smartreflex_data *pdata =
+				sr_info->pdev->dev.platform_data;
+		if (pdata->init_enable)
+			sr_start_vddautocomap(sr_info->srid);
 	}
-	return sprintf(buf, "%d\n", sr_info->is_autocomp_active);
 }
 
-static ssize_t omap_sr_vdd1_autocomp_store(struct kobject *kobj,
-					struct kobj_attribute *attr,
-					const char *buf, size_t n)
+/* PM Debug Fs enteries to enable disable smartreflex. */
+static int omap_sr_autocomp_show(void *data, u64 *val)
 {
-	unsigned short value;
-
-	if (sscanf(buf, "%hu", &value) != 1 || (value > 1)) {
-		pr_err("sr_vdd1_autocomp: Invalid value\n");
-		return -EINVAL;
-	}
-
-	if (value == 0) {
-		sr_stop_vddautocomap(SR1);
-	} else
-		sr_start_vddautocomap(SR1);
-	return n;
+	struct omap_sr *sr_info = (struct omap_sr *) data;
+	*val = sr_info->is_autocomp_active;
+	return 0;
 }
 
-static struct kobj_attribute sr_vdd1_autocomp = {
-	.attr = {
-	.name = __stringify(sr_vdd1_autocomp),
-	.mode = 0644,
-	},
-	.show = omap_sr_vdd1_autocomp_show,
-	.store = omap_sr_vdd1_autocomp_store,
-};
-
-/* Sysfs interface to select SR VDD2 auto compensation */
-static ssize_t omap_sr_vdd2_autocomp_show(struct kobject *kobj,
-					struct kobj_attribute *attr, char *buf)
+static int omap_sr_autocomp_store(void *data, u64 val)
 {
-	struct omap_sr *sr_info = _sr_lookup(SR2);
-
-	if (!sr_info) {
-		pr_warning("omap_sr struct corresponding to SR2 not found\n");
-		return 0;
-	}
-	return sprintf(buf, "%d\n", sr_info->is_autocomp_active);
+	struct omap_sr *sr_info = (struct omap_sr *) data;
+	if (val == 0)
+		sr_stop_vddautocomap(sr_info->srid);
+	else
+		sr_start_vddautocomap(sr_info->srid);
+	return 0;
 }
 
-static ssize_t omap_sr_vdd2_autocomp_store(struct kobject *kobj,
-					struct kobj_attribute *attr,
-					const char *buf, size_t n)
-{
-	unsigned short value;
-
-	if (sscanf(buf, "%hu", &value) != 1 || (value > 1)) {
-		pr_err("sr_vdd2_autocomp: Invalid value\n");
-		return -EINVAL;
-	}
-
-	if (value == 0) {
-		sr_stop_vddautocomap(SR2);
-	} else
-		sr_start_vddautocomap(SR2);
-	return n;
-}
-
-static struct kobj_attribute sr_vdd2_autocomp = {
-	.attr = {
-	.name = __stringify(sr_vdd2_autocomp),
-	.mode = 0644,
-	},
-	.show = omap_sr_vdd2_autocomp_show,
-	.store = omap_sr_vdd2_autocomp_store,
-};
+DEFINE_SIMPLE_ATTRIBUTE(pm_sr_fops, omap_sr_autocomp_show,
+		omap_sr_autocomp_store, "%llu\n");
 
 static int __devinit omap_smartreflex_probe(struct platform_device *pdev)
 {
 	struct omap_sr *sr_info = kzalloc(sizeof(struct omap_sr), GFP_KERNEL);
 	struct omap_device *odev = to_omap_device(pdev);
+	struct omap_smartreflex_data *pdata = pdev->dev.platform_data;
 	int ret = 0;
+	char name[SMARTREFLEX_NAME_LEN];
 
 	sr_info->pdev = pdev;
 	sr_info->srid = pdev->id + 1;
@@ -566,18 +528,22 @@ static int __devinit omap_smartreflex_probe(struct platform_device *pdev)
 		sr_info->irq = odev->hwmods[0]->mpu_irqs[0].irq;
 	sr_set_clk_length(sr_info);
 
-	if (sr_info->srid == SR1) {
-		ret = sysfs_create_file(power_kobj, &sr_vdd1_autocomp.attr);
-		if (ret)
-			pr_err("sysfs_create_file failed: %d\n", ret);
-	} else {
-		ret = sysfs_create_file(power_kobj, &sr_vdd2_autocomp.attr);
-		if (ret)
-			pr_err("sysfs_create_file failed: %d\n", ret);
-	}
+	/* Create the debug fs enteries */
+	sprintf(name, "sr%d_autocomp", sr_info->srid);
+	(void) debugfs_create_file(name, S_IRUGO | S_IWUGO, pm_dbg_main_dir,
+				(void *)sr_info, &pm_sr_fops);
 
 	odev->hwmods[0]->dev_attr = sr_info;
 	list_add(&sr_info->node, &sr_list);
+
+	/* Enable the smartreflex module if init_enable flag is set and
+	 * if the class driver is registered. During the registration
+	 * of class driver once again we will check if enabling of the
+	 * sr module is needed or not
+	 */
+	if (pdata->init_enable && sr_class)
+		sr_start_vddautocomap(sr_info->srid);
+
 	pr_info("SmartReflex driver initialized\n");
 
 	return ret;

@@ -909,7 +909,13 @@ static void __init omap_init_smartreflex(void)
 		if (!sr_data)
 			return;
 
-		sr_data->init_enable = false;
+		/* Enable the SR module by default if it is a OMAP3430
+		 * ES3.1 chip
+		 */
+		if (omap_rev() == OMAP3430_REV_ES3_1)
+			sr_data->init_enable = true;
+		else
+			sr_data->init_enable = false;
 		sr_data->device_enable = omap_device_enable;
 		sr_data->device_shutdown = omap_device_shutdown;
 		sr_data->device_idle = omap_device_idle;
