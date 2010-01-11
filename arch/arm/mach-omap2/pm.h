@@ -63,14 +63,6 @@ struct prm_setup_vc {
 	u16 vdd1_ret;
 	u16 vdd1_off;
 };
-#ifdef CONFIG_PM
-extern void omap3_pm_init_vc(struct prm_setup_vc *setup_vc);
-#else
-static inline void omap3_pm_init_vc(struct prm_setup_vc *setup_vc)
-{
-}
-#endif
-
 extern int resource_set_opp_level(int res, u32 target_level, int flags);
 extern int resource_access_opp_lock(int res, int delta);
 #define resource_lock_opp(res) resource_access_opp_lock(res, 1)

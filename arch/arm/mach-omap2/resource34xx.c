@@ -30,6 +30,7 @@
 
 #include "smartreflex.h"
 #include "resource34xx.h"
+#include "voltage.h"
 #include "pm.h"
 #include "cm.h"
 #include "cm-regbits-34xx.h"
@@ -155,6 +156,7 @@ static struct device vdd2_dev;
 static int vdd1_lock;
 static int vdd2_lock;
 static struct clk *dpll1_clk, *dpll2_clk, *dpll3_clk;
+static struct clk *l3_clk;
 static int curr_vdd1_opp;
 static int curr_vdd2_opp;
 static DEFINE_MUTEX(dvfs_mutex);
@@ -214,7 +216,6 @@ static int __deprecated freq_to_opp(u8 *opp_id, enum opp_t opp_type,
  */
 void init_opp(struct shared_resource *resp)
 {
-	struct clk *l3_clk;
 	int ret;
 	u8 opp_id;
 	resp->no_of_users = 0;
@@ -361,12 +362,6 @@ static int program_opp(int res, enum opp_t opp_type, int target_level,
 {
 	int i, ret = 0, raise;
 	unsigned long freq;
-#ifdef CONFIG_OMAP_SMARTREFLEX
-	unsigned long t_opp, c_opp;
-
-	t_opp = ID_VDD(res) | ID_OPP_NO(target_level);
-	c_opp = ID_VDD(res) | ID_OPP_NO(current_level);
-#endif
 
 	/* See if have a freq associated, if not, invalid opp */
 	ret = opp_to_freq(&freq, opp_type, target_level);
@@ -378,11 +373,11 @@ static int program_opp(int res, enum opp_t opp_type, int target_level,
 	else
 		raise = 0;
 
+	omap_smartreflex_disable(res);
 	for (i = 0; i < 2; i++) {
 		if (i == raise)
 			ret = program_opp_freq(res, target_level,
 					current_level);
-#ifdef CONFIG_OMAP_SMARTREFLEX
 		else {
 			u8 vc, vt;
 			struct omap_opp *oppx;
@@ -404,10 +399,10 @@ static int program_opp(int res, enum opp_t opp_type, int target_level,
 			vc = omap_twl_uv_to_vsel(uvdc);
 
 			/* ok to scale.. */
-			sr_voltagescale_vcbypass(t_opp, c_opp, vt, vc);
+			omap_voltage_scale(res, vt, vc);
 		}
-#endif
 	}
+	omap_smartreflex_enable(res);
 
 	return ret;
 }
@@ -597,4 +592,28 @@ int validate_freq(struct shared_resource *resp, u32 target_level)
 	else if (strcmp(resp->name, "dsp_freq") == 0)
 		return freq_to_opp(&x, OPP_DSP, target_level);
 	return 0;
+}
+
+int get_vdd1_opp(void)
+{
+	int ret;
+	u8 opp_id;
+
+	ret = freq_to_opp(&opp_id, OPP_MPU, dpll1_clk->rate);
+	BUG_ON(ret); /* TBD Cleanup handling */
+	curr_vdd1_opp = opp_id;
+
+	return curr_vdd1_opp;
+}
+
+int get_vdd2_opp(void)
+{
+	int ret;
+	u8 opp_id;
+
+	ret = freq_to_opp(&opp_id, OPP_L3, l3_clk->rate);
+	BUG_ON(ret); /* TBD Cleanup handling */
+	curr_vdd2_opp = opp_id;
+
+	return curr_vdd2_opp;
 }

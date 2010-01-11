@@ -15,9 +15,7 @@
  */
 #include <linux/platform_device.h>
 
-#define PHY_TO_OFF_PM_MASTER(p)		(p - 0x36)
 #define PHY_TO_OFF_PM_RECIEVER(p)	(p - 0x5b)
-#define PHY_TO_OFF_PM_INT(p)		(p - 0x2e)
 
 /* SMART REFLEX REG ADDRESS OFFSET */
 #define SRCONFIG	0x00
@@ -37,63 +35,8 @@
 #define SR1		1
 #define SR2		2
 
-#define SR_FAIL		1
-#define SR_PASS		0
-
-#define SR_TRUE		1
-#define SR_FALSE	0
-
 #define GAIN_MAXLIMIT	16
 #define R_MAXLIMIT	256
-
-#define SR1_CLK_ENABLE	BIT(6)
-#define SR2_CLK_ENABLE	BIT(7)
-
-/* PRM_VP1_CONFIG */
-#define PRM_VP1_CONFIG_ERROROFFSET	(0x00 << 24)
-#define PRM_VP1_CONFIG_ERRORGAIN	(0x20 << 16)
-
-#define PRM_VP1_CONFIG_INITVOLTAGE	(0x30 << 8) /* 1.2 volt */
-#define PRM_VP1_CONFIG_TIMEOUTEN	BIT(3)
-#define PRM_VP1_CONFIG_INITVDD		BIT(2)
-#define PRM_VP1_CONFIG_FORCEUPDATE	BIT(1)
-#define PRM_VP1_CONFIG_VPENABLE		BIT(0)
-
-/* PRM_VP1_VSTEPMIN */
-#define PRM_VP1_VSTEPMIN_SMPSWAITTIMEMIN	(0x01F4 << 8)
-#define PRM_VP1_VSTEPMIN_VSTEPMIN		BIT(0)
-
-/* PRM_VP1_VSTEPMAX */
-#define PRM_VP1_VSTEPMAX_SMPSWAITTIMEMAX	(0x01F4 << 8)
-#define PRM_VP1_VSTEPMAX_VSTEPMAX		(0x04 << 0)
-
-/* PRM_VP1_VLIMITTO */
-#define PRM_VP1_VLIMITTO_VDDMAX		(0x3C << 24)
-#define PRM_VP1_VLIMITTO_VDDMIN		(0x0 << 16)
-#define PRM_VP1_VLIMITTO_TIMEOUT	(0xFFFF << 0)
-
-/* PRM_VP2_CONFIG */
-#define PRM_VP2_CONFIG_ERROROFFSET	(0x00 << 24)
-#define PRM_VP2_CONFIG_ERRORGAIN	(0x20 << 16)
-
-#define PRM_VP2_CONFIG_INITVOLTAGE	(0x30 << 8) /* 1.2 volt */
-#define PRM_VP2_CONFIG_TIMEOUTEN	BIT(3)
-#define PRM_VP2_CONFIG_INITVDD		BIT(2)
-#define PRM_VP2_CONFIG_FORCEUPDATE	BIT(1)
-#define PRM_VP2_CONFIG_VPENABLE		BIT(0)
-
-/* PRM_VP2_VSTEPMIN */
-#define PRM_VP2_VSTEPMIN_SMPSWAITTIMEMIN	(0x01F4 << 8)
-#define PRM_VP2_VSTEPMIN_VSTEPMIN		BIT(0)
-
-/* PRM_VP2_VSTEPMAX */
-#define PRM_VP2_VSTEPMAX_SMPSWAITTIMEMAX	(0x01F4 << 8)
-#define PRM_VP2_VSTEPMAX_VSTEPMAX		(0x04 << 0)
-
-/* PRM_VP2_VLIMITTO */
-#define PRM_VP2_VLIMITTO_VDDMAX		(0x2C << 24)
-#define PRM_VP2_VLIMITTO_VDDMIN		(0x0 << 16)
-#define PRM_VP2_VLIMITTO_TIMEOUT	(0xFFFF << 0)
 
 /* SRCONFIG */
 #define SR1_SRCONFIG_ACCUMDATA		(0x1F4 << 22)
@@ -138,9 +81,6 @@
 #define SR_ERRMAXLIMIT_MASK		(0xFF << 8)
 #define SR_ERRMINLIMIT_MASK		(0xFF << 0)
 
-#define SR_CLKACTIVITY_IOFF_FOFF	(0x00 << 20)
-#define SR_CLKACTIVITY_IOFF_FON		(0x02 << 20)
-
 /* IDLEMODE SETTINGS for OMAP3630 */
 #define SR_IDLEMODE_MASK		(0x3 << 24)
 #define SR_FORCE_IDLE			0x0
@@ -161,89 +101,13 @@
 #define SR2_ERRMAXLIMIT			(0x02 << 8)
 #define SR2_ERRMINLIMIT			(0xF9 << 0)
 
-/* T2 SMART REFLEX */
-#define R_SRI2C_SLAVE_ADDR		0x12
-#define R_VDD1_SR_CONTROL		0x00
-#define R_VDD2_SR_CONTROL		0x01
-#define T2_SMPS_UPDATE_DELAY		360	/* In uSec */
 
 /* Vmode control */
 #define R_DCDC_GLOBAL_CFG	PHY_TO_OFF_PM_RECIEVER(0x61)
 
-#define R_VDD1_VSEL		PHY_TO_OFF_PM_RECIEVER(0xb9)
-#define R_VDD1_VMODE_CFG	PHY_TO_OFF_PM_RECIEVER(0xba)
-#define R_VDD1_VFLOOR		PHY_TO_OFF_PM_RECIEVER(0xbb)
-#define R_VDD1_VROOF		PHY_TO_OFF_PM_RECIEVER(0xbc)
-#define R_VDD1_STEP		PHY_TO_OFF_PM_RECIEVER(0xbd)
-
-#define R_VDD2_VSEL		PHY_TO_OFF_PM_RECIEVER(0xc7)
-#define R_VDD2_VMODE_CFG	PHY_TO_OFF_PM_RECIEVER(0xc8)
-#define R_VDD2_VFLOOR		PHY_TO_OFF_PM_RECIEVER(0xc9)
-#define R_VDD2_VROOF		PHY_TO_OFF_PM_RECIEVER(0xca)
-#define R_VDD2_STEP		PHY_TO_OFF_PM_RECIEVER(0xcb)
-
 /* R_DCDC_GLOBAL_CFG register, SMARTREFLEX_ENABLE values */
 #define DCDC_GLOBAL_CFG_ENABLE_SRFLX	0x08
 
-#define PRCM_MAX_SYSC_REGS 30
-
-/*
- * XXX: These should be removed/moved from here once we have a working DVFS
- * implementation in place
- */
-#define AT_3430		1	/*3430 ES 1.0 */
-#define AT_3430_ES2	2	/*3430 ES 2.0 */
-
-#define ID_OPP			0xE2 	/*OPP*/
-
-/* DEVICE ID/DPLL ID/CLOCK ID: bits 28-31 for OMAP type */
-#define OMAP_TYPE_SHIFT		28
-#define OMAP_TYPE_MASK		0xF
-/* OPP ID: bits: 0-4 for OPP number */
-#define OPP_NO_POS		0
-#define OPP_NO_MASK		0x1F
-/* OPP ID: bits: 5-6 for VDD */
-#define VDD_NO_POS		5
-#define VDD_NO_MASK		0x3
-/* Other IDs: bits 20-27 for ID type */
-/* These IDs have bits 25,26,27 as 1 */
-#define OTHER_ID_TYPE_SHIFT		20
-#define OTHER_ID_TYPE_MASK		0xFF
-
-#define OTHER_ID_TYPE(X) ((X & OTHER_ID_TYPE_MASK) << OTHER_ID_TYPE_SHIFT)
-#define ID_OPP_NO(X)	 ((X & OPP_NO_MASK) << OPP_NO_POS)
-#define ID_VDD(X)	 ((X & VDD_NO_MASK) << VDD_NO_POS)
-#define OMAP(X)		 ((X >> OMAP_TYPE_SHIFT) & OMAP_TYPE_MASK)
-#define get_opp_no(X)	 ((X >> OPP_NO_POS) & OPP_NO_MASK)
-#define get_vdd(X)	 ((X >> VDD_NO_POS) & VDD_NO_MASK)
-
-/* VDD1 OPPs */
-#define PRCM_VDD1_OPP1		(OMAP(AT_3430_ES2) | OTHER_ID_TYPE(ID_OPP) | \
-					ID_VDD(PRCM_VDD1) | ID_OPP_NO(0x1))
-#define PRCM_VDD1_OPP2		(OMAP(AT_3430_ES2) | OTHER_ID_TYPE(ID_OPP) | \
-					ID_VDD(PRCM_VDD1) | ID_OPP_NO(0x2))
-#define PRCM_VDD1_OPP3		(OMAP(AT_3430_ES2) | OTHER_ID_TYPE(ID_OPP) | \
-					ID_VDD(PRCM_VDD1) | ID_OPP_NO(0x3))
-#define PRCM_VDD1_OPP4		(OMAP(AT_3430_ES2) | OTHER_ID_TYPE(ID_OPP) | \
-					ID_VDD(PRCM_VDD1) | ID_OPP_NO(0x4))
-#define PRCM_VDD1_OPP5		(OMAP(AT_3430_ES2) | OTHER_ID_TYPE(ID_OPP) | \
-					ID_VDD(PRCM_VDD1) | ID_OPP_NO(0x5))
-#define PRCM_NO_VDD1_OPPS	5
-
-
-/* VDD2 OPPs */
-#define PRCM_VDD2_OPP1		(OMAP(AT_3430_ES2) | OTHER_ID_TYPE(ID_OPP) | \
-					ID_VDD(PRCM_VDD2) | ID_OPP_NO(0x1))
-#define PRCM_VDD2_OPP2		(OMAP(AT_3430_ES2) | OTHER_ID_TYPE(ID_OPP) | \
-					ID_VDD(PRCM_VDD2) | ID_OPP_NO(0x2))
-#define PRCM_VDD2_OPP3		(OMAP(AT_3430_ES2) | OTHER_ID_TYPE(ID_OPP) | \
-					ID_VDD(PRCM_VDD2) | ID_OPP_NO(0x3))
-#define PRCM_NO_VDD2_OPPS	3
-/* XXX: end remove/move */
-
-/* XXX: find more appropriate place for these once DVFS is in place */
-extern u32 current_vdd1_opp;
-extern u32 current_vdd2_opp;
 
 #ifdef CONFIG_OMAP_SMARTREFLEX_TESTING
 #define SR_TESTING_NVALUES 	1
@@ -251,12 +115,27 @@ extern u32 current_vdd2_opp;
 #define SR_TESTING_NVALUES 	0
 #endif
 
-/*
- * Smartreflex module enable/disable interface.
- * NOTE: if smartreflex is not enabled from sysfs, these functions will not
- * do anything.
- */
 #ifdef CONFIG_OMAP_SMARTREFLEX
+/**
+ * omap_smartreflex_class_data : Structure to be populated by
+ * Smartreflex class driver with corresponding class enable disable API's
+ *
+ * @enable - API to enable a particular class smaartreflex.
+ * @disable - API to disable a particular class smartreflex.
+ * @notify - API to notify the class driver about an event in SR. Not needed
+ *		for class3.
+ * @notify_flags - specify the events to be notified to the class driver
+ * @class_type - specify which smartreflex class. Can be used by the SR driver
+ * 		to tkae any class based decisions.
+ */
+struct omap_smartreflex_class_data {
+	int (*enable)(int sr_id);
+	int (*disable)(int sr_id);
+	int (*notify)(int sr_id, u32 status);
+	u8 notify_flags;
+	u8 class_type;
+};
+
 /**
  * omap_smartreflex_data - Smartreflex platform data
  *
@@ -278,15 +157,32 @@ struct omap_smartreflex_data {
 	int (*device_idle)(struct platform_device *pdev);
 };
 
-void enable_smartreflex(int srid);
-void disable_smartreflex(int srid);
-int sr_voltagescale_vcbypass(u32 t_opp, u32 c_opp, u8 t_vsel, u8 c_vsel);
-void sr_start_vddautocomap(int srid, u32 target_opp_no);
-int sr_stop_vddautocomap(int srid);
+/*
+ * Smartreflex module enable/disable interface.
+ * NOTE: if smartreflex is not enabled from sysfs, these functions will not
+ * do anything.
+ */
+void omap_smartreflex_enable(int srid);
+void omap_smartreflex_disable(int srid);
+
+/**
+ * Smartreflex driver hooks to be called from Smartreflex class driver
+ */
+int sr_enable(int srid, u32 target_opp_no);
+void sr_disable(int srid);
+
+/**
+ * API to register the smartreflex class driver with the smartreflex driver
+ */
+void omap_sr_register_class(struct omap_smartreflex_class_data *class_data);
+
+/**
+ * API that board file can use if needed to calculate the N target values
+ */
 u32 cal_test_nvalue(u32 sennval, u32 senpval);
 #else
-static inline void enable_smartreflex(int srid) {}
-static inline void disable_smartreflex(int srid) {}
+static inline void omap_smartreflex_enable(int srid) {}
+static inline void omap_smartreflex_disable(int srid) {}
 #endif
 
 #endif

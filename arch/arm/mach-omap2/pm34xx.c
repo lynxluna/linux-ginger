@@ -47,8 +47,8 @@
 #include "cm.h"
 #include "cm-regbits-34xx.h"
 #include "prm-regbits-34xx.h"
-
 #include "smartreflex.h"
+#include "voltage.h"
 #include "prm.h"
 #include "pm.h"
 #include "sdrc.h"
@@ -96,28 +96,6 @@ static int (*_omap_save_secure_sram)(u32 *addr);
 static struct powerdomain *mpu_pwrdm, *neon_pwrdm;
 static struct powerdomain *core_pwrdm, *per_pwrdm;
 static struct powerdomain *cam_pwrdm;
-
-static struct prm_setup_vc prm_setup = {
-	/* CLK SETUPTIME for RET & OFF */
-	.clksetup_ret = 0xff,
-	.clksetup_off = 0xff,
-	/* VOLT SETUPTIME for RET & OFF */
-	.voltsetup_time1_ret = 0xfff,
-	.voltsetup_time2_ret = 0xfff,
-	.voltsetup_time1_off = 0xfff,
-	.voltsetup_time2_off = 0xfff,
-	.voltoffset = 0xff,
-	.voltsetup2 = 0xff,
-	/* VC COMMAND VALUES for VDD1/VDD2 */
-	.vdd0_on = 0x30,	/* 1.2v */
-	.vdd0_onlp = 0x20,	/* 1.0v */
-	.vdd0_ret = 0x1e,	/* 0.975v */
-	.vdd0_off = 0x00,	/* 0.6v */
-	.vdd1_on = 0x2c,	/* 1.15v */
-	.vdd1_onlp = 0x20,	/* 1.0v */
-	.vdd1_ret = 0x1e,	/* .975v */
-	.vdd1_off = 0x00,	/* 0.6v */
-};
 
 static inline void omap3_per_save_context(void)
 {
@@ -397,9 +375,6 @@ void omap_sram_idle(void)
 	u32 sdrc_pwr = 0;
 	int per_state_modified = 0;
 	u32 fclk_status;
-	u16 clksetup = 0xff;
-	u16 voltsetup_time1 = 0xfff;
-	u16 voltsetup_time2 = 0xfff;
 
 	if (!_omap_sram_idle)
 		return;
@@ -470,11 +445,6 @@ void omap_sram_idle(void)
 		omap_uart_prepare_idle(0, core_next_state & core_logic_state);
 		omap_uart_prepare_idle(1, core_next_state & core_logic_state);
 		if (core_next_state == PWRDM_POWER_OFF) {
-			/* VOLT & CLK SETUPTIME for OFF */
-			clksetup = prm_setup.clksetup_off;
-			voltsetup_time1 = prm_setup.voltsetup_time1_off;
-			voltsetup_time2 = prm_setup.voltsetup_time2_off;
-
 			u32 voltctrl = OMAP3430_AUTO_OFF;
 
 			if (voltage_off_while_idle)
@@ -499,23 +469,11 @@ void omap_sram_idle(void)
 						OMAP3430_GR_MOD,
 						OMAP3_PRM_VOLTCTRL_OFFSET);
 		} else if (core_next_state == PWRDM_POWER_RET) {
-			/* VOLT & CLK SETUPTIME for RET */
-			clksetup = prm_setup.clksetup_ret;
-			voltsetup_time1 = prm_setup.voltsetup_time1_ret;
-			voltsetup_time2 = prm_setup.voltsetup_time2_ret;
-
 			prm_set_mod_reg_bits(OMAP3430_AUTO_RET,
 						OMAP3430_GR_MOD,
 						OMAP3_PRM_VOLTCTRL_OFFSET);
 		}
-		/* Write setup times */
-		prm_write_mod_reg(clksetup, OMAP3430_GR_MOD,
-				OMAP3_PRM_CLKSETUP_OFFSET);
-		prm_write_mod_reg((voltsetup_time2 <<
-				OMAP3430_SETUP_TIME2_SHIFT) |
-				(voltsetup_time1 <<
-				OMAP3430_SETUP_TIME1_SHIFT),
-				OMAP3430_GR_MOD, OMAP3_PRM_VOLTSETUP1_OFFSET);
+		update_voltsetup_time(core_next_state);
 
 		/* Enable IO-PAD and IO-CHAIN wakeups */
 		prm_set_mod_reg_bits(OMAP3430_EN_IO, WKUP_MOD, PM_WKEN);
@@ -533,9 +491,9 @@ void omap_sram_idle(void)
 
 	if (!fclk_status) {
 		if (mpu_next_state <= PWRDM_POWER_RET)
-			disable_smartreflex(SR1);
+			omap_smartreflex_disable(SR1);
 		if (core_next_state <= PWRDM_POWER_RET)
-			disable_smartreflex(SR2);
+			omap_smartreflex_disable(SR2);
 	}
 
 	/*
@@ -627,9 +585,9 @@ void omap_sram_idle(void)
 	 */
 	if (!fclk_status) {
 		if (mpu_next_state <= PWRDM_POWER_RET)
-			enable_smartreflex(SR1);
+			omap_smartreflex_enable(SR1);
 		if (core_next_state <= PWRDM_POWER_RET)
-			enable_smartreflex(SR2);
+			omap_smartreflex_enable(SR2);
 	}
 	/* PER */
 	if (per_next_state < PWRDM_POWER_ON) {
@@ -1188,32 +1146,6 @@ int omap3_pm_set_suspend_state(struct powerdomain *pwrdm, int state)
 	return -EINVAL;
 }
 
-void omap3_pm_init_vc(struct prm_setup_vc *setup_vc)
-{
-	if (!setup_vc)
-		return;
-	/* CLK SETUPTIME for RET & OFF */
-	prm_setup.clksetup_ret = setup_vc->clksetup_ret;
-	prm_setup.clksetup_off = setup_vc->clksetup_off;
-	/* VOLT SETUPTIME for RET & OFF */
-	prm_setup.voltsetup_time1_ret = setup_vc->voltsetup_time1_ret;
-	prm_setup.voltsetup_time2_ret = setup_vc->voltsetup_time2_ret;
-	prm_setup.voltsetup_time1_off = setup_vc->voltsetup_time1_off;
-	prm_setup.voltsetup_time2_off = setup_vc->voltsetup_time2_off;
-
-	/* VC COMMAND VALUES for VDD1/VDD2 */
-	prm_setup.voltoffset = setup_vc->voltoffset;
-	prm_setup.voltsetup2 = setup_vc->voltsetup2;
-	prm_setup.vdd0_on = setup_vc->vdd0_on;
-	prm_setup.vdd0_onlp = setup_vc->vdd0_onlp;
-	prm_setup.vdd0_ret = setup_vc->vdd0_ret;
-	prm_setup.vdd0_off = setup_vc->vdd0_off;
-	prm_setup.vdd1_on = setup_vc->vdd1_on;
-	prm_setup.vdd1_onlp = setup_vc->vdd1_onlp;
-	prm_setup.vdd1_ret = setup_vc->vdd1_ret;
-	prm_setup.vdd1_off = setup_vc->vdd1_off;
-}
-
 int omap3_get_max_vdd1_opp(void)
 {
 	if (cpu_is_omap3630())
@@ -1389,57 +1321,12 @@ err2:
 	return ret;
 }
 
-static void __init configure_vc(void)
-{
-
-	prm_write_mod_reg((R_SRI2C_SLAVE_ADDR << OMAP3430_SMPS_SA1_SHIFT) |
-			  (R_SRI2C_SLAVE_ADDR << OMAP3430_SMPS_SA0_SHIFT),
-			  OMAP3430_GR_MOD, OMAP3_PRM_VC_SMPS_SA_OFFSET);
-	prm_write_mod_reg((R_VDD2_SR_CONTROL << OMAP3430_VOLRA1_SHIFT) |
-			  (R_VDD1_SR_CONTROL << OMAP3430_VOLRA0_SHIFT),
-			  OMAP3430_GR_MOD, OMAP3_PRM_VC_SMPS_VOL_RA_OFFSET);
-
-	prm_write_mod_reg((prm_setup.vdd0_on << OMAP3430_VC_CMD_ON_SHIFT) |
-		(prm_setup.vdd0_onlp << OMAP3430_VC_CMD_ONLP_SHIFT) |
-		(prm_setup.vdd0_ret << OMAP3430_VC_CMD_RET_SHIFT) |
-		(prm_setup.vdd0_off << OMAP3430_VC_CMD_OFF_SHIFT),
-		OMAP3430_GR_MOD, OMAP3_PRM_VC_CMD_VAL_0_OFFSET);
-
-	prm_write_mod_reg((prm_setup.vdd1_on << OMAP3430_VC_CMD_ON_SHIFT) |
-		(prm_setup.vdd1_onlp << OMAP3430_VC_CMD_ONLP_SHIFT) |
-		(prm_setup.vdd1_ret << OMAP3430_VC_CMD_RET_SHIFT) |
-		(prm_setup.vdd1_off << OMAP3430_VC_CMD_OFF_SHIFT),
-		OMAP3430_GR_MOD, OMAP3_PRM_VC_CMD_VAL_1_OFFSET);
-
-	prm_write_mod_reg(OMAP3430_CMD1 | OMAP3430_RAV1, OMAP3430_GR_MOD,
-			  OMAP3_PRM_VC_CH_CONF_OFFSET);
-
-	prm_write_mod_reg(OMAP3430_MCODE_SHIFT | OMAP3430_HSEN,
-			  OMAP3430_GR_MOD,
-			  OMAP3_PRM_VC_I2C_CFG_OFFSET);
-
-	/* Write setup times */
-	prm_write_mod_reg(prm_setup.clksetup_ret, OMAP3430_GR_MOD,
-			OMAP3_PRM_CLKSETUP_OFFSET);
-	prm_write_mod_reg((prm_setup.voltsetup_time2_ret <<
-			OMAP3430_SETUP_TIME2_SHIFT) |
-			(prm_setup.voltsetup_time1_ret <<
-			OMAP3430_SETUP_TIME1_SHIFT),
-			OMAP3430_GR_MOD, OMAP3_PRM_VOLTSETUP1_OFFSET);
-
-	prm_write_mod_reg(prm_setup.voltoffset, OMAP3430_GR_MOD,
-			OMAP3_PRM_VOLTOFFSET_OFFSET);
-	prm_write_mod_reg(prm_setup.voltsetup2, OMAP3430_GR_MOD,
-			OMAP3_PRM_VOLTSETUP2_OFFSET);
-}
-
-
 static int __init omap3_pm_early_init(void)
 {
 	prm_clear_mod_reg_bits(OMAP3430_OFFMODE_POL, OMAP3430_GR_MOD,
 				OMAP3_PRM_POLCTRL_OFFSET);
-
-	configure_vc();
+	/* Initializes OMAP3 voltage modules*/
+	omap_voltage_init();
 
 	return 0;
 }

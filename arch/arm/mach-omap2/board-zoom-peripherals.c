@@ -31,6 +31,7 @@
 #include "mmc-twl4030.h"
 #include "twl4030-script.h"
 #include "pm.h"
+#include "voltage.h"
 
 #define OMAP_SYNAPTICS_GPIO		163
 
@@ -399,5 +400,5 @@ void __init zoom_peripherals_init(void * peripheral_data)
 	omap_serial_init();
 	usb_musb_init();
 	enable_board_wakeup_source();
-	omap3_pm_init_vc((struct prm_setup_vc *) peripheral_data);
+	omap_voltage_init_vc((struct prm_setup_vc *) peripheral_data);
 }
