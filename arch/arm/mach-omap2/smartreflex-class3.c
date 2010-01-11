@@ -43,6 +43,7 @@ int sr_class3_disable(int id)
 struct omap_smartreflex_class_data class3_data = {
 	.enable = sr_class3_enable,
 	.disable = sr_class3_disable,
+	.class_type = SR_CLASS3,
 };
 
 static int __init sr_class3_init(void)

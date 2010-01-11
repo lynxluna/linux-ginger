@@ -38,8 +38,12 @@ struct omap_sr {
 	int			is_sr_reset;
 	int			is_autocomp_active;
 	u32			clk_length;
-	u32			req_opp_no;
-	u32			senp_mod, senn_mod;
+	u32			err_weight;
+	u32			err_minlimit;
+	u32			err_maxlimit;
+	u32			accum_data;
+	u32			senn_avgweight;
+	u32			senp_avgweight;
 	void __iomem		*srbase_addr;
 	unsigned int    	irq;
 	struct platform_device 	*pdev;
@@ -123,6 +127,32 @@ static void cal_reciprocal(u32 sensor, u32 *sengain, u32 *rnsen)
 	}
 }
 
+static irqreturn_t sr_omap_isr(int irq, void *data)
+{
+	struct omap_sr *sr_info = (struct omap_sr *)data;
+	u32 status = 0;
+
+	if (cpu_is_omap3430()) {
+		/*Read the status bits*/
+		status = sr_read_reg(sr_info, ERRCONFIG);
+
+		/*Clear them by writing back*/
+		sr_write_reg(sr_info, ERRCONFIG, status);
+	} else if (cpu_is_omap3630()) {
+		/*Read the status bits*/
+		status = sr_read_reg(sr_info, ERRCONFIG_36XX);
+
+		/*Clear them by writing back*/
+		sr_write_reg(sr_info, ERRCONFIG_36XX, status);
+	}
+
+	/* Call the class driver notify function if registered*/
+	if (sr_class->class_type == SR_CLASS2 && sr_class->notify)
+		sr_class->notify(sr_info->srid, status);
+
+	return IRQ_HANDLED;
+}
+
 static void sr_set_clk_length(struct omap_sr *sr)
 {
 	struct clk *sys_ck;
@@ -154,93 +184,130 @@ static void sr_set_clk_length(struct omap_sr *sr)
 	}
 }
 
+static void sr_set_regfields(struct omap_sr *sr)
+{
+	/**
+	* For time being these values are defined in smartreflex.h
+	* and populated during init. May be they can be moved to board
+	* file or pmic specific data structure. In that case these structure
+	* fields will have to be populated using the pdata or pmic structure.
+	*/
+	if (cpu_is_omap343x() || cpu_is_omap3630()) {
+		sr->err_weight = OMAP3430_SR_ERRWEIGHT;
+		sr->err_maxlimit = OMAP3430_SR_ERRMAXLIMIT;
+		sr->accum_data = OMAP3430_SR_ACCUMDATA;
+		if (sr->srid == SR1) {
+			sr->err_minlimit = OMAP3430_SR1_ERRMINLIMIT;
+			sr->senn_avgweight = OMAP3430_SR1_SENNAVGWEIGHT;
+			sr->senp_avgweight = OMAP3430_SR1_SENPAVGWEIGHT;
+		} else {
+			sr->err_minlimit = OMAP3430_SR2_ERRMINLIMIT;
+			sr->senn_avgweight = OMAP3430_SR2_SENNAVGWEIGHT;
+			sr->senp_avgweight = OMAP3430_SR2_SENPAVGWEIGHT;
+		}
+	}
+	/*TODO: 3630 and Omap4 specific bit field values */
+}
+
 static void sr_configure(struct omap_sr *sr)
 {
 	u32 sr_config;
 	u32 senp_en , senn_en;
 	struct omap_smartreflex_data *pdata = sr->pdev->dev.platform_data;
 
+	/* Common settings for SR Class3 and SR Class2 */
 	if (sr->clk_length == 0)
 		sr_set_clk_length(sr);
 
 	senp_en = pdata->senp_mod;
 	senn_en = pdata->senn_mod;
-
-	if (sr->srid == SR1) {
-		if (cpu_is_omap3630()) {
-			sr_config = SR1_SRCONFIG_ACCUMDATA |
-				(sr->clk_length << SRCONFIG_SRCLKLENGTH_SHIFT) |
-				SRCONFIG_SENENABLE | SRCONFIG_ERRGEN_EN |
-				SRCONFIG_MINMAXAVG_EN |
-				(senn_en << SRCONFIG_SENNENABLE_SHIFT_36XX) |
-				(senp_en << SRCONFIG_SENPENABLE_SHIFT_36XX);
-
-			sr_write_reg(sr, SRCONFIG, sr_config);
-			sr_write_reg(sr, AVGWEIGHT,
-					SR1_AVGWEIGHT_SENPAVGWEIGHT |
-					SR1_AVGWEIGHT_SENNAVGWEIGHT);
-
-			sr_modify_reg(sr, ERRCONFIG_36XX, (SR_ERRWEIGHT_MASK |
-				SR_ERRMAXLIMIT_MASK | SR_ERRMINLIMIT_MASK),
-				(SR1_ERRWEIGHT | SR1_ERRMAXLIMIT |
-				SR1_ERRMINLIMIT));
-		} else {
-			sr_config = SR1_SRCONFIG_ACCUMDATA |
-				(sr->clk_length << SRCONFIG_SRCLKLENGTH_SHIFT) |
-				SRCONFIG_SENENABLE | SRCONFIG_ERRGEN_EN |
-				SRCONFIG_MINMAXAVG_EN |
-				(senn_en << SRCONFIG_SENNENABLE_SHIFT) |
-				(senp_en << SRCONFIG_SENPENABLE_SHIFT) |
-				SRCONFIG_DELAYCTRL;
-
-			sr_write_reg(sr, SRCONFIG, sr_config);
-			sr_write_reg(sr, AVGWEIGHT,
-					SR1_AVGWEIGHT_SENPAVGWEIGHT |
-					SR1_AVGWEIGHT_SENNAVGWEIGHT);
-
-			sr_modify_reg(sr, ERRCONFIG, (SR_ERRWEIGHT_MASK |
-				SR_ERRMAXLIMIT_MASK | SR_ERRMINLIMIT_MASK),
-				(SR1_ERRWEIGHT | SR1_ERRMAXLIMIT |
-				SR1_ERRMINLIMIT));
-		}
-
-	} else if (sr->srid == SR2) {
-		if (cpu_is_omap3630()) {
-			sr_config = SR2_SRCONFIG_ACCUMDATA |
-				(sr->clk_length << SRCONFIG_SRCLKLENGTH_SHIFT) |
-				SRCONFIG_SENENABLE | SRCONFIG_ERRGEN_EN |
-				SRCONFIG_MINMAXAVG_EN |
-				(senn_en << SRCONFIG_SENNENABLE_SHIFT_36XX) |
-				(senp_en << SRCONFIG_SENPENABLE_SHIFT_36XX);
-
-			sr_write_reg(sr, SRCONFIG, sr_config);
-			sr_write_reg(sr, AVGWEIGHT,
-					SR2_AVGWEIGHT_SENPAVGWEIGHT |
-					SR2_AVGWEIGHT_SENNAVGWEIGHT);
-			sr_modify_reg(sr, ERRCONFIG_36XX, (SR_ERRWEIGHT_MASK |
-				SR_ERRMAXLIMIT_MASK | SR_ERRMINLIMIT_MASK),
-				(SR2_ERRWEIGHT | SR2_ERRMAXLIMIT |
-				SR2_ERRMINLIMIT));
-		} else {
-			sr_config = SR2_SRCONFIG_ACCUMDATA |
-				(sr->clk_length << SRCONFIG_SRCLKLENGTH_SHIFT) |
-				SRCONFIG_SENENABLE | SRCONFIG_ERRGEN_EN |
-				SRCONFIG_MINMAXAVG_EN |
-				(senn_en << SRCONFIG_SENNENABLE_SHIFT) |
-				(senp_en << SRCONFIG_SENPENABLE_SHIFT) |
-				SRCONFIG_DELAYCTRL;
-
-			sr_write_reg(sr, SRCONFIG, sr_config);
-			sr_write_reg(sr, AVGWEIGHT,
-					SR2_AVGWEIGHT_SENPAVGWEIGHT |
-					SR2_AVGWEIGHT_SENNAVGWEIGHT);
-			sr_modify_reg(sr, ERRCONFIG, (SR_ERRWEIGHT_MASK |
-				SR_ERRMAXLIMIT_MASK | SR_ERRMINLIMIT_MASK),
-				(SR2_ERRWEIGHT | SR2_ERRMAXLIMIT |
-				SR2_ERRMINLIMIT));
-		}
-
+	if (cpu_is_omap3430()) {
+		sr_config = (sr->clk_length << SRCONFIG_SRCLKLENGTH_SHIFT) |
+			SRCONFIG_SENENABLE |
+			(senn_en << SRCONFIG_SENNENABLE_SHIFT) |
+			(senp_en << SRCONFIG_SENPENABLE_SHIFT) |
+			SRCONFIG_DELAYCTRL;
+	} else if (cpu_is_omap3630()) {
+		sr_config = (sr->clk_length << SRCONFIG_SRCLKLENGTH_SHIFT) |
+			SRCONFIG_SENENABLE |
+			(senn_en << SRCONFIG_SENNENABLE_SHIFT_36XX) |
+			(senp_en << SRCONFIG_SENPENABLE_SHIFT_36XX);
 	}
+
+	sr_write_reg(sr, SRCONFIG, sr_config);
+
+	if ((sr_class->class_type == SR_CLASS3) || (sr_class->class_type ==
+		SR_CLASS2 && sr_class->mod_use == SR_USE_ERROR_MOD)) {
+		/**
+		* SR settings if using the ERROR module inside Smartreflex.
+		* SR CLASS 3 by default uses only the ERROR module where as
+		* SR CLASS 2 can choose between ERROR module and MINMAXAVG
+		* module.
+		*/
+		u32 sr_errconfig;
+
+		sr_modify_reg(sr, SRCONFIG, SRCONFIG_ERRGEN_EN,
+			SRCONFIG_ERRGEN_EN);
+		sr_errconfig = (sr->err_weight << ERRCONFIG_ERRWEIGHT_SHIFT) |
+			(sr->err_maxlimit << ERRCONFIG_ERRMAXLIMIT_SHIFT) |
+			(sr->err_minlimit <<  ERRCONFIG_ERRMiNLIMIT_SHIFT);
+		if (cpu_is_omap3430()) {
+			sr_modify_reg(sr, ERRCONFIG, (SR_ERRWEIGHT_MASK |
+				SR_ERRMAXLIMIT_MASK | SR_ERRMINLIMIT_MASK),
+				sr_errconfig);
+			/* Enabling the interrupts if the ERROR module is used
+			*/
+			sr_modify_reg(sr, ERRCONFIG,
+				(ERRCONFIG_VPBOUNDINTEN),
+				(ERRCONFIG_VPBOUNDINTEN |
+				ERRCONFIG_VPBOUNDINTST));
+		} else if (cpu_is_omap3630()) {
+			sr_modify_reg(sr, ERRCONFIG_36XX, (SR_ERRWEIGHT_MASK |
+				SR_ERRMAXLIMIT_MASK | SR_ERRMINLIMIT_MASK),
+				sr_errconfig);
+			/* Enabling the interrupts if the ERROR module is used
+			*/
+			sr_modify_reg(sr, ERRCONFIG_36XX,
+				(ERRCONFIG_VPBOUNDINTEN_36XX),
+				(ERRCONFIG_VPBOUNDINTEN_36XX |
+				ERRCONFIG_VPBOUNDINTST_36XX));
+		}
+
+	} else if ((sr_class->class_type == SR_CLASS2) &&
+			(sr_class->mod_use == SR_USE_ERROR_MOD)) {
+		/**
+		* SR settings if using the MINMAXAVG module inside
+		* Smartreflex. SR CLASS 3 does not use this module where as
+		* SR CLASS 2 can choose between ERROR module and MINMAXAVG
+		* module.
+		*/
+		u32 avgwt;
+
+		sr_modify_reg(sr, SRCONFIG, SRCONFIG_ACCUMDATA_MASK,
+			sr->accum_data << SRCONFIG_ACCUMDATA_SHIFT);
+		avgwt = (sr->senp_avgweight << AVGWEIGHT_SENPAVGWEIGHT_SHIFT) |
+			(sr->senn_avgweight << AVGWEIGHT_SENNAVGWEIGHT_SHIFT);
+		sr_write_reg(sr, AVGWEIGHT, avgwt);
+		/* Enabling the interrupts if MINMAXAVG module is used.
+		* TODO: check if all the interrupts are mandatory
+		*/
+		if (cpu_is_omap3430()) {
+			sr_modify_reg(sr, ERRCONFIG,
+			(ERRCONFIG_MCUACCUMINTEN | ERRCONFIG_MCUVALIDINTEN |
+			ERRCONFIG_MCUBOUNDINTEN),
+			(ERRCONFIG_MCUACCUMINTEN | ERRCONFIG_MCUACCUMINTST |
+			ERRCONFIG_MCUVALIDINTEN | ERRCONFIG_MCUVALIDINTST |
+			ERRCONFIG_MCUBOUNDINTEN | ERRCONFIG_MCUBOUNDINTST));
+		} else if (cpu_is_omap3630()) {
+			sr_modify_reg(sr, ERRCONFIG_36XX,
+			(ERRCONFIG_MCUACCUMINTEN | ERRCONFIG_MCUVALIDINTEN |
+			ERRCONFIG_MCUBOUNDINTEN),
+			(ERRCONFIG_MCUACCUMINTEN | ERRCONFIG_MCUACCUMINTST |
+			ERRCONFIG_MCUVALIDINTEN | ERRCONFIG_MCUVALIDINTST |
+			ERRCONFIG_MCUBOUNDINTEN | ERRCONFIG_MCUBOUNDINTST));
+		}
+	}
+
 	sr->is_sr_reset = 0;
 }
 
@@ -350,20 +417,6 @@ int sr_enable(int srid, u32 target_opp_no)
 
 	sr_write_reg(sr, NVALUERECIPROCAL, nvalue_reciprocal);
 
-	if (cpu_is_omap3630()) {
-		/* Enable the interrupt */
-		sr_modify_reg(sr, ERRCONFIG_36XX,
-				(ERRCONFIG_VPBOUNDINTEN_36XX |
-				ERRCONFIG_VPBOUNDINTST_36XX),
-				(ERRCONFIG_VPBOUNDINTEN_36XX |
-				ERRCONFIG_VPBOUNDINTST_36XX));
-	} else {
-		/* Enable the interrupt */
-		sr_modify_reg(sr, ERRCONFIG,
-			(ERRCONFIG_VPBOUNDINTEN | ERRCONFIG_VPBOUNDINTST),
-			(ERRCONFIG_VPBOUNDINTEN | ERRCONFIG_VPBOUNDINTST));
-	}
-
 	/* SRCONFIG - enable SR */
 	sr_modify_reg(sr, SRCONFIG, SRCONFIG_SRENABLE, SRCONFIG_SRENABLE);
 	return true;
@@ -459,8 +512,8 @@ void omap_smartreflex_disable(int srid)
  * omap_sr_register_class : API to register a smartreflex class parameters.
  * @class_data - The structure containing various sr class specific data.
  *
- * This API is to be called by the smartreflex class driver to register itself
- * with the smartreflex driver during init.
+ * This API is to be called by the smartreflex class driver to register
+ * itself with the smartreflex driver during init.
  */
 void omap_sr_register_class(struct omap_smartreflex_class_data *class_data)
 {
@@ -470,20 +523,54 @@ void omap_sr_register_class(struct omap_smartreflex_class_data *class_data)
 		pr_warning("Smartreflex class data passed is NULL\n");
 		return;
 	}
+
 	if (sr_class) {
 		pr_warning("Smartreflex class driver already registered\n");
 		return;
 	}
+
+	if ((class_data->class_type != SR_CLASS2) &&
+			(class_data->class_type != SR_CLASS3)) {
+		pr_warning("SR Class type passed is invalid. So cannot \
+				register the class structure\n");
+		return;
+	}
+
+	if ((class_data->class_type == SR_CLASS2) &&
+			!((class_data->mod_use == SR_USE_MINMAXAVG_MOD) ||
+			(class_data->mod_use == SR_USE_ERROR_MOD))) {
+		pr_warning("SR Class 2 specified but whether to use error \
+				module or minmaxavg module not specified\n");
+		return;
+	}
+
 	sr_class = class_data;
 
 	/* Check if any SR module needs to be enabled as part of init.
 	 * In case the probe for the SR module is not yet called the enable
 	 * will not be done here but will be done in the probe whenever
-	 * it gets called.
+	 * it gets called. Also register the interrupt handler in case
+	 * requested by the class driver.
 	 */
 	list_for_each_entry(sr_info, &sr_list, node) {
 		struct omap_smartreflex_data *pdata =
 				sr_info->pdev->dev.platform_data;
+		if (sr_class->class_type == SR_CLASS2 &&
+				sr_class->notify_flags && sr_info->irq) {
+			char name[SMARTREFLEX_NAME_LEN];
+			int ret;
+
+			sprintf(name, "sr%d", sr_info->srid);
+			ret = request_irq(sr_info->irq, sr_omap_isr,
+					IRQF_DISABLED, name, (void *)sr_info);
+			if (ret < 0) {
+				pr_warning("ERROR in registering interrupt \
+					handler for SR%d Smartreflex will \
+					not function as desired\n",
+					sr_info->srid);
+				return;
+			}
+		}
 		if (pdata->init_enable)
 			sr_start_vddautocomap(sr_info->srid);
 	}
@@ -527,6 +614,7 @@ static int __devinit omap_smartreflex_probe(struct platform_device *pdev)
 	if (odev->hwmods[0]->mpu_irqs)
 		sr_info->irq = odev->hwmods[0]->mpu_irqs[0].irq;
 	sr_set_clk_length(sr_info);
+	sr_set_regfields(sr_info);
 
 	/* Create the debug fs enteries */
 	sprintf(name, "sr%d_autocomp", sr_info->srid);
@@ -539,10 +627,27 @@ static int __devinit omap_smartreflex_probe(struct platform_device *pdev)
 	/* Enable the smartreflex module if init_enable flag is set and
 	 * if the class driver is registered. During the registration
 	 * of class driver once again we will check if enabling of the
-	 * sr module is needed or not
+	 * sr module is needed or not. Also register the interrupt handler
+	 * if requested by the class driver. Again this will be attempted
+	 * in the class driver register if it does not happen here.
 	 */
-	if (pdata->init_enable && sr_class)
-		sr_start_vddautocomap(sr_info->srid);
+	if (sr_class) {
+		if (sr_class->class_type == SR_CLASS2 &&
+				sr_class->notify_flags && sr_info->irq) {
+			sprintf(name, "sr%d", sr_info->srid);
+			ret = request_irq(sr_info->irq, sr_omap_isr,
+					IRQF_DISABLED, name, (void *)sr_info);
+			if (ret < 0) {
+				pr_warning("ERROR in registering interrupt \
+					handler for SR%d. Smartreflex will \
+					not function as desired\n",
+					sr_info->srid);
+				return ret;
+			}
+		}
+		if (pdata->init_enable)
+			sr_start_vddautocomap(sr_info->srid);
+	}
 
 	pr_info("SmartReflex driver initialized\n");
 

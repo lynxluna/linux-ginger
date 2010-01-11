@@ -15,22 +15,6 @@
  */
 #include <linux/platform_device.h>
 
-#define PHY_TO_OFF_PM_RECIEVER(p)	(p - 0x5b)
-
-/* SMART REFLEX REG ADDRESS OFFSET */
-#define SRCONFIG	0x00
-#define SRSTATUS	0x04
-#define SENVAL		0x08
-#define SENMIN		0x0C
-#define SENMAX		0x10
-#define SENAVG		0x14
-#define AVGWEIGHT	0x18
-#define NVALUERECIPROCAL	0x1C
-#define SENERROR	0x20
-#define ERRCONFIG	0x24
-#define SENERROR_36XX	0x34
-#define ERRCONFIG_36XX	0x38
-
 /* SR Modules */
 #define SR1		1
 #define SR2		2
@@ -38,36 +22,42 @@
 #define GAIN_MAXLIMIT	16
 #define R_MAXLIMIT	256
 
+/* SMART REFLEX REG ADDRESS OFFSET */
+#define SRCONFIG		0x00
+#define SRSTATUS		0x04
+#define SENVAL			0x08
+#define SENMIN			0x0C
+#define SENMAX			0x10
+#define SENAVG			0x14
+#define AVGWEIGHT		0x18
+#define NVALUERECIPROCAL	0x1C
+#define SENERROR		0x20
+#define ERRCONFIG		0x24
+#define SENERROR_36XX		0x34
+#define ERRCONFIG_36XX		0x38
+
+/* Bit/Shift Positions */
+
 /* SRCONFIG */
-#define SR1_SRCONFIG_ACCUMDATA		(0x1F4 << 22)
-#define SR2_SRCONFIG_ACCUMDATA		(0x1F4 << 22)
-
-#define SRCLKLENGTH_12MHZ_SYSCLK	0x3C
-#define SRCLKLENGTH_13MHZ_SYSCLK	0x41
-#define SRCLKLENGTH_19MHZ_SYSCLK	0x60
-#define SRCLKLENGTH_26MHZ_SYSCLK	0x82
-#define SRCLKLENGTH_38MHZ_SYSCLK	0xC0
-
+#define SRCONFIG_ACCUMDATA_SHIFT	22
 #define SRCONFIG_SRCLKLENGTH_SHIFT	12
 #define SRCONFIG_SENNENABLE_SHIFT	5
 #define SRCONFIG_SENPENABLE_SHIFT	3
 #define SRCONFIG_SENNENABLE_SHIFT_36XX	1
 #define SRCONFIG_SENPENABLE_SHIFT_36XX	0
+#define SRCONFIG_CLKCTRL_SHIFT		0
+
+#define SRCONFIG_ACCUMDATA_MASK		(0x3FF << 22)
 
 #define SRCONFIG_SRENABLE		BIT(11)
 #define SRCONFIG_SENENABLE		BIT(10)
 #define SRCONFIG_ERRGEN_EN		BIT(9)
 #define SRCONFIG_MINMAXAVG_EN		BIT(8)
-
 #define SRCONFIG_DELAYCTRL		BIT(2)
-#define SRCONFIG_CLKCTRL		(0x00 << 0)
 
 /* AVGWEIGHT */
-#define SR1_AVGWEIGHT_SENPAVGWEIGHT	(0x03 << 2)
-#define SR1_AVGWEIGHT_SENNAVGWEIGHT	(0x03 << 0)
-
-#define SR2_AVGWEIGHT_SENPAVGWEIGHT	BIT(2)
-#define SR2_AVGWEIGHT_SENNAVGWEIGHT	BIT(0)
+#define AVGWEIGHT_SENPAVGWEIGHT_SHIFT	2
+#define AVGWEIGHT_SENNAVGWEIGHT_SHIFT	0
 
 /* NVALUERECIPROCAL */
 #define NVALUERECIPROCAL_SENPGAIN_SHIFT	20
@@ -76,7 +66,9 @@
 #define NVALUERECIPROCAL_RNSENN_SHIFT	0
 
 /* ERRCONFIG */
-#define SR_CLKACTIVITY_MASK		(0x03 << 20)
+#define ERRCONFIG_ERRWEIGHT_SHIFT	16
+#define ERRCONFIG_ERRMAXLIMIT_SHIFT	8
+#define ERRCONFIG_ERRMiNLIMIT_SHIFT	0
 #define SR_ERRWEIGHT_MASK		(0x07 << 16)
 #define SR_ERRMAXLIMIT_MASK		(0xFF << 8)
 #define SR_ERRMINLIMIT_MASK		(0xFF << 0)
@@ -92,19 +84,43 @@
 #define ERRCONFIG_VPBOUNDINTST		BIT(30)
 #define ERRCONFIG_VPBOUNDINTEN_36XX	BIT(23)
 #define ERRCONFIG_VPBOUNDINTST_36XX	BIT(22)
+#define	ERRCONFIG_MCUACCUMINTEN		BIT(29)
+#define ERRCONFIG_MCUACCUMINTST		BIT(28)
+#define	ERRCONFIG_MCUVALIDINTEN		BIT(27)
+#define ERRCONFIG_MCUVALIDINTST		BIT(26)
+#define ERRCONFIG_MCUBOUNDINTEN		BIT(25)
+#define	ERRCONFIG_MCUBOUNDINTST		BIT(24)
+#define	ERRCONFIG_MCUDISACKINTEN	BIT(23)
+#define ERRCONFIG_MCUDISACKINTST	BIT(22)
 
-#define SR1_ERRWEIGHT			(0x07 << 16)
-#define SR1_ERRMAXLIMIT			(0x02 << 8)
-#define SR1_ERRMINLIMIT			(0xFA << 0)
+/* Common Bit values */
+#define SRCLKLENGTH_12MHZ_SYSCLK	0x3C
+#define SRCLKLENGTH_13MHZ_SYSCLK	0x41
+#define SRCLKLENGTH_19MHZ_SYSCLK	0x60
+#define SRCLKLENGTH_26MHZ_SYSCLK	0x82
+#define SRCLKLENGTH_38MHZ_SYSCLK	0xC0
 
-#define SR2_ERRWEIGHT			(0x07 << 16)
-#define SR2_ERRMAXLIMIT			(0x02 << 8)
-#define SR2_ERRMINLIMIT			(0xF9 << 0)
+/**
+* 3430 specific values. Maybe these should be passed from board file or
+* pmic structures.
+*/
+#define OMAP3430_SR_ACCUMDATA		0x1F4
 
+#define OMAP3430_SR1_SENPAVGWEIGHT	0x03
+#define OMAP3430_SR1_SENNAVGWEIGHT	0x03
 
-/* Vmode control */
+#define OMAP3430_SR2_SENPAVGWEIGHT	0x01
+#define OMAP3430_SR2_SENNAVGWEIGHT	0x01
+
+#define OMAP3430_SR_ERRWEIGHT		0x07
+#define OMAP3430_SR_ERRMAXLIMIT		0x02
+#define OMAP3430_SR1_ERRMINLIMIT	0xFA
+#define OMAP3430_SR2_ERRMINLIMIT	0xF9
+/*TODO:3630/OMAP4 values if it has to come from this file*/
+
+/* Info for enabling SR in T2/gaia. ToDo: Move it to twl4030_power.c */
+#define PHY_TO_OFF_PM_RECIEVER(p)	(p - 0x5b)
 #define R_DCDC_GLOBAL_CFG	PHY_TO_OFF_PM_RECIEVER(0x61)
-
 /* R_DCDC_GLOBAL_CFG register, SMARTREFLEX_ENABLE values */
 #define DCDC_GLOBAL_CFG_ENABLE_SRFLX	0x08
 
@@ -118,6 +134,24 @@
 extern struct dentry *pm_dbg_main_dir;
 #ifdef CONFIG_OMAP_SMARTREFLEX
 /**
+ * The smart reflex driver supports both CLASS2 and CLASS3 SR.
+ * The smartreflex class driver should pass the class type.
+ * Should be used to populate the class_type field of the
+ * omap_smartreflex_class_data structure.
+ */
+#define SR_CLASS2	0x1
+#define SR_CLASS3	0x2
+
+/**
+ * CLASS2 SR can use either the MINMAXAVG module or the ERROR module
+ * of the Smartreflex. Should be used to populate the mod_use field
+ * of omap_smartreflex_class_data structure is class_type is chosen
+ * as SR_CLASS2.
+ */
+#define SR_USE_MINMAXAVG_MOD	0x1
+#define SR_USE_ERROR_MOD	0x2
+
+/**
  * omap_smartreflex_class_data : Structure to be populated by
  * Smartreflex class driver with corresponding class enable disable API's
  *
@@ -128,6 +162,9 @@ extern struct dentry *pm_dbg_main_dir;
  * @notify_flags - specify the events to be notified to the class driver
  * @class_type - specify which smartreflex class. Can be used by the SR driver
  * 		to tkae any class based decisions.
+ * @mod_use - specify whether to use the error module or minmaxavg module for
+ *		smartreflex caliberations in case of class2 SR. In case of
+ *		class 3 SR only error module is used.
  */
 struct omap_smartreflex_class_data {
 	int (*enable)(int sr_id);
@@ -135,6 +172,7 @@ struct omap_smartreflex_class_data {
 	int (*notify)(int sr_id, u32 status);
 	u8 notify_flags;
 	u8 class_type;
+	u8 mod_use;
 };
 
 /**
