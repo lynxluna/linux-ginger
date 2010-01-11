@@ -13,6 +13,7 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
+#include <linux/platform_device.h>
 
 #define PHY_TO_OFF_PM_MASTER(p)		(p - 0x36)
 #define PHY_TO_OFF_PM_RECIEVER(p)	(p - 0x5b)
@@ -243,11 +244,33 @@ extern u32 current_vdd2_opp;
  * do anything.
  */
 #ifdef CONFIG_OMAP_SMARTREFLEX
+/**
+ * omap_smartreflex_data - Smartreflex platform data
+ *
+ * @senp_mod	: SENPENABLE value for the sr
+ * @senn_mod	: SENNENABLE value for sr
+ * @sr_nvalue	: array of n target values for sr
+ * @no_opp	: number of opp's for this SR
+ * init_enable	: whether this sr module needs to enabled at boot up or not
+ */
+struct omap_smartreflex_data {
+	u32		senp_mod;
+	u32		senn_mod;
+	u32		*sr_nvalue;
+	int		no_opp;
+	bool		init_enable;
+	/* omap_device function pointers */
+	int (*device_enable)(struct platform_device *pdev);
+	int (*device_shutdown)(struct platform_device *pdev);
+	int (*device_idle)(struct platform_device *pdev);
+};
+
 void enable_smartreflex(int srid);
 void disable_smartreflex(int srid);
 int sr_voltagescale_vcbypass(u32 t_opp, u32 c_opp, u8 t_vsel, u8 c_vsel);
 void sr_start_vddautocomap(int srid, u32 target_opp_no);
 int sr_stop_vddautocomap(int srid);
+u32 cal_test_nvalue(u32 sennval, u32 senpval);
 #else
 static inline void enable_smartreflex(int srid) {}
 static inline void disable_smartreflex(int srid) {}

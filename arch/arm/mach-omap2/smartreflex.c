@@ -26,12 +26,14 @@
 #include <linux/kobject.h>
 #include <linux/i2c/twl.h>
 #include <linux/io.h>
+#include <linux/list.h>
 
 #include <plat/omap34xx.h>
 #include <plat/control.h>
 #include <plat/clock.h>
 #include <plat/opp.h>
 #include <plat/opp_twl_tps.h>
+#include <plat/omap_device.h>
 
 #include "prm.h"
 #include "smartreflex.h"
@@ -40,19 +42,21 @@
 #define MAX_TRIES 100
 
 struct omap_sr {
-	int		srid;
-	int		is_sr_reset;
-	int		is_autocomp_active;
-	struct clk	*clk;
-	struct clk	*vdd_opp_clk;
-	u32		clk_length;
-	u32		req_opp_no;
-	u32		opp1_nvalue, opp2_nvalue, opp3_nvalue, opp4_nvalue;
-	u32		opp5_nvalue;
-	u32		senp_mod, senn_mod;
-	void __iomem	*srbase_addr;
-	void __iomem	*vpbase_addr;
+	int			srid;
+	int			is_sr_reset;
+	int			is_autocomp_active;
+	struct clk		*vdd_opp_clk;
+	u32			clk_length;
+	u32			req_opp_no;
+	u32			senp_mod, senn_mod;
+	void __iomem		*srbase_addr;
+	unsigned int    	irq;
+	struct platform_device 	*pdev;
+	struct list_head 	node;
 };
+
+/* sr_list contains all the instances of smartreflex module */
+static LIST_HEAD(sr_list);
 
 #define SR_REGADDR(offs)	(sr->srbase_addr + offset)
 
@@ -78,45 +82,41 @@ static inline u32 sr_read_reg(struct omap_sr *sr, unsigned offset)
 	return __raw_readl(SR_REGADDR(offset));
 }
 
-static int sr_clk_enable(struct omap_sr *sr)
+static struct omap_sr *_sr_lookup(int srid)
 {
-	if (clk_enable(sr->clk) != 0) {
-		pr_err("Could not enable %s\n", sr->clk->name);
-		return -1;
+	struct omap_sr *sr_info, *temp_sr_info;
+
+	sr_info = NULL;
+
+	list_for_each_entry(temp_sr_info, &sr_list, node) {
+		if (srid == temp_sr_info->srid) {
+			sr_info = temp_sr_info;
+			break;
+		}
 	}
 
-	/* set fclk- active , iclk- idle */
-	sr_modify_reg(sr, ERRCONFIG, SR_CLKACTIVITY_MASK,
-		      SR_CLKACTIVITY_IOFF_FON);
+	return sr_info;
+}
+
+static int sr_clk_enable(struct omap_sr *sr)
+{
+	struct omap_smartreflex_data *pdata = sr->pdev->dev.platform_data;
+
+	if (pdata->device_enable)
+		pdata->device_enable(sr->pdev);
 
 	return 0;
 }
 
 static void sr_clk_disable(struct omap_sr *sr)
 {
-	/* set fclk, iclk- idle */
-	sr_modify_reg(sr, ERRCONFIG, SR_CLKACTIVITY_MASK,
-		      SR_CLKACTIVITY_IOFF_FOFF);
+	struct omap_smartreflex_data *pdata = sr->pdev->dev.platform_data;
 
-	clk_disable(sr->clk);
+	if (pdata->device_idle)
+		pdata->device_idle(sr->pdev);
+
 	sr->is_sr_reset = 1;
 }
-
-static struct omap_sr sr1 = {
-	.srid			= SR1,
-	.is_sr_reset		= 1,
-	.is_autocomp_active	= 0,
-	.clk_length		= 0,
-	.srbase_addr		= OMAP2_L4_IO_ADDRESS(OMAP34XX_SR1_BASE),
-};
-
-static struct omap_sr sr2 = {
-	.srid			= SR2,
-	.is_sr_reset		= 1,
-	.is_autocomp_active	= 0,
-	.clk_length		= 0,
-	.srbase_addr		= OMAP2_L4_IO_ADDRESS(OMAP34XX_SR2_BASE),
-};
 
 static void cal_reciprocal(u32 sensor, u32 *sengain, u32 *rnsen)
 {
@@ -132,7 +132,7 @@ static void cal_reciprocal(u32 sensor, u32 *sengain, u32 *rnsen)
 	}
 }
 
-static u32 cal_test_nvalue(u32 sennval, u32 senpval)
+u32 cal_test_nvalue(u32 sennval, u32 senpval)
 {
 	u32 senpgain, senngain;
 	u32 rnsenp, rnsenn;
@@ -151,11 +151,17 @@ static u8 get_vdd1_opp(void)
 {
 	struct omap_opp *opp;
 	unsigned long freq;
+	struct omap_sr *sr_info = _sr_lookup(SR1);
 
-	if (sr1.vdd_opp_clk == NULL || IS_ERR(sr1.vdd_opp_clk))
+	if (!sr_info) {
+		pr_warning("omap_sr struct corresponding to SR1 not found\n");
+		return 0;
+	}
+
+	if (sr_info->vdd_opp_clk == NULL || IS_ERR(sr_info->vdd_opp_clk))
 		return 0;
 
-	freq = sr1.vdd_opp_clk->rate;
+	freq = sr_info->vdd_opp_clk->rate;
 	opp = opp_find_freq_ceil(OPP_MPU, &freq);
 	if (IS_ERR(opp))
 		return 0;
@@ -163,9 +169,9 @@ static u8 get_vdd1_opp(void)
 	 * Use higher freq voltage even if an exact match is not available
 	 * we are probably masking a clock framework bug, so warn
 	 */
-	if (unlikely(freq != sr1.vdd_opp_clk->rate))
+	if (unlikely(freq != sr_info->vdd_opp_clk->rate))
 		pr_warning("%s: Available freq %ld != dpll freq %ld.\n",
-			   __func__, freq, sr1.vdd_opp_clk->rate);
+			   __func__, freq, sr_info->vdd_opp_clk->rate);
 
 	return opp_get_opp_id(opp);
 }
@@ -174,11 +180,17 @@ static u8 get_vdd2_opp(void)
 {
 	struct omap_opp *opp;
 	unsigned long freq;
+	struct omap_sr *sr_info = _sr_lookup(SR2);
 
-	if (sr2.vdd_opp_clk == NULL || IS_ERR(sr2.vdd_opp_clk))
+	if (!sr_info) {
+		pr_warning("omap_sr struct corresponding to SR2 not found\n");
+		return 0;
+	}
+
+	if (sr_info->vdd_opp_clk == NULL || IS_ERR(sr_info->vdd_opp_clk))
 		return 0;
 
-	freq = sr2.vdd_opp_clk->rate;
+	freq = sr_info->vdd_opp_clk->rate;
 	opp = opp_find_freq_ceil(OPP_L3, &freq);
 	if (IS_ERR(opp))
 		return 0;
@@ -187,9 +199,9 @@ static u8 get_vdd2_opp(void)
 	 * Use higher freq voltage even if an exact match is not available
 	 * we are probably masking a clock framework bug, so warn
 	 */
-	if (unlikely(freq != sr2.vdd_opp_clk->rate))
+	if (unlikely(freq != sr_info->vdd_opp_clk->rate))
 		pr_warning("%s: Available freq %ld != dpll freq %ld.\n",
-			   __func__, freq, sr2.vdd_opp_clk->rate);
+			   __func__, freq, sr_info->vdd_opp_clk->rate);
 	return opp_get_opp_id(opp);
 }
 
@@ -223,76 +235,6 @@ static void sr_set_clk_length(struct omap_sr *sr)
 		pr_err("Invalid sysclk value: %d\n", sys_clk_speed);
 		break;
 	}
-}
-
-static void sr_set_efuse_nvalues(struct omap_sr *sr)
-{
-	if (sr->srid == SR1) {
-		sr->senn_mod = (omap_ctrl_readl(OMAP343X_CONTROL_FUSE_SR) &
-					OMAP343X_SR1_SENNENABLE_MASK) >>
-					OMAP343X_SR1_SENNENABLE_SHIFT;
-		sr->senp_mod = (omap_ctrl_readl(OMAP343X_CONTROL_FUSE_SR) &
-					OMAP343X_SR1_SENPENABLE_MASK) >>
-					OMAP343X_SR1_SENPENABLE_SHIFT;
-
-		sr->opp5_nvalue = omap_ctrl_readl(
-					OMAP343X_CONTROL_FUSE_OPP5_VDD1);
-		sr->opp4_nvalue = omap_ctrl_readl(
-					OMAP343X_CONTROL_FUSE_OPP4_VDD1);
-		sr->opp3_nvalue = omap_ctrl_readl(
-					OMAP343X_CONTROL_FUSE_OPP3_VDD1);
-		sr->opp2_nvalue = omap_ctrl_readl(
-					OMAP343X_CONTROL_FUSE_OPP2_VDD1);
-		sr->opp1_nvalue = omap_ctrl_readl(
-					OMAP343X_CONTROL_FUSE_OPP1_VDD1);
-	} else if (sr->srid == SR2) {
-		sr->senn_mod = (omap_ctrl_readl(OMAP343X_CONTROL_FUSE_SR) &
-					OMAP343X_SR2_SENNENABLE_MASK) >>
-					OMAP343X_SR2_SENNENABLE_SHIFT;
-
-		sr->senp_mod = (omap_ctrl_readl(OMAP343X_CONTROL_FUSE_SR) &
-					OMAP343X_SR2_SENPENABLE_MASK) >>
-					OMAP343X_SR2_SENPENABLE_SHIFT;
-
-		sr->opp3_nvalue = omap_ctrl_readl(
-					OMAP343X_CONTROL_FUSE_OPP3_VDD2);
-		sr->opp2_nvalue = omap_ctrl_readl(
-					OMAP343X_CONTROL_FUSE_OPP2_VDD2);
-		sr->opp1_nvalue = omap_ctrl_readl(
-					OMAP343X_CONTROL_FUSE_OPP1_VDD2);
-	}
-}
-
-/* Hard coded nvalues for testing purposes, may cause device to hang! */
-static void sr_set_testing_nvalues(struct omap_sr *sr)
-{
-	if (sr->srid == SR1) {
-		sr->senp_mod = 0x03;	/* SenN-M5 enabled */
-		sr->senn_mod = 0x03;
-
-		/* calculate nvalues for each opp */
-		sr->opp5_nvalue = cal_test_nvalue(0xacd + 0x330, 0x848 + 0x330);
-		sr->opp4_nvalue = cal_test_nvalue(0x964 + 0x2a0, 0x727 + 0x2a0);
-		sr->opp3_nvalue = cal_test_nvalue(0x85b + 0x200, 0x655 + 0x200);
-		sr->opp2_nvalue = cal_test_nvalue(0x506 + 0x1a0, 0x3be + 0x1a0);
-		sr->opp1_nvalue = cal_test_nvalue(0x373 + 0x100, 0x28c + 0x100);
-	} else if (sr->srid == SR2) {
-		sr->senp_mod = 0x03;
-		sr->senn_mod = 0x03;
-
-		sr->opp3_nvalue = cal_test_nvalue(0x76f + 0x200, 0x579 + 0x200);
-		sr->opp2_nvalue = cal_test_nvalue(0x4f5 + 0x1c0, 0x390 + 0x1c0);
-		sr->opp1_nvalue = cal_test_nvalue(0x359, 0x25d);
-	}
-
-}
-
-static void sr_set_nvalues(struct omap_sr *sr)
-{
-	if (SR_TESTING_NVALUES)
-		sr_set_testing_nvalues(sr);
-	else
-		sr_set_efuse_nvalues(sr);
 }
 
 static void sr_configure_vp(int srid)
@@ -408,12 +350,14 @@ static void sr_configure(struct omap_sr *sr)
 {
 	u32 sr_config;
 	u32 senp_en , senn_en;
+	struct omap_smartreflex_data *pdata = sr->pdev->dev.platform_data;
 
 	if (sr->clk_length == 0)
 		sr_set_clk_length(sr);
 
-	senp_en = sr->senp_mod;
-	senn_en = sr->senn_mod;
+	senp_en = pdata->senp_mod;
+	senn_en = pdata->senn_mod;
+
 	if (sr->srid == SR1) {
 		sr_config = SR1_SRCONFIG_ACCUMDATA |
 			(sr->clk_length << SRCONFIG_SRCLKLENGTH_SHIFT) |
@@ -543,55 +487,24 @@ static int sr_enable(struct omap_sr *sr, u32 target_opp_no)
 	struct omap_opp *opp;
 	int uvdc;
 	char vsel;
+	struct omap_smartreflex_data *pdata = sr->pdev->dev.platform_data;
 
-	sr->req_opp_no = target_opp_no;
+	if (target_opp_no > pdata->no_opp) {
+		pr_notice("Wrong target opp\n");
+		return false;
+	}
 
 	if (sr->srid == SR1) {
-		switch (target_opp_no) {
-		case 5:
-			nvalue_reciprocal = sr->opp5_nvalue;
-			break;
-		case 4:
-			nvalue_reciprocal = sr->opp4_nvalue;
-			break;
-		case 3:
-			nvalue_reciprocal = sr->opp3_nvalue;
-			break;
-		case 2:
-			nvalue_reciprocal = sr->opp2_nvalue;
-			break;
-		case 1:
-			nvalue_reciprocal = sr->opp1_nvalue;
-			break;
-		default:
-			nvalue_reciprocal = sr->opp3_nvalue;
-			break;
-		}
-
 		opp = opp_find_by_opp_id(OPP_MPU, target_opp_no);
 		if (!opp)
 			return false;
 	} else {
-		switch (target_opp_no) {
-		case 3:
-			nvalue_reciprocal = sr->opp3_nvalue;
-			break;
-		case 2:
-			nvalue_reciprocal = sr->opp2_nvalue;
-			break;
-		case 1:
-			nvalue_reciprocal = sr->opp1_nvalue;
-			break;
-		default:
-			nvalue_reciprocal = sr->opp3_nvalue;
-			break;
-		}
-
 		opp = opp_find_by_opp_id(OPP_L3, target_opp_no);
 		if (!opp)
 			return false;
 	}
 
+	nvalue_reciprocal = pdata->sr_nvalue[target_opp_no - 1];
 	if (nvalue_reciprocal == 0) {
 		pr_notice("OPP%d doesn't support SmartReflex\n",
 								target_opp_no);
@@ -694,15 +607,13 @@ static void sr_disable(struct omap_sr *sr)
 
 void sr_start_vddautocomap(int srid, u32 target_opp_no)
 {
-	struct omap_sr *sr = NULL;
+	struct omap_sr *sr = _sr_lookup(srid);
 
-	if (srid == SR1)
-		sr = &sr1;
-	else if (srid == SR2)
-		sr = &sr2;
-	else
+	if (!sr) {
+		pr_warning("omap_sr struct corresponding to SR%d not found\n",
+								srid);
 		return;
-
+	}
 	if (sr->is_sr_reset == 1) {
 		sr_clk_enable(sr);
 		sr_configure(sr);
@@ -719,14 +630,13 @@ EXPORT_SYMBOL(sr_start_vddautocomap);
 
 int sr_stop_vddautocomap(int srid)
 {
-	struct omap_sr *sr = NULL;
+	struct omap_sr *sr = _sr_lookup(srid);
 
-	if (srid == SR1)
-		sr = &sr1;
-	else if (srid == SR2)
-		sr = &sr2;
-	else
-		return -EINVAL;
+	if (!sr) {
+		pr_warning("omap_sr struct corresponding to SR%d not found\n",
+								srid);
+		return false;
+	}
 
 	if (sr->is_autocomp_active == 1) {
 		sr_disable(sr);
@@ -744,15 +654,13 @@ EXPORT_SYMBOL(sr_stop_vddautocomap);
 void enable_smartreflex(int srid)
 {
 	u32 target_opp_no = 0;
-	struct omap_sr *sr = NULL;
+	struct omap_sr *sr = _sr_lookup(srid);
 
-	if (srid == SR1)
-		sr = &sr1;
-	else if (srid == SR2)
-		sr = &sr2;
-	else
+	if (!sr) {
+		pr_warning("omap_sr struct corresponding to SR%d not found\n",
+								srid);
 		return;
-
+	}
 	if (sr->is_autocomp_active == 1) {
 		if (sr->is_sr_reset == 1) {
 			/* Enable SR clks */
@@ -780,15 +688,13 @@ void disable_smartreflex(int srid)
 {
 	u32 i = 0;
 
-	struct omap_sr *sr = NULL;
+	struct omap_sr *sr = _sr_lookup(srid);
 
-	if (srid == SR1)
-		sr = &sr1;
-	else if (srid == SR2)
-		sr = &sr2;
-	else
+	if (!sr) {
+		pr_warning("omap_sr struct corresponding to SR%d not found\n",
+								srid);
 		return;
-
+	}
 	if (sr->is_autocomp_active == 1) {
 		if (sr->is_sr_reset == 0) {
 
@@ -920,7 +826,13 @@ int sr_voltagescale_vcbypass(u32 target_opp, u32 current_opp,
 static ssize_t omap_sr_vdd1_autocomp_show(struct kobject *kobj,
 					struct kobj_attribute *attr, char *buf)
 {
-	return sprintf(buf, "%d\n", sr1.is_autocomp_active);
+	struct omap_sr *sr_info = _sr_lookup(SR1);
+
+	if (!sr_info) {
+		pr_warning("omap_sr struct corresponding to SR1 not found\n");
+		return 0;
+	}
+	return sprintf(buf, "%d\n", sr_info->is_autocomp_active);
 }
 
 static ssize_t omap_sr_vdd1_autocomp_store(struct kobject *kobj,
@@ -960,7 +872,13 @@ static struct kobj_attribute sr_vdd1_autocomp = {
 static ssize_t omap_sr_vdd2_autocomp_show(struct kobject *kobj,
 					struct kobj_attribute *attr, char *buf)
 {
-	return sprintf(buf, "%d\n", sr2.is_autocomp_active);
+	struct omap_sr *sr_info = _sr_lookup(SR2);
+
+	if (!sr_info) {
+		pr_warning("omap_sr struct corresponding to SR2 not found\n");
+		return 0;
+	}
+	return sprintf(buf, "%d\n", sr_info->is_autocomp_active);
 }
 
 static ssize_t omap_sr_vdd2_autocomp_store(struct kobject *kobj,
@@ -996,13 +914,69 @@ static struct kobj_attribute sr_vdd2_autocomp = {
 	.store = omap_sr_vdd2_autocomp_store,
 };
 
+static int __devinit smartreflex_probe(struct platform_device *pdev)
+{
+	struct omap_sr *sr_info = kzalloc(sizeof(struct omap_sr), GFP_KERNEL);
+	struct omap_device *odev = to_omap_device(pdev);
+	int ret = 0;
 
+	sr_info->pdev = pdev;
+	sr_info->srid = pdev->id + 1;
+	sr_info->is_sr_reset = 1,
+	sr_info->is_autocomp_active = 0;
+	sr_info->clk_length = 0;
+	sr_info->srbase_addr = odev->hwmods[0]->_rt_va;
+	if (odev->hwmods[0]->mpu_irqs)
+		sr_info->irq = odev->hwmods[0]->mpu_irqs[0].irq;
+	sr_set_clk_length(sr_info);
 
-static int __init omap3_sr_init(void)
+	if (sr_info->srid == SR1) {
+		sr_info->vdd_opp_clk = clk_get(NULL, "dpll1_ck");
+		ret = sysfs_create_file(power_kobj, &sr_vdd1_autocomp.attr);
+		if (ret)
+			pr_err("sysfs_create_file failed: %d\n", ret);
+	} else {
+		sr_info->vdd_opp_clk = clk_get(NULL, "l3_ick");
+		ret = sysfs_create_file(power_kobj, &sr_vdd2_autocomp.attr);
+		if (ret)
+			pr_err("sysfs_create_file failed: %d\n", ret);
+	}
+
+	/* Call the VPConfig */
+	sr_configure_vp(sr_info->srid);
+	odev->hwmods[0]->dev_attr = sr_info;
+	list_add(&sr_info->node, &sr_list);
+	pr_info("SmartReflex driver initialized\n");
+
+	return ret;
+}
+
+static int __devexit smartreflex_remove(struct platform_device *pdev)
+{
+	struct omap_device *odev = to_omap_device(pdev);
+	struct omap_sr *sr_info = odev->hwmods[0]->dev_attr;
+
+	/* Disable Autocompensation if enabled before removing the module */
+	if (sr_info->is_autocomp_active == 1)
+		sr_stop_vddautocomap(sr_info->srid);
+	list_del(&sr_info->node);
+	return 0;
+}
+
+static struct platform_driver smartreflex_driver = {
+	.probe          = smartreflex_probe,
+	.remove         = smartreflex_remove,
+	.driver		= {
+		.name	= "smartreflex",
+	},
+};
+
+static int __init sr_init(void)
 {
 	int ret = 0;
 	u8 RdReg;
 
+	/* TODO . Find an appropriate place for this */
 	/* Enable SR on T2 */
 	ret = twl_i2c_read_u8(TWL4030_MODULE_PM_RECEIVER, &RdReg,
 			      R_DCDC_GLOBAL_CFG);
@@ -1011,33 +985,21 @@ static int __init omap3_sr_init(void)
 	ret |= twl_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER, RdReg,
 				R_DCDC_GLOBAL_CFG);
 
-	if (cpu_is_omap34xx()) {
-		sr1.clk = clk_get(NULL, "sr1_fck");
-		sr2.clk = clk_get(NULL, "sr2_fck");
-	}
-	sr1.vdd_opp_clk = clk_get(NULL, "dpll1_ck");
-	sr2.vdd_opp_clk = clk_get(NULL, "l3_ick");
-	sr_set_clk_length(&sr1);
-	sr_set_clk_length(&sr2);
+	ret = platform_driver_register(&smartreflex_driver);
 
-	/* Call the VPConfig, VCConfig, set N Values. */
-	sr_set_nvalues(&sr1);
-	sr_configure_vp(SR1);
-
-	sr_set_nvalues(&sr2);
-	sr_configure_vp(SR2);
-
-	pr_info("SmartReflex driver initialized\n");
-
-	ret = sysfs_create_file(power_kobj, &sr_vdd1_autocomp.attr);
 	if (ret)
-		pr_err("sysfs_create_file failed: %d\n", ret);
-
-	ret = sysfs_create_file(power_kobj, &sr_vdd2_autocomp.attr);
-	if (ret)
-		pr_err("sysfs_create_file failed: %d\n", ret);
-
-	return 0;
+		pr_err("platform driver register failed for smartreflex");
+	return ret;
 }
 
-late_initcall(omap3_sr_init);
+void __exit sr_exit(void)
+{
+	platform_driver_unregister(&smartreflex_driver);
+}
+late_initcall(sr_init);
+module_exit(sr_exit);
+
+MODULE_DESCRIPTION("OMAP SMARTREFLEX DRIVER");
+MODULE_LICENSE("GPL");
+MODULE_ALIAS("platform:" DRIVER_NAME);
+MODULE_AUTHOR("Texas Instruments Inc");
