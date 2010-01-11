@@ -437,86 +437,109 @@ union Trapped_Args {
 	} ARGS_UTIL_TESTDLL;
 } ;
 
-#define CMD_BASE		    1
+/*
+ * Dspbridge Ioctl numbering scheme
+ *
+ *    7                           0
+ *  ---------------------------------
+ *  |  Module   |   Ioctl Number    |
+ *  ---------------------------------
+ *  | x | x | x | 0 | 0 | 0 | 0 | 0 |
+ *  ---------------------------------
+ */
+
+/* Ioctl driver identifier */
+#define DB		0xDB
+
+/*
+ * Following are used to distinguish between module ioctls, this is needed
+ * in case new ioctls are introduced.
+ */
+#define DB_MODULE_MASK		0xE0
+#define DB_IOC_MASK		0x1F
+
+/* Ioctl module masks */
+#define DB_MGR		0x0
+#define DB_PROC		0x20
+#define DB_NODE		0x40
+#define DB_STRM		0x60
+#define DB_CMM		0x80
+
+#define DB_MODULE_SHIFT		5
+
+/* Used to calculate the ioctl per dspbridge module */
+#define DB_IOC(module, num) \
+			(((module) & DB_MODULE_MASK) | ((num) & DB_IOC_MASK))
+/* Used to get dspbridge ioctl module */
+#define DB_GET_MODULE(cmd)	((cmd) & DB_MODULE_MASK)
+/* Used to get dspbridge ioctl number */
+#define DB_GET_IOC(cmd)		((cmd) & DB_IOC_MASK)
 
 /* TODO: Remove deprecated and not implemented */
 
-/* MGR module offsets */
-#define CMD_MGR_BASE_OFFSET	     CMD_BASE
-#define CMD_MGR_ENUMNODE_INFO_OFFSET    (CMD_MGR_BASE_OFFSET + 0)
-#define CMD_MGR_ENUMPROC_INFO_OFFSET    (CMD_MGR_BASE_OFFSET + 1)
-#define CMD_MGR_REGISTEROBJECT_OFFSET   (CMD_MGR_BASE_OFFSET + 2)
-#define CMD_MGR_UNREGISTEROBJECT_OFFSET (CMD_MGR_BASE_OFFSET + 3)
-#define CMD_MGR_WAIT_OFFSET	     (CMD_MGR_BASE_OFFSET + 4)
+/* MGR Module */
+#define MGR_ENUMNODE_INFO	_IOWR(DB, DB_IOC(DB_MGR, 0), unsigned long)
+#define MGR_ENUMPROC_INFO	_IOWR(DB, DB_IOC(DB_MGR, 1), unsigned long)
+#define MGR_REGISTEROBJECT	_IOWR(DB, DB_IOC(DB_MGR, 2), unsigned long)
+#define MGR_UNREGISTEROBJECT	_IOWR(DB, DB_IOC(DB_MGR, 3), unsigned long)
+#define MGR_WAIT		_IOWR(DB, DB_IOC(DB_MGR, 4), unsigned long)
+/* MGR_GET_PROC_RES Deprecated */
+#define MGR_GET_PROC_RES	_IOR(DB, DB_IOC(DB_MGR, 5), unsigned long)
 
-#ifndef RES_CLEANUP_DISABLE
-#define CMD_MGR_RESOUCES_OFFSET	 (CMD_MGR_BASE_OFFSET + 5)    /* Deprecated */
-#define CMD_MGR_END_OFFSET	      CMD_MGR_RESOUCES_OFFSET
-#else
-#define CMD_MGR_END_OFFSET	      CMD_MGR_WAIT_OFFSET
-#endif
+/* PROC Module */
+#define PROC_ATTACH		_IOWR(DB, DB_IOC(DB_PROC, 0), unsigned long)
+#define PROC_CTRL		_IOR(DB, DB_IOC(DB_PROC, 1), unsigned long)
+/* PROC_DETACH Deprecated */
+#define PROC_DETACH		_IOR(DB, DB_IOC(DB_PROC, 2), unsigned long)
+#define PROC_ENUMNODE		_IOWR(DB, DB_IOC(DB_PROC, 3), unsigned long)
+#define PROC_ENUMRESOURCES	_IOWR(DB, DB_IOC(DB_PROC, 4), unsigned long)
+#define PROC_GET_STATE		_IOWR(DB, DB_IOC(DB_PROC, 5), unsigned long)
+#define PROC_GET_TRACE		_IOWR(DB, DB_IOC(DB_PROC, 6), unsigned long)
+#define PROC_LOAD		_IOW(DB, DB_IOC(DB_PROC, 7), unsigned long)
+#define PROC_REGISTERNOTIFY	_IOWR(DB, DB_IOC(DB_PROC, 8), unsigned long)
+#define PROC_START		_IOW(DB, DB_IOC(DB_PROC, 9), unsigned long)
+#define PROC_RSVMEM		_IOWR(DB, DB_IOC(DB_PROC, 10), unsigned long)
+#define PROC_UNRSVMEM		_IOW(DB, DB_IOC(DB_PROC, 11), unsigned long)
+#define PROC_MAPMEM		_IOWR(DB, DB_IOC(DB_PROC, 12), unsigned long)
+#define PROC_UNMAPMEM		_IOR(DB, DB_IOC(DB_PROC, 13), unsigned long)
+#define PROC_FLUSHMEMORY	_IOW(DB, DB_IOC(DB_PROC, 14), unsigned long)
+#define PROC_STOP		_IOWR(DB, DB_IOC(DB_PROC, 15), unsigned long)
+#define PROC_INVALIDATEMEMORY	_IOW(DB, DB_IOC(DB_PROC, 16), unsigned long)
 
-#define CMD_PROC_BASE_OFFSET	    (CMD_MGR_END_OFFSET + 1)
-#define CMD_PROC_ATTACH_OFFSET	  (CMD_PROC_BASE_OFFSET + 0)
-#define CMD_PROC_CTRL_OFFSET	    (CMD_PROC_BASE_OFFSET + 1)
-#define CMD_PROC_DETACH_OFFSET	  (CMD_PROC_BASE_OFFSET + 2)  /* Deprecated */
-#define CMD_PROC_ENUMNODE_OFFSET	(CMD_PROC_BASE_OFFSET + 3)
-#define CMD_PROC_ENUMRESOURCES_OFFSET   (CMD_PROC_BASE_OFFSET + 4)
-#define CMD_PROC_GETSTATE_OFFSET	(CMD_PROC_BASE_OFFSET + 5)
-#define CMD_PROC_GETTRACE_OFFSET	(CMD_PROC_BASE_OFFSET + 6)
-#define CMD_PROC_LOAD_OFFSET	    (CMD_PROC_BASE_OFFSET + 7)
-#define CMD_PROC_REGISTERNOTIFY_OFFSET  (CMD_PROC_BASE_OFFSET + 8)
-#define CMD_PROC_START_OFFSET	   (CMD_PROC_BASE_OFFSET + 9)
-#define CMD_PROC_RSVMEM_OFFSET	  (CMD_PROC_BASE_OFFSET + 10)
-#define CMD_PROC_UNRSVMEM_OFFSET	(CMD_PROC_BASE_OFFSET + 11)
-#define CMD_PROC_MAPMEM_OFFSET	  (CMD_PROC_BASE_OFFSET + 12)
-#define CMD_PROC_UNMAPMEM_OFFSET	(CMD_PROC_BASE_OFFSET + 13)
-#define CMD_PROC_FLUSHMEMORY_OFFSET      (CMD_PROC_BASE_OFFSET + 14)
-#define CMD_PROC_STOP_OFFSET	    (CMD_PROC_BASE_OFFSET + 15)
-#define CMD_PROC_INVALIDATEMEMORY_OFFSET (CMD_PROC_BASE_OFFSET + 16)
-#define CMD_PROC_END_OFFSET	     CMD_PROC_INVALIDATEMEMORY_OFFSET
+/* NODE Module */
+#define NODE_ALLOCATE		_IOWR(DB, DB_IOC(DB_NODE, 0), unsigned long)
+#define NODE_ALLOCMSGBUF	_IOWR(DB, DB_IOC(DB_NODE, 1), unsigned long)
+#define NODE_CHANGEPRIORITY	_IOW(DB, DB_IOC(DB_NODE, 2), unsigned long)
+#define NODE_CONNECT		_IOW(DB, DB_IOC(DB_NODE, 3), unsigned long)
+#define NODE_CREATE		_IOW(DB, DB_IOC(DB_NODE, 4), unsigned long)
+#define NODE_DELETE		_IOW(DB, DB_IOC(DB_NODE, 5), unsigned long)
+#define NODE_FREEMSGBUF		_IOW(DB, DB_IOC(DB_NODE, 6), unsigned long)
+#define NODE_GETATTR		_IOWR(DB, DB_IOC(DB_NODE, 7), unsigned long)
+#define NODE_GETMESSAGE		_IOWR(DB, DB_IOC(DB_NODE, 8), unsigned long)
+#define NODE_PAUSE		_IOW(DB, DB_IOC(DB_NODE, 9), unsigned long)
+#define NODE_PUTMESSAGE		_IOW(DB, DB_IOC(DB_NODE, 10), unsigned long)
+#define NODE_REGISTERNOTIFY	_IOWR(DB, DB_IOC(DB_NODE, 11), unsigned long)
+#define NODE_RUN		_IOW(DB, DB_IOC(DB_NODE, 12), unsigned long)
+#define NODE_TERMINATE		_IOWR(DB, DB_IOC(DB_NODE, 13), unsigned long)
+#define NODE_GETUUIDPROPS	_IOWR(DB, DB_IOC(DB_NODE, 14), unsigned long)
 
+/* STRM Module */
+#define STRM_ALLOCATEBUFFER	_IOWR(DB, DB_IOC(DB_STRM, 0), unsigned long)
+#define STRM_CLOSE		_IOW(DB, DB_IOC(DB_STRM, 1), unsigned long)
+#define STRM_FREEBUFFER		_IOWR(DB, DB_IOC(DB_STRM, 2), unsigned long)
+#define STRM_GETEVENTHANDLE	_IO(DB, DB_IOC(DB_STRM, 3))	/* Not Impl'd */
+#define STRM_GETINFO		_IOWR(DB, DB_IOC(DB_STRM, 4), unsigned long)
+#define STRM_IDLE		_IOW(DB, DB_IOC(DB_STRM, 5), unsigned long)
+#define STRM_ISSUE		_IOW(DB, DB_IOC(DB_STRM, 6), unsigned long)
+#define STRM_OPEN		_IOWR(DB, DB_IOC(DB_STRM, 7), unsigned long)
+#define STRM_RECLAIM		_IOWR(DB, DB_IOC(DB_STRM, 8), unsigned long)
+#define STRM_REGISTERNOTIFY	_IOWR(DB, DB_IOC(DB_STRM, 9), unsigned long)
+#define STRM_SELECT		_IOWR(DB, DB_IOC(DB_STRM, 10), unsigned long)
 
-#define CMD_NODE_BASE_OFFSET	    (CMD_PROC_END_OFFSET + 1)
-#define CMD_NODE_ALLOCATE_OFFSET	(CMD_NODE_BASE_OFFSET + 0)
-#define CMD_NODE_ALLOCMSGBUF_OFFSET     (CMD_NODE_BASE_OFFSET + 1)
-#define CMD_NODE_CHANGEPRIORITY_OFFSET  (CMD_NODE_BASE_OFFSET + 2)
-#define CMD_NODE_CONNECT_OFFSET	 (CMD_NODE_BASE_OFFSET + 3)
-#define CMD_NODE_CREATE_OFFSET	  (CMD_NODE_BASE_OFFSET + 4)
-#define CMD_NODE_DELETE_OFFSET	  (CMD_NODE_BASE_OFFSET + 5)
-#define CMD_NODE_FREEMSGBUF_OFFSET      (CMD_NODE_BASE_OFFSET + 6)
-#define CMD_NODE_GETATTR_OFFSET	 (CMD_NODE_BASE_OFFSET + 7)
-#define CMD_NODE_GETMESSAGE_OFFSET      (CMD_NODE_BASE_OFFSET + 8)
-#define CMD_NODE_PAUSE_OFFSET	   (CMD_NODE_BASE_OFFSET + 9)
-#define CMD_NODE_PUTMESSAGE_OFFSET      (CMD_NODE_BASE_OFFSET + 10)
-#define CMD_NODE_REGISTERNOTIFY_OFFSET  (CMD_NODE_BASE_OFFSET + 11)
-#define CMD_NODE_RUN_OFFSET	     (CMD_NODE_BASE_OFFSET + 12)
-#define CMD_NODE_TERMINATE_OFFSET       (CMD_NODE_BASE_OFFSET + 13)
-#define CMD_NODE_GETUUIDPROPS_OFFSET    (CMD_NODE_BASE_OFFSET + 14)
-#define CMD_NODE_END_OFFSET	     CMD_NODE_GETUUIDPROPS_OFFSET
+/* CMM Module */
+#define CMM_ALLOCBUF		_IO(DB, DB_IOC(DB_CMM, 0))	/* Not Impl'd */
+#define CMM_FREEBUF		_IO(DB, DB_IOC(DB_CMM, 1))	/* Not Impl'd */
+#define CMM_GETHANDLE		_IOR(DB, DB_IOC(DB_CMM, 2), unsigned long)
+#define CMM_GETINFO		_IOR(DB, DB_IOC(DB_CMM, 3), unsigned long)
 
-#define CMD_STRM_BASE_OFFSET	    (CMD_NODE_END_OFFSET + 1)
-#define CMD_STRM_ALLOCATEBUFFER_OFFSET  (CMD_STRM_BASE_OFFSET + 0)
-#define CMD_STRM_CLOSE_OFFSET	   (CMD_STRM_BASE_OFFSET + 1)
-#define CMD_STRM_FREEBUFFER_OFFSET      (CMD_STRM_BASE_OFFSET + 2)
-/* Not Impl'd */
-#define CMD_STRM_GETEVENTHANDLE_OFFSET  (CMD_STRM_BASE_OFFSET + 3)
-#define CMD_STRM_GETINFO_OFFSET	 (CMD_STRM_BASE_OFFSET + 4)
-#define CMD_STRM_IDLE_OFFSET	    (CMD_STRM_BASE_OFFSET + 5)
-#define CMD_STRM_ISSUE_OFFSET	   (CMD_STRM_BASE_OFFSET + 6)
-#define CMD_STRM_OPEN_OFFSET	    (CMD_STRM_BASE_OFFSET + 7)
-#define CMD_STRM_RECLAIM_OFFSET	 (CMD_STRM_BASE_OFFSET + 8)
-#define CMD_STRM_REGISTERNOTIFY_OFFSET  (CMD_STRM_BASE_OFFSET + 9)
-#define CMD_STRM_SELECT_OFFSET	  (CMD_STRM_BASE_OFFSET + 10)
-#define CMD_STRM_END_OFFSET	     CMD_STRM_SELECT_OFFSET
-
-/* Communication Memory Manager (UCMM) */
-#define CMD_CMM_BASE_OFFSET	     (CMD_STRM_END_OFFSET + 1)
-#define CMD_CMM_ALLOCBUF_OFFSET	 (CMD_CMM_BASE_OFFSET + 0)    /* Not Impl'd */
-#define CMD_CMM_FREEBUF_OFFSET	  (CMD_CMM_BASE_OFFSET + 1)   /* Not Impl'd */
-#define CMD_CMM_GETHANDLE_OFFSET	(CMD_CMM_BASE_OFFSET + 2)
-#define CMD_CMM_GETINFO_OFFSET	  (CMD_CMM_BASE_OFFSET + 3)
-#define CMD_CMM_END_OFFSET	      CMD_CMM_GETINFO_OFFSET
-
-#define CMD_BASE_END_OFFSET	CMD_CMM_END_OFFSET
 #endif				/* WCDIOCTL_ */

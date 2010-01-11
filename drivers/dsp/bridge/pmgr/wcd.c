@@ -144,6 +144,9 @@
 #define MAX_STREAMS     16
 #define MAX_BUFS	64
 
+/* Used to get dspbridge ioctl table */
+#define DB_GET_IOC_TABLE(cmd)	(DB_GET_MODULE(cmd) >> DB_MODULE_SHIFT)
+
 /* Device IOCtl function pointer */
 struct WCD_Cmd {
 	u32(*fxn)(union Trapped_Args *args, void *pr_ctxt);
@@ -157,72 +160,96 @@ static struct GT_Mask WCD_debugMask = { NULL, NULL };	/* Core VxD Mask */
 static u32 WCD_cRefs;
 
 /*
- *  Function table.
+ *  Function tables.
  *  The order of these functions MUST be the same as the order of the command
  *  numbers defined in wcdioctl.h  This is how an IOCTL number in user mode
  *  turns into a function call in kernel mode.
  */
-static struct WCD_Cmd WCD_cmdTable[] = {
-	/* MGR module */
-	{MGRWRAP_EnumNode_Info, CMD_MGR_ENUMNODE_INFO_OFFSET},
-	{MGRWRAP_EnumProc_Info, CMD_MGR_ENUMPROC_INFO_OFFSET},
-	{MGRWRAP_RegisterObject, CMD_MGR_REGISTEROBJECT_OFFSET},
-	{MGRWRAP_UnregisterObject, CMD_MGR_UNREGISTEROBJECT_OFFSET},
-	{MGRWRAP_WaitForBridgeEvents, CMD_MGR_WAIT_OFFSET},
+
+/* MGR wrapper functions */
+static struct WCD_Cmd mgr_cmd[] = {
+	{MGRWRAP_EnumNode_Info},		/* MGR_ENUMNODE_INFO */
+	{MGRWRAP_EnumProc_Info},		/* MGR_ENUMPROC_INFO */
+	{MGRWRAP_RegisterObject},		/* MGR_REGISTEROBJECT */
+	{MGRWRAP_UnregisterObject},		/* MGR_UNREGISTEROBJECT */
+	{MGRWRAP_WaitForBridgeEvents},		/* MGR_WAIT */
 #ifndef RES_CLEANUP_DISABLE
-	{MGRWRAP_GetProcessResourcesInfo, CMD_MGR_RESOUCES_OFFSET},
+	{MGRWRAP_GetProcessResourcesInfo},	/* MGR_GET_PROC_RES */
+#else
+	{NULL},
 #endif
-	/* PROC Module */
-	{PROCWRAP_Attach, CMD_PROC_ATTACH_OFFSET},
-	{PROCWRAP_Ctrl, CMD_PROC_CTRL_OFFSET},
-	{PROCWRAP_Detach, CMD_PROC_DETACH_OFFSET},
-	{PROCWRAP_EnumNode_Info, CMD_PROC_ENUMNODE_OFFSET},
-	{PROCWRAP_EnumResources, CMD_PROC_ENUMRESOURCES_OFFSET},
-	{PROCWRAP_GetState, CMD_PROC_GETSTATE_OFFSET},
-	{PROCWRAP_GetTrace, CMD_PROC_GETTRACE_OFFSET},
-	{PROCWRAP_Load, CMD_PROC_LOAD_OFFSET},
-	{PROCWRAP_RegisterNotify, CMD_PROC_REGISTERNOTIFY_OFFSET},
-	{PROCWRAP_Start, CMD_PROC_START_OFFSET},
-	{PROCWRAP_ReserveMemory, CMD_PROC_RSVMEM_OFFSET},
-	{PROCWRAP_UnReserveMemory, CMD_PROC_UNRSVMEM_OFFSET},
-	{PROCWRAP_Map, CMD_PROC_MAPMEM_OFFSET},
-	{PROCWRAP_UnMap, CMD_PROC_UNMAPMEM_OFFSET},
-	{PROCWRAP_FlushMemory, CMD_PROC_FLUSHMEMORY_OFFSET},
-	{PROCWRAP_Stop, CMD_PROC_STOP_OFFSET},
-	{PROCWRAP_InvalidateMemory, CMD_PROC_INVALIDATEMEMORY_OFFSET},
-	/* NODE Module */
-	{NODEWRAP_Allocate, CMD_NODE_ALLOCATE_OFFSET},
-	{NODEWRAP_AllocMsgBuf, CMD_NODE_ALLOCMSGBUF_OFFSET},
-	{NODEWRAP_ChangePriority, CMD_NODE_CHANGEPRIORITY_OFFSET},
-	{NODEWRAP_Connect, CMD_NODE_CONNECT_OFFSET},
-	{NODEWRAP_Create, CMD_NODE_CREATE_OFFSET},
-	{NODEWRAP_Delete, CMD_NODE_DELETE_OFFSET},
-	{NODEWRAP_FreeMsgBuf, CMD_NODE_FREEMSGBUF_OFFSET},
-	{NODEWRAP_GetAttr, CMD_NODE_GETATTR_OFFSET},
-	{NODEWRAP_GetMessage, CMD_NODE_GETMESSAGE_OFFSET},
-	{NODEWRAP_Pause, CMD_NODE_PAUSE_OFFSET},
-	{NODEWRAP_PutMessage, CMD_NODE_PUTMESSAGE_OFFSET},
-	{NODEWRAP_RegisterNotify, CMD_NODE_REGISTERNOTIFY_OFFSET},
-	{NODEWRAP_Run, CMD_NODE_RUN_OFFSET},
-	{NODEWRAP_Terminate, CMD_NODE_TERMINATE_OFFSET},
-	{NODEWRAP_GetUUIDProps, CMD_NODE_GETUUIDPROPS_OFFSET},
-	/* STRM wrapper functions */
-	{STRMWRAP_AllocateBuffer, CMD_STRM_ALLOCATEBUFFER_OFFSET},
-	{STRMWRAP_Close, CMD_STRM_CLOSE_OFFSET},
-	{STRMWRAP_FreeBuffer, CMD_STRM_FREEBUFFER_OFFSET},
-	{STRMWRAP_GetEventHandle, CMD_STRM_GETEVENTHANDLE_OFFSET},
-	{STRMWRAP_GetInfo, CMD_STRM_GETINFO_OFFSET},
-	{STRMWRAP_Idle, CMD_STRM_IDLE_OFFSET},
-	{STRMWRAP_Issue, CMD_STRM_ISSUE_OFFSET},
-	{STRMWRAP_Open, CMD_STRM_OPEN_OFFSET},
-	{STRMWRAP_Reclaim, CMD_STRM_RECLAIM_OFFSET},
-	{STRMWRAP_RegisterNotify, CMD_STRM_REGISTERNOTIFY_OFFSET},
-	{STRMWRAP_Select, CMD_STRM_SELECT_OFFSET},
-	/* CMM module */
-	{CMMWRAP_CallocBuf, CMD_CMM_ALLOCBUF_OFFSET},
-	{CMMWRAP_FreeBuf, CMD_CMM_FREEBUF_OFFSET},
-	{CMMWRAP_GetHandle, CMD_CMM_GETHANDLE_OFFSET},
-	{CMMWRAP_GetInfo, CMD_CMM_GETINFO_OFFSET}
+};
+
+/* PROC wrapper functions */
+static struct WCD_Cmd proc_cmd[] = {
+	{PROCWRAP_Attach},			/* PROC_ATTACH */
+	{PROCWRAP_Ctrl},			/* PROC_CTRL */
+	{PROCWRAP_Detach},			/* PROC_DETACH */
+	{PROCWRAP_EnumNode_Info},		/* PROC_ENUMNODE */
+	{PROCWRAP_EnumResources},		/* PROC_ENUMRESOURCES */
+	{PROCWRAP_GetState},			/* PROC_GET_STATE */
+	{PROCWRAP_GetTrace},			/* PROC_GET_TRACE */
+	{PROCWRAP_Load},			/* PROC_LOAD */
+	{PROCWRAP_RegisterNotify},		/* PROC_REGISTERNOTIFY */
+	{PROCWRAP_Start},			/* PROC_START */
+	{PROCWRAP_ReserveMemory},		/* PROC_RSVMEM */
+	{PROCWRAP_UnReserveMemory},		/* PROC_UNRSVMEM */
+	{PROCWRAP_Map},				/* PROC_MAPMEM */
+	{PROCWRAP_UnMap},			/* PROC_UNMAPMEM */
+	{PROCWRAP_FlushMemory},			/* PROC_FLUSHMEMORY */
+	{PROCWRAP_Stop},			/* PROC_STOP */
+	{PROCWRAP_InvalidateMemory},		/* PROC_INVALIDATEMEMORY */
+};
+
+/* NODE wrapper functions */
+static struct WCD_Cmd node_cmd[] = {
+	{NODEWRAP_Allocate},			/* NODE_ALLOCATE */
+	{NODEWRAP_AllocMsgBuf},			/* NODE_ALLOCMSGBUF */
+	{NODEWRAP_ChangePriority},		/* NODE_CHANGEPRIORITY */
+	{NODEWRAP_Connect},			/* NODE_CONNECT */
+	{NODEWRAP_Create},			/* NODE_CREATE */
+	{NODEWRAP_Delete},			/* NODE_DELETE */
+	{NODEWRAP_FreeMsgBuf},			/* NODE_FREEMSGBUF */
+	{NODEWRAP_GetAttr},			/* NODE_GETATTR */
+	{NODEWRAP_GetMessage},			/* NODE_GETMESSAGE */
+	{NODEWRAP_Pause},			/* NODE_PAUSE */
+	{NODEWRAP_PutMessage},			/* NODE_PUTMESSAGE */
+	{NODEWRAP_RegisterNotify},		/* NODE_REGISTERNOTIFY */
+	{NODEWRAP_Run},				/* NODE_RUN */
+	{NODEWRAP_Terminate},			/* NODE_TERMINATE */
+	{NODEWRAP_GetUUIDProps},		/* NODE_GETUUIDPROPS */
+};
+
+/* STRM wrapper functions */
+static struct WCD_Cmd strm_cmd[] = {
+	{STRMWRAP_AllocateBuffer},		/* STRM_ALLOCATEBUFFER */
+	{STRMWRAP_Close},			/* STRM_CLOSE */
+	{STRMWRAP_FreeBuffer},			/* STRM_FREEBUFFER */
+	{STRMWRAP_GetEventHandle},		/* STRM_GETEVENTHANDLE */
+	{STRMWRAP_GetInfo},			/* STRM_GETINFO */
+	{STRMWRAP_Idle},			/* STRM_IDLE */
+	{STRMWRAP_Issue},			/* STRM_ISSUE */
+	{STRMWRAP_Open},			/* STRM_OPEN */
+	{STRMWRAP_Reclaim},			/* STRM_RECLAIM */
+	{STRMWRAP_RegisterNotify},		/* STRM_REGISTERNOTIFY */
+	{STRMWRAP_Select},			/* STRM_SELECT */
+};
+
+/* CMM wrapper functions */
+static struct WCD_Cmd cmm_cmd[] = {
+	{CMMWRAP_CallocBuf},			/* CMM_ALLOCBUF */
+	{CMMWRAP_FreeBuf},			/* CMM_FREEBUF */
+	{CMMWRAP_GetHandle},			/* CMM_GETHANDLE */
+	{CMMWRAP_GetInfo},			/* CMM_GETINFO */
+};
+
+/* Array used to store ioctl table sizes. It can hold up to 8 entries */
+static u8 size_cmd[] = {
+	ARRAY_SIZE(mgr_cmd),
+	ARRAY_SIZE(proc_cmd),
+	ARRAY_SIZE(node_cmd),
+	ARRAY_SIZE(strm_cmd),
+	ARRAY_SIZE(cmm_cmd),
 };
 
 static inline void __cp_fm_usr(void *to, const void __user *from,
@@ -273,13 +300,56 @@ static inline void __cp_to_usr(void __user *to, const void *from,
 inline DSP_STATUS WCD_CallDevIOCtl(u32 cmd, union Trapped_Args *args,
 				    u32 *result, void *pr_ctxt)
 {
-	if (cmd < ARRAY_SIZE(WCD_cmdTable)) {
-		/* make the fxn call via the cmd table */
-		*result = (*WCD_cmdTable[cmd].fxn) (args, pr_ctxt);
-		return DSP_SOK;
+	u32 (*ioctl_cmd)(union Trapped_Args *args, void *pr_ctxt) = NULL;
+	int i;
+
+	if (_IOC_TYPE(cmd) != DB) {
+		pr_err("%s: Incompatible dspbridge ioctl number\n", __func__);
+		goto err;
 	}
 
-	return DSP_EINVALIDARG;
+	if (DB_GET_IOC_TABLE(cmd) > ARRAY_SIZE(size_cmd)) {
+		pr_err("%s: undefined ioctl module\n", __func__);
+		goto err;
+	}
+
+	/* Check the size of the required cmd table */
+	i = DB_GET_IOC(cmd);
+	if (i > size_cmd[DB_GET_IOC_TABLE(cmd)]) {
+		pr_err("%s: requested ioctl %d out of bounds for table %d\n",
+					__func__, i, DB_GET_IOC_TABLE(cmd));
+		goto err;
+	}
+
+	switch (DB_GET_MODULE(cmd)) {
+	case DB_MGR:
+		ioctl_cmd = mgr_cmd[i].fxn;
+		break;
+	case DB_PROC:
+		ioctl_cmd = proc_cmd[i].fxn;
+		break;
+	case DB_NODE:
+		ioctl_cmd = node_cmd[i].fxn;
+		break;
+	case DB_STRM:
+		ioctl_cmd = strm_cmd[i].fxn;
+		break;
+	case DB_CMM:
+		ioctl_cmd = cmm_cmd[i].fxn;
+		break;
+	}
+
+	if (!ioctl_cmd) {
+		pr_err("%s: requested ioctl not defined\n", __func__);
+		goto err;
+	} else {
+		*result = (*ioctl_cmd)(args, pr_ctxt);
+	}
+
+	return DSP_SOK;
+
+err:
+	return -EINVAL;
 }
 
 /*
