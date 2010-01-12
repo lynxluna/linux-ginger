@@ -493,10 +493,6 @@ void MEM_FlushCache(void *pMemBuf, u32 cBytes, s32 FlushType)
 		outer_flush_range(__pa((u32)pMemBuf), __pa((u32)pMemBuf +
 				  cBytes));
 	break;
-	default:
-		GT_1trace(MEM_debugMask, GT_6CLASS, "MEM_FlushCache: invalid "
-			  "FlushMemType 0x%x\n", FlushType);
-	break;
 	}
 
 }
