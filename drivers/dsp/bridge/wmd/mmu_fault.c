@@ -77,7 +77,7 @@ irqreturn_t  MMU_FaultIsr(int irq, IN void *pRefData)
 	DSP_STATUS status = DSP_SOK;
 
 	DBG_Trace(DBG_LEVEL1, "Entering DEH_DspMmuIsr: 0x%x\n", pRefData);
-       DBC_Require(irq == INT_DSP_MMU_IRQ);
+	DBC_Require(irq == INT_DSP_MMU_IRQ);
 	DBC_Require(MEM_IsValidHandle(pDehMgr, SIGNATURE));
 
 	if (MEM_IsValidHandle(pDehMgr, SIGNATURE)) {
@@ -119,7 +119,7 @@ irqreturn_t  MMU_FaultIsr(int irq, IN void *pRefData)
 					    HW_MMU_ALL_INTERRUPTS);
 		}
 	}
-       return IRQ_HANDLED;
+	return IRQ_HANDLED;
 }
 
 

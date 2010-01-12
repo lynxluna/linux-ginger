@@ -86,8 +86,7 @@ DSP_STATUS WMD_DEH_Create(OUT struct DEH_MGR **phDehMgr,
 		status = DSP_EMEMORY;
 	} else {
 		/* Create an NTFY object to manage notifications */
-		if (DSP_SUCCEEDED(status))
-			status = NTFY_Create(&pDehMgr->hNtfy);
+		status = NTFY_Create(&pDehMgr->hNtfy);
 
 		/* Create a MMUfault DPC */
 		tasklet_init(&pDehMgr->dpc_tasklet, MMU_FaultDpc, (u32)pDehMgr);
@@ -188,7 +187,6 @@ void WMD_DEH_Notify(struct DEH_MGR *hDehMgr, u32 ulEventMask,
 	struct DEH_MGR *pDehMgr = (struct DEH_MGR *)hDehMgr;
 	struct WMD_DEV_CONTEXT *pDevContext;
 	DSP_STATUS status = DSP_SOK;
-	DSP_STATUS status1 = DSP_EFAIL;
 	u32 memPhysical = 0;
 	u32 HW_MMU_MAX_TLB_COUNT = 31;
 	u32 extern faultAddr;
@@ -287,16 +285,8 @@ DBG_Trace(DBG_LEVEL6, "WMD_DEH_Notify: DSP_MMUFAULT, "
 		}
 
 		/* Filter subsequent notifications when an error occurs */
-		if (pDevContext->dwBrdState != BRD_ERROR) {
-			/* Use it as a flag to send notifications the
-			 * first time and error occurred, next time
-			 * state will be BRD_ERROR */
-			status1 = DSP_EFAIL;
-		}
-
-		/* Filter subsequent notifications when an error occurs */
 		if (pDevContext->dwBrdState != BRD_ERROR)
-			status1 = DSP_SOK;
+			NTFY_Notify(pDehMgr->hNtfy, ulEventMask);
 
 		/* Set the Board state as ERROR */
 		pDevContext->dwBrdState = BRD_ERROR;
@@ -304,11 +294,6 @@ DBG_Trace(DBG_LEVEL6, "WMD_DEH_Notify: DSP_MMUFAULT, "
 		(void)DSP_PeripheralClocks_Disable(pDevContext, NULL);
 		/* Call DSP Trace Buffer */
 		PrintDspTraceBuffer(hDehMgr->hWmdContext);
-
-		if (DSP_SUCCEEDED(status1)) {
-			/* Signal DSP error/exception event. */
-			NTFY_Notify(pDehMgr->hNtfy, ulEventMask);
-		}
 
 	}
 	DBG_Trace(DBG_LEVEL1, "Exiting WMD_DEH_Notify\n");
@@ -337,6 +322,8 @@ DSP_STATUS WMD_DEH_GetInfo(struct DEH_MGR *hDehMgr,
 		pErrInfo->dwVal1 = pDehMgr->errInfo.dwVal1;
 		pErrInfo->dwVal2 = pDehMgr->errInfo.dwVal2;
 		pErrInfo->dwVal3 = pDehMgr->errInfo.dwVal3;
+	} else {
+		status = DSP_EHANDLE;
 	}
 
 	DBG_Trace(DBG_LEVEL1, "Exiting WMD_DEH_GetInfo\n");
