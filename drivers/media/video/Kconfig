@@ -336,6 +336,59 @@ config VIDEO_TCM825X
 	  This is a driver for the Toshiba TCM825x VGA camera sensor.
 	  It is used for example in Nokia N800.
 
+config VIDEO_MT9P012
+	tristate "Micron MT9P012 raw sensor driver (5MP)"
+	depends on I2C && VIDEO_V4L2
+	---help---
+	  This is a Video4Linux2 sensor-level driver for the Micron
+	  MT9P012 camera.  It is currently working with the TI OMAP3
+	  camera controller.
+
+config VIDEO_DW9710
+	tristate "Lens driver for DW9710"
+	depends on I2C && VIDEO_V4L2
+	---help---
+	  This is a Video4Linux2 lens driver for the Dongwoon
+	  DW9710 coil.  It is currently working with the TI OMAP3
+	  camera controller and micron MT9P012 sensor.
+
+config VIDEO_TPS61059
+	tristate "OMAP 3430 SDP GPIO LED flash driver"
+	depends on VIDEO_V4L2 && MACH_OMAP_3430SDP
+	---help---
+	Support for OMAP 3430 SDP LED flash tps61059 chip
+
+config VIDEO_OV3640
+	tristate "OmniVision ov3640 smart sensor driver (3MP)"
+	depends on I2C && VIDEO_V4L2
+	---help---
+	  This is a Video4Linux2 sensor-level driver for the OmniVision
+	  OV3640 camera.  It is currently working with the TI OMAP3
+          camera controller.
+
+config VIDEO_OV3640_CSI2
+	bool "CSI2 bus support for OmniVision ov3640 sensor"
+	depends on I2C && VIDEO_V4L2 && VIDEO_OV3640
+	---help---
+	  This enables the use of the CSI2 serial bus for the ov3640
+	  camera.
+
+config VIDEO_IMX046
+	tristate "Sony IMX046 sensor driver (8MP)"
+	depends on I2C && VIDEO_V4L2
+	---help---
+	  This is a Video4Linux2 sensor-level driver for the Sony
+	  IMX046 camera.  It is currently working with the TI OMAP3
+          camera controller.
+
+config VIDEO_LV8093
+	tristate "Piezo Actuator Lens driver for LV8093"
+	depends on I2C && VIDEO_V4L2
+	---help---
+	  This is a Video4Linux2 lens driver for the Sanyo LV8093.
+	  It is currently working with the TI OMAP3 camera controller
+	  and Sony IMX046 sensor.
+
 config VIDEO_SAA7110
 	tristate "Philips SAA7110 video decoder"
 	depends on VIDEO_V4L2 && I2C
@@ -812,6 +865,17 @@ config VIDEO_CAFE_CCIC
 	  This is a video4linux2 driver for the Marvell 88ALP01 integrated
 	  CMOS camera controller.  This is the controller found on first-
 	  generation OLPC systems.
+
+config VIDEO_OMAP3
+        tristate "OMAP 3 Camera support"
+	select VIDEOBUF_GEN
+	select VIDEOBUF_DMA_SG
+	select OMAP_IOMMU
+	depends on VIDEO_V4L2 && ARCH_OMAP34XX
+	---help---
+	  Driver for an OMAP 3 camera controller.
+
+source "drivers/media/video/isp/Kconfig"
 
 config SOC_CAMERA
 	tristate "SoC camera support"
