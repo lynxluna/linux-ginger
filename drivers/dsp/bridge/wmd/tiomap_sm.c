@@ -40,7 +40,6 @@ DSP_STATUS CHNLSM_EnableInterrupt(struct WMD_DEV_CONTEXT *pDevContext)
 	u32 mbxValue;
 	struct CFG_HOSTRES resources;
 	u32 devType;
-	struct IO_MGR *hIOMgr;
 
 	DBG_Trace(DBG_ENTER, "CHNLSM_EnableInterrupt(0x%x)\n", pDevContext);
 
@@ -49,7 +48,6 @@ DSP_STATUS CHNLSM_EnableInterrupt(struct WMD_DEV_CONTEXT *pDevContext)
 	CFG_GetHostResources((struct CFG_DEVNODE *)DRV_GetFirstDevExtension(),
 			     &resources);
 	DEV_GetDevType(pDevContext->hDevObject, &devType);
-	status = DEV_GetIOMgr(pDevContext->hDevObject, &hIOMgr);
 	if (devType == DSP_UNIT) {
 		HW_MBOX_NumMsgGet(resources.dwMboxBase,
 				  MBOX_DSP2ARM, &numMbxMsg);
