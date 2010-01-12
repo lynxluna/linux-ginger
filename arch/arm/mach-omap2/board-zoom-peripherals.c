@@ -415,6 +415,19 @@ static void enable_board_wakeup_source(void)
 		OMAP_WAKEUP_EN | OMAP_PIN_INPUT_PULLUP);
 }
 
+/* GPIOS need to be in order of BT, FM and GPS
+ * provide -1 is Not applicable for chip */
+static int gpios[] = {109, 161, -1};
+static struct platform_device zoom_btfmgps_device = {
+	.name           = "kim", /* named after init manager for ST */
+	.id             = -1,
+	.dev.platform_data = &gpios,
+};
+
+static struct platform_device *zoom_devices[] __initdata = {
+       &zoom_btfmgps_device,
+};
+
 void __init zoom_peripherals_init(void)
 {
 #ifdef CONFIG_TWL4030_POWER
@@ -429,4 +442,5 @@ void __init zoom_peripherals_init(void)
 	usb_musb_init();
 	enable_board_wakeup_source();
 	omap3_pm_init_vc(&omap3_setuptime_table);
+	platform_add_devices(zoom_devices, ARRAY_SIZE(zoom_devices));
 }
