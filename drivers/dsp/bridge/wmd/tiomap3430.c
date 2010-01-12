@@ -82,7 +82,6 @@
 #define MMU_LARGE_PAGE_MASK      0xFFFF0000
 #define MMU_SMALL_PAGE_MASK      0xFFFFF000
 #define PAGES_II_LVL_TABLE   512
-#define phys_to_page(phys)      pfn_to_page((phys) >> PAGE_SHIFT)
 
 #define MMU_GFLUSH 0x60
 
