@@ -138,7 +138,7 @@ static int zoom_panel_enable_tv(struct omap_dss_device *dssdev)
 	ret = regulator_enable(vdac_reg);
 	if (ret < 0)
 		return ret;
-	gpio_set_value(TV_PANEL_ENABLE_GPIO, 1);
+	gpio_set_value(TV_PANEL_ENABLE_GPIO, 0);
 
 	return 0;
 }
@@ -153,7 +153,7 @@ static void zoom_panel_disable_tv(struct omap_dss_device *dssdev)
 		return;
 	}
 	regulator_disable(vdac_reg);
-	gpio_set_value(TV_PANEL_ENABLE_GPIO, 0);
+	gpio_set_value(TV_PANEL_ENABLE_GPIO, 1);
 }
 
 static struct zoom_dss_board_info zoom_dss_lcd_data = {
