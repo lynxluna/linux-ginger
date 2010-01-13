@@ -519,8 +519,14 @@ void musb_g_tx(struct musb *musb, u8 epnum)
 				DBG(4, "%s idle now\n",
 					musb_ep->end_point.name);
 				return;
-			} else
+			} else {
 				request = next_request(musb_ep);
+				if (!request) {
+					DBG(4, "%s idle now\n",
+					    musb_ep->end_point.name);
+					return;
+				}
+			}
 		}
 
 		txstate(musb, to_musb_request(request));
