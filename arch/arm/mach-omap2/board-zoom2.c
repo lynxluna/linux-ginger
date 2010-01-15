@@ -27,6 +27,29 @@
 #include "sdram-micron-mt46h32m32lf-6.h"
 #include "omap3-opp.h"
 
+/* FIXME: These are not the optimal setup values */
+static struct prm_setup_vc omap3_setuptime_table = {
+	/* CLK SETUPTIME for RET & OFF */
+	.clksetup_ret = 0xff,
+	.clksetup_off = 0xff,
+	/* VOLT SETUPTIME for RET & OFF */
+	.voltsetup_time1_ret = 0xfff,
+	.voltsetup_time2_ret = 0xfff,
+	.voltsetup_time1_off = 0xfff,
+	.voltsetup_time2_off = 0xfff,
+	.voltoffset = 0xff,
+	.voltsetup2 = 0xff,
+	/* VC COMMAND VALUES for VDD1/VDD2 */
+	.vdd0_on = 0x30,
+	.vdd0_onlp = 0x20,
+	.vdd0_ret = 0x1e,
+	.vdd0_off = 0x00,
+	.vdd1_on = 0x2c,
+	.vdd1_onlp = 0x20,
+	.vdd1_ret = 0x1e,
+	.vdd1_off = 0x00,
+};
+
 static void __init omap_zoom2_init_irq(void)
 {
 	omap2_init_common_hw(mt46h32m32lf6_sdrc_params,
@@ -130,7 +153,7 @@ static struct flash_partitions zoom_flash_partitions[] = {
 static void __init omap_zoom2_init(void)
 {
 	omap3_mux_init(board_mux, OMAP_PACKAGE_CBB);
-	zoom_peripherals_init();
+	zoom_peripherals_init(&omap3_setuptime_table);
 	zoom_flash_init(zoom_flash_partitions, ZOOM_NAND_CS);
 	zoom_debugboard_init();
 	zoom_display_init(OMAP_DSS_VENC_TYPE_COMPOSITE);
