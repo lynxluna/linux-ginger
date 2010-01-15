@@ -1217,8 +1217,17 @@ void omap3_pm_init_vc(struct prm_setup_vc *setup_vc)
 
 int omap3_get_max_vdd1_opp(void)
 {
-	if (cpu_is_omap3630())
-		return VDD1_OPP2;
+	if (cpu_is_omap3630()) {
+		switch (omap_rev_id()) {
+		case OMAP_3630:
+			return VDD1_OPP2;
+		case OMAP_3630_800:
+			return VDD1_OPP3;
+		case OMAP_3630_1000:
+		default:
+			return VDD1_OPP4;
+		}
+	}
 	else /* Place holder for other 34xx (3430/3440) */
 		return VDD1_OPP5;
 }
