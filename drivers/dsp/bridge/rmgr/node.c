@@ -3225,7 +3225,7 @@ DSP_STATUS NODE_GetUUIDProps(void *hProcessor,
 		 pNodeId, pNodeProps);
 
 	status = PROC_GetDevObject(hProcessor, &hDevObject);
-	if (hDevObject != NULL)
+	if (hDevObject)
 		status = DEV_GetNodeManager(hDevObject, &hNodeMgr);
 
 	if (hNodeMgr == NULL) {
