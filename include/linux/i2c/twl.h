@@ -170,6 +170,20 @@ int twl6030_interrupt_mask(u8 bit_mask, u8 offset);
 
 /*----------------------------------------------------------------------*/
 
+/* Iterface Bit Register (INTBR) offsets
+ * (use TWL4030_MODULE_INTBR)
+ */
+
+#define REG_GPPUPDCTR1			0x0F
+
+/* I2C1 and I2C4(SR) SDA/SCL pull-up control bits */
+
+#define I2C_SCL_CTRL_PU			(1 << 0)
+#define I2C_SDA_CTRL_PU			(1 << 2)
+#define SR_I2C_SCL_CTRL_PU		(1 << 4)
+#define SR_I2C_SDA_CTRL_PU		(1 << 6)
+/*----------------------------------------------------------------------*/
+
 /*
  * NOTE:  at up to 1024 registers, this is a big chip.
  *
