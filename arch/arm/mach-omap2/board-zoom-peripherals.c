@@ -104,10 +104,6 @@ static int zoom_panel_enable_lcd(struct omap_dss_device *dssdev)
 	gpio_request(LCD_PANEL_ENABLE_GPIO, "lcd panel");
 	gpio_direction_output(LCD_PANEL_ENABLE_GPIO, 1);
 
-#ifdef CONFIG_SIL9022
-#include <linux/sil9022.h>
-#endif
-
 	return 0;
 }
 
