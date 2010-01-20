@@ -2647,7 +2647,7 @@ static int isp_suspend(struct device *dev)
 		isp_reset(dev);
 
 	isp_disable_clocks(dev);
-
+	isp_disable_mclk(isp);
 out:
 	DPRINTK_ISPCTRL("isp_suspend: done\n");
 
@@ -2671,6 +2671,9 @@ static int isp_resume(struct device *dev)
 		goto out;
 
 	ret_err = isp_enable_clocks(dev);
+	if (ret_err)
+		goto out;
+	ret_err = isp_enable_mclk(dev);
 	if (ret_err)
 		goto out;
 	isp_restore_ctx(dev);
