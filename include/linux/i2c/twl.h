@@ -168,6 +168,19 @@ int twl_i2c_read(u8 mod_no, u8 *value, u8 reg, unsigned num_bytes);
 int twl6030_interrupt_unmask(u8 bit_mask, u8 offset);
 int twl6030_interrupt_mask(u8 bit_mask, u8 offset);
 
+/*Interface Bit Register (INTBR) offsets
+ *(Use TWL_4030_MODULE_INTBR)
+ */
+
+#define REG_GPPUPDCTR1			0x0F
+
+/*I2C1 and I2C4(SR) SDA/SCL pull-up control bits */
+
+#define I2C_SCL_CTRL_PU			BIT(0)
+#define I2C_SDA_CTRL_PU			BIT(2)
+#define SR_I2C_SCL_CTRL_PU		BIT(4)
+#define SR_I2C_SDA_CTRL_PU		BIT(6)
+
 /*----------------------------------------------------------------------*/
 
 /*
