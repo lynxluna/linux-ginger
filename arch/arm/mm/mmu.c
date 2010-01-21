@@ -664,11 +664,7 @@ void __init iotable_init(struct map_desc *io_desc, int nr)
 		create_mapping(io_desc + i);
 }
 
-#ifdef CONFIG_HIGHMEM
-static unsigned long __initdata vmalloc_reserve = SZ_650M;
-#else
 static unsigned long __initdata vmalloc_reserve = SZ_128M;
-#endif
 
 /*
  * vmalloc=size forces the vmalloc area to be exactly 'size'
