@@ -66,18 +66,20 @@ DSP_STATUS handle_constraints_set(struct WMD_DEV_CONTEXT *pDevContext,
 				  IN void *pArgs)
 {
 #ifdef CONFIG_BRIDGE_DVFS
-	u32 *pConstraintVal;
+	u32 opp_idx;
 	struct dspbridge_platform_data *pdata =
 		omap_dspbridge_dev->dev.platform_data;
 
-	pConstraintVal = (u32 *)(pArgs);
+	/* pick up the opp index */
+	opp_idx = *(((u32 *)(pArgs)) + 1);
+
 	/* Read the target value requested by DSP  */
 	DBG_Trace(DBG_LEVEL7, "handle_constraints_set:"
-		"opp requested = 0x%x\n", (u32)*(pConstraintVal+1));
+		"opp requested = 0x%x\n", opp_idx);
 
 	/* Set the new opp value */
 	if (pdata->dsp_set_min_opp)
-		(*pdata->dsp_set_min_opp)((u32)*(pConstraintVal+1));
+		(*pdata->dsp_set_min_opp)(opp_idx);
 #endif /* #ifdef CONFIG_BRIDGE_DVFS */
 	return DSP_SOK;
 }
