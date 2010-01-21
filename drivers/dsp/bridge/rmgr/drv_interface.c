@@ -568,10 +568,15 @@ static long bridge_ioctl(struct file *filp, unsigned int code,
 
 	GT_0trace(driverTrace, GT_ENTER, " -> driver_ioctl\n");
 
+	if (!filp->private_data) {
+		status = -EIO;
+		goto err;
+	}
+
 	status = copy_from_user(&pBufIn, (union Trapped_Args *)args,
 				sizeof(union Trapped_Args));
 
-	if (status >= 0) {
+	if (!status) {
 		status = WCD_CallDevIOCtl(code, &pBufIn, &retval,
 				filp->private_data);
 
@@ -585,8 +590,8 @@ static long bridge_ioctl(struct file *filp, unsigned int code,
 
 	}
 
+err:
 	GT_0trace(driverTrace, GT_ENTER, " <- driver_ioctl\n");
-
 	return status;
 }
 
@@ -623,12 +628,10 @@ DSP_STATUS DRV_RemoveAllResources(HANDLE hPCtxt)
 {
 	DSP_STATUS status = DSP_SOK;
 	struct PROCESS_CONTEXT *pCtxt = (struct PROCESS_CONTEXT *)hPCtxt;
-	if (pCtxt != NULL) {
-		DRV_RemoveAllSTRMResElements(pCtxt);
-		DRV_RemoveAllNodeResElements(pCtxt);
-		DRV_RemoveAllDMMResElements(pCtxt);
-		DRV_ProcUpdatestate(pCtxt, PROC_RES_FREED);
-	}
+	DRV_RemoveAllSTRMResElements(pCtxt);
+	DRV_RemoveAllNodeResElements(pCtxt);
+	DRV_RemoveAllDMMResElements(pCtxt);
+	DRV_ProcUpdatestate(pCtxt, PROC_RES_FREED);
 	return status;
 }
 #endif
