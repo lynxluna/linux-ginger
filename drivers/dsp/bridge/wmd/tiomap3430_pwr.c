@@ -73,6 +73,12 @@ DSP_STATUS handle_constraints_set(struct WMD_DEV_CONTEXT *pDevContext,
 	/* pick up the opp index */
 	opp_idx = *(((u32 *)(pArgs)) + 1);
 
+	/* Sanity check to ensure things are fine */
+	if (!opp_idx || (opp_idx > pdata->dsp_num_speeds)) {
+		pr_err("%s: DSP requested for an invalid OPP %d Vs %d->%d!\n",
+			__func__, opp_idx, 1, pdata->dsp_num_speeds);
+		return DSP_EINVALIDARG;
+	}
 	/* Read the target value requested by DSP  */
 	DBG_Trace(DBG_LEVEL7, "handle_constraints_set:"
 		"opp requested = 0x%x\n", opp_idx);
