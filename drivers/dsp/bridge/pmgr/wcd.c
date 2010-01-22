@@ -295,7 +295,6 @@ void WCD_Exit(void)
 		MSG_Exit();
 		IO_Exit();
 		STRM_Exit();
-		NTFY_Exit();
 		DISP_Exit();
 		NODE_Exit();
 		PROC_Exit();
@@ -315,7 +314,7 @@ bool WCD_Init(void)
 {
 	bool fInit = true;
 	bool fDRV, fDEV, fCOD, fCHNL, fMSG, fIO;
-	bool fMGR, fPROC, fNODE, fDISP, fNTFY, fSTRM, fRMM;
+	bool fMGR, fPROC, fNODE, fDISP, fSTRM, fRMM;
 
 	if (WCD_cRefs == 0) {
 		/* initialize debugging module */
@@ -327,7 +326,6 @@ bool WCD_Init(void)
 		fPROC = PROC_Init();
 		fNODE = NODE_Init();
 		fDISP = DISP_Init();
-		fNTFY = NTFY_Init();
 		fSTRM = STRM_Init();
 		fRMM = RMM_init();
 		fCHNL = CHNL_Init();
@@ -356,9 +354,6 @@ bool WCD_Init(void)
 
 			if (fDISP)
 				DISP_Exit();
-
-			if (fNTFY)
-				NTFY_Exit();
 
 			if (fCHNL)
 				CHNL_Exit();
