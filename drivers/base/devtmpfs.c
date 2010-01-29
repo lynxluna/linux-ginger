@@ -351,6 +351,7 @@ int __init devtmpfs_init(void)
 {
 	int err;
 	struct vfsmount *mnt;
+	char options[] = "mode=0755";
 
 	rwlock_init(&dirlock);
 

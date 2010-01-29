@@ -1256,10 +1256,17 @@ static void fc_lport_enter_ns(struct fc_lport *lport, enum fc_lport_state state)
 		return;
 	}
 
+<<<<<<< .merge_file_M6WauJ
+	if (!lport->tt.elsct_send(lport, FC_FID_DIR_SERV, fp, FC_NS_RPN_ID,
+				  fc_lport_rpn_id_resp,
+				  lport, lport->e_d_tov))
+		fc_lport_error(lport, NULL);
+=======
 	if (!lport->tt.elsct_send(lport, FC_FID_DIR_SERV, fp, cmd,
 				  fc_lport_ns_resp,
 				  lport, 3 * lport->r_a_tov))
 		fc_lport_error(lport, fp);
+>>>>>>> .merge_file_e4nEFI
 }
 
 static struct fc_rport_operations fc_lport_rport_ops = {
@@ -1415,8 +1422,12 @@ static void fc_lport_enter_logo(struct fc_lport *lport)
 	}
 
 	if (!lport->tt.elsct_send(lport, FC_FID_FLOGI, fp, ELS_LOGO,
+<<<<<<< .merge_file_M6WauJ
+				  fc_lport_logo_resp, lport, lport->e_d_tov))
+=======
 				  fc_lport_logo_resp, lport,
 				  2 * lport->r_a_tov))
+>>>>>>> .merge_file_e4nEFI
 		fc_lport_error(lport, NULL);
 }
 
@@ -1534,11 +1545,16 @@ void fc_lport_enter_flogi(struct fc_lport *lport)
 	if (!fp)
 		return fc_lport_error(lport, fp);
 
+<<<<<<< .merge_file_M6WauJ
+	if (!lport->tt.elsct_send(lport, FC_FID_FLOGI, fp, ELS_FLOGI,
+				  fc_lport_flogi_resp, lport, lport->e_d_tov))
+=======
 	if (!lport->tt.elsct_send(lport, FC_FID_FLOGI, fp,
 				  lport->vport ? ELS_FDISC : ELS_FLOGI,
 				  fc_lport_flogi_resp, lport,
 				  lport->vport ? 2 * lport->r_a_tov :
 				  lport->e_d_tov))
+>>>>>>> .merge_file_e4nEFI
 		fc_lport_error(lport, NULL);
 }
 

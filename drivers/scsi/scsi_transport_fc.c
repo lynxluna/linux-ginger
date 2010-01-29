@@ -649,11 +649,22 @@ static __init int fc_transport_init(void)
 		return error;
 	error = transport_class_register(&fc_vport_class);
 	if (error)
-		return error;
+		goto unreg_host_class;
 	error = transport_class_register(&fc_rport_class);
 	if (error)
-		return error;
-	return transport_class_register(&fc_transport_class);
+		goto unreg_vport_class;
+	error = transport_class_register(&fc_transport_class);
+	if (error)
+		goto unreg_rport_class;
+	return 0;
+
+unreg_rport_class:
+	transport_class_unregister(&fc_rport_class);
+unreg_vport_class:
+	transport_class_unregister(&fc_vport_class);
+unreg_host_class:
+	transport_class_unregister(&fc_host_class);
+	return error;
 }
 
 static void __exit fc_transport_exit(void)
@@ -3055,6 +3066,7 @@ fc_timeout_deleted_rport(struct work_struct *work)
 	fc_terminate_rport_io(rport);
 
 	spin_lock_irqsave(shost->host_lock, flags);
+
 
 	if (rport->port_state == FC_PORTSTATE_NOTPRESENT) {	/* still missing */
 

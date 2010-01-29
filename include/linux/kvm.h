@@ -535,6 +535,7 @@ struct kvm_irq_routing {
 };
 
 #endif
+#define KVM_CAP_S390_PSW 42
 
 #ifdef KVM_CAP_MCE
 /* x86 MCE */

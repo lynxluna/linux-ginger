@@ -1112,7 +1112,7 @@ void ath_drain_all_txq(struct ath_softc *sc, bool retry_tx)
 			  "Unable to stop TxDMA. Reset HAL!\n");
 
 		spin_lock_bh(&sc->sc_resetlock);
-		r = ath9k_hw_reset(ah, sc->sc_ah->curchan, true);
+		r = ath9k_hw_reset(ah, sc->sc_ah->curchan, false);
 		if (r)
 			ath_print(common, ATH_DBG_FATAL,
 				  "Unable to reset hardware; reset status %d\n",
@@ -2057,6 +2057,15 @@ static void ath_tx_processq(struct ath_softc *sc, struct ath_txq *txq)
 		 * We now know the nullfunc frame has been ACKed so we
 		 * can disable RX.
 		 */
+		if (bf->bf_isnullfunc &&
+		    (ds->ds_txstat.ts_status & ATH9K_TX_ACKED)) {
+			if ((sc->sc_flags & SC_OP_PS_ENABLED)) {
+				sc->ps_enabled = true;
+				ath9k_hw_setrxabort(sc->sc_ah, 1);
+			} else
+				sc->sc_flags |= SC_OP_NULLFUNC_COMPLETED;
+		}
+
 		if (bf->bf_isnullfunc &&
 		    (ds->ds_txstat.ts_status & ATH9K_TX_ACKED)) {
 			if ((sc->sc_flags & SC_OP_PS_ENABLED)) {

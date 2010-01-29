@@ -8919,7 +8919,7 @@ static struct snd_pci_quirk alc882_cfg_tbl[] = {
 	SND_PCI_QUIRK(0x1462, 0x040d, "MSI", ALC883_TARGA_2ch_DIG),
 	SND_PCI_QUIRK(0x1462, 0x0579, "MSI", ALC883_TARGA_2ch_DIG),
 	SND_PCI_QUIRK(0x1462, 0x28fb, "Targa T8", ALC882_TARGA), /* MSI-1049 T8  */
-	SND_PCI_QUIRK(0x1462, 0x2fb3, "MSI", ALC883_TARGA_2ch_DIG),
+	SND_PCI_QUIRK(0x1462, 0x2fb3, "MSI", ALC882_AUTO),
 	SND_PCI_QUIRK(0x1462, 0x6668, "MSI", ALC882_6ST_DIG),
 	SND_PCI_QUIRK(0x1462, 0x3729, "MSI S420", ALC883_TARGA_DIG),
 	SND_PCI_QUIRK(0x1462, 0x3783, "NEC S970", ALC883_TARGA_DIG),
@@ -9236,6 +9236,8 @@ static struct alc_config_preset alc882_presets[] = {
 		.dac_nids = alc883_dac_nids,
 		.num_adc_nids = ARRAY_SIZE(alc889_adc_nids),
 		.adc_nids = alc889_adc_nids,
+		.capsrc_nids = alc889_capsrc_nids,
+		.capsrc_nids = alc889_capsrc_nids,
 		.dig_out_nid = ALC883_DIGOUT_NID,
 		.dig_in_nid = ALC883_DIGIN_NID,
 		.slave_dig_outs = alc883_slave_dig_outs,
@@ -9282,6 +9284,7 @@ static struct alc_config_preset alc882_presets[] = {
 		.dac_nids = alc883_dac_nids,
 		.adc_nids = alc883_adc_nids_alt,
 		.num_adc_nids = ARRAY_SIZE(alc883_adc_nids_alt),
+		.capsrc_nids = alc883_capsrc_nids,
 		.dig_out_nid = ALC883_DIGOUT_NID,
 		.num_channel_mode = ARRAY_SIZE(alc883_3ST_2ch_modes),
 		.channel_mode = alc883_3ST_2ch_modes,
@@ -9428,6 +9431,7 @@ static struct alc_config_preset alc882_presets[] = {
 		.dac_nids = alc883_dac_nids,
 		.adc_nids = alc883_adc_nids_alt,
 		.num_adc_nids = ARRAY_SIZE(alc883_adc_nids_alt),
+		.capsrc_nids = alc883_capsrc_nids,
 		.num_channel_mode = ARRAY_SIZE(alc883_sixstack_modes),
 		.channel_mode = alc883_sixstack_modes,
 		.input_mux = &alc883_capture_source,
@@ -9489,6 +9493,7 @@ static struct alc_config_preset alc882_presets[] = {
 		.dac_nids = alc883_dac_nids,
 		.adc_nids = alc883_adc_nids_alt,
 		.num_adc_nids = ARRAY_SIZE(alc883_adc_nids_alt),
+		.capsrc_nids = alc883_capsrc_nids,
 		.num_channel_mode = ARRAY_SIZE(alc883_3ST_2ch_modes),
 		.channel_mode = alc883_3ST_2ch_modes,
 		.input_mux = &alc883_lenovo_101e_capture_source,
@@ -9668,6 +9673,7 @@ static struct alc_config_preset alc882_presets[] = {
 			alc880_gpio1_init_verbs },
 		.adc_nids = alc883_adc_nids,
 		.num_adc_nids = ARRAY_SIZE(alc883_adc_nids),
+		.capsrc_nids = alc883_capsrc_nids,
 		.dac_nids = alc883_dac_nids,
 		.num_dacs = ARRAY_SIZE(alc883_dac_nids),
 		.channel_mode = alc889A_mb31_6ch_modes,
@@ -10248,7 +10254,7 @@ static void alc262_hp_t5735_setup(struct hda_codec *codec)
 	struct alc_spec *spec = codec->spec;
 
 	spec->autocfg.hp_pins[0] = 0x15;
-	spec->autocfg.speaker_pins[0] = 0x0c; /* HACK: not actually a pin */
+	spec->autocfg.speaker_pins[0] = 0x14;
 }
 
 static struct snd_kcontrol_new alc262_hp_t5735_mixer[] = {
@@ -11652,9 +11658,9 @@ static struct alc_config_preset alc262_presets[] = {
 		.num_channel_mode = ARRAY_SIZE(alc262_modes),
 		.channel_mode = alc262_modes,
 		.input_mux = &alc262_capture_source,
-		.unsol_event = alc_automute_amp_unsol_event,
+		.unsol_event = alc_sku_unsol_event,
 		.setup = alc262_hp_t5735_setup,
-		.init_hook = alc_automute_amp,
+		.init_hook = alc_inithook,
 	},
 	[ALC262_HP_RP5700] = {
 		.mixers = { alc262_hp_rp5700_mixer },
@@ -14763,6 +14769,8 @@ static int patch_alc861(struct hda_codec *codec)
 	spec->stream_digital_playback = &alc861_pcm_digital_playback;
 	spec->stream_digital_capture = &alc861_pcm_digital_capture;
 
+	if (!spec->cap_mixer)
+		set_capture_mixer(codec);
 	set_beep_amp(spec, 0x23, 0, HDA_OUTPUT);
 
 	spec->vmaster_nid = 0x03;
@@ -15401,7 +15409,7 @@ static struct alc_config_preset alc861vd_presets[] = {
 static int alc861vd_auto_create_input_ctls(struct hda_codec *codec,
 						const struct auto_pin_cfg *cfg)
 {
-	return alc_auto_create_input_ctls(codec, cfg, 0x15, 0x09, 0);
+	return alc_auto_create_input_ctls(codec, cfg, 0x15, 0x22, 0);
 }
 
 

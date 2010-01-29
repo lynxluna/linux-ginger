@@ -2686,9 +2686,8 @@ static int amd64_check_ecc_enabled(struct amd64_pvt *pvt)
 			amd64_printk(KERN_WARNING, "%s", ecc_warning);
 			return -ENODEV;
 		}
-	} else
-		/* CLEAR the override, since BIOS controlled it */
 		ecc_enable_override = 0;
+	}
 
 	return 0;
 }
@@ -2925,16 +2924,15 @@ static void __devexit amd64_remove_one_instance(struct pci_dev *pdev)
 
 	amd64_free_mc_sibling_devices(pvt);
 
-	kfree(pvt);
-	mci->pvt_info = NULL;
-
-	mci_lookup[pvt->mc_node_id] = NULL;
-
 	/* unregister from EDAC MCE */
 	amd_report_gart_errors(false);
 	amd_unregister_ecc_decoder(amd64_decode_bus_error);
 
 	/* Free the EDAC CORE resources */
+	mci->pvt_info = NULL;
+	mci_lookup[pvt->mc_node_id] = NULL;
+
+	kfree(pvt);
 	edac_mc_free(mci);
 }
 
@@ -3011,25 +3009,31 @@ static void amd64_setup_pci_device(void)
 static int __init amd64_edac_init(void)
 {
 	int nb, err = -ENODEV;
+	bool load_ok = false;
 
 	edac_printk(KERN_INFO, EDAC_MOD_STR, EDAC_AMD64_VERSION "\n");
 
 	opstate_init();
 
 	if (cache_k8_northbridges() < 0)
-		return err;
+		goto err_ret;
+
+	msrs = msrs_alloc();
+	if (!msrs)
+		goto err_ret;
 
 	msrs = msrs_alloc();
 
 	err = pci_register_driver(&amd64_pci_driver);
 	if (err)
-		return err;
+		goto err_pci;
 
 	/*
 	 * At this point, the array 'pvt_lookup[]' contains pointers to alloc'd
 	 * amd64_pvt structs. These will be used in the 2nd stage init function
 	 * to finish initialization of the MC instances.
 	 */
+	err = -ENODEV;
 	for (nb = 0; nb < num_k8_northbridges; nb++) {
 		if (!pvt_lookup[nb])
 			continue;
@@ -3037,16 +3041,21 @@ static int __init amd64_edac_init(void)
 		err = amd64_init_2nd_stage(pvt_lookup[nb]);
 		if (err)
 			goto err_2nd_stage;
+
+		load_ok = true;
 	}
 
-	amd64_setup_pci_device();
-
-	return 0;
+	if (load_ok) {
+		amd64_setup_pci_device();
+		return 0;
+	}
 
 err_2nd_stage:
-	debugf0("2nd stage failed\n");
 	pci_unregister_driver(&amd64_pci_driver);
-
+err_pci:
+	msrs_free(msrs);
+	msrs = NULL;
+err_ret:
 	return err;
 }
 
