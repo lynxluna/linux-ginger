@@ -112,8 +112,6 @@
 /* Types defined for 'Bridge API */
 	typedef u32 DSP_STATUS;	/* API return code type         */
 
-	typedef HANDLE DSP_HNODE;	/* Handle to a DSP Node object  */
-
 /* Handy Macros */
 #define IsValidProcEvent(x) (((x) == 0) || (((x) & (DSP_PROCESSORSTATECHANGE | \
 				    DSP_PROCESSORATTACH | \
@@ -321,7 +319,7 @@
 		u32 cbStruct;
 		enum DSP_CONNECTTYPE lType;
 		u32 uThisNodeStreamIndex;
-		DSP_HNODE hConnectedNode;
+		void *hConnectedNode;
 		struct DSP_UUID uiConnectedNodeID;
 		u32 uConnectedNodeStreamIndex;
 	} ;
@@ -371,7 +369,7 @@
 		struct DSP_NDBPROPS nbNodeDatabaseProps;
 		u32 uExecutionPriority;
 		enum NODE_STATE nsExecutionState;
-		DSP_HNODE hDeviceOwner;
+		void *hDeviceOwner;
 		u32 uNumberStreams;
 		struct DSP_STREAMCONNECT scStreamConnection[16];
 		u32 uNodeEnv;
