@@ -59,9 +59,7 @@
 #include <dspbridge/proc.h>
 #include <dspbridge/pwr.h>
 
-#ifndef RES_CLEANUP_DISABLE
 #include <dspbridge/resourcecleanup.h>
-#endif
 /*  ----------------------------------- Defines, Data Structures, Typedefs */
 #define PROC_SIGNATURE	   0x434F5250	/* "PROC" (in reverse). */
 #define MAXCMDLINELEN       255
@@ -1287,9 +1285,7 @@ DSP_STATUS PROC_Map(DSP_HPROCESSOR hProcessor, void *pMpuAddr, u32 ulSize,
 	DSP_STATUS status = DSP_SOK;
 	struct PROC_OBJECT *pProcObject = (struct PROC_OBJECT *)hProcessor;
 
-#ifndef RES_CLEANUP_DISABLE
        HANDLE        dmmRes;
-#endif
 
 	GT_6trace(PROC_DebugMask, GT_ENTER, "Entered PROC_Map, args:\n\t"
 		 "hProcessor %x, pMpuAddr %x, ulSize %x, pReqAddr %x, "
@@ -1336,13 +1332,11 @@ DSP_STATUS PROC_Map(DSP_HPROCESSOR hProcessor, void *pMpuAddr, u32 ulSize,
 	}
 	(void)SYNC_LeaveCS(hProcLock);
 
-#ifndef RES_CLEANUP_DISABLE
 	if (DSP_SUCCEEDED(status)) {
 		DRV_InsertDMMResElement(&dmmRes, pr_ctxt);
 		DRV_UpdateDMMResElement(dmmRes, (u32)pMpuAddr, ulSize,
 				(u32)pReqAddr, (u32)*ppMapAddr, hProcessor);
 	}
-#endif
 func_end:
 	GT_1trace(PROC_DebugMask, GT_ENTER, "Leaving PROC_Map [0x%x]", status);
 	return status;
@@ -1654,9 +1648,9 @@ DSP_STATUS PROC_UnMap(DSP_HPROCESSOR hProcessor, void *pMapAddr,
 	struct DMM_OBJECT *hDmmMgr;
 	u32 vaAlign;
 	u32 sizeAlign;
-#ifndef RES_CLEANUP_DISABLE
+
 	HANDLE	      dmmRes;
-#endif
+
 	GT_2trace(PROC_DebugMask, GT_ENTER,
 		 "Entered PROC_UnMap, args:\n\thProcessor:"
 		 "0x%x pMapAddr: 0x%x\n", hProcessor, pMapAddr);
@@ -1689,7 +1683,6 @@ DSP_STATUS PROC_UnMap(DSP_HPROCESSOR hProcessor, void *pMapAddr,
 			 (pProcObject->hWmdContext, vaAlign, sizeAlign);
 	}
 	(void)SYNC_LeaveCS(hProcLock);
-#ifndef RES_CLEANUP_DISABLE
 	GT_1trace(PROC_DebugMask, GT_ENTER,
 		   "PROC_UnMap DRV_GetDMMResElement "
 		   "pMapAddr:[0x%x]", pMapAddr);
@@ -1699,7 +1692,6 @@ DSP_STATUS PROC_UnMap(DSP_HPROCESSOR hProcessor, void *pMapAddr,
 	if (DRV_GetDMMResElement((u32)pMapAddr, &dmmRes, pr_ctxt)
 							!= DSP_ENOTFOUND)
 		DRV_RemoveDMMResElement(dmmRes, pr_ctxt);
-#endif
 func_end:
 	GT_1trace(PROC_DebugMask, GT_ENTER,
 		 "Leaving PROC_UnMap [0x%x]", status);

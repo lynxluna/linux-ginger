@@ -59,9 +59,7 @@
 #include <dspbridge/_dcd.h>
 #include <dspbridge/dbdcd.h>
 
-#ifndef RES_CLEANUP_DISABLE
 #include <dspbridge/resourcecleanup.h>
-#endif
 
 /*  ----------------------------------- Defines, Data Structures, Typedefs */
 #define MAX_TRACEBUFLEN 255
@@ -99,11 +97,7 @@ static struct WCD_Cmd mgr_cmd[] = {
 	{MGRWRAP_RegisterObject},		/* MGR_REGISTEROBJECT */
 	{MGRWRAP_UnregisterObject},		/* MGR_UNREGISTEROBJECT */
 	{MGRWRAP_WaitForBridgeEvents},		/* MGR_WAIT */
-#ifndef RES_CLEANUP_DISABLE
 	{MGRWRAP_GetProcessResourcesInfo},	/* MGR_GET_PROC_RES */
-#else
-	{NULL},
-#endif
 };
 
 /* PROC wrapper functions */
@@ -624,7 +618,6 @@ u32 MGRWRAP_WaitForBridgeEvents(union Trapped_Args *args, void *pr_ctxt)
 }
 
 
-#ifndef RES_CLEANUP_DISABLE
 /*
  * ======== MGRWRAP_GetProcessResourceInfo ========
  */
@@ -634,7 +627,6 @@ u32 __deprecated MGRWRAP_GetProcessResourcesInfo(union Trapped_Args *args,
 	pr_err("%s: deprecated dspbridge ioctl\n", __func__);
 	return DSP_SOK;
 }
-#endif
 
 
 /*

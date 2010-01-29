@@ -56,7 +56,6 @@
 /*  ----------------------------------- This */
 #include <drv_interface.h>
 
-#ifndef RES_CLEANUP_DISABLE
 #include <dspbridge/cfg.h>
 #include <dspbridge/resourcecleanup.h>
 #include <dspbridge/chnl.h>
@@ -64,7 +63,6 @@
 #include <dspbridge/dev.h>
 #include <dspbridge/drvdefs.h>
 #include <dspbridge/drv.h>
-#endif
 
 #ifdef CONFIG_BRIDGE_DVFS
 #include <mach-omap2/omap3-opp.h>
@@ -621,7 +619,6 @@ static int bridge_mmap(struct file *filp, struct vm_area_struct *vma)
 	return status;
 }
 
-#ifndef RES_CLEANUP_DISABLE
 /* To remove all process resources before removing the process from the
  * process context list*/
 DSP_STATUS DRV_RemoveAllResources(HANDLE hPCtxt)
@@ -634,7 +631,6 @@ DSP_STATUS DRV_RemoveAllResources(HANDLE hPCtxt)
 	pCtxt->resState = PROC_RES_FREED;
 	return status;
 }
-#endif
 
 /* Bridge driver initialization and de-initialization functions */
 module_init(bridge_init);
