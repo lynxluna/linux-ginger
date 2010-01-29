@@ -116,8 +116,6 @@
 	typedef HANDLE DSP_HPROCESSOR;	/* Handle to a Processor object */
 	typedef HANDLE DSP_HSTREAM;	/* Handle to a Stream object    */
 
-	typedef u32 DSP_PROCFAMILY;	/* Processor family             */
-
 /* Handy Macros */
 #define IsValidProcEvent(x) (((x) == 0) || (((x) & (DSP_PROCESSORSTATECHANGE | \
 				    DSP_PROCESSORATTACH | \
@@ -410,7 +408,7 @@
  */
 	struct DSP_PROCESSORINFO {
 		u32 cbStruct;
-		DSP_PROCFAMILY uProcessorFamily;
+		long uProcessorFamily;
 		long uProcessorType;
 		u32 uClockRate;
 		u32 ulInternalMemSize;
