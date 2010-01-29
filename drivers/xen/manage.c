@@ -102,14 +102,14 @@ static void do_suspend(void)
 		goto out_thaw;
 	}
 
-	printk(KERN_DEBUG "suspending xenstore...\n");
-	xs_suspend();
-
 	err = dpm_suspend_noirq(PMSG_SUSPEND);
 	if (err) {
 		printk(KERN_ERR "dpm_suspend_noirq failed: %d\n", err);
 		goto out_resume;
 	}
+
+	printk(KERN_DEBUG "suspending xenstore...\n");
+	xs_suspend();
 
 	err = stop_machine(xen_suspend, &cancelled, cpumask_of(0));
 
@@ -127,6 +127,7 @@ out_resume:
 	} else
 		xs_suspend_cancel();
 
+out_resume:
 	dpm_resume_end(PMSG_RESUME);
 
 	/* Make sure timer events get retriggered on all CPUs */

@@ -29,9 +29,7 @@
  *	document number 313056-003, 313057-017: 82801H (ICH8)
  *	document number 316972-004, 316973-012: 82801I (ICH9)
  *	document number 319973-002, 319974-002: 82801J (ICH10)
- *	document number 322169-001, 322170-003: 5 Series, 3400 Series (PCH)
- *	document number 320066-003, 320257-008: EP80597 (IICH)
- *	document number TBD                   : Cougar Point (CPT)
+ *	document number 322169-001, 322170-001: 5 Series, 3400 Series (PCH)
  */
 
 /*
@@ -117,6 +115,7 @@ enum iTCO_chipsets {
 	TCO_EP80579,	/* EP80579 */
 	TCO_CPTD,	/* CPT Desktop */
 	TCO_CPTM,	/* CPT Mobile */
+	TCO_PCHMSFF,	/* PCH Mobile SFF Full Featured */
 };
 
 static struct {
@@ -159,22 +158,7 @@ static struct {
 	{"ICH10DO", 2},
 	{"PCH Desktop Full Featured", 2},
 	{"PCH Mobile Full Featured", 2},
-	{"P55", 2},
-	{"PM55", 2},
-	{"H55", 2},
-	{"QM57", 2},
-	{"H57", 2},
-	{"HM55", 2},
-	{"Q57", 2},
-	{"HM57", 2},
 	{"PCH Mobile SFF Full Featured", 2},
-	{"QS57", 2},
-	{"3400", 2},
-	{"3420", 2},
-	{"3450", 2},
-	{"EP80579", 2},
-	{"CPT Desktop", 2},
-	{"CPT Mobile", 2},
 	{NULL, 0}
 };
 
@@ -245,22 +229,7 @@ static struct pci_device_id iTCO_wdt_pci_tbl[] = {
 	{ ITCO_PCI_DEVICE(0x3a14,				TCO_ICH10DO)},
 	{ ITCO_PCI_DEVICE(0x3b00,				TCO_PCH)},
 	{ ITCO_PCI_DEVICE(0x3b01,				TCO_PCHM)},
-	{ ITCO_PCI_DEVICE(0x3b02,				TCO_P55)},
-	{ ITCO_PCI_DEVICE(0x3b03,				TCO_PM55)},
-	{ ITCO_PCI_DEVICE(0x3b06,				TCO_H55)},
-	{ ITCO_PCI_DEVICE(0x3b07,				TCO_QM57)},
-	{ ITCO_PCI_DEVICE(0x3b08,				TCO_H57)},
-	{ ITCO_PCI_DEVICE(0x3b09,				TCO_HM55)},
-	{ ITCO_PCI_DEVICE(0x3b0a,				TCO_Q57)},
-	{ ITCO_PCI_DEVICE(0x3b0b,				TCO_HM57)},
 	{ ITCO_PCI_DEVICE(0x3b0d,				TCO_PCHMSFF)},
-	{ ITCO_PCI_DEVICE(0x3b0f,				TCO_QS57)},
-	{ ITCO_PCI_DEVICE(0x3b12,				TCO_3400)},
-	{ ITCO_PCI_DEVICE(0x3b14,				TCO_3420)},
-	{ ITCO_PCI_DEVICE(0x3b16,				TCO_3450)},
-	{ ITCO_PCI_DEVICE(0x5031,				TCO_EP80579)},
-	{ ITCO_PCI_DEVICE(0x1c42,				TCO_CPTD)},
-	{ ITCO_PCI_DEVICE(0x1c43,				TCO_CPTM)},
 	{ 0, },			/* End of list */
 };
 MODULE_DEVICE_TABLE(pci, iTCO_wdt_pci_tbl);

@@ -17,18 +17,20 @@
 #include <linux/init.h>
 #include <linux/io.h>
 #include <linux/stddef.h>
+#include <linux/platform_device.h>
 #include <linux/spi/spi.h>
 #include <linux/usb/musb.h>
 
 #include <asm/mach/arch.h>
 #include <asm/mach-types.h>
 
-#include <mach/board.h>
-#include <mach/common.h>
+#include <plat/board.h>
+#include <plat/common.h>
 #include <mach/irqs.h>
-#include <mach/mcspi.h>
-#include <mach/onenand.h>
-#include <mach/serial.h>
+#include <plat/mcspi.h>
+#include <plat/onenand.h>
+#include <plat/serial.h>
+#include <plat/cbus.h>
 
 static struct omap2_mcspi_device_config p54spi_mcspi_config = {
 	.turbo_mode	= 0,
@@ -77,6 +79,20 @@ static struct mtd_partition onenand_partitions[] = {
 	},
 };
 
+static struct cbus_host_platform_data n8x0_cbus_data = {
+	.clk_gpio	= 66,
+	.dat_gpio	= 65,
+	.sel_gpio	= 64,
+};
+
+static struct platform_device n8x0_cbus_device = {
+	.name		= "cbus",
+	.id		= -1,
+	.dev		= {
+		.platform_data = &n8x0_cbus_data,
+	},
+};
+
 static struct omap_onenand_platform_data board_onenand_data = {
 	.cs		= 0,
 	.gpio_irq	= 26,
@@ -111,6 +127,8 @@ static void __init n8x0_init_irq(void)
 
 static void __init n8x0_init_machine(void)
 {
+	platform_device_register(&n8x0_cbus_device);
+
 	/* FIXME: add n810 spi devices */
 	spi_register_board_info(n800_spi_board_info,
 				ARRAY_SIZE(n800_spi_board_info));
@@ -121,7 +139,7 @@ static void __init n8x0_init_machine(void)
 
 MACHINE_START(NOKIA_N800, "Nokia N800")
 	.phys_io	= 0x48000000,
-	.io_pg_offst	= ((0xd8000000) >> 18) & 0xfffc,
+	.io_pg_offst	= ((0xfa000000) >> 18) & 0xfffc,
 	.boot_params	= 0x80000100,
 	.map_io		= n8x0_map_io,
 	.init_irq	= n8x0_init_irq,
@@ -131,7 +149,7 @@ MACHINE_END
 
 MACHINE_START(NOKIA_N810, "Nokia N810")
 	.phys_io	= 0x48000000,
-	.io_pg_offst	= ((0xd8000000) >> 18) & 0xfffc,
+	.io_pg_offst	= ((0xfa000000) >> 18) & 0xfffc,
 	.boot_params	= 0x80000100,
 	.map_io		= n8x0_map_io,
 	.init_irq	= n8x0_init_irq,
@@ -141,7 +159,7 @@ MACHINE_END
 
 MACHINE_START(NOKIA_N810_WIMAX, "Nokia N810 WiMAX")
 	.phys_io	= 0x48000000,
-	.io_pg_offst	= ((0xd8000000) >> 18) & 0xfffc,
+	.io_pg_offst	= ((0xfa000000) >> 18) & 0xfffc,
 	.boot_params	= 0x80000100,
 	.map_io		= n8x0_map_io,
 	.init_irq	= n8x0_init_irq,
