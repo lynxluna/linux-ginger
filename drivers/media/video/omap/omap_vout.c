@@ -1542,6 +1542,13 @@ static int vidioc_s_fmt_vid_overlay(struct file *file, void *fh,
 	ovid = &vout->vid_info;
 	ovl = ovid->overlays[0];
 
+	if (flg_720 == VIDEO_720_ENABLE) {
+		/* align the output width to 16 bytes
+		 * ISP resizer requires the output width to be
+		 * aligned to 16 bytes.
+		 */
+		win->w.width = ((win->w.width + 0x0f) & ~0x0f);
+	}
 	err = omap_vout_new_window(&vout->crop, &vout->win, &vout->fbuf, win);
 	if (err) {
 		mutex_unlock(&vout->lock);
