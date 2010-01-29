@@ -512,7 +512,7 @@ static int bridge_open(struct inode *ip, struct file *filp)
 	 */
 	pr_ctxt = MEM_Calloc(sizeof(struct PROCESS_CONTEXT), MEM_PAGED);
 	if (pr_ctxt)
-		DRV_ProcUpdatestate(pr_ctxt, PROC_RES_ALLOCATED);
+		pr_ctxt->resState = PROC_RES_ALLOCATED;
 	else
 		status = -ENOMEM;
 
@@ -631,7 +631,7 @@ DSP_STATUS DRV_RemoveAllResources(HANDLE hPCtxt)
 	DRV_RemoveAllSTRMResElements(pCtxt);
 	DRV_RemoveAllNodeResElements(pCtxt);
 	DRV_RemoveAllDMMResElements(pCtxt);
-	DRV_ProcUpdatestate(pCtxt, PROC_RES_FREED);
+	pCtxt->resState = PROC_RES_FREED;
 	return status;
 }
 #endif
