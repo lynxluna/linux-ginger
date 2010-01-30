@@ -447,8 +447,7 @@ static int omap_vout_vrfb_buffer_setup(struct omap_vout_device *vout,
 	/* Allocate the VRFB buffers only if the buffers are not
 	 * allocated during init time.
 	 */
-	if ((rotation_enabled(vout)) &&
-			!vout->vrfb_static_allocation)
+	if (!vout->vrfb_static_allocation)
 		if (omap_vout_allocate_vrfb_buffers(vout, count, startindex))
 			return -ENOMEM;
 
@@ -539,13 +538,9 @@ static int omap_vout_calculate_offset(struct omap_vout_device *vout)
 	}
 	vout->ps = ps;
 	vout->vr_ps = vr_ps;
-	if (rotation_enabled(vout)) {
-		line_length = MAX_PIXELS_PER_LINE;
-		ctop = (pix->height - crop->height) - crop->top;
-		cleft = (pix->width - crop->width) - crop->left;
-	} else {
-		line_length = pix->width;
-	}
+	line_length = MAX_PIXELS_PER_LINE;
+	ctop = (pix->height - crop->height) - crop->top;
+	cleft = (pix->width - crop->width) - crop->left;
 	vout->line_length = line_length;
 	switch (rotation) {
 	case dss_rotation_90_degree:
@@ -704,15 +699,9 @@ int omapvid_setup_overlay(struct omap_vout_device *vout,
 	info.out_width = outw;
 	info.out_height = outh;
 	info.global_alpha = vout->win.global_alpha;
-	if (!rotation_enabled(vout)) {
-		info.rotation = 0;
-		info.rotation_type = OMAP_DSS_ROT_DMA;
-		info.screen_width = pixwidth;
-	} else {
-		info.rotation = vout->rotation;
-		info.rotation_type = OMAP_DSS_ROT_VRFB;
-		info.screen_width = 2048;
-	}
+	info.rotation = vout->rotation;
+	info.rotation_type = OMAP_DSS_ROT_VRFB;
+	info.screen_width = 2048;
 
 	v4l2_dbg(1, debug, &vout->vid_dev->v4l2_dev,
 	"%s info.enable=%d info.addr=%x info.width=%d\n info.height=%d "
@@ -844,15 +833,12 @@ static int omap_vout_buffer_setup(struct videobuf_queue *q, unsigned int *count,
 	if (V4L2_MEMORY_MMAP == vout->memory && *count < startindex)
 		*count = startindex;
 
-	if ((rotation_enabled(vout))
-			&& *count > 4)
+	if (*count > 4)
 		*count = 4;
 
-	/* If rotation is enabled, allocate memory for VRFB space also */
-	if (rotation_enabled(vout)) {
-		if (omap_vout_vrfb_buffer_setup(vout, count, startindex))
+	/* Allocate memory for VRFB space also */
+	if (omap_vout_vrfb_buffer_setup(vout, count, startindex))
 			return -ENOMEM;
-	}
 
 	if (V4L2_MEMORY_MMAP != vout->memory)
 		return 0;
@@ -869,8 +855,6 @@ static int omap_vout_buffer_setup(struct videobuf_queue *q, unsigned int *count,
 		virt_addr = omap_vout_alloc_buffer(vout->buffer_size,
 				&phy_addr);
 		if (!virt_addr) {
-			if (!rotation_enabled(vout))
-				break;
 			/* Free the VRFB buffers if no space for V4L2 buffers */
 			for (j = i; j < *count; j++) {
 				omap_vout_free_buffer(
@@ -965,12 +949,6 @@ static int omap_vout_buffer_prepare(struct videobuf_queue *q,
 			(dma_addr_t) omap_vout_uservirt_to_phys(vb->baddr);
 	}
 
-	if (!rotation_enabled(vout)) {
-		dmabuf = videobuf_to_dma(q->bufs[vb->i]);
-
-		vout->queued_buf_addr[vb->i] = (u8 *) dmabuf->bus_addr;
-		return 0;
-	}
 	dmabuf = videobuf_to_dma(q->bufs[vb->i]);
 	/* If rotation is enabled, copy input buffer into VRFB
 	 * memory space using DMA. We are copying input buffer
@@ -1792,8 +1770,7 @@ static int vidioc_qbuf(struct file *file, void *fh,
 		}
 	}
 
-	if ((rotation_enabled(vout)) &&
-			vout->vrfb_dma_tx.req_status == DMA_CHAN_NOT_ALLOTED) {
+	if (vout->vrfb_dma_tx.req_status == DMA_CHAN_NOT_ALLOTED) {
 		printk(KERN_WARNING VOUT_NAME
 				"DMA Channel not allocated for Rotation\n");
 		return -EINVAL;
