@@ -553,6 +553,9 @@ static int omap_dss_remove(struct platform_device *pdev)
 #ifdef CONFIG_OMAP2_DSS_SDI
 		sdi_exit();
 #endif
+#ifdef CONFIG_OMAP2_DSS_HDMI
+	hdmi_exit();
+#endif
 	}
 
 	dss_exit();
