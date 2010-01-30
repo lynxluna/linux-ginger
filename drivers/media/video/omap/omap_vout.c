@@ -2516,7 +2516,12 @@ void omap_vout_isr(void *arg, unsigned int irqstatus)
 
 	spin_lock(&vout->vbq_lock);
 	do_gettimeofday(&timevalue);
-	if (cur_display->type == OMAP_DISPLAY_TYPE_DPI) {
+#ifdef CONFIG_OMAP2_DSS_HDMI
+	if ((cur_display->type == OMAP_DISPLAY_TYPE_DPI) ||
+		(cur_display->type == OMAP_DISPLAY_TYPE_HDMI)) {
+#else
+	if ((cur_display->type == OMAP_DISPLAY_TYPE_DPI) {
+#endif
 		if (!(irqstatus & DISPC_IRQ_VSYNC))
 			return;
 		if (!vout->first_int && (vout->cur_frm != vout->next_frm)) {

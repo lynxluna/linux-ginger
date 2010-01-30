@@ -368,7 +368,9 @@ static int default_get_recommended_bpp(struct omap_dss_device *dssdev)
 
 	switch (dssdev->type) {
 	case OMAP_DISPLAY_TYPE_DPI:
+#ifdef CONFIG_OMAP2_DSS_HDMI
 	case OMAP_DISPLAY_TYPE_HDMI:
+#endif
 		if (dssdev->phy.dpi.data_lines == 24)
 			return 24;
 		else
@@ -406,6 +408,9 @@ bool dss_use_replication(struct omap_dss_device *dssdev,
 
 	switch (dssdev->type) {
 	case OMAP_DISPLAY_TYPE_DPI:
+#ifdef CONFIG_OMAP2_DSS_HDMI
+	case OMAP_DISPLAY_TYPE_HDMI:
+#endif
 		bpp = dssdev->phy.dpi.data_lines;
 		break;
 	case OMAP_DISPLAY_TYPE_VENC:
