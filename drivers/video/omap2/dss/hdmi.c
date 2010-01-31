@@ -44,6 +44,9 @@
 
 struct omap_dss_device *omap_dss_hdmi_device;
 
+static void hdmi_set_timings(struct omap_dss_device *dssdev,
+				struct omap_video_timings *timings);
+
 #ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL_FOR_HDMI
 static int enable_vpll2_power(int enable)
 {
@@ -213,6 +216,11 @@ static int hdmi_enable_display(struct omap_dss_device *dssdev)
 
 	dssdev->state = OMAP_DSS_DISPLAY_ACTIVE;
 
+	/* Default HDMI panel timings may not work for all monitors */
+	/* Reset HDMI panel timings after enabling HDMI. */
+	DSSINFO("Reset HDMI output timings based on monitor E-EDID timings\n");
+	hdmi_set_timings(dssdev, &dssdev->panel.timings);
+
 	return 0;
 
 err5:
@@ -348,6 +356,7 @@ static void hdmi_set_timings(struct omap_dss_device *dssdev,
 			struct omap_video_timings *timings)
 {
 	DSSDBG("hdmi_set_timings\n");
+	dssdev->panel.timings = *timings;
 	if (dssdev->state == OMAP_DSS_DISPLAY_ACTIVE) {
 		hdmi_set_mode(dssdev);
 		dispc_go(OMAP_DSS_CHANNEL_LCD);
