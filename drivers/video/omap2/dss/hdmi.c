@@ -27,6 +27,7 @@
 #include <linux/string.h>
 #include <linux/platform_device.h>
 #include <linux/errno.h>
+#include <linux/i2c/twl.h>
 
 #include <plat/board.h>
 #include <plat/display.h>
@@ -34,8 +35,53 @@
 
 #include "dss.h"
 
+/* for enabling VPLL2*/
+#define ENABLE_VPLL2_DEDICATED          0x05
+#define ENABLE_VPLL2_DEV_GRP            0xE0
+#define TWL4030_VPLL2_DEV_GRP           0x33
+#define TWL4030_VPLL2_DEDICATED         0x36
+
+
 struct omap_dss_device *omap_dss_hdmi_device;
 
+#ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL_FOR_HDMI
+static int enable_vpll2_power(int enable)
+{
+	twl_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
+				(enable) ? ENABLE_VPLL2_DEDICATED : 0,
+				TWL4030_VPLL2_DEDICATED);
+	twl_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
+				(enable) ? ENABLE_VPLL2_DEV_GRP : 0,
+				TWL4030_VPLL2_DEV_GRP);
+	return 0;
+}
+
+static int hdmi_set_dsi_clk(bool is_tft, unsigned long pck_req,
+		unsigned long *fck, int *lck_div, int *pck_div)
+{
+	struct dsi_clock_info cinfo;
+	struct dispc_clock_info dispc_cinfo;
+	int r;
+
+	r = dsi_pll_calc_clock_div_pck(is_tft, pck_req, &cinfo, &dispc_cinfo);
+	if (r)
+		return r;
+
+	r = dsi_pll_set_clock_div(&cinfo);
+	if (r)
+		return r;
+
+	dss_select_clk_source(0, 1);
+
+	dispc_set_clock_div(&dispc_cinfo);
+
+	*fck = cinfo.dsi1_pll_fclk;
+	*lck_div = dispc_cinfo.lck_div;
+	*pck_div = dispc_cinfo.pck_div;
+
+	return 0;
+}
+#else
 static int hdmi_set_dispc_clk(bool is_tft, unsigned long pck_req,
 		unsigned long *fck, int *lck_div, int *pck_div)
 {
@@ -61,6 +107,8 @@ static int hdmi_set_dispc_clk(bool is_tft, unsigned long pck_req,
 
 	return 0;
 }
+#endif
+
 static int hdmi_set_mode(struct omap_dss_device *dssdev)
 {
 	struct omap_video_timings *t = &dssdev->panel.timings;
@@ -77,8 +125,13 @@ static int hdmi_set_mode(struct omap_dss_device *dssdev)
 
 	is_tft = (dssdev->panel.config & OMAP_DSS_LCD_TFT) != 0;
 
+#ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL_FOR_HDMI
+	r = hdmi_set_dsi_clk(is_tft, t->pixel_clock * 1000,
+			&fck, &lck_div, &pck_div);
+#else
 	r = hdmi_set_dispc_clk(is_tft, t->pixel_clock * 1000,
 			&fck, &lck_div, &pck_div);
+#endif
 	if (r)
 		goto err0;
 
@@ -117,7 +170,6 @@ static int hdmi_enable_display(struct omap_dss_device *dssdev)
 {
 	int r = 0;
 
-	DSSDBG("hdmi_enable_display\n");
 	r = omap_dss_start_device(dssdev);
 	if (r) {
 		DSSERR("failed to start device\n");
@@ -136,9 +188,14 @@ static int hdmi_enable_display(struct omap_dss_device *dssdev)
 	if (r)
 		goto err2;
 
-#ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL
+#ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL_FOR_HDMI
 	dss_clk_enable(DSS_CLK_FCK2);
-	r = dsi_pll_init(0, 1);
+	/* this needs to be done here in order to
+	 * get the VPLL2 to power up the DSI PLL module
+	 */
+	enable_vpll2_power(1);
+
+	r = dsi_pll_init(dssdev, 1, 1);
 	if (r)
 		goto err3;
 #endif
@@ -161,7 +218,7 @@ static int hdmi_enable_display(struct omap_dss_device *dssdev)
 err5:
 	dispc_enable_lcd_out(0);
 err4:
-#ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL
+#ifdef	CONFIG_OMAP2_DSS_USE_DSI_PLL_FOR_HDMI
 	dsi_pll_uninit();
 err3:
 	dss_clk_disable(DSS_CLK_FCK2);
@@ -189,9 +246,10 @@ static void hdmi_disable_display(struct omap_dss_device *dssdev)
 
 	dispc_enable_lcd_out(0);
 
-#ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL
+#ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL_FOR_HDMI
 	dss_select_clk_source(0, 0);
 	dsi_pll_uninit();
+	enable_vpll2_power(0);
 	dss_clk_disable(DSS_CLK_FCK2);
 #endif
 
@@ -204,16 +262,22 @@ static void hdmi_disable_display(struct omap_dss_device *dssdev)
 
 static int hdmi_display_suspend(struct omap_dss_device *dssdev)
 {
-	DSSDBG("hdmi_display_suspend\n");
 	if (dssdev->state != OMAP_DSS_DISPLAY_ACTIVE)
 		return -EINVAL;
 
-	DSSDBG("dpi_display_suspend\n");
+	DSSDBG("hdmi_display_suspend\n");
 
 	if (dssdev->driver->suspend)
 		dssdev->driver->suspend(dssdev);
 
 	dispc_enable_lcd_out(0);
+
+#ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL_FOR_HDMI
+	dss_select_clk_source(0, 0);
+	dsi_pll_uninit();
+	enable_vpll2_power(0);
+	dss_clk_disable(DSS_CLK_FCK2);
+#endif
 
 	dss_clk_disable(DSS_CLK_ICK | DSS_CLK_FCK1);
 
@@ -224,6 +288,8 @@ static int hdmi_display_suspend(struct omap_dss_device *dssdev)
 
 static int hdmi_display_resume(struct omap_dss_device *dssdev)
 {
+	int r = 0;
+
 	if (dssdev->state != OMAP_DSS_DISPLAY_SUSPENDED)
 		return -EINVAL;
 
@@ -231,14 +297,45 @@ static int hdmi_display_resume(struct omap_dss_device *dssdev)
 
 	dss_clk_enable(DSS_CLK_ICK | DSS_CLK_FCK1);
 
+#ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL_FOR_HDMI
+	dss_clk_enable(DSS_CLK_FCK2);
+	enable_vpll2_power(1);
+
+	r = dsi_pll_init(dssdev, 1, 1);
+	if (r)
+		goto err0;
+
+	r = hdmi_set_mode(dssdev);
+	if (r)
+		goto err0;
+#endif
+
 	dispc_enable_lcd_out(1);
 
-	if (dssdev->driver->resume)
-		dssdev->driver->resume(dssdev);
+	if (dssdev->driver->resume) {
+		r = dssdev->driver->resume(dssdev);
+		if (r)
+			goto err1;
+	}
 
 	dssdev->state = OMAP_DSS_DISPLAY_ACTIVE;
 
 	return 0;
+
+err1:
+	dispc_enable_lcd_out(0);
+
+#ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL_FOR_HDMI
+err0:
+	DSSERR("<%s!!> err0: failed to init DSI_PLL = %d\n", __func__, r);
+	dss_select_clk_source(0, 0);
+	dsi_pll_uninit();
+	dss_clk_disable(DSS_CLK_FCK2);
+	enable_vpll2_power(0);
+#endif
+	dss_clk_disable(DSS_CLK_ICK | DSS_CLK_FCK1);
+	return r;
+
 }
 
 static void hdmi_get_timings(struct omap_dss_device *dssdev,
@@ -275,7 +372,7 @@ static int hdmi_check_timings(struct omap_dss_device *dssdev,
 
 	is_tft = (dssdev->panel.config & OMAP_DSS_LCD_TFT) != 0;
 
-#ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL
+#ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL_FOR_HDMI
 	{
 		struct dsi_clock_info dsi_cinfo;
 		struct dispc_clock_info dispc_cinfo;
