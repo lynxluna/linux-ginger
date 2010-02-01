@@ -91,7 +91,6 @@ static u32 driverContext;
 static char *GT_str;
 #endif /* CONFIG_BRIDGE_DEBUG */
 static s32 driver_major;
-static s32 driver_minor;
 static char *base_img;
 char *iva_img;
 static s32 shm_size = 0x500000;	/* 5 MB */
@@ -202,7 +201,7 @@ static int __devinit omap34xx_bridge_probe(struct platform_device *pdev)
 	omap_dspbridge_dev = pdev;
 
 	/* use 2.6 device model */
-	result = alloc_chrdev_region(&dev, driver_minor, 1, driver_name);
+	result = alloc_chrdev_region(&dev, 0, 1, driver_name);
 	if (result < 0) {
 		GT_1trace(driverTrace, GT_7CLASS, "bridge_init: "
 				"Can't get Major %d \n", driver_major);
@@ -234,7 +233,7 @@ static int __devinit omap34xx_bridge_probe(struct platform_device *pdev)
 		GT_0trace(driverTrace, GT_7CLASS,
 				"Error creating bridge class \n");
 
-	device_create(bridge_class, NULL, MKDEV(driver_major, driver_minor),
+	device_create(bridge_class, NULL, MKDEV(driver_major, 0),
 			NULL, "DspBridge");
 
 	GT_init();
@@ -393,7 +392,7 @@ func_cont:
 	SERVICES_Exit();
 	GT_exit();
 
-	devno = MKDEV(driver_major, driver_minor);
+	devno = MKDEV(driver_major, 0);
 	if (bridge_device) {
 		cdev_del(&bridge_device->cdev);
 		kfree(bridge_device);
@@ -401,7 +400,7 @@ func_cont:
 	unregister_chrdev_region(devno, 1);
 	if (bridge_class) {
 		/* remove the device from sysfs */
-		device_destroy(bridge_class, MKDEV(driver_major, driver_minor));
+		device_destroy(bridge_class, MKDEV(driver_major, 0));
 		class_destroy(bridge_class);
 
 	}
