@@ -1250,6 +1250,22 @@ static int vidioc_querycap(struct file *file, void *fh,
 	return 0;
 }
 
+static int vidioc_s_omap2_link(struct file *file, void *fh, int linked)
+{
+	struct omap_vout_device *vout = fh;
+
+	vout->linked = linked;
+
+	return 0;
+}
+
+static int vidioc_g_omap2_link(struct file *file, void *fh)
+{
+	struct omap_vout_device *vout = fh;
+
+	return vout->linked;
+}
+
 static int vidioc_enum_fmt_vid_out(struct file *file, void *fh,
 			struct v4l2_fmtdesc *fmt)
 {
@@ -1421,6 +1437,8 @@ static int vidioc_s_fmt_vid_overlay(struct file *file, void *fh,
 		vout->win.global_alpha = f->fmt.win.global_alpha;
 
 	vout->win.chromakey = f->fmt.win.chromakey;
+
+	omapvid_init(vout, 0);
 	mutex_unlock(&vout->lock);
 	return 0;
 }
@@ -1594,6 +1612,7 @@ static int vidioc_g_ctrl(struct file *file, void *fh, struct v4l2_control *ctrl)
 static int vidioc_s_ctrl(struct file *file, void *fh, struct v4l2_control *a)
 {
 	struct omap_vout_device *vout = fh;
+	struct omap_overlay *ovl;
 
 	switch (a->id) {
 	case V4L2_CID_ROTATE:
@@ -1615,6 +1634,8 @@ static int vidioc_s_ctrl(struct file *file, void *fh, struct v4l2_control *a)
 		}
 
 		vout->control[0].value = rotation;
+		ovl = vout->vid_info.overlays[0];
+		omapvid_init(vout, 0);
 		mutex_unlock(&vout->lock);
 		return 0;
 	}
@@ -1658,6 +1679,7 @@ static int vidioc_s_ctrl(struct file *file, void *fh, struct v4l2_control *a)
 		}
 		vout->mirror = mirror;
 		vout->control[2].value = mirror;
+		omapvid_init(vout, 0);
 		mutex_unlock(&vout->lock);
 		return 0;
 	}
@@ -1875,17 +1897,30 @@ static int vidioc_streamon(struct file *file, void *fh,
 
 	omap_dispc_register_isr(omap_vout_isr, vout, mask);
 
-	for (t = 0; t < ovid->num_overlays; t++) {
-		struct omap_overlay *ovl = ovid->overlays[t];
-		if (ovl->manager && ovl->manager->device) {
-			struct omap_overlay_info info;
-			ovl->get_overlay_info(ovl, &info);
-			info.enabled = 1;
-			info.paddr = addr;
-			if (ovl->set_overlay_info(ovl, &info))
-				return -EINVAL;
+	if (vout->linked)
+		for (t = 0; t < NUM_OF_VIDEO_CHANNELS; t++) {
+			struct omap_overlay *ovl = omap_dss_get_overlay(t+1);
+			if (ovl->manager && ovl->manager->device) {
+				struct omap_overlay_info info;
+				ovl->get_overlay_info(ovl, &info);
+				info.enabled = 1;
+				info.paddr = addr;
+				if (ovl->set_overlay_info(ovl, &info))
+					return -EINVAL;
+			}
 		}
-	}
+	else
+		for (t = 0; t < ovid->num_overlays; t++) {
+			struct omap_overlay *ovl = ovid->overlays[t];
+			if (ovl->manager && ovl->manager->device) {
+				struct omap_overlay_info info;
+				ovl->get_overlay_info(ovl, &info);
+				info.enabled = 1;
+				info.paddr = addr;
+				if (ovl->set_overlay_info(ovl, &info))
+					return -EINVAL;
+			}
+		}
 
 	/* First save the configuration in ovelray structure */
 	r = omapvid_init(vout, addr);
@@ -1926,17 +1961,29 @@ static int vidioc_streamoff(struct file *file, void *fh,
 				OCP_INITIATOR_AGENT, 0);
 #endif
 
-	for (t = 0; t < ovid->num_overlays; t++) {
-		struct omap_overlay *ovl = ovid->overlays[t];
-		if (ovl->manager && ovl->manager->device) {
-			struct omap_overlay_info info;
-
-			ovl->get_overlay_info(ovl, &info);
-			info.enabled = 0;
-			if (ovl->set_overlay_info(ovl, &info))
-				return -EINVAL;
+	if (vout->linked)
+		for (t = 0; t < NUM_OF_VIDEO_CHANNELS; t++) {
+			struct omap_overlay *ovl = omap_dss_get_overlay(t+1);
+			if (ovl->manager && ovl->manager->device) {
+				struct omap_overlay_info info;
+				ovl->get_overlay_info(ovl, &info);
+				info.enabled = 0;
+				info.paddr = 0;
+				if (ovl->set_overlay_info(ovl, &info))
+					return -EINVAL;
+			}
 		}
-	}
+	else
+		for (t = 0; t < ovid->num_overlays; t++) {
+			struct omap_overlay *ovl = ovid->overlays[t];
+			if (ovl->manager && ovl->manager->device) {
+				struct omap_overlay_info info;
+				ovl->get_overlay_info(ovl, &info);
+				info.enabled = 0;
+				if (ovl->set_overlay_info(ovl, &info))
+					return -EINVAL;
+			}
+		}
 
 	/* Turn of the pipeline */
 	r = omapvid_apply_changes(vout);
@@ -2076,6 +2123,8 @@ static const struct v4l2_ioctl_ops vout_ioctl_ops = {
 	.vidioc_dqbuf				= vidioc_dqbuf,
 	.vidioc_streamon			= vidioc_streamon,
 	.vidioc_streamoff			= vidioc_streamoff,
+	.vidioc_s_omap2_link			= vidioc_s_omap2_link,
+	.vidioc_g_omap2_link			= vidioc_g_omap2_link,
 };
 
 static const struct v4l2_file_operations omap_vout_fops = {
@@ -2131,6 +2180,7 @@ static int __init omap_vout_setup_video_data(struct omap_vout_device *vout)
 	control[0].value = 0;
 	vout->rotation = 0;
 	vout->mirror = 0;
+	vout->linked = 0;
 	vout->control[2].id = V4L2_CID_HFLIP;
 	vout->control[2].value = 0;
 	vout->vrfb_bpp = 2;

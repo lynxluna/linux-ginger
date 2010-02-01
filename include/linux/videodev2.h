@@ -1638,5 +1638,7 @@ struct v4l2_dbg_chip_ident {
 #endif
 
 #define BASE_VIDIOC_PRIVATE	192		/* 192-255 are private */
+#define VIDIOC_S_OMAP2_LINK	 _IOW('V', 193, int)
+#define VIDIOC_G_OMAP2_LINK	 _IO('V', 194)
 
 #endif /* __LINUX_VIDEODEV2_H */
