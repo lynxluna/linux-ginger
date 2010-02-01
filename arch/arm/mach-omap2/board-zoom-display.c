@@ -26,6 +26,7 @@
 #define LCD_PANEL_RESET_GPIO_PILOT	55
 #define LCD_PANEL_QVGA_GPIO		56
 #define TV_PANEL_ENABLE_GPIO		95
+#define SIL9022_RESET_GPIO		97
 
 struct zoom_dss_board_info {
 	int gpio_flag;
@@ -69,8 +70,16 @@ static void zoom_lcd_tv_panel_init(void)
 	}
 	gpio_direction_output(TV_PANEL_ENABLE_GPIO, 0);
 
+	ret = gpio_request(SIL9022_RESET_GPIO, "hdmi reset");
+	if (ret) {
+		pr_err(KERN_ERR "Failed to get SIL9022_RESET_GPIO.\n");
+		goto err2;
+	}
+	gpio_direction_output(SIL9022_RESET_GPIO, 0);
+ 
 	return;
-
+err2:
+	gpio_free(TV_PANEL_ENABLE_GPIO);
 err1:
 	gpio_free(LCD_PANEL_QVGA_GPIO);
 err0:
@@ -158,6 +167,35 @@ static void zoom_panel_disable_tv(struct omap_dss_device *dssdev)
 	gpio_set_value(TV_PANEL_ENABLE_GPIO, 1);
 }
 
+static void zoom_hdmi_reset_enable(int level)
+{
+	gpio_set_value(SIL9022_RESET_GPIO, level);
+
+}
+
+static int zoom_panel_enable_hdmi(struct omap_dss_device *dssdev)
+{
+	zoom_panel_power_enable(1);
+	zoom_hdmi_reset_enable(1);
+
+	return 0;
+}
+
+static void zoom_panel_disable_hdmi(struct omap_dss_device *dssdev)
+{
+	zoom_hdmi_reset_enable(0);
+	zoom_panel_power_enable(0);
+}
+
+static struct omap_dss_device zoom_hdmi_device = {
+	.name = "hdmi",
+	.driver_name = "hdmi_panel",
+	.type = OMAP_DISPLAY_TYPE_HDMI,
+	.phy.dpi.data_lines = 24,
+	.platform_enable = zoom_panel_enable_hdmi,
+	.platform_disable = zoom_panel_disable_hdmi,
+};
+
 static struct zoom_dss_board_info zoom_dss_lcd_data = {
 	.gpio_flag = 0,
 };
@@ -186,6 +224,7 @@ static struct omap_dss_device zoom_tv_device = {
 static struct omap_dss_device *zoom_dss_devices[] = {
 	&zoom_lcd_device,
 	&zoom_tv_device,
+	&zoom_hdmi_device,
 };
 
 static struct omap_dss_board_info zoom_dss_data = {
@@ -229,5 +268,6 @@ void __init zoom_display_init(enum omap_dss_venc_type venc_type)
 	spi_register_board_info(nec_8048_spi_board_info,
 				ARRAY_SIZE(nec_8048_spi_board_info));
 	zoom_lcd_tv_panel_init();
+	zoom_hdmi_reset_enable(1);
 }
 

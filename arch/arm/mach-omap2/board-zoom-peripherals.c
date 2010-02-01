@@ -34,6 +34,8 @@
 #include "voltage.h"
 
 #define OMAP_SYNAPTICS_GPIO		163
+#define	HDMI_CTR_DRV_NAME		"sil9022"
+#define	HDMI_CTR_I2CSLAVEADDRESS	0x39
 
 /* Zoom2 has Qwerty keyboard*/
 static int board_keymap[] = {
@@ -372,6 +374,12 @@ static struct synaptics_i2c_rmi_platform_data synaptics_platform_data[] = {
 	}
 };
 
+static struct i2c_board_info __initdata zoom_i2c_bus3_info[] = {
+	{
+		I2C_BOARD_INFO(HDMI_CTR_DRV_NAME, HDMI_CTR_I2CSLAVEADDRESS),
+	},
+};
+
 static struct i2c_board_info __initdata zoom_i2c_boardinfo2[] = {
 	{
 		I2C_BOARD_INFO(SYNAPTICS_I2C_RMI_NAME,  0x20),
@@ -415,7 +423,8 @@ static int __init omap_i2c_init(void)
 			ARRAY_SIZE(zoom_i2c_boardinfo));
 	omap_register_i2c_bus(2, 100, zoom_i2c_boardinfo2,
 			ARRAY_SIZE(zoom_i2c_boardinfo2));
-	omap_register_i2c_bus(3, 400, NULL, 0);
+	omap_register_i2c_bus(3, 400, zoom_i2c_bus3_info,
+			ARRAY_SIZE(zoom_i2c_bus3_info));
 	return 0;
 }
 
