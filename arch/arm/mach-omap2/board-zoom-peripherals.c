@@ -32,29 +32,6 @@
 #include "twl4030-script.h"
 #include "pm.h"
 
-/* FIXME: These are not the optimal setup values */
-static struct prm_setup_vc omap3_setuptime_table = {
-	/* CLK SETUPTIME for RET & OFF */
-	.clksetup_ret = 0xff,
-	.clksetup_off = 0xff,
-	/* VOLT SETUPTIME for RET & OFF */
-	.voltsetup_time1_ret = 0xfff,
-	.voltsetup_time2_ret = 0xfff,
-	.voltsetup_time1_off = 0xfff,
-	.voltsetup_time2_off = 0xfff,
-	.voltoffset = 0xff,
-	.voltsetup2 = 0xff,
-	/* VC COMMAND VALUES for VDD1/VDD2 */
-	.vdd0_on = 0x30,
-	.vdd0_onlp = 0x20,
-	.vdd0_ret = 0x1e,
-	.vdd0_off = 0x00,
-	.vdd1_on = 0x2c,
-	.vdd1_onlp = 0x20,
-	.vdd1_ret = 0x1e,
-	.vdd1_off = 0x00,
-};
-
 #define OMAP_SYNAPTICS_GPIO		163
 
 /* Zoom2 has Qwerty keyboard*/
@@ -157,19 +134,19 @@ static struct twl4030_power_data zoom_t2scripts_data __initdata = {
 };
 
 #ifdef CONFIG_TWL4030_POWER
-static void use_generic_twl4030_script(void)
+static void use_generic_twl4030_script(struct prm_setup_vc *setup_vc)
 {
-	omap3_setuptime_table.voltsetup_time1_ret =
+	setup_vc->voltsetup_time1_ret =
 				twl4030_voltsetup_time.voltsetup_time1_ret;
-	omap3_setuptime_table.voltsetup_time2_ret =
+	setup_vc->voltsetup_time2_ret =
 				twl4030_voltsetup_time.voltsetup_time2_ret;
-	omap3_setuptime_table.voltsetup_time1_off =
+	setup_vc->voltsetup_time1_off =
 				twl4030_voltsetup_time.voltsetup_time1_off;
-	omap3_setuptime_table.voltsetup_time2_off =
+	setup_vc->voltsetup_time2_off =
 				twl4030_voltsetup_time.voltsetup_time1_off;
 
-	omap3_setuptime_table.voltoffset = twl4030_voltsetup_time.voltoffset;
-	omap3_setuptime_table.voltsetup2 = twl4030_voltsetup_time.voltsetup2;
+	setup_vc->voltoffset = twl4030_voltsetup_time.voltoffset;
+	setup_vc->voltsetup2 = twl4030_voltsetup_time.voltsetup2;
 
 	zoom_t2scripts_data.scripts = twl4030_generic_script.scripts;
 	zoom_t2scripts_data.num = twl4030_generic_script.num;
@@ -412,15 +389,15 @@ static void enable_board_wakeup_source(void)
 		OMAP_WAKEUP_EN | OMAP_PIN_INPUT_PULLUP);
 }
 
-void __init zoom_peripherals_init(void)
+void __init zoom_peripherals_init(void * peripheral_data)
 {
 #ifdef CONFIG_TWL4030_POWER
-	use_generic_twl4030_script();
+	use_generic_twl4030_script((struct prm_setup_vc *) peripheral_data);
 #endif
 	omap_i2c_init();
 	synaptics_dev_init();
 	omap_serial_init();
 	usb_musb_init();
 	enable_board_wakeup_source();
-	omap3_pm_init_vc(&omap3_setuptime_table);
+	omap3_pm_init_vc((struct prm_setup_vc *) peripheral_data);
 }
