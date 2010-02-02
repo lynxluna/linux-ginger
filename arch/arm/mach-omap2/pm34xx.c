@@ -390,7 +390,8 @@ void omap_sram_idle(void)
 	int mpu_next_state = PWRDM_POWER_ON;
 	int per_next_state = PWRDM_POWER_ON;
 	int core_next_state = PWRDM_POWER_ON;
-	int core_prev_state, per_prev_state;
+	int mpu_prev_state, core_prev_state, per_prev_state;
+	int mpu_logic_state, mpu_mem_state, core_logic_state;
 	u32 sdrc_pwr = 0;
 	int per_state_modified = 0;
 	u32 fclk_status;
@@ -407,11 +408,24 @@ void omap_sram_idle(void)
 	pwrdm_clear_all_prev_pwrst(per_pwrdm);
 
 	mpu_next_state = pwrdm_read_next_pwrst(mpu_pwrdm);
+	mpu_logic_state = pwrdm_read_next_logic_pwrst(mpu_pwrdm);
+	mpu_mem_state = pwrdm_read_next_mem_pwrst(mpu_pwrdm, 0);
+
 	switch (mpu_next_state) {
 	case PWRDM_POWER_ON:
-	case PWRDM_POWER_RET:
 		/* No need to save context */
 		save_state = 0;
+		break;
+	case PWRDM_POWER_RET:
+		if (!mpu_logic_state && !mpu_mem_state)
+			save_state = 3;
+		else if (!mpu_mem_state)
+			save_state = 2;
+		else if (!mpu_logic_state)
+			save_state = 1;
+		else
+			/* No need to save context */
+			save_state = 0;
 		break;
 	case PWRDM_POWER_OFF:
 		save_state = 3;
@@ -431,6 +445,8 @@ void omap_sram_idle(void)
 	/* PER */
 	per_next_state = pwrdm_read_next_pwrst(per_pwrdm);
 	core_next_state = pwrdm_read_next_pwrst(core_pwrdm);
+	core_logic_state = pwrdm_read_next_logic_pwrst(core_pwrdm);
+
 	if (per_next_state < PWRDM_POWER_ON) {
 		omap_uart_prepare_idle(2, per_next_state);
 		omap2_gpio_prepare_for_idle(per_next_state);
@@ -449,8 +465,8 @@ void omap_sram_idle(void)
 
 	/* CORE */
 	if (core_next_state < PWRDM_POWER_ON) {
-		omap_uart_prepare_idle(0, core_next_state);
-		omap_uart_prepare_idle(1, core_next_state);
+		omap_uart_prepare_idle(0, core_next_state & core_logic_state);
+		omap_uart_prepare_idle(1, core_next_state & core_logic_state);
 		if (core_next_state == PWRDM_POWER_OFF) {
 			/* VOLT & CLK SETUPTIME for OFF */
 			clksetup = prm_setup.clksetup_off;
@@ -466,6 +482,20 @@ void omap_sram_idle(void)
 					     OMAP3_PRM_VOLTCTRL_OFFSET);
 			omap3_core_save_context(PWRDM_POWER_OFF);
 			omap3_prcm_save_context();
+		} else if ((core_next_state == PWRDM_POWER_RET) &&
+				(core_logic_state == PWRDM_POWER_OFF)) {
+			/* Disable DPLL4 autoidle bit so that register
+			 * contents match with that stored in the
+			 * scratchpad. If this is not done rom code
+			 * enters into some wrong path while coming
+			 * out of coreOSWR and causes a crash.
+			 */
+			cm_rmw_mod_reg_bits(OMAP3430_AUTO_PERIPH_DPLL_MASK,
+						0x0, PLL_MOD, CM_AUTOIDLE);
+			omap3_core_save_context(PWRDM_POWER_RET);
+			prm_set_mod_reg_bits(OMAP3430_AUTO_RET,
+						OMAP3430_GR_MOD,
+						OMAP3_PRM_VOLTCTRL_OFFSET);
 		} else if (core_next_state == PWRDM_POWER_RET) {
 			/* VOLT & CLK SETUPTIME for RET */
 			clksetup = prm_setup.clksetup_ret;
@@ -537,18 +567,27 @@ void omap_sram_idle(void)
 	    core_next_state == PWRDM_POWER_OFF)
 		sdrc_write_reg(sdrc_pwr, SDRC_POWER);
 
+	mpu_prev_state = pwrdm_read_prev_pwrst(mpu_pwrdm);
 	/* Restore table entry modified during MMU restoration */
-	if (pwrdm_read_prev_pwrst(mpu_pwrdm) == PWRDM_POWER_OFF)
+	if (((mpu_prev_state == PWRDM_POWER_RET) &&
+			(pwrdm_read_prev_logic_pwrst(mpu_pwrdm) ==
+			 PWRDM_POWER_OFF)) || (mpu_prev_state ==
+			 PWRDM_POWER_OFF))
 		restore_table_entry();
 
 	/* CORE */
 	if (core_next_state < PWRDM_POWER_ON) {
 		core_prev_state = pwrdm_read_prev_pwrst(core_pwrdm);
-		if (core_prev_state == PWRDM_POWER_OFF) {
+		if ((core_prev_state == PWRDM_POWER_OFF) ||
+				(core_prev_state == PWRDM_POWER_RET &&
+				pwrdm_read_prev_logic_pwrst(core_pwrdm) ==
+				PWRDM_POWER_OFF)) {
 			omap3_core_restore_context(core_prev_state);
-			omap3_prcm_restore_context();
+			if (core_prev_state == PWRDM_POWER_OFF) {
+				omap3_prcm_restore_context();
+				omap2_sms_restore_context();
+			}
 			omap3_sram_restore_context();
-			omap2_sms_restore_context();
 			/*
 			 * Errata 1.164 fix : OTG autoidle can prevent
 			 * sleep
