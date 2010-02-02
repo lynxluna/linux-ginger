@@ -157,25 +157,14 @@ static DSP_STATUS DRV_ProcFreeNodeRes(HANDLE hPCtxt)
 		pNodeList = pNodeList->next;
 		if (pNodeRes->nodeAllocated) {
 			nState = NODE_GetState(pNodeRes->hNode) ;
-			GT_1trace(curTrace, GT_5CLASS,
-				"DRV_ProcFreeNodeRes: Node state %x\n", nState);
 			if (nState <= NODE_DELETING) {
 				if ((nState == NODE_RUNNING) ||
 					(nState == NODE_PAUSED) ||
 					(nState == NODE_TERMINATING)) {
-					GT_1trace(curTrace, GT_5CLASS,
-					"Calling Node_Terminate for Node:"
-					" 0x%x\n", pNodeRes->hNode);
 					status = NODE_Terminate
 						(pNodeRes->hNode, &status);
-					GT_1trace(curTrace, GT_5CLASS,
-						 "Calling Node_Delete for Node:"
-						 " 0x%x\n", pNodeRes->hNode);
 					status = NODE_Delete(pNodeRes->hNode,
 							pCtxt);
-					GT_1trace(curTrace, GT_5CLASS,
-					"the status after the NodeDelete %x\n",
-					status);
 				} else if ((nState == NODE_ALLOCATED)
 					|| (nState == NODE_CREATED))
 					status = NODE_Delete(pNodeRes->hNode,
@@ -472,9 +461,6 @@ DSP_STATUS DRV_Create(OUT struct DRV_OBJECT **phDRVObject)
 	if (DSP_SUCCEEDED(status))
 		status = CFG_SetObject((u32) pDRVObject, REG_DRV_OBJECT);
 	if (DSP_SUCCEEDED(status)) {
-		GT_1trace(curTrace, GT_1CLASS,
-			 "DRV Obj Created pDrvObject 0x%x\n ",
-			 pDRVObject);
 		*phDRVObject = pDRVObject;
 	} else {
 		kfree(pDRVObject->devList);
@@ -828,13 +814,10 @@ DSP_STATUS DRV_ReleaseResources(u32 dwContext, struct DRV_OBJECT *hDrvObject)
 	struct DRV_EXT *pszdevNode;
 
 	if (!(strcmp((char *)((struct DRV_EXT *)dwContext)->szString,
-	   "TIOMAP1510"))) {
-		GT_0trace(curTrace, GT_1CLASS,
-			 " Releasing DSP-Bridge resources \n");
+	   "TIOMAP1510")))
 		status = RequestBridgeResources(dwContext, DRV_RELEASE);
-	} else {
+	else
 		GT_0trace(curTrace, GT_1CLASS, " Unknown device\n");
-	}
 
 	if (DSP_FAILED(status))
 		GT_0trace(curTrace, GT_1CLASS,
@@ -895,9 +878,6 @@ static DSP_STATUS RequestBridgeResources(u32 dwContext, s32 bRequest)
 				status = CFG_E_RESOURCENOTAVAIL;
 				GT_0trace(curTrace, GT_1CLASS,
 					 "REG_GetValue Failed \n");
-			} else {
-				GT_0trace(curTrace, GT_1CLASS,
-					 "REG_GetValue Succeeded \n");
 			}
 
 			dwBuffSize = sizeof(shm_size);
@@ -1005,11 +985,7 @@ static DSP_STATUS RequestBridgeResources(u32 dwContext, s32 bRequest)
 		dwBuffSize = sizeof(struct CFG_HOSTRES);
 		status = REG_SetValue(CURRENTCONFIG, (u8 *)pResources,
 						sizeof(struct CFG_HOSTRES));
-		if (DSP_SUCCEEDED(status)) {
-			GT_0trace(curTrace, GT_1CLASS,
-				 " Successfully set the registry "
-				 "value for CURRENTCONFIG\n");
-		} else {
+		if (DSP_FAILED(status)) {
 			GT_0trace(curTrace, GT_7CLASS,
 				 " Failed to set the registry "
 				 "value for CURRENTCONFIG\n");
@@ -1123,11 +1099,7 @@ static DSP_STATUS RequestBridgeResourcesDSP(u32 dwContext, s32 bRequest)
 			dwBuffSize = sizeof(struct CFG_HOSTRES);
 			status = REG_SetValue(CURRENTCONFIG, (u8 *)pResources,
 					     sizeof(struct CFG_HOSTRES));
-			if (DSP_SUCCEEDED(status)) {
-				GT_0trace(curTrace, GT_1CLASS,
-					 " Successfully set the registry"
-					 " value for CURRENTCONFIG\n");
-			} else {
+			if (DSP_FAILED(status)) {
 				GT_0trace(curTrace, GT_7CLASS,
 					 " Failed to set the registry value"
 					 " for CURRENTCONFIG\n");
