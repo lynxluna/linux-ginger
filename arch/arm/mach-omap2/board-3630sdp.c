@@ -110,9 +110,7 @@ static void __init omap_sdp_init_irq(void)
 	/* TODO: Add RET, OFF, cpu_idle params */
 
 	omap2_init_common_hw(h8mbx00u0mer0em_sdrc_params,
-			     h8mbx00u0mer0em_sdrc_params,
-			     omap3_mpu_rate_table, omap3_dsp_rate_table,
-			     omap3_l3_rate_table);
+			     h8mbx00u0mer0em_sdrc_params);
 	omap_init_irq();
 	omap_gpio_init();
 }
