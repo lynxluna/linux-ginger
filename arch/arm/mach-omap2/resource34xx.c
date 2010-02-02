@@ -476,6 +476,7 @@ int resource_set_opp_level(int res, u32 target_level, int flags)
 int set_opp(struct shared_resource *resp, u32 target_level)
 {
 	int ret = -EINVAL;
+	unsigned long l3_freq;
 
 	if (resp == vdd1_resp) {
 		if (target_level < MAX_VDD2_OPP)
@@ -487,8 +488,16 @@ int set_opp(struct shared_resource *resp, u32 target_level)
 		 * is at 100Mhz or above.
 		 * throughput in KiB/s for 100 Mhz = 100 * 1000 * 4.
 		 */
-		if (target_level >= MIN_VDD2_OPP)
-			resource_request("vdd2_opp", &vdd2_dev, 400000);
+		if (target_level > MIN_VDD2_OPP) {
+			unsigned long req_l3_freq;
+			struct omap_opp *oppx = NULL;
+
+			/* Give me the best we got */
+			req_l3_freq = ULONG_MAX;
+			oppx = opp_find_freq_floor(OPP_L3, &req_l3_freq);
+			resource_request("vdd2_opp", &vdd2_dev,
+						req_l3_freq*4/1000);
+		}
 
 	} else if (resp == vdd2_resp) {
 		unsigned long req_l3_freq;
