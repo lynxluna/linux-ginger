@@ -554,6 +554,14 @@ void omap_sram_idle(void)
 			 * sleep
 			 */
 			usb_musb_disable_autoidle();
+			/* We do not program the scratchpad to restore back
+			 * PER DPLL in autoidle due to 20 ms delay in
+			 * rom code restore path. So enable it explicitly
+			 * after core off
+			 */
+			cm_rmw_mod_reg_bits(
+				0x0, (1 << OMAP3430_AUTO_PERIPH_DPLL_SHIFT),
+				PLL_MOD, CM_AUTOIDLE);
 		}
 		omap_uart_resume_idle(0);
 		omap_uart_resume_idle(1);
