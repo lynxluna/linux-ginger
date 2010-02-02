@@ -149,10 +149,6 @@ MODULE_VERSION(DSPBRIDGE_VERSION);
 
 static char *driver_name = DRIVER_NAME;
 
-#ifdef CONFIG_BRIDGE_DEBUG
-static struct GT_Mask driverTrace;
-#endif /* CONFIG_BRIDGE_DEBUG */
-
 static const struct file_operations bridge_fops = {
 	.open		= bridge_open,
 	.release	= bridge_release,
@@ -229,7 +225,6 @@ static int __devinit omap34xx_bridge_probe(struct platform_device *pdev)
 			NULL, "DspBridge");
 
 	GT_init();
-	GT_create(&driverTrace, "LD");
 
 #ifdef CONFIG_BRIDGE_DEBUG
 	if (GT_str)
