@@ -156,44 +156,57 @@ static void omap3_disable_io_chain(void)
 		prm_clear_mod_reg_bits(OMAP3430_EN_IO_CHAIN, WKUP_MOD, PM_WKEN);
 }
 
-static void omap3_core_save_context(void)
+static void omap3_core_save_context(int core_state)
 {
-	u32 control_padconf_off;
+	if (core_state == PWRDM_POWER_OFF) {
+		u32 control_padconf_off;
 
-	/* Save the padconf registers */
-	control_padconf_off = omap_ctrl_readl(OMAP343X_CONTROL_PADCONF_OFF);
-	control_padconf_off |= START_PADCONF_SAVE;
-	omap_ctrl_writel(control_padconf_off, OMAP343X_CONTROL_PADCONF_OFF);
-	/* wait for the save to complete */
-	while (!(omap_ctrl_readl(OMAP343X_CONTROL_GENERAL_PURPOSE_STATUS)
-			& PADCONF_SAVE_DONE))
-		udelay(1);
+		/* Save the padconf registers */
+		control_padconf_off = omap_ctrl_readl(
+				OMAP343X_CONTROL_PADCONF_OFF);
+		control_padconf_off |= START_PADCONF_SAVE;
+		omap_ctrl_writel(control_padconf_off,
+				OMAP343X_CONTROL_PADCONF_OFF);
+		/* wait for the save to complete */
+		while (!(omap_ctrl_readl(
+				OMAP343X_CONTROL_GENERAL_PURPOSE_STATUS) &
+				PADCONF_SAVE_DONE))
+			udelay(1);
 
-	/*
-	 * Force write last pad into memory, as this can fail in some
-	 * cases according to erratas 1.157, 1.185
-	 */
-	omap_ctrl_writel(omap_ctrl_readl(OMAP343X_PADCONF_ETK_D14),
-		OMAP343X_CONTROL_MEM_WKUP + 0x2a0);
+		/*
+		 * Force write last pad into memory, as this can fail in some
+		 * cases according to erratas 1.157, 1.185
+		 */
+		omap_ctrl_writel(omap_ctrl_readl(OMAP343X_PADCONF_ETK_D14),
+				OMAP343X_CONTROL_MEM_WKUP + 0x2a0);
 
-	/* Save the Interrupt controller context */
-	omap_intc_save_context();
+		/* Save the Interrupt controller context */
+		omap_intc_save_context();
+
+		/* Save the system control module context,
+		 * padconf already save above
+		 */
+		omap3_control_save_context();
+		omap_dma_global_context_save();
+	}
+
 	/* Save the GPMC context */
 	omap3_gpmc_save_context();
-	/* Save the system control module context, padconf already save above*/
-	omap3_control_save_context();
-	omap_dma_global_context_save();
 }
 
-static void omap3_core_restore_context(void)
+static void omap3_core_restore_context(int core_state)
 {
-	/* Restore the control module context, padconf restored by h/w */
-	omap3_control_restore_context();
+	if (core_state == PWRDM_POWER_OFF) {
+		/* Restore the control module context,
+		 * padconf restored by h/w
+		 */
+		omap3_control_restore_context();
+		/* Restore the interrupt controller context */
+		omap_intc_restore_context();
+		omap_dma_global_context_restore();
+	}
 	/* Restore the GPMC context */
 	omap3_gpmc_restore_context();
-	/* Restore the interrupt controller context */
-	omap_intc_restore_context();
-	omap_dma_global_context_restore();
 }
 
 /*
@@ -451,7 +464,7 @@ void omap_sram_idle(void)
 			prm_set_mod_reg_bits(voltctrl,
 					     OMAP3430_GR_MOD,
 					     OMAP3_PRM_VOLTCTRL_OFFSET);
-			omap3_core_save_context();
+			omap3_core_save_context(PWRDM_POWER_OFF);
 			omap3_prcm_save_context();
 		} else if (core_next_state == PWRDM_POWER_RET) {
 			/* VOLT & CLK SETUPTIME for RET */
@@ -532,7 +545,7 @@ void omap_sram_idle(void)
 	if (core_next_state < PWRDM_POWER_ON) {
 		core_prev_state = pwrdm_read_prev_pwrst(core_pwrdm);
 		if (core_prev_state == PWRDM_POWER_OFF) {
-			omap3_core_restore_context();
+			omap3_core_restore_context(core_prev_state);
 			omap3_prcm_restore_context();
 			omap3_sram_restore_context();
 			omap2_sms_restore_context();
