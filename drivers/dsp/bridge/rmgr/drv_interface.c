@@ -296,18 +296,11 @@ static int __devinit omap34xx_bridge_probe(struct platform_device *pdev)
 	if (DSP_SUCCEEDED(initStatus)) {
 #ifdef CONFIG_BRIDGE_DVFS
 		clk_handle = clk_get(NULL, "iva2_ck");
-		if (!clk_handle) {
+		if (!clk_handle)
 			GT_0trace(driverTrace, GT_7CLASS,
 			"clk_get failed to get iva2_ck \n");
-		} else {
-			GT_0trace(driverTrace, GT_7CLASS,
-			"clk_get PASS to get iva2_ck \n");
-		}
-		if (!cpufreq_register_notifier(&iva_clk_notifier,
+		if (cpufreq_register_notifier(&iva_clk_notifier,
 						CPUFREQ_TRANSITION_NOTIFIER)) {
-			GT_0trace(driverTrace, GT_7CLASS,
-			"cpufreq_register_notifier PASS for iva2_ck \n");
-		} else {
 			GT_0trace(driverTrace, GT_7CLASS,
 			"cpufreq_register_notifier FAIL for iva2_ck \n");
 		}
@@ -346,11 +339,8 @@ static int __devexit omap34xx_bridge_remove(struct platform_device *pdev)
 		goto func_cont;
 
 #ifdef CONFIG_BRIDGE_DVFS
-	if (!cpufreq_unregister_notifier(&iva_clk_notifier,
+	if (cpufreq_unregister_notifier(&iva_clk_notifier,
 						CPUFREQ_TRANSITION_NOTIFIER)) {
-		GT_0trace(driverTrace, GT_7CLASS,
-		"cpufreq_unregister_notifier PASS for iva2_ck \n");
-	} else {
 		GT_0trace(driverTrace, GT_7CLASS,
 		"cpufreq_unregister_notifier FAILED for iva2_ck \n");
 	}

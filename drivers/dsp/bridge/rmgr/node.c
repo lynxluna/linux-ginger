@@ -477,17 +477,12 @@ DSP_STATUS NODE_Allocate(struct PROC_OBJECT *hProcessor,
 			pNode->createArgs.asa.taskArgs.uHeapSize,
 			(void *)pNode->createArgs.asa.taskArgs.uDSPHeapResAddr,
 			(void **)&pMappedAddr, mapAttrs, pr_ctxt);
-	if (DSP_FAILED(status)) {
+	if (DSP_FAILED(status))
 		GT_1trace(NODE_debugMask, GT_5CLASS,
 			 "NODE_Allocate: Failed to map memory"
 			 " for Heap: 0x%x\n", status);
-	} else {
-		pNode->createArgs.asa.taskArgs.uDSPHeapAddr =
-			(u32) pMappedAddr;
-		GT_1trace(NODE_debugMask, GT_5CLASS,
-			 "NODE_Allocate:DSPProcessor_Map"
-			 " successful: 0x%x\n", status);
-	}
+	else
+		pNode->createArgs.asa.taskArgs.uDSPHeapAddr = (u32)pMappedAddr;
 
 func_cont:
 	(void)SYNC_LeaveCS(hNodeMgr->hSync);
@@ -1240,15 +1235,8 @@ DSP_STATUS NODE_Create(struct NODE_OBJECT *hNode)
 		/* If node's create function is not loaded, load it */
 		/* Boost the OPP level to max level that DSP can be requested */
 #if defined(CONFIG_BRIDGE_DVFS) && !defined(CONFIG_CPU_FREQ)
-		if (pdata->cpu_set_freq) {
+		if (pdata->cpu_set_freq)
 			(*pdata->cpu_set_freq)(pdata->mpu_max_speed);
-
-			if (pdata->dsp_get_opp) {
-				GT_1trace(NODE_debugMask, GT_4CLASS, "opp level"
-				"after setting to VDD1_OPP3 is %d\n",
-				(*pdata->dsp_get_opp)());
-			}
-		}
 #endif
 		status = hNodeMgr->nldrFxns.pfnLoad(hNode->hNldrNode,
 						   NLDR_CREATE);
@@ -1266,15 +1254,8 @@ DSP_STATUS NODE_Create(struct NODE_OBJECT *hNode)
 		}
 		/* Request the lowest OPP level*/
 #if defined(CONFIG_BRIDGE_DVFS) && !defined(CONFIG_CPU_FREQ)
-		if (pdata->cpu_set_freq) {
+		if (pdata->cpu_set_freq)
 			(*pdata->cpu_set_freq)(pdata->mpu_min_speed);
-
-			if (pdata->dsp_get_opp) {
-				GT_1trace(NODE_debugMask, GT_4CLASS, "opp level"
-				"after setting to VDD1_OPP1 is %d\n",
-				(*pdata->dsp_get_opp)());
-			}
-		}
 #endif
 		/* Get address of iAlg functions, if socket node */
 		if (DSP_SUCCEEDED(status)) {
@@ -1445,11 +1426,9 @@ DSP_STATUS NODE_CreateMgr(OUT struct NODE_MGR **phNodeMgr,
 	}
 
 	/* Get loader functions and create loader */
-	if (DSP_SUCCEEDED(status)) {
-		GT_0trace(NODE_debugMask, GT_1CLASS,
-			 "NODE_CreateMgr: using dynamic loader\n");
+	if (DSP_SUCCEEDED(status))
 		pNodeMgr->nldrFxns = nldrFxns;	/* Dynamic loader functions */
-	}
+
 	if (DSP_SUCCEEDED(status)) {
 		nldrAttrs.pfnOvly = Ovly;
 		nldrAttrs.pfnWrite = Write;
@@ -1579,9 +1558,6 @@ func_cont1:
 			if (DSP_SUCCEEDED(status)) {
 				status = PROC_GetState(hProcessor, &procStatus,
 					sizeof(struct DSP_PROCESSORSTATE));
-				GT_1trace(NODE_debugMask, GT_4CLASS,
-						 "NODE_Delete: proc Status "
-						 "0x%x\n", procStatus.iState);
 				if (procStatus.iState != PROC_ERROR) {
 					status = DISP_NodeDelete(hDisp, hNode,
 					hNodeMgr->ulFxnAddrs[RMSDELETENODE],
@@ -1624,13 +1600,10 @@ func_cont1:
 		hNodeMgr->uNumCreated--;
 	 /*  Free host-side resources allocated by NODE_Create()
 	 *  DeleteNode() fails if SM buffers not freed by client!  */
-	if (DRV_GetNodeResElement(hNode, &nodeRes, pr_ctxt) != DSP_ENOTFOUND) {
-		GT_0trace(NODE_debugMask, GT_5CLASS, "\nNODE_Delete12:\n");
+	if (DRV_GetNodeResElement(hNode, &nodeRes, pr_ctxt) != DSP_ENOTFOUND)
 		DRV_ProcNodeUpdateStatus(nodeRes, false);
-	}
 	DeleteNode(hNode, pr_ctxt);
 
-	GT_0trace(NODE_debugMask, GT_5CLASS, "\nNODE_Delete2:\n ");
 	DRV_RemoveNodeResElement(nodeRes, pr_ctxt);
 	/* Exit critical section */
 	(void)SYNC_LeaveCS(hNodeMgr->hSync);
@@ -2518,9 +2491,6 @@ DSP_STATUS NODE_Terminate(struct NODE_OBJECT *hNode, OUT DSP_STATUS *pStatus)
 		 *  Send exit message. Do not change state to NODE_DONE
 		 *  here. That will be done in callback.
 		 */
-		GT_1trace(NODE_debugMask, GT_5CLASS,
-			 "NODE_Terminate: env = 0x%x\n", hNode->nodeEnv);
-
 		status = PROC_GetState(pNode->hProcessor, &procStatus,
 					sizeof(struct DSP_PROCESSORSTATE));
 		if (DSP_FAILED(status))
@@ -2685,27 +2655,19 @@ static void DeleteNode(struct NODE_OBJECT *hNode,
 			status = PROC_UnMap(hNode->hProcessor,
 					   (void *)taskArgs.uDSPHeapAddr,
 					   pr_ctxt);
-			if (DSP_SUCCEEDED(status)) {
-				GT_0trace(NODE_debugMask, GT_5CLASS,
-					 "DSPProcessor_UnMap succeeded.\n");
-			} else {
+			if (DSP_FAILED(status))
 				GT_1trace(NODE_debugMask, GT_5CLASS,
 					 "DSPProcessor_UnMap failed."
 					 " Status = 0x%x\n", (u32)status);
-			}
+
 			status = PROC_UnReserveMemory(hNode->hProcessor,
 					(void *)taskArgs.uDSPHeapResAddr,
 					pr_ctxt);
-			if (DSP_SUCCEEDED(status)) {
-				GT_0trace(NODE_debugMask, GT_5CLASS,
-					 "DSPProcessor_UnReserveMemory "
-					 "succeeded.\n");
-			} else {
+			if (DSP_FAILED(status))
 				GT_1trace(NODE_debugMask, GT_5CLASS,
 					 "DSPProcessor_UnReserveMemory "
 					 "failed. Status = 0x%x\n",
 					 (u32)status);
-			}
 #ifdef DSP_DMM_DEBUG
 			status = DMM_GetHandle(pProcObject, &hDmmMgr);
 			if (DSP_SUCCEEDED(status))
