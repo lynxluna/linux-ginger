@@ -88,13 +88,12 @@ DSP_STATUS DRV_InsertNodeResElement(HANDLE hNode, HANDLE hNodeRes,
 	struct PROCESS_CONTEXT *pCtxt = (struct PROCESS_CONTEXT *)hPCtxt;
 	DSP_STATUS status = DSP_SOK;
 	struct NODE_RES_OBJECT   *pTempNodeRes = NULL;
-	GT_0trace(curTrace, GT_ENTER, "DRV_InsertNodeResElement: 1");
+
 	*pNodeRes = (struct NODE_RES_OBJECT *)MEM_Calloc
 		    (1 * sizeof(struct NODE_RES_OBJECT), MEM_PAGED);
-	if (*pNodeRes == NULL) {
-		GT_0trace(curTrace, GT_ENTER, "DRV_InsertNodeResElement: 12");
+	if (*pNodeRes == NULL)
 		status = DSP_EHANDLE;
-	}
+
 	if (DSP_SUCCEEDED(status)) {
 		if (mutex_lock_interruptible(&pCtxt->node_mutex)) {
 			kfree(*pNodeRes);
@@ -107,16 +106,12 @@ DSP_STATUS DRV_InsertNodeResElement(HANDLE hNode, HANDLE hNodeRes,
 				pTempNodeRes = pTempNodeRes->next;
 
 			pTempNodeRes->next = *pNodeRes;
-			GT_0trace(curTrace, GT_ENTER,
-				 "DRV_InsertNodeResElement: 2");
 		} else {
 			pCtxt->pNodeList = *pNodeRes;
-			GT_0trace(curTrace, GT_ENTER,
-				 "DRV_InsertNodeResElement: 3");
 		}
 		mutex_unlock(&pCtxt->node_mutex);
 	}
-	GT_0trace(curTrace, GT_ENTER, "DRV_InsertNodeResElement: 4");
+
 	return status;
 }
 
@@ -158,7 +153,6 @@ static DSP_STATUS DRV_ProcFreeNodeRes(HANDLE hPCtxt)
 
 	pNodeList = pCtxt->pNodeList;
 	while (pNodeList != NULL) {
-		GT_0trace(curTrace, GT_ENTER, "DRV_ProcFreeNodeRes: 1");
 		pNodeRes = pNodeList;
 		pNodeList = pNodeList->next;
 		if (pNodeRes->nodeAllocated) {
@@ -272,7 +266,6 @@ DSP_STATUS DRV_GetNodeResElement(HANDLE hNode, HANDLE hNodeRes, HANDLE hPCtxt)
 		return DSP_EFAIL;
 
 	pTempNode = pCtxt->pNodeList;
-	GT_0trace(curTrace, GT_ENTER, "DRV_GetNodeResElement: 1");
 	while ((pTempNode != NULL) && (pTempNode->hNode != hNode)) {
 		pTempNode2 = pTempNode;
 		pTempNode = pTempNode->next;
@@ -301,10 +294,9 @@ DSP_STATUS DRV_ProcInsertSTRMResElement(HANDLE hStreamHandle, HANDLE hSTRMRes,
 
 	*pSTRMRes = (struct STRM_RES_OBJECT *)
 		    MEM_Calloc(1 * sizeof(struct STRM_RES_OBJECT), MEM_PAGED);
-	if (*pSTRMRes == NULL) {
-		GT_0trace(curTrace, GT_ENTER, "DRV_InsertSTRMResElement: 2");
+	if (*pSTRMRes == NULL)
 		status = DSP_EHANDLE;
-	}
+
 	if (DSP_SUCCEEDED(status)) {
 		if (mutex_lock_interruptible(&pCtxt->strm_mutex)) {
 			kfree(*pSTRMRes);
@@ -312,8 +304,6 @@ DSP_STATUS DRV_ProcInsertSTRMResElement(HANDLE hStreamHandle, HANDLE hSTRMRes,
 		}
 		(*pSTRMRes)->hStream = hStreamHandle;
 		if (pCtxt->pSTRMList != NULL) {
-			GT_0trace(curTrace, GT_ENTER,
-				 "DRV_InsertiSTRMResElement: 3");
 			pTempSTRMRes = pCtxt->pSTRMList;
 			while (pTempSTRMRes->next != NULL)
 				pTempSTRMRes = pTempSTRMRes->next;
@@ -321,8 +311,6 @@ DSP_STATUS DRV_ProcInsertSTRMResElement(HANDLE hStreamHandle, HANDLE hSTRMRes,
 			pTempSTRMRes->next = *pSTRMRes;
 		} else {
 			pCtxt->pSTRMList = *pSTRMRes;
-			GT_0trace(curTrace, GT_ENTER,
-				 "DRV_InsertSTRMResElement: 4");
 		}
 		mutex_unlock(&pCtxt->strm_mutex);
 	}
@@ -413,21 +401,17 @@ DSP_STATUS DRV_GetSTRMResElement(HANDLE hStrm, HANDLE hSTRMRes, HANDLE hPCtxt)
 
 	pTempSTRM = pCtxt->pSTRMList;
 	while ((pTempSTRM != NULL) && (pTempSTRM->hStream != hStrm)) {
-		GT_0trace(curTrace, GT_ENTER, "DRV_GetSTRMResElement: 2");
 		pTempSTRM2 = pTempSTRM;
 		pTempSTRM = pTempSTRM->next;
 	}
 
 	mutex_unlock(&pCtxt->strm_mutex);
 
-	if (pTempSTRM != NULL) {
-		GT_0trace(curTrace, GT_ENTER, "DRV_GetSTRMResElement: 3");
+	if (pTempSTRM != NULL)
 		*STRMRes = pTempSTRM;
-	} else {
-		GT_0trace(curTrace, GT_ENTER, "DRV_GetSTRMResElement: 4");
+	else
 		status = DSP_ENOTFOUND;
-	}
-	GT_0trace(curTrace, GT_ENTER, "DRV_GetSTRMResElement: 5");
+
 	return status;
 }
 
@@ -455,8 +439,7 @@ DSP_STATUS DRV_Create(OUT struct DRV_OBJECT **phDRVObject)
 
 	DBC_Require(phDRVObject != NULL);
 	DBC_Require(cRefs > 0);
-	GT_1trace(curTrace, GT_ENTER, "Entering DRV_Create"
-			" phDRVObject 0x%x\n", phDRVObject);
+
 	MEM_AllocObject(pDRVObject, struct DRV_OBJECT, SIGNATURE);
 	if (pDRVObject) {
 		/* Create and Initialize List of device objects */
@@ -503,9 +486,7 @@ DSP_STATUS DRV_Create(OUT struct DRV_OBJECT **phDRVObject)
 				 "DRV Object ");
 
 	}
-	GT_2trace(curTrace, GT_ENTER,
-		 "Exiting DRV_Create: phDRVObject: 0x%x\tstatus:"
-		 "0x%x\n", phDRVObject, status);
+
 	DBC_Ensure(DSP_FAILED(status) ||
 		  MEM_IsValidHandle(pDRVObject, SIGNATURE));
 	return status;
@@ -519,8 +500,6 @@ DSP_STATUS DRV_Create(OUT struct DRV_OBJECT **phDRVObject)
 void DRV_Exit(void)
 {
 	DBC_Require(cRefs > 0);
-
-	GT_0trace(curTrace, GT_5CLASS, "Entering DRV_Exit \n");
 
 	cRefs--;
 
@@ -540,8 +519,6 @@ DSP_STATUS DRV_Destroy(struct DRV_OBJECT *hDRVObject)
 	DBC_Require(cRefs > 0);
 	DBC_Require(MEM_IsValidHandle(pDRVObject, SIGNATURE));
 
-	GT_1trace(curTrace, GT_ENTER, "Entering DRV_Destroy"
-			" hDRVObject 0x%x\n", hDRVObject);
 	/*
 	 *  Delete the List if it exists.Should not come here
 	 *  as the DRV_RemoveDevObject and the Last DRV_RequestResources
@@ -552,9 +529,6 @@ DSP_STATUS DRV_Destroy(struct DRV_OBJECT *hDRVObject)
 	MEM_FreeObject(pDRVObject);
 	/* Update the DRV Object in Registry to be 0 */
 	(void)CFG_SetObject(0, REG_DRV_OBJECT);
-	GT_2trace(curTrace, GT_ENTER,
-		 "Exiting DRV_Destroy: hDRVObject: 0x%x\tstatus:"
-		 "0x%x\n", hDRVObject, status);
 	DBC_Ensure(!MEM_IsValidHandle(pDRVObject, SIGNATURE));
 	return status;
 }
@@ -578,10 +552,7 @@ DSP_STATUS DRV_GetDevObject(u32 uIndex, struct DRV_OBJECT *hDrvObject,
 	DBC_Require(uIndex >= 0);
 	DBC_Require(cRefs > 0);
 	DBC_Assert(!(LST_IsEmpty(pDrvObject->devList)));
-	GT_3trace(curTrace, GT_ENTER,
-		 "Entered DRV_GetDevObject, args:\n\tuIndex: "
-		 "0x%x\n\thDrvObject:  0x%x\n\tphDevObject:  0x%x\n",
-		 uIndex, hDrvObject, phDevObject);
+
 	pDevObject = (struct DEV_OBJECT *)DRV_GetFirstDevObject();
 	for (i = 0; i < uIndex; i++) {
 		pDevObject =
@@ -595,9 +566,7 @@ DSP_STATUS DRV_GetDevObject(u32 uIndex, struct DRV_OBJECT *hDrvObject,
 		GT_0trace(curTrace, GT_7CLASS,
 			 "DRV: Could not get the DevObject\n");
 	}
-	GT_2trace(curTrace, GT_ENTER,
-		 "Exiting Drv_GetDevObject\n\tstatus: 0x%x\n\t"
-		 "hDevObject: 0x%x\n", status, *phDevObject);
+
 	return status;
 }
 
@@ -714,9 +683,6 @@ DSP_STATUS DRV_Init(void)
 	if (fRetval)
 		cRefs++;
 
-	GT_1trace(curTrace, GT_5CLASS, "Entering DRV_Entry  crefs 0x%x \n",
-		 cRefs);
-
 	DBC_Ensure((fRetval && (cRefs > 0)) || (!fRetval && (cRefs >= 0)));
 
 	return fRetval;
@@ -738,14 +704,7 @@ DSP_STATUS DRV_InsertDevObject(struct DRV_OBJECT *hDRVObject,
 	DBC_Require(MEM_IsValidHandle(pDRVObject, SIGNATURE));
 	DBC_Assert(pDRVObject->devList);
 
-	GT_2trace(curTrace, GT_ENTER,
-		 "Entering DRV_InsertProcObject hDRVObject "
-		 "0x%x\n, hDevObject 0x%x\n", hDRVObject, hDevObject);
-
 	LST_PutTail(pDRVObject->devList, (struct list_head *)hDevObject);
-
-	GT_1trace(curTrace, GT_ENTER,
-		 "Exiting InsertDevObject status 0x%x\n", status);
 
 	DBC_Ensure(DSP_SUCCEEDED(status) && !LST_IsEmpty(pDRVObject->devList));
 
@@ -772,9 +731,6 @@ DSP_STATUS DRV_RemoveDevObject(struct DRV_OBJECT *hDRVObject,
 	DBC_Require(pDRVObject->devList != NULL);
 	DBC_Require(!LST_IsEmpty(pDRVObject->devList));
 
-	GT_2trace(curTrace, GT_ENTER,
-		 "Entering DRV_RemoveDevObject hDevObject "
-		 "0x%x\n, hDRVObject 0x%x\n", hDevObject, hDRVObject);
 	/* Search list for pProcObject: */
 	for (pCurElem = LST_First(pDRVObject->devList); pCurElem != NULL;
 	    pCurElem = LST_Next(pDRVObject->devList, pCurElem)) {
@@ -792,8 +748,7 @@ DSP_STATUS DRV_RemoveDevObject(struct DRV_OBJECT *hDRVObject,
 	}
 	DBC_Ensure((pDRVObject->devList == NULL) ||
 		  !LST_IsEmpty(pDRVObject->devList));
-	GT_1trace(curTrace, GT_ENTER,
-		 "DRV_RemoveDevObject returning 0x%x\n", status);
+
 	return status;
 }
 
@@ -810,7 +765,7 @@ DSP_STATUS DRV_RequestResources(u32 dwContext, u32 *pDevNodeString)
 
 	DBC_Require(dwContext != 0);
 	DBC_Require(pDevNodeString != NULL);
-	GT_0trace(curTrace, GT_ENTER, "Entering DRV_RequestResources\n");
+
 	/*
 	 *  Allocate memory to hold the string. This will live untill
 	 *  it is freed in the Release resources. Update the driver object
@@ -872,8 +827,6 @@ DSP_STATUS DRV_ReleaseResources(u32 dwContext, struct DRV_OBJECT *hDrvObject)
 	struct DRV_OBJECT *pDRVObject = (struct DRV_OBJECT *)hDrvObject;
 	struct DRV_EXT *pszdevNode;
 
-	GT_0trace(curTrace, GT_ENTER, "Entering DRV_Release Resources\n");
-
 	if (!(strcmp((char *)((struct DRV_EXT *)dwContext)->szString,
 	   "TIOMAP1510"))) {
 		GT_0trace(curTrace, GT_1CLASS,
@@ -930,8 +883,6 @@ static DSP_STATUS RequestBridgeResources(u32 dwContext, s32 bRequest)
 	u32 shm_size;
 
 	DBC_Require(dwContext != 0);
-
-	GT_0trace(curTrace, GT_ENTER, "->RequestBridgeResources \n");
 
 	if (!bRequest) {
 		driverExt = (struct DRV_EXT *)dwContext;
@@ -1011,7 +962,6 @@ static DSP_STATUS RequestBridgeResources(u32 dwContext, s32 bRequest)
 		} else {
 			status = DSP_EMEMORY;
 		}
-		GT_0trace(curTrace, GT_ENTER, " <- RequestBridgeResources \n");
 		return status;
 	}
 	dwBuffSize = sizeof(struct CFG_HOSTRES);
@@ -1084,8 +1034,6 @@ static DSP_STATUS RequestBridgeResourcesDSP(u32 dwContext, s32 bRequest)
 	u32 shm_size;
 
 	DBC_Require(dwContext != 0);
-
-	GT_0trace(curTrace, GT_ENTER, "->RequestBridgeResourcesDSP \n");
 
 	dwBuffSize = sizeof(struct CFG_HOSTRES);
 
