@@ -26,7 +26,7 @@
 #include <plat/mux.h>
 #include <mach/gpio.h>
 #include <plat/mmc.h>
-
+#include <mach/omap_sgxdef.h>
 #include "mux.h"
 
 #if defined(CONFIG_VIDEO_OMAP2) || defined(CONFIG_VIDEO_OMAP2_MODULE)
@@ -768,6 +768,28 @@ static inline void omap_hdq_init(void)
 static inline void omap_hdq_init(void) {}
 #endif
 
+struct sgx_platform_data omap_sgx_data = {
+	.set_min_bus_tput = omap_pm_set_min_bus_tput,
+};
+
+static struct platform_device powervr_device = {
+	.name            = "pvrsrvkm",
+	.id              = -1,
+#ifdef CONFIG_PM
+	.dev            = {
+	.platform_data = &omap_sgx_data,
+       }
+#else
+	.dev            = {
+	.platform_data = NULL,}
+#endif
+};
+static void omap_init_sgx(void)
+{
+       (void) platform_device_register(&powervr_device);
+}
+
+
 /*-------------------------------------------------------------------------*/
 
 static int __init omap2_init_devices(void)
@@ -782,7 +804,7 @@ static int __init omap2_init_devices(void)
 	omap_hdq_init();
 	omap_init_sti();
 	omap_init_sha1_md5();
-
+	omap_init_sgx();
 	return 0;
 }
 arch_initcall(omap2_init_devices);
