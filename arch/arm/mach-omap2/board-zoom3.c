@@ -109,11 +109,14 @@ static void __init omap_zoom_init_irq(void)
 {
 	omap_board_config = zoom_config;
 	omap_board_config_size = ARRAY_SIZE(zoom_config);
+
+	omap3_pm_init_opp_table();
+	/* TODO: Add RET, OFF, cpu_idle params */
+
 	omap2_init_common_hw(h8mbx00u0mer0em_sdrc_params,
 			     h8mbx00u0mer0em_sdrc_params,
-			     omap36xx_mpu_rate_table,
-			     omap36xx_dsp_rate_table,
-			     omap36xx_l3_rate_table);
+			     omap3_mpu_rate_table, omap3_dsp_rate_table,
+			     omap3_l3_rate_table);
 	omap_init_irq();
 	omap_gpio_init();
 }
