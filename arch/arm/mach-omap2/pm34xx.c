@@ -419,7 +419,7 @@ void omap_sram_idle(void)
 	per_next_state = pwrdm_read_next_pwrst(per_pwrdm);
 	core_next_state = pwrdm_read_next_pwrst(core_pwrdm);
 	if (per_next_state < PWRDM_POWER_ON) {
-		omap_uart_prepare_idle(2);
+		omap_uart_prepare_idle(2, per_next_state);
 		omap2_gpio_prepare_for_idle(per_next_state);
 		if (per_next_state == PWRDM_POWER_OFF) {
 			if (core_next_state == PWRDM_POWER_ON) {
@@ -436,8 +436,8 @@ void omap_sram_idle(void)
 
 	/* CORE */
 	if (core_next_state < PWRDM_POWER_ON) {
-		omap_uart_prepare_idle(0);
-		omap_uart_prepare_idle(1);
+		omap_uart_prepare_idle(0, core_next_state);
+		omap_uart_prepare_idle(1, core_next_state);
 		if (core_next_state == PWRDM_POWER_OFF) {
 			/* VOLT & CLK SETUPTIME for OFF */
 			clksetup = prm_setup.clksetup_off;
