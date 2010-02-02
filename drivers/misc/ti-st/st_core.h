@@ -76,11 +76,17 @@ int st_int_write(const unsigned char *, int);
 /* internal write function, passed onto protocol drivers
  * via the write function ptr of protocol struct
  */
-long st_write(struct sk_buff *skb);
-
+long st_write(struct sk_buff *);
 /* function to be called from ST-LL
  */
 void st_ll_send_frame(enum proto_type, struct sk_buff *);
 /* internal wake up function */
 void st_tx_wakeup(struct st_data_s *st_data);
+
+#define GPS_STUB_TEST
+#ifdef GPS_STUB_TEST
+int gps_chrdrv_stub_write(const unsigned char*, int);
+void gps_chrdrv_stub_init(void);
+#endif
+
 #endif /*ST_CORE_H */

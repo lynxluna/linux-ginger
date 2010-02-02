@@ -61,7 +61,6 @@ struct kim_data_s {
 	const struct firmware *fw_entry;
 	long gpios[ST_MAX];
 	struct kobject *kim_kobj;
-	spinlock_t kim_lock;
 /* used by kim_int_recv to validate fw response */
 	unsigned long rx_state;
 	unsigned long rx_count;

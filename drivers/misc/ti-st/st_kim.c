@@ -380,10 +380,8 @@ void st_kim_chip_toggle(enum proto_type type, enum kim_gpio_state state)
 	case ST_FM:
 		if (state == KIM_GPIO_ACTIVE)
 			gpio_set_value(kim_gdata->gpios[ST_FM], GPIO_LOW);
-
 		else
 			gpio_set_value(kim_gdata->gpios[ST_FM], GPIO_HIGH);
-
 		break;
 
 	case ST_GPS:
@@ -397,6 +395,7 @@ void st_kim_chip_toggle(enum proto_type type, enum kim_gpio_state state)
 	default:
 		break;
 	}
+
 	return;
 }
 
@@ -455,7 +454,7 @@ long st_kim_start(void)
 		}
 		/* wait for ldisc to be installed */
 		err = wait_for_completion_timeout(&kim_gdata->ldisc_installed,
-						  msecs_to_jiffies(LDISC_TIME));
+				msecs_to_jiffies(LDISC_TIME));
 		if (!err) {	/* timeout */
 			ST_KIM_ERR("line disc installation timed out ");
 			err = ST_ERR_FAILURE;
@@ -491,7 +490,7 @@ long st_kim_stop(void)
 
 	/* wait for ldisc to be un-installed */
 	err = wait_for_completion_timeout(&kim_gdata->ldisc_installed,
-					  msecs_to_jiffies(LDISC_TIME));
+			msecs_to_jiffies(LDISC_TIME));
 	if (!err) {		/* timeout */
 		ST_KIM_ERR(" timed out waiting for ldisc to be un-installed");
 		return ST_ERR_FAILURE;
@@ -550,6 +549,9 @@ static int kim_toggle_radio(void *data, enum rfkill_state state)
 		gpio_set_value(kim_gdata->gpios[ST_BT], GPIO_LOW);
 		mdelay(1);	/* FIXME: a proper toggle */
 		gpio_set_value(kim_gdata->gpios[ST_BT], GPIO_HIGH);
+
+		if (state == RFKILL_STATE_SOFT_BLOCKED)
+			gpio_set_value(kim_gdata->gpios[ST_BT], GPIO_LOW);
 	}
 
 	switch (state) {
@@ -672,13 +674,13 @@ static int kim_remove(struct platform_device *pdev)
 	long *gpios = pdev->dev.platform_data;
 	long proto;
 
-	for (proto = 0; proto < ST_MAX; proto++) {
+	for (proto = 0; (proto < ST_MAX) && (gpios[proto] != -1); proto++) {
 		/* Claim the Bluetooth/FM/GPIO
 		 * nShutdown gpio from the system
 		 */
 		gpio_free(gpios[proto]);
 #ifdef LEGACY_RFKILL_SUPPORT
-		rfkill_free(kim_gdata->rfkill[proto]);
+		rfkill_unregister(kim_gdata->rfkill[proto]);
 		kim_gdata->rfkill[proto] = NULL;
 #endif
 	}
@@ -701,7 +703,6 @@ long st_kim_init(void)
 		ST_KIM_ERR("no mem to allocate");
 		return -ENOMEM;
 	}
-	spin_lock_init(&kim_gdata->kim_lock);
 	ret = platform_driver_register(&kim_platform_driver);
 	if (ret != 0) {
 		ST_KIM_ERR("platform drv registration failed");

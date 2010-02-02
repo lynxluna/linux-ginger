@@ -114,7 +114,18 @@ int st_int_write(const unsigned char *data, int count)
 		printk(KERN_ERR " %x", data[i]);
 	printk(KERN_ERR "\n ..end data\n");
 #endif
+
+#ifdef GPS_STUB_TEST
+	if (0x09 != *data) {
+		return tty->ops->write(tty, data, count);
+	} else {
+		ST_DRV_VER("GPS write invoked.. \n");
+		return gps_chrdrv_stub_write(data, count);
+	}
+#else
 	return tty->ops->write(tty, data, count);
+#endif
+
 }
 
 /*
@@ -130,8 +141,7 @@ void st_send_frame(enum proto_type protoid, struct sk_buff *skb)
 	     || st_gdata->list[protoid] == NULL)) {
 		ST_DRV_ERR("protocol %d not registered, no data to send?",
 			   protoid);
-		if (st_gdata->list[protoid] == NULL)
-			kfree_skb(skb);
+		kfree_skb(skb);
 		return;
 	}
 	/* this cannot fail
@@ -141,8 +151,9 @@ void st_send_frame(enum proto_type protoid, struct sk_buff *skb)
 	 */
 	if (likely(st_gdata->list[protoid]->recv != NULL)) {
 		if (unlikely(st_gdata->list[protoid]->recv(skb)
-			!= ST_SUCCESS)) {
+			     != ST_SUCCESS)) {
 			ST_DRV_ERR(" proto stack %d's ->recv failed", protoid);
+			kfree_skb(skb);
 			return;
 		}
 	} else {
@@ -157,14 +168,14 @@ void st_send_frame(enum proto_type protoid, struct sk_buff *skb)
  * to call registration complete callbacks
  * of all protocol stack drivers
  */
-void st_reg_complete(void)
+void st_reg_complete(char err)
 {
 	unsigned char i = 0;
 	ST_DRV_DBG(" %s ", __func__);
 	for (i = 0; i < ST_MAX; i++) {
 		if (likely(st_gdata != NULL && st_gdata->list[i] != NULL &&
 			   st_gdata->list[i]->reg_complete_cb != NULL))
-			st_gdata->list[i]->reg_complete_cb(ST_SUCCESS);
+			st_gdata->list[i]->reg_complete_cb(err);
 	}
 }
 
@@ -238,6 +249,7 @@ void st_int_recv(const unsigned char *data, long count)
 	struct hci_acl_hdr *ah;
 	struct hci_sco_hdr *sh;
 	struct fm_event_hdr *fm;
+	struct gps_event_hdr *gps;
 	register int len = 0, type = 0, dlen = 0;
 	static enum proto_type protoid = ST_MAX;
 
@@ -282,8 +294,8 @@ void st_int_recv(const unsigned char *data, long count)
 
 				/* Waiting for Bluetooth event header ? */
 			case ST_BT_W4_EVENT_HDR:
-				eh = (struct hci_event_hdr *)st_gdata->
-				    rx_skb->data;
+				eh = (struct hci_event_hdr *)st_gdata->rx_skb->
+				    data;
 
 				ST_DRV_DBG("Event header: evt 0x%2.2x"
 					   "plen %d", eh->evt, eh->plen);
@@ -293,8 +305,8 @@ void st_int_recv(const unsigned char *data, long count)
 
 				/* Waiting for Bluetooth acl header ? */
 			case ST_BT_W4_ACL_HDR:
-				ah = (struct hci_acl_hdr *)st_gdata->
-				    rx_skb->data;
+				ah = (struct hci_acl_hdr *)st_gdata->rx_skb->
+				    data;
 				dlen = __le16_to_cpu(ah->dlen);
 
 				ST_DRV_DBG("ACL header: dlen %d", dlen);
@@ -304,22 +316,26 @@ void st_int_recv(const unsigned char *data, long count)
 
 				/* Waiting for Bluetooth sco header ? */
 			case ST_BT_W4_SCO_HDR:
-				sh = (struct hci_sco_hdr *)st_gdata->
-				    rx_skb->data;
+				sh = (struct hci_sco_hdr *)st_gdata->rx_skb->
+				    data;
 
 				ST_DRV_DBG("SCO header: dlen %d", sh->dlen);
 
 				st_check_data_len(protoid, sh->dlen);
 				continue;
 			case ST_FM_W4_EVENT_HDR:
-				fm = (struct fm_event_hdr *)st_gdata->
-				    rx_skb->data;
+				fm = (struct fm_event_hdr *)st_gdata->rx_skb->
+				    data;
 				ST_DRV_DBG("FM Header: ");
 				st_check_data_len(ST_FM, fm->plen);
 				continue;
 				/* TODO : Add GPS packet machine logic here */
 			case ST_GPS_W4_EVENT_HDR:
 				/* [0x09 pkt hdr][R/W byte][2 byte len] */
+				gps = (struct gps_event_hdr *)st_gdata->rx_skb->
+				     data;
+				ST_DRV_DBG("GPS Header: ");
+				st_check_data_len(ST_GPS, gps->plen);
 				continue;
 			}	/* end of switch rx_state */
 		}
@@ -371,7 +387,7 @@ void st_int_recv(const unsigned char *data, long count)
 			type = 0x9;	/* ST_LL_GPS_CH9_PKT; */
 			protoid = ST_GPS;
 			st_gdata->rx_state = ST_GPS_W4_EVENT_HDR;
-			st_gdata->rx_count = 4;	/* GPS_EVENT_HDR_SIZE */
+			st_gdata->rx_count = 3;	/* GPS_EVENT_HDR_SIZE -1*/
 			break;
 		case LL_SLEEP_IND:
 		case LL_SLEEP_ACK:
@@ -439,7 +455,7 @@ void st_int_recv(const unsigned char *data, long count)
  * -- return previous in-completely written skb
  *  or return the skb in the txQ
  */
-struct sk_buff *st_int_dequeue(struct st_data_s * st_data)
+struct sk_buff *st_int_dequeue(struct st_data_s *st_data)
 {
 	struct sk_buff *returning_skb;
 
@@ -462,7 +478,7 @@ struct sk_buff *st_int_dequeue(struct st_data_s * st_data)
  *
  * lock the whole func - since ll_getstate and Q-ing should happen
  * in one-shot
-*/
+ */
 void st_int_enqueue(struct sk_buff *skb)
 {
 	unsigned long flags = 0;
@@ -554,7 +570,7 @@ void st_tx_wakeup(struct st_data_s *st_data)
 
 /********************************************************************/
 /* functions called from ST KIM
- */
+*/
 void kim_st_list_protocols(char *buf)
 {
 #ifdef DEBUG
@@ -640,6 +656,12 @@ long st_register(struct st_proto_s *new_proto)
 		err = st_kim_start();
 		if (err != ST_SUCCESS) {
 			clear_bit(ST_REG_IN_PROGRESS, &st_gdata->st_state);
+			if ((is_protocol_list_empty() != ST_EMPTY) &&
+			    (test_bit(ST_REG_PENDING, &st_gdata->st_state))) {
+				ST_DRV_ERR(" KIM failure complete callback ");
+				st_reg_complete(ST_ERR_FAILURE);
+			}
+
 			return ST_ERR_FAILURE;
 		}
 
@@ -656,7 +678,7 @@ long st_register(struct st_proto_s *new_proto)
 		if ((is_protocol_list_empty() != ST_EMPTY) &&
 		    (test_bit(ST_REG_PENDING, &st_gdata->st_state))) {
 			ST_DRV_VER(" call reg complete callback ");
-			st_reg_complete();
+			st_reg_complete(ST_SUCCESS);
 		}
 		clear_bit(ST_REG_PENDING, &st_gdata->st_state);
 
@@ -717,8 +739,11 @@ long st_unregister(enum proto_type type)
 		return ST_ERR_NOPROTO;
 	}
 
+	spin_lock(&st_gdata->lock);
+
 	if (st_gdata->list[type] == NULL) {
 		ST_DRV_ERR(" protocol %d not registered", type);
+		spin_unlock(&st_gdata->lock);
 		return ST_ERR_NOPROTO;
 	}
 
@@ -729,10 +754,18 @@ long st_unregister(enum proto_type type)
 	 * only in kim_start and kim_stop
 	 */
 	st_kim_chip_toggle(type, KIM_GPIO_INACTIVE);
+	spin_unlock(&st_gdata->lock);
 
 	if ((is_protocol_list_empty() == ST_EMPTY) &&
 	    (!test_bit(ST_REG_PENDING, &st_gdata->st_state))) {
 		ST_DRV_DBG(" all protocols unregistered ");
+
+		/* stop traffic on tty */
+		if (st_gdata->tty) {
+			tty_ldisc_flush(st_gdata->tty);
+			stop_tty(st_gdata->tty);
+		}
+
 		/* all protocols now unregistered */
 		st_kim_stop();
 		/* disable ST LL */
@@ -760,12 +793,12 @@ long st_write(struct sk_buff *skb)
 	}
 #ifdef DEBUG			/* open-up skb to read the 1st byte */
 	switch (skb->data[0]) {
-	case HCI_COMMAND_PKT /*0x01 */:
-	case HCI_ACLDATA_PKT /*0x02 */:
-	case HCI_SCODATA_PKT /*0x03 */:
+	case HCI_COMMAND_PKT:
+	case HCI_ACLDATA_PKT:
+	case HCI_SCODATA_PKT:
 		protoid = ST_BT;
 		break;
-	case ST_FM_CH8_PKT /*0x08 */:
+	case ST_FM_CH8_PKT:
 		protoid = ST_FM;
 		break;
 	case 0x09:
@@ -789,6 +822,7 @@ long st_write(struct sk_buff *skb)
 	/* return number of bytes written */
 	return len;
 }
+
 /* for protocols making use of shared transport */
 EXPORT_SYMBOL_GPL(st_unregister);
 
@@ -848,6 +882,9 @@ static void st_tty_close(struct tty_struct *tty)
 	tty_driver_flush_buffer(tty);
 
 	spin_lock(&st_gdata->lock);
+	/* empty out txq and tx_waitq */
+	skb_queue_purge(&st_gdata->txq);
+	skb_queue_purge(&st_gdata->tx_waitq);
 	/* reset the TTY Rx states of ST */
 	st_gdata->rx_count = 0;
 	st_gdata->rx_state = ST_W4_PACKET_TYPE;
@@ -876,6 +913,7 @@ static void st_tty_receive(struct tty_struct *tty, const unsigned char *data,
 	spin_lock(&st_gdata->lock);
 	st_recv(data, count);
 	spin_unlock(&st_gdata->lock);
+
 	ST_DRV_VER("done %s", __func__);
 }
 
@@ -927,7 +965,8 @@ static int __init st_core_init(void)
 
 	err = tty_register_ldisc(N_SHARED, st_ldisc_ops);
 	if (err) {
-		ST_DRV_ERR("error registering line discipline %ld", err);
+		ST_DRV_ERR("error registering %d line discipline %ld",
+			   N_SHARED, err);
 		kfree(st_ldisc_ops);
 		return err;
 	}

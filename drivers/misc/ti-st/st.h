@@ -35,7 +35,6 @@ enum kim_gpio_state {
 	KIM_GPIO_INACTIVE,
 	KIM_GPIO_ACTIVE,
 };
-
 /*
  * the list of protocols on chip
  */
@@ -72,7 +71,7 @@ struct st_proto_s {
  * subsequent registration return PENDING,
  * signalled complete by this callback function
  */
-	void (*reg_complete_cb) (unsigned char data);
+	void (*reg_complete_cb) (char data);
 /*
  * write function, sent in as NULL and to be returned to
  * protocol drivers
