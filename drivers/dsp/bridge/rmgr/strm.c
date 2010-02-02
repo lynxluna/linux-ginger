@@ -136,9 +136,6 @@ DSP_STATUS STRM_AllocateBuffer(struct STRM_OBJECT *hStrm, u32 uSize,
 		DBC_Assert(hStrm->hXlator != NULL);
 		(void)CMM_XlatorAllocBuf(hStrm->hXlator, &apBuffer[i], uSize);
 		if (apBuffer[i] == NULL) {
-			GT_0trace(STRM_debugMask, GT_7CLASS,
-				 "STRM_AllocateBuffer: "
-				 "DSP_FAILED to alloc shared memory.\n");
 			status = DSP_EMEMORY;
 			uAllocated = i;
 			break;
@@ -221,23 +218,17 @@ DSP_STATUS STRM_Create(OUT struct STRM_MGR **phStrmMgr, struct DEV_OBJECT *hDev)
 	*phStrmMgr = NULL;
 	/* Allocate STRM manager object */
 	MEM_AllocObject(pStrmMgr, struct STRM_MGR, STRMMGR_SIGNATURE);
-	if (pStrmMgr == NULL) {
+	if (pStrmMgr == NULL)
 		status = DSP_EMEMORY;
-		GT_0trace(STRM_debugMask, GT_6CLASS, "STRM_Create: "
-			 "MEM_AllocObject() failed!\n ");
-	} else {
+	else
 		pStrmMgr->hDev = hDev;
-	}
+
 	/* Get Channel manager and WMD function interface */
 	if (DSP_SUCCEEDED(status)) {
 		status = DEV_GetChnlMgr(hDev, &(pStrmMgr->hChnlMgr));
 		if (DSP_SUCCEEDED(status)) {
 			(void) DEV_GetIntfFxns(hDev, &(pStrmMgr->pIntfFxns));
 			DBC_Assert(pStrmMgr->pIntfFxns != NULL);
-		} else {
-			GT_1trace(STRM_debugMask, GT_6CLASS, "STRM_Create: "
-				 "Failed to get channel manager! status = "
-				 "0x%x\n", status);
 		}
 	}
 	if (DSP_SUCCEEDED(status))
@@ -307,12 +298,8 @@ DSP_STATUS STRM_FreeBuffer(struct STRM_OBJECT *hStrm, u8 **apBuffer,
 		for (i = 0; i < uNumBufs; i++) {
 			DBC_Assert(hStrm->hXlator != NULL);
 			status = CMM_XlatorFreeBuf(hStrm->hXlator, apBuffer[i]);
-			if (DSP_FAILED(status)) {
-				GT_0trace(STRM_debugMask, GT_7CLASS,
-					 "STRM_FreeBuffer: DSP_FAILED"
-					 " to free shared memory.\n");
+			if (DSP_FAILED(status))
 				break;
-			}
 			apBuffer[i] = NULL;
 		}
 	}
@@ -524,8 +511,6 @@ DSP_STATUS STRM_Open(struct NODE_OBJECT *hNode, u32 uDir, u32 uIndex,
 		MEM_AllocObject(pStrm, struct STRM_OBJECT, STRM_SIGNATURE);
 		if (pStrm == NULL) {
 			status = DSP_EMEMORY;
-			GT_0trace(STRM_debugMask, GT_6CLASS,
-				 "STRM_Open: MEM_AllocObject() failed!\n ");
 		} else {
 			pStrm->hStrmMgr = hStrmMgr;
 			pStrm->uDir = uDir;
@@ -575,27 +560,15 @@ DSP_STATUS STRM_Open(struct NODE_OBJECT *hNode, u32 uDir, u32 uIndex,
 	DBC_Assert(pStrm->lMode != STRMMODE_LDMA);	/* no System DMA */
 	/* Get the shared mem mgr for this streams dev object */
 	status = DEV_GetCmmMgr(hStrmMgr->hDev, &hCmmMgr);
-	if (DSP_FAILED(status)) {
-		GT_1trace(STRM_debugMask, GT_6CLASS, "STRM_Open: Failed to get "
-			 "CMM Mgr handle: 0x%x\n", status);
-	} else {
+	if (DSP_SUCCEEDED(status)) {
 		/*Allocate a SM addr translator for this strm.*/
 		status = CMM_XlatorCreate(&pStrm->hXlator, hCmmMgr, NULL);
-		if (DSP_FAILED(status)) {
-			GT_1trace(STRM_debugMask, GT_6CLASS,
-				 "STRM_Open: Failed to "
-				 "create SM translator: 0x%x\n", status);
-		} else {
+		if (DSP_SUCCEEDED(status)) {
 			DBC_Assert(pStrm->uSegment > 0);
 			/*  Set translators Virt Addr attributes */
 			status = CMM_XlatorInfo(pStrm->hXlator,
 				 (u8 **)&pAttr->pVirtBase, pAttr->ulVirtSize,
 				 pStrm->uSegment, true);
-			if (status != DSP_SOK) {
-				GT_0trace(STRM_debugMask, GT_6CLASS,
-					 "STRM_Open: ERROR: "
-					 "in setting CMM_XlatorInfo.\n");
-			}
 		}
 	}
 func_cont:
@@ -626,10 +599,6 @@ func_cont:
 					   status == CHNL_E_NOIORPS);
 				status = DSP_EFAIL;
 			}
-			GT_2trace(STRM_debugMask, GT_6CLASS,
-				  "STRM_Open: Channel open failed, "
-				  "chnl id = %d, status = 0x%x\n", ulChnlId,
-				  status);
 		}
 	}
 	if (DSP_SUCCEEDED(status)) {
@@ -679,11 +648,7 @@ DSP_STATUS STRM_Reclaim(struct STRM_OBJECT *hStrm, OUT u8 **pBufPtr,
 
 	status = (*pIntfFxns->pfnChnlGetIOC)(hStrm->hChnl, hStrm->uTimeout,
 		 &chnlIOC);
-	if (DSP_FAILED(status)) {
-		GT_1trace(STRM_debugMask, GT_6CLASS,
-			 "STRM_Reclaim: GetIOC failed! "
-			 "Status = 0x%x\n", status);
-	} else {
+	if (DSP_SUCCEEDED(status)) {
 		*pulBytes = chnlIOC.cBytes;
 		if (pulBufSize)
 			*pulBufSize = chnlIOC.cBufSize;
@@ -716,12 +681,9 @@ DSP_STATUS STRM_Reclaim(struct STRM_OBJECT *hStrm, OUT u8 **pBufPtr,
 				pTmpBuf = CMM_XlatorTranslate(hStrm->hXlator,
 					  pTmpBuf, CMM_PA2VA);
 			}
-			if (pTmpBuf == NULL) {
-				GT_0trace(STRM_debugMask, GT_7CLASS,
-					 "STRM_Reclaim: Failed "
-					 "SM translation!\n");
+			if (pTmpBuf == NULL)
 				status = DSP_ETRANSLATE;
-			}
+
 			chnlIOC.pBuf = pTmpBuf;
 		}
 		*pBufPtr = chnlIOC.pBuf;

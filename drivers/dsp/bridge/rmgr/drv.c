@@ -440,8 +440,6 @@ DSP_STATUS DRV_Create(OUT struct DRV_OBJECT **phDRVObject)
 				LST_LIST), MEM_NONPAGED);
 			if (!(pDRVObject->devNodeString)) {
 				status = DSP_EFAIL;
-				GT_0trace(curTrace, GT_7CLASS,
-					 "Failed to Create DRV_EXT list ");
 			} else {
 				INIT_LIST_HEAD(&pDRVObject->devNodeString->
 					head);
@@ -449,13 +447,9 @@ DSP_STATUS DRV_Create(OUT struct DRV_OBJECT **phDRVObject)
 			}
 		} else {
 			status = DSP_EMEMORY;
-			GT_0trace(curTrace, GT_7CLASS,
-				 "Failed to Create Dev List ");
 		}
 	} else {
 		status = DSP_EMEMORY;
-		GT_0trace(curTrace, GT_7CLASS,
-			 "Failed to Allocate Memory for DRV Obj");
 	}
 	/* Store the DRV Object in the Registry */
 	if (DSP_SUCCEEDED(status))
@@ -467,10 +461,6 @@ DSP_STATUS DRV_Create(OUT struct DRV_OBJECT **phDRVObject)
 		kfree(pDRVObject->devNodeString);
 		/* Free the DRV Object */
 		kfree(pDRVObject);
-		GT_0trace(curTrace, GT_7CLASS,
-			 "Failed to update the Registry with "
-				 "DRV Object ");
-
 	}
 
 	DBC_Ensure(DSP_FAILED(status) ||
@@ -549,8 +539,6 @@ DSP_STATUS DRV_GetDevObject(u32 uIndex, struct DRV_OBJECT *hDrvObject,
 	} else {
 		*phDevObject = NULL;
 		status = DSP_EFAIL;
-		GT_0trace(curTrace, GT_7CLASS,
-			 "DRV: Could not get the DevObject\n");
 	}
 
 	return status;
@@ -771,8 +759,6 @@ DSP_STATUS DRV_RequestResources(u32 dwContext, u32 *pDevNodeString)
 			LST_PutTail(pDRVObject->devNodeString,
 					(struct list_head *)pszdevNode);
 		} else {
-			GT_0trace(curTrace, GT_7CLASS,
-				"Failed to Allocate Memory devNodeString ");
 			status = DSP_EMEMORY;
 			*pDevNodeString = 0;
 		}
@@ -876,8 +862,6 @@ static DSP_STATUS RequestBridgeResources(u32 dwContext, s32 bRequest)
 			if (DSP_FAILED(REG_GetValue(CURRENTCONFIG,
 					(u8 *)pResources, &dwBuffSize))) {
 				status = CFG_E_RESOURCENOTAVAIL;
-				GT_0trace(curTrace, GT_1CLASS,
-					 "REG_GetValue Failed \n");
 			}
 
 			dwBuffSize = sizeof(shm_size);
