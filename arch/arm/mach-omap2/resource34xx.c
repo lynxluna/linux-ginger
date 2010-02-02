@@ -26,6 +26,7 @@
 #include <plat/clockdomain.h>
 #include <plat/omap34xx.h>
 #include <plat/opp_twl_tps.h>
+#include <plat/omap-pm.h>
 
 #include "smartreflex.h"
 #include "resource34xx.h"
@@ -492,9 +493,8 @@ int set_opp(struct shared_resource *resp, u32 target_level)
 		 * is at 100Mhz or above.
 		 * throughput in KiB/s for 100 Mhz = 100 * 1000 * 4.
 		 */
-		if (target_level > MIN_VDD2_OPP)
-			resource_request("vdd2_opp", &vdd2_dev,
-				(4 * (l3_opps + MAX_VDD2_OPP)->rate / 1000));
+		if (target_level >= MIN_VDD2_OPP)
+			resource_request("vdd2_opp", &vdd2_dev, 400000);
 
 	} else if (resp == vdd2_resp) {
 		unsigned long req_l3_freq;
