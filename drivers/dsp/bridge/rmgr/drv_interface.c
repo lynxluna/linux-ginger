@@ -237,8 +237,6 @@ static int __devinit omap34xx_bridge_probe(struct platform_device *pdev)
 	GT_set("**=67");
 #endif
 
-	GT_0trace(driverTrace, GT_ENTER, "-> driver_init\n");
-
 #ifdef CONFIG_PM
 	/* Initialize the wait queue */
 	if (!status) {
@@ -327,7 +325,6 @@ static int __devinit omap34xx_bridge_probe(struct platform_device *pdev)
 
 	DBC_Assert(status == 0);
 	DBC_Assert(DSP_SUCCEEDED(initStatus));
-	GT_0trace(driverTrace, GT_ENTER, " <- driver_init\n");
 
 	return 0;
 
@@ -343,8 +340,6 @@ static int __devexit omap34xx_bridge_remove(struct platform_device *pdev)
 	bool ret;
 	DSP_STATUS dsp_status = DSP_SOK;
 	HANDLE hDrvObject = NULL;
-
-	GT_0trace(driverTrace, GT_ENTER, "-> driver_exit\n");
 
 	dsp_status = CFG_GetObject((u32 *)&hDrvObject, REG_DRV_OBJECT);
 	if (DSP_FAILED(dsp_status))
@@ -452,8 +447,6 @@ static int bridge_open(struct inode *ip, struct file *filp)
 	int status = 0;
 	struct PROCESS_CONTEXT *pr_ctxt = NULL;
 
-	GT_0trace(driverTrace, GT_ENTER, "-> bridge_open\n");
-
 	/*
 	 * Allocate a new process context and insert it into global
 	 * process context list.
@@ -473,7 +466,6 @@ static int bridge_open(struct inode *ip, struct file *filp)
 
 	filp->private_data = pr_ctxt;
 
-	GT_0trace(driverTrace, GT_ENTER, "<- bridge_open\n");
 	return status;
 }
 
@@ -485,8 +477,6 @@ static int bridge_release(struct inode *ip, struct file *filp)
 {
 	int status = 0;
 	struct PROCESS_CONTEXT *pr_ctxt;
-
-	GT_0trace(driverTrace, GT_ENTER, "-> bridge_release\n");
 
 	if (!filp->private_data) {
 		status = -EIO;
@@ -502,7 +492,6 @@ static int bridge_release(struct inode *ip, struct file *filp)
 	filp->private_data = NULL;
 
 err:
-	GT_0trace(driverTrace, GT_ENTER, "<- bridge_release\n");
 	return status;
 }
 
@@ -520,8 +509,6 @@ static long bridge_ioctl(struct file *filp, unsigned int code,
 	if (status != 0)
 		return status;
 #endif
-
-	GT_0trace(driverTrace, GT_ENTER, " -> driver_ioctl\n");
 
 	if (!filp->private_data) {
 		status = -EIO;
@@ -546,7 +533,6 @@ static long bridge_ioctl(struct file *filp, unsigned int code,
 	}
 
 err:
-	GT_0trace(driverTrace, GT_ENTER, " <- driver_ioctl\n");
 	return status;
 }
 
