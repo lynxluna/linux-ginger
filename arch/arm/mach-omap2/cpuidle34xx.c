@@ -155,11 +155,20 @@ static int omap3_enter_idle(struct cpuidle_device *dev,
 	 * bits in case the powerdomain enters retention
 	 */
 	if (mpu_state <= PWRDM_POWER_RET) {
+		if (!enable_oswr) {
+			mpu_logicl1_ret_state = PWRDM_POWER_RET;
+			mpu_l2cache_ret_state = PWRDM_POWER_RET;
+		}
 		pwrdm_set_logic_retst(mpu_pd, mpu_logicl1_ret_state);
 		pwrdm_set_mem_retst(mpu_pd, 0, mpu_l2cache_ret_state);
 	}
 
 	if (core_state <= PWRDM_POWER_RET) {
+		if (!enable_oswr) {
+			core_logic_state = PWRDM_POWER_RET;
+			core_mem1_ret_state = PWRDM_POWER_RET;
+			core_mem2_ret_state = PWRDM_POWER_RET;
+		}
 		pwrdm_set_logic_retst(core_pd, core_logic_state);
 		pwrdm_set_mem_retst(core_pd, 0, core_mem1_ret_state);
 		pwrdm_set_mem_retst(core_pd, 1, core_mem2_ret_state);

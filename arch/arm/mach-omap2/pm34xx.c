@@ -73,6 +73,7 @@ static inline bool is_suspending(void)
 
 u32 enable_off_mode;
 u32 sleep_while_idle;
+u32 enable_oswr;
 u32 wakeup_timer_seconds;
 u32 voltage_off_while_idle;
 

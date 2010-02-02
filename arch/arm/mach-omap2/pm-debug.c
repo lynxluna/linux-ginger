@@ -601,6 +601,8 @@ static int __init pm_dbg_init(void)
 				   &enable_off_mode, &pm_dbg_option_fops);
 	(void) debugfs_create_file("sleep_while_idle", S_IRUGO | S_IWUGO, d,
 				   &sleep_while_idle, &pm_dbg_option_fops);
+	(void) debugfs_create_file("enable_oswr", S_IRUGO | S_IWUGO, d,
+				   &enable_oswr, &pm_dbg_option_fops);
 	(void) debugfs_create_file("wakeup_timer_seconds", S_IRUGO | S_IWUGO, d,
 				   &wakeup_timer_seconds, &pm_dbg_option_fops);
 
