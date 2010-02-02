@@ -27,7 +27,6 @@
 #include <linux/limits.h>
 #include <linux/bitops.h>
 #include <linux/err.h>
-#include <linux/cpufreq.h>
 
 #include <plat/cpu.h>
 #include <plat/clock.h>
@@ -294,51 +293,7 @@ int omap3_core_dpll_m2_set_rate(struct clk *clk, unsigned long rate)
  * As it is structured now, this will prevent an OMAP2/3 multiboot
  * kernel from compiling.  This will need further attention.
  */
-#if defined(CONFIG_ARCH_OMAP3)
-
-#ifdef CONFIG_CPU_FREQ
-static struct cpufreq_frequency_table freq_table[MAX_VDD1_OPPS+1];
-
-void omap2_clk_init_cpufreq_table(struct cpufreq_frequency_table **table)
-{
-	int i = 0;
-	int opp_num;
-	struct omap_opp *opp = mpu_opps;
-	unsigned long freq = ULONG_MAX;
-
-	if (!mpu_opps) {
-		pr_warning("%s: failed to initialize frequency"
-				"table\n", __func__);
-		return;
-	}
-	opp_num = opp_get_opp_count(mpu_opps);
-	if (opp_num < 0) {
-		pr_err("%s: no opp table?\n", __func__);
-		return;
-	}
-
-	freq_table = kmalloc(sizeof(struct cpufreq_frequency_table) *
-			(opp_num + 1), GFP_ATOMIC);
-	if (!freq_table) {
-		pr_warning("%s: failed to allocate frequency"
-				"table\n", __func__);
-		return;
-	}
-
-	while (!IS_ERR(opp = opp_find_freq_floor(opp, &freq))) {
-		freq_table[i].index = i;
-		freq_table[i].frequency = freq / 1000;
-		i++;
-		/* set the next benchmark to search */
-		freq--;
-	}
-
-	freq_table[i].index = i;
-	freq_table[i].frequency = CPUFREQ_TABLE_END;
-
-	*table = &freq_table[0];
-}
-#endif
+#ifdef CONFIG_ARCH_OMAP3
 
 struct clk_functions omap2_clk_functions = {
 	.clk_enable		= omap2_clk_enable,
@@ -347,9 +302,6 @@ struct clk_functions omap2_clk_functions = {
 	.clk_set_rate		= omap2_clk_set_rate,
 	.clk_set_parent		= omap2_clk_set_parent,
 	.clk_disable_unused	= omap2_clk_disable_unused,
-#ifdef CONFIG_CPU_FREQ
-	.clk_init_cpufreq_table = omap2_clk_init_cpufreq_table,
-#endif
 };
 
 /*
