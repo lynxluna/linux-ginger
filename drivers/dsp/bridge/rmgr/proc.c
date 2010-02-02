@@ -502,9 +502,8 @@ static DSP_STATUS proc_memory_sync(void *hProcessor, void *pMpuAddr,
 	}
 
 	if (memory_check_vma((u32)pMpuAddr, ulSize)) {
-		GT_3trace(PROC_DebugMask, GT_7CLASS,
-			"%s: InValid address parameters\n",
-			__func__, pMpuAddr, ulSize);
+		pr_err("%s: InValid address parameters addr %p size %x\n",
+						__func__, pMpuAddr, ulSize);
 		status = DSP_EHANDLE;
 		goto err_out;
 	}
@@ -929,8 +928,8 @@ DSP_STATUS PROC_Load(void *hProcessor, IN CONST s32 iArgc,
 					"PROC_Load:Failure to Load the EXE\n");
 			}
 			if (status == COD_E_SYMBOLNOTFOUND) {
-				GT_0trace(PROC_DebugMask, GT_7CLASS,
-					"PROC_Load:Could not parse the file\n");
+				pr_err("%s: Couldn't parse the file\n",
+								__func__);
 			}
 		}
 	/* Requesting the lowest opp supported*/
@@ -989,11 +988,8 @@ DSP_STATUS PROC_Load(void *hProcessor, IN CONST s32 iArgc,
 #endif
 func_end:
 #ifdef CONFIG_BRIDGE_DEBUG
-	if (DSP_FAILED(status)) {
-		GT_0trace(PROC_DebugMask, GT_1CLASS, "PROC_Load: "
-			 "Processor Load Failed.\n");
-
-	}
+	if (DSP_FAILED(status))
+		pr_err("%s: Processor failed to load\n", __func__);
 #endif
 	DBC_Ensure((DSP_SUCCEEDED(status) && pProcObject->sState == PROC_LOADED)
 		   || DSP_FAILED(status));
@@ -1272,6 +1268,8 @@ func_cont:
 			pr_info("%s: dsp in running state\n", __func__);
 			DBC_Assert(uBrdState != BRD_HIBERNATION);
 		}
+	} else {
+		pr_err("%s: Failed to start the dsp\n", __func__);
 	}
 #endif
 func_end:
@@ -1313,9 +1311,8 @@ DSP_STATUS PROC_Stop(void *hProcessor)
 		status = NODE_EnumNodes(hNodeMgr, &hNode, uNodeTabSize,
 					&uNumNodes, &uNodesAllocated);
 		if ((status == DSP_ESIZE) || (uNodesAllocated > 0)) {
-			GT_1trace(PROC_DebugMask, GT_7CLASS,
-				 "Can't stop device, Active "
-				 "nodes = 0x%x \n", uNodesAllocated);
+			pr_err("%s: Can't stop device, active nodes = %d \n",
+						__func__, uNodesAllocated);
 			return DSP_EWRONGSTATE;
 		}
 	}
@@ -1344,8 +1341,7 @@ DSP_STATUS PROC_Stop(void *hProcessor)
 #endif
 		}
 	} else {
-		GT_0trace(PROC_DebugMask, GT_7CLASS,
-			 "PROC_Stop Failed to Stop the processor/device \n");
+		pr_err("%s: Failed to stop the processor\n", __func__);
 	}
 func_end:
 
