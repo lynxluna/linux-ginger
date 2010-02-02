@@ -341,6 +341,9 @@ static void omap_uart_restore_context(struct omap_uart_state *uart)
 {
 	u16 efr = 0;
 
+	if (!enable_off_mode)
+		return;
+
 	if (!uart->context_valid)
 		return;
 
@@ -384,13 +387,12 @@ static inline void omap_uart_enable_clocks(struct omap_uart_state *uart)
 
 #ifdef CONFIG_PM
 
-static inline void omap_uart_disable_clocks(struct omap_uart_state *uart,
-							int power_state)
+static inline void omap_uart_disable_clocks(struct omap_uart_state *uart)
 {
 	if (!uart->clocked)
 		return;
-	if (power_state == PWRDM_POWER_OFF)
-		omap_uart_save_context(uart);
+
+	omap_uart_save_context(uart);
 	uart->clocked = 0;
 	clk_disable(uart->ick);
 	clk_disable(uart->fck);
@@ -479,13 +481,13 @@ static void omap_uart_idle_timer(unsigned long data)
 	omap_uart_allow_sleep(uart);
 }
 
-void omap_uart_prepare_idle(int num, int power_state)
+void omap_uart_prepare_idle(int num)
 {
 	struct omap_uart_state *uart;
 
 	list_for_each_entry(uart, &uart_list, node) {
 		if (num == uart->num && uart->can_sleep) {
-			omap_uart_disable_clocks(uart, power_state);
+			omap_uart_disable_clocks(uart);
 			return;
 		}
 	}

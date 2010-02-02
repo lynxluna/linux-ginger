@@ -256,13 +256,8 @@ restore:
 	and     r2, r2, #0x3
 	cmp     r2, #0x0	@ Check if target power state was OFF or RET
         moveq   r9, #0x3        @ MPU OFF => L1 and L2 lost
-	beq	restore_from_off
-	cmp	r2, #0x1
-	moveq	r9, #0x3
 	movne	r9, #0x1	@ Only L1 and L2 lost => avoid L2 invalidation
 	bne	logic_l1_restore
-restore_from_off:
-/*	b	restore_from_off*/
 	ldr	r0, control_stat
 	ldr	r1, [r0]
 	and	r1, #0x700
@@ -445,7 +440,7 @@ usettbr0:
 
 	ldmfd	sp!, {r0-r12, pc}		@ restore regs and return
 save_context_wfi:
-	/* b	save_context_wfi*/	@ enable to debug save code
+	/*b	save_context_wfi*/	@ enable to debug save code
 	mov	r8, r0 /* Store SDRAM address in r8 */
 	mrc	p15, 0, r5, c1, c0, 1	@ Read Auxiliary Control Register
 	mov	r4, #0x1		@ Number of parameters for restore call

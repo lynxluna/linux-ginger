@@ -124,8 +124,6 @@ struct powerdomain {
 
 	int state;
 	unsigned state_counter[PWRDM_MAX_PWRSTS];
-	unsigned ret_logic_off_counter;
-	unsigned ret_mem_off_counter;
 
 #ifdef CONFIG_PM_DEBUG
 	s64 timer;
@@ -172,10 +170,8 @@ int pwrdm_set_mem_retst(struct powerdomain *pwrdm, u8 bank, u8 pwrst);
 
 int pwrdm_read_logic_pwrst(struct powerdomain *pwrdm);
 int pwrdm_read_prev_logic_pwrst(struct powerdomain *pwrdm);
-int pwrdm_read_next_logic_pwrst(struct powerdomain *pwrdm);
 int pwrdm_read_mem_pwrst(struct powerdomain *pwrdm, u8 bank);
 int pwrdm_read_prev_mem_pwrst(struct powerdomain *pwrdm, u8 bank);
-int pwrdm_read_next_mem_pwrst(struct powerdomain *pwrdm, u8 bank);
 
 int pwrdm_enable_hdwr_sar(struct powerdomain *pwrdm);
 int pwrdm_disable_hdwr_sar(struct powerdomain *pwrdm);
