@@ -1246,7 +1246,7 @@ DSP_STATUS NODE_Create(struct NODE_OBJECT *hNode)
 		/* Boost the OPP level to max level that DSP can be requested */
 #if defined(CONFIG_BRIDGE_DVFS) && !defined(CONFIG_CPU_FREQ)
 		if (pdata->cpu_set_freq) {
-			(*pdata->cpu_set_freq)(pdata->mpu_speed[VDD1_OPP3]);
+			(*pdata->cpu_set_freq)(pdata->mpu_max_speed);
 
 			if (pdata->dsp_get_opp) {
 				GT_1trace(NODE_debugMask, GT_4CLASS, "opp level"
@@ -1272,7 +1272,7 @@ DSP_STATUS NODE_Create(struct NODE_OBJECT *hNode)
 		/* Request the lowest OPP level*/
 #if defined(CONFIG_BRIDGE_DVFS) && !defined(CONFIG_CPU_FREQ)
 		if (pdata->cpu_set_freq) {
-			(*pdata->cpu_set_freq)(pdata->mpu_speed[VDD1_OPP1]);
+			(*pdata->cpu_set_freq)(pdata->mpu_min_speed);
 
 			if (pdata->dsp_get_opp) {
 				GT_1trace(NODE_debugMask, GT_4CLASS, "opp level"

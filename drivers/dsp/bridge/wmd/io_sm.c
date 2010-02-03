@@ -159,13 +159,6 @@ static DSP_STATUS registerSHMSegs(struct IO_MGR *hIOMgr,
 				  struct COD_MANAGER *hCodMan,
 				  u32 dwGPPBasePA);
 
-#ifdef CONFIG_BRIDGE_DVFS
-/* The maximum number of OPPs that are supported */
-extern s32 dsp_max_opps;
-/* The Vdd1 opp table information */
-extern u32 vdd1_dsp_freq[6][4] ;
-#endif
-
 #if GT_TRACE
 static struct GT_Mask dsp_trace_mask = { NULL, NULL }; /* GT trace variable */
 #endif
@@ -1809,29 +1802,30 @@ DSP_STATUS IO_SHMsetting(struct IO_MGR *hIOMgr, u8 desc, void *pArgs)
 		 * Update the shared memory with the voltage, frequency,
 		 * min and max frequency values for an OPP.
 		 */
-		for (i = 0; i <= dsp_max_opps; i++) {
+		for (i = 0; i <= pdata->dsp_num_speeds; i++) {
 			hIOMgr->pSharedMem->oppTableStruct.oppPoint[i].voltage =
-				vdd1_dsp_freq[i][0];
+				pdata->dsp_freq_table[i].u_volts;
 			DBG_Trace(DBG_LEVEL5, "OPP shared memory -voltage: "
 				 "%d\n", hIOMgr->pSharedMem->oppTableStruct.
 				 oppPoint[i].voltage);
 			hIOMgr->pSharedMem->oppTableStruct.oppPoint[i].
-				frequency = vdd1_dsp_freq[i][1];
+				frequency = pdata->dsp_freq_table[i].dsp_freq;
 			DBG_Trace(DBG_LEVEL5, "OPP shared memory -frequency: "
 				 "%d\n", hIOMgr->pSharedMem->oppTableStruct.
 				 oppPoint[i].frequency);
 			hIOMgr->pSharedMem->oppTableStruct.oppPoint[i].minFreq =
-				vdd1_dsp_freq[i][2];
+				pdata->dsp_freq_table[i].thresh_min_freq;
 			DBG_Trace(DBG_LEVEL5, "OPP shared memory -min value: "
 				 "%d\n", hIOMgr->pSharedMem->oppTableStruct.
 				  oppPoint[i].minFreq);
 			hIOMgr->pSharedMem->oppTableStruct.oppPoint[i].maxFreq =
-				vdd1_dsp_freq[i][3];
+				pdata->dsp_freq_table[i].thresh_max_freq;
 			DBG_Trace(DBG_LEVEL5, "OPP shared memory -max value: "
 				 "%d\n", hIOMgr->pSharedMem->oppTableStruct.
 				 oppPoint[i].maxFreq);
 		}
-		hIOMgr->pSharedMem->oppTableStruct.numOppPts = dsp_max_opps;
+		hIOMgr->pSharedMem->oppTableStruct.numOppPts =
+			pdata->dsp_num_speeds;
 		DBG_Trace(DBG_LEVEL5, "OPP shared memory - max OPP number: "
 			 "%d\n", hIOMgr->pSharedMem->oppTableStruct.numOppPts);
 		/* Update the current OPP number */

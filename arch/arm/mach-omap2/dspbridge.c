@@ -30,6 +30,23 @@ static struct dspbridge_platform_data dspbridge_pdata __initdata = {
 #endif
 };
 
+/**
+ * get_opp_table() - populate the pdata with opp info
+ * @pdata: pointer to pdata
+ *
+ * OPP table implementation is a variant b/w platforms.
+ * the platform file now incorporates this into the build
+ * itself and uses the interface to talk to platform specific
+ * functions
+ */
+static int get_opp_table(struct dspbridge_platform_data *pdata)
+{
+#ifdef CONFIG_BRIDGE_DVFS
+	/* Do nothing now  - fill based on PM implementation */
+#endif
+	return 0;
+}
+
 static int __init dspbridge_init(void)
 {
 	struct platform_device *pdev;
@@ -48,6 +65,10 @@ static int __init dspbridge_init(void)
 	if (!pdev)
 		goto err_out;
 
+	err = get_opp_table(pdata);
+	if (err)
+		goto err_out;
+
 	err = platform_device_add_data(pdev, pdata, sizeof(*pdata));
 	if (err)
 		goto err_out;
@@ -60,6 +81,10 @@ static int __init dspbridge_init(void)
 	return 0;
 
 err_out:
+	kfree(pdata->mpu_speeds);
+	kfree(pdata->dsp_freq_table);
+	pdata->mpu_speeds = NULL;
+	pdata->dsp_freq_table = NULL;
 	platform_device_put(pdev);
 	return err;
 }
@@ -67,6 +92,11 @@ module_init(dspbridge_init);
 
 static void __exit dspbridge_exit(void)
 {
+	struct dspbridge_platform_data *pdata = &dspbridge_pdata;
+	kfree(pdata->mpu_speeds);
+	kfree(pdata->dsp_freq_table);
+	pdata->mpu_speeds = NULL;
+	pdata->dsp_freq_table = NULL;
 	platform_device_unregister(dspbridge_pdev);
 }
 module_exit(dspbridge_exit);
