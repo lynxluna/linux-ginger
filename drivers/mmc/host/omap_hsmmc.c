@@ -9,6 +9,8 @@
  *	Syed Mohammed Khasim	<x0khasim@ti.com>
  *	Madhusudhan		<madhu.cr@ti.com>
  *	Mohit Jalori		<mjalori@ti.com>
+ *  Support for Support for MMC3 controller TI WLAN by:
+ *	San Mehat		<san@google.com>
  *
  * This file is licensed under the terms of the GNU General Public License
  * version 2. This program is licensed "as is" without any warranty of any
@@ -171,6 +173,7 @@ struct omap_hsmmc_host {
 	int			vdd;
 	int			protect_card;
 	int			reqs_blocked;
+	int			carddetect;
 
 	struct	omap_mmc_platform_data	*pdata;
 };
@@ -1140,14 +1143,14 @@ static void omap_hsmmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	if (ios->power_mode != host->power_mode) {
 		switch (ios->power_mode) {
 		case MMC_POWER_OFF:
-			mmc_slot(host).set_power(host->dev, host->slot_id,
-						 0, 0);
-			host->vdd = 0;
+			if (mmc_slot(host).set_power)
+				mmc_slot(host).set_power(host->dev,
+					 host->slot_id, 0, 0);
 			break;
 		case MMC_POWER_UP:
-			mmc_slot(host).set_power(host->dev, host->slot_id,
-						 1, ios->vdd);
-			host->vdd = ios->vdd;
+			if (mmc_slot(host).set_power)
+				mmc_slot(host).set_power(host->dev,
+					 host->slot_id, 1, ios->vdd);
 			break;
 		case MMC_POWER_ON:
 			do_send_init_stream = 1;
@@ -1236,10 +1239,34 @@ static void omap_hsmmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 		mmc_host_lazy_disable(host->mmc);
 }
 
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+static void omap_hsmmc_status_notify_cb(int card_present, void *dev_id)
+{
+       struct omap_hsmmc_host *host = dev_id;
+       struct omap_mmc_slot_data *slot = &mmc_slot(host);
+
+       printk(KERN_DEBUG "%s: card_present %d\n", mmc_hostname(host->mmc),
+		card_present);
+       host->carddetect = slot->card_detect(slot->card_detect_irq);
+
+       sysfs_notify(&host->mmc->class_dev.kobj, NULL, "cover_switch");
+
+	if (host->carddetect) {
+		mmc_detect_change(host->mmc, (HZ * 200) / 1000);
+	} else {
+		omap_hsmmc_reset_controller_fsm(host, SRD);
+		mmc_detect_change(host->mmc, (HZ * 50) / 1000);
+	}
+}
+#endif
+
 static int omap_hsmmc_get_cd(struct mmc_host *mmc)
 {
 	struct omap_hsmmc_host *host = mmc_priv(mmc);
 
+	if (host->id == OMAP_MMC1_DEVID || host->id == OMAP_MMC2_DEVID
+		|| host->id == OMAP_MMC3_DEVID)
+			return 1;
 	if (!mmc_slot(host).card_detect)
 		return -ENOSYS;
 	return mmc_slot(host).card_detect(mmc_slot(host).card_detect_irq);
@@ -1656,7 +1683,27 @@ static int __init omap_hsmmc_probe(struct platform_device *pdev)
 	host->slot_id	= 0;
 	host->mapbase	= res->start;
 	host->base	= ioremap(host->mapbase, SZ_4K);
-	host->power_mode = -1;
+
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+	if (pdev->id == CONFIG_TIWLAN_MMC_CONTROLLER - 1) {
+		if (pdata->slots[0].embedded_sdio != NULL) {
+			mmc_set_embedded_sdio_data(mmc,
+						&pdata->
+						slots[0].embedded_sdio->cis,
+						&pdata->
+						slots[0].embedded_sdio->cccr,
+						pdata->
+						slots[0].embedded_sdio->
+						funcs,
+						pdata->
+						slots[0].embedded_sdio->
+						num_funcs,
+						pdata->
+						slots[0].embedded_sdio->
+						quirks);
+		}
+	}
+#endif
 
 	platform_set_drvdata(pdev, host);
 	INIT_WORK(&host->mmc_carddetect_work, omap_hsmmc_detect);
@@ -1804,6 +1851,14 @@ static int __init omap_hsmmc_probe(struct platform_device *pdev)
 			goto err_irq_cd;
 		}
 	}
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+	else if (mmc_slot(host).register_status_notify) {
+		if (pdev->id == CONFIG_TIWLAN_MMC_CONTROLLER - 1) {
+			mmc_slot(host).register_status_notify
+			 (omap_hsmmc_status_notify_cb, host);
+		}
+	}
+#endif
 
 	OMAP_HSMMC_WRITE(host->base, ISE, INT_EN_MASK);
 	OMAP_HSMMC_WRITE(host->base, IE, INT_EN_MASK);
