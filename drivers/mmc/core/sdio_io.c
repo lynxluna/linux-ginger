@@ -2,6 +2,8 @@
  *  linux/drivers/mmc/core/sdio_io.c
  *
  *  Copyright 2007-2008 Pierre Ossman
+ *  Support for Adding MMC_QUIRK_VDD_165_195 for 1.8v devices by:
+ *	San Mehat		<san@google.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -624,7 +626,10 @@ void sdio_f0_writeb(struct sdio_func *func, unsigned char b, unsigned int addr,
 
 	BUG_ON(!func);
 
-	if ((addr < 0xF0 || addr > 0xFF) && (!mmc_card_lenient_fn0(func->card))) {
+/*allow SDIO FN0 writes outside of VS CCCR*/
+#define MMC_QUIRK_LENIENT_FUNC0 (1<<1)
+       if ((addr < 0xF0 || addr > 0xFF)
+		&& (!func->card->quirks & MMC_QUIRK_LENIENT_FUNC0)) {
 		if (err_ret)
 			*err_ret = -EINVAL;
 		return;
