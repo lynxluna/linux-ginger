@@ -40,6 +40,7 @@
 #include <plat/dmtimer.h>
 #include <plat/usb.h>
 
+#include <plat/opp.h>
 #include <plat/resource.h>
 
 #include <asm/tlbflush.h>
@@ -52,6 +53,7 @@
 #include "prm.h"
 #include "pm.h"
 #include "sdrc.h"
+#include "omap3-opp.h"
 
 #ifdef CONFIG_SUSPEND
 static suspend_state_t suspend_state = PM_SUSPEND_ON;
@@ -117,6 +119,52 @@ static struct prm_setup_vc prm_setup = {
 	.vdd1_ret = 0x1e,	/* .975v */
 	.vdd1_off = 0x00,	/* 0.6v */
 };
+
+static struct omap_opp_def __initdata omap34xx_mpu_rate_table[] = {
+	/* OPP1 */
+	OMAP_OPP_DEF(true, 125000000, 975000),
+	/* OPP2 */
+	OMAP_OPP_DEF(true, 250000000, 1075000),
+	/* OPP3 */
+	OMAP_OPP_DEF(true, 500000000, 1200000),
+	/* OPP4 */
+	OMAP_OPP_DEF(true, 550000000, 1270000),
+	/* OPP5 */
+	OMAP_OPP_DEF(true, 600000000, 1350000),
+	/* Terminator */
+	OMAP_OPP_DEF(0, 0, 0)
+};
+
+static struct omap_opp_def __initdata omap34xx_l3_rate_table[] = {
+	/* OPP1 */
+	OMAP_OPP_DEF(false, 0, 975000),
+	/* OPP2 */
+	OMAP_OPP_DEF(true, 83000000, 1050000),
+	/* OPP3 */
+	OMAP_OPP_DEF(true, 166000000, 1150000),
+	/* Terminator */
+	OMAP_OPP_DEF(0, 0, 0)
+};
+
+static struct omap_opp_def __initdata omap34xx_dsp_rate_table[] = {
+	/* OPP1 */
+	OMAP_OPP_DEF(true, 90000000, 975000),
+	/* OPP2 */
+	OMAP_OPP_DEF(true, 180000000, 1075000),
+	/* OPP3 */
+	OMAP_OPP_DEF(true, 360000000, 1200000),
+	/* OPP4 */
+	OMAP_OPP_DEF(true, 400000000, 1270000),
+	/* OPP5 */
+	OMAP_OPP_DEF(true, 430000000, 1350000),
+	/* Terminator */
+	OMAP_OPP_DEF(0, 0, 0)
+};
+
+/* OMAP3 Rate Table */
+struct omap_opp *omap3_mpu_rate_table;
+struct omap_opp *omap3_dsp_rate_table;
+struct omap_opp *omap3_l3_rate_table;
 
 static inline void omap3_per_save_context(void)
 {
@@ -1430,6 +1478,26 @@ static void __init configure_vc(void)
 			OMAP3_PRM_VOLTOFFSET_OFFSET);
 	prm_write_mod_reg(prm_setup.voltsetup2, OMAP3430_GR_MOD,
 			OMAP3_PRM_VOLTSETUP2_OFFSET);
+}
+
+void __init omap3_pm_init_opp_table(void)
+{
+	int i;
+	struct omap_opp_def *omap34xx_opp_def_list[] = {
+		omap34xx_mpu_rate_table,
+		omap34xx_l3_rate_table,
+		omap34xx_dsp_rate_table
+	};
+	struct omap_opp **omap3_rate_tables[] = {
+		&omap3_mpu_rate_table,
+		&omap3_l3_rate_table,
+		&omap3_dsp_rate_table
+	};
+	for (i = 0; i < ARRAY_SIZE(omap3_rate_tables); i++) {
+		*omap3_rate_tables[i] = opp_init_list(omap34xx_opp_def_list[i]);
+		/* We dont want half configured system at the moment */
+		BUG_ON(IS_ERR(omap3_rate_tables[i]));
+	}
 }
 
 static int __init omap3_pm_early_init(void)

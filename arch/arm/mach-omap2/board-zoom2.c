@@ -53,6 +53,7 @@ static struct prm_setup_vc omap3_setuptime_table = {
 
 static void __init omap_zoom2_init_irq(void)
 {
+	omap3_pm_init_opp_table();
 	omap2_init_common_hw(mt46h32m32lf6_sdrc_params,
 				 mt46h32m32lf6_sdrc_params, omap3_mpu_rate_table,
 				 omap3_dsp_rate_table, omap3_l3_rate_table);
