@@ -31,7 +31,7 @@
 #include <linux/fs.h>
 #include <linux/platform_device.h>
 #include <linux/miscdevice.h>
-#include <linux/i2c/twl4030.h>
+#include <linux/i2c/twl.h>
 #include <linux/i2c/twl4030-madc.h>
 
 #include <asm/uaccess.h>
@@ -75,7 +75,7 @@ static int twl4030_madc_read(struct twl4030_madc_data *madc, u8 reg)
 	int ret;
 	u8 val;
 
-	ret = twl4030_i2c_read_u8(TWL4030_MODULE_MADC, &val, reg);
+	ret = twl_i2c_read_u8(TWL4030_MODULE_MADC, &val, reg);
 	if (ret) {
 		dev_dbg(madc->dev, "unable to read register 0x%X\n", reg);
 		return ret;
@@ -88,7 +88,7 @@ static void twl4030_madc_write(struct twl4030_madc_data *madc, u8 reg, u8 val)
 {
 	int ret;
 
-	ret = twl4030_i2c_write_u8(TWL4030_MODULE_MADC, val, reg);
+	ret = twl_i2c_write_u8(TWL4030_MODULE_MADC, val, reg);
 	if (ret)
 		dev_err(madc->dev, "unable to write register 0x%X\n", reg);
 }
@@ -344,13 +344,13 @@ static int twl4030_madc_set_current_generator(struct twl4030_madc_data *madc,
 	if (chan > 1)
 		return EINVAL;
 
-	ret = twl4030_i2c_read_u8(TWL4030_MODULE_MAIN_CHARGE,
+	ret = twl_i2c_read_u8(TWL4030_MODULE_MAIN_CHARGE,
 				  &regval, TWL4030_BCI_BCICTL1);
 	if (on)
 		regval |= (chan) ? TWL4030_BCI_ITHEN : TWL4030_BCI_TYPEN;
 	else
 		regval &= (chan) ? ~TWL4030_BCI_ITHEN : ~TWL4030_BCI_TYPEN;
-	ret = twl4030_i2c_write_u8(TWL4030_MODULE_MAIN_CHARGE,
+	ret = twl_i2c_write_u8(TWL4030_MODULE_MAIN_CHARGE,
 				   regval, TWL4030_BCI_BCICTL1);
 
 	return ret;
@@ -454,12 +454,12 @@ static int __init twl4030_madc_probe(struct platform_device *pdev)
 	twl4030_madc_set_power(madc, 1);
 	twl4030_madc_set_current_generator(madc, 0, 1);
 
-	ret = twl4030_i2c_read_u8(TWL4030_MODULE_MAIN_CHARGE,
+	ret = twl_i2c_read_u8(TWL4030_MODULE_MAIN_CHARGE,
 				  &regval, TWL4030_BCI_BCICTL1);
 
 	regval |= TWL4030_BCI_MESBAT;
 
-	ret = twl4030_i2c_write_u8(TWL4030_MODULE_MAIN_CHARGE,
+	ret = twl_i2c_write_u8(TWL4030_MODULE_MAIN_CHARGE,
 				   regval, TWL4030_BCI_BCICTL1);
 
 	ret = request_irq(platform_get_irq(pdev, 0), twl4030_madc_irq_handler,
