@@ -1183,6 +1183,10 @@ static DSP_STATUS GetAttrsFromBuf(char *pszBuf, u32 ulBufSize,
 		cLen = strlen(token);
 		pGenObj->objData.nodeObj.pstrCreatePhaseFxn =
 			MEM_Calloc(cLen + 1, MEM_PAGED);
+		if (!pGenObj->objData.nodeObj.pstrCreatePhaseFxn) {
+			status = DSP_EMEMORY;
+			break;
+		}
 		strncpy(pGenObj->objData.nodeObj.pstrCreatePhaseFxn,
 			token, cLen);
 		pGenObj->objData.nodeObj.pstrCreatePhaseFxn[cLen] = '\0';
@@ -1193,6 +1197,10 @@ static DSP_STATUS GetAttrsFromBuf(char *pszBuf, u32 ulBufSize,
 		cLen = strlen(token);
 		pGenObj->objData.nodeObj.pstrExecutePhaseFxn =
 			 MEM_Calloc(cLen + 1, MEM_PAGED);
+		if (!pGenObj->objData.nodeObj.pstrExecutePhaseFxn) {
+			status = DSP_EMEMORY;
+			break;
+		}
 		strncpy(pGenObj->objData.nodeObj.pstrExecutePhaseFxn,
 			token, cLen);
 		pGenObj->objData.nodeObj.pstrExecutePhaseFxn[cLen] = '\0';
@@ -1203,6 +1211,10 @@ static DSP_STATUS GetAttrsFromBuf(char *pszBuf, u32 ulBufSize,
 		cLen = strlen(token);
 		pGenObj->objData.nodeObj.pstrDeletePhaseFxn =
 			MEM_Calloc(cLen + 1, MEM_PAGED);
+		if (!pGenObj->objData.nodeObj.pstrDeletePhaseFxn) {
+			status = DSP_EMEMORY;
+			break;
+		}
 		strncpy(pGenObj->objData.nodeObj.pstrDeletePhaseFxn,
 			token, cLen);
 		pGenObj->objData.nodeObj.pstrDeletePhaseFxn[cLen] = '\0';
@@ -1221,6 +1233,10 @@ static DSP_STATUS GetAttrsFromBuf(char *pszBuf, u32 ulBufSize,
 			cLen = strlen(token);
 			pGenObj->objData.nodeObj.pstrIAlgName =
 				MEM_Calloc(cLen + 1, MEM_PAGED);
+			if (!pGenObj->objData.nodeObj.pstrIAlgName) {
+				status = DSP_EMEMORY;
+				break;
+			}
 			strncpy(pGenObj->objData.nodeObj.pstrIAlgName,
 				token, cLen);
 			pGenObj->objData.nodeObj.pstrIAlgName[cLen] = '\0';
@@ -1325,6 +1341,13 @@ static DSP_STATUS GetAttrsFromBuf(char *pszBuf, u32 ulBufSize,
 	default:
 		status = DSP_EFAIL;
 		break;
+	}
+
+	/* Check for Memory leak */
+	if (status == DSP_EMEMORY) {
+		MEM_Free(pGenObj->objData.nodeObj.pstrCreatePhaseFxn);
+		MEM_Free(pGenObj->objData.nodeObj.pstrExecutePhaseFxn);
+		MEM_Free(pGenObj->objData.nodeObj.pstrDeletePhaseFxn);
 	}
 
 	return status;
