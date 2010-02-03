@@ -245,6 +245,7 @@ static int zoom2_set_voice_state(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
 	int ret;
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 
 	if (zoom2_voice_state == ucontrol->value.integer.value[0])
 		return 0;
@@ -253,10 +254,18 @@ static int zoom2_set_voice_state(struct snd_kcontrol *kcontrol,
 		ret = snd_soc_dapm_stream_event(zoom2_dai[1].codec_dai->codec,
 				zoom2_dai[1].codec_dai->playback.stream_name,
 				SND_SOC_DAPM_STREAM_START);
+
+		/* Enable voice digital filters */
+		snd_soc_update_bits(codec, TWL4030_REG_OPTION,
+				    TWL4030_ARXL1_VRX_EN, 0x10);
 	} else {
 		ret = snd_soc_dapm_stream_event(zoom2_dai[1].codec_dai->codec,
 				zoom2_dai[1].codec_dai->playback.stream_name,
 				SND_SOC_DAPM_STREAM_STOP);
+
+		/* Disable voice digital filters */
+		snd_soc_update_bits(codec, TWL4030_REG_OPTION,
+				    TWL4030_ARXL1_VRX_EN, 0x0);
 	}
 
 	if (ret != 0) {
