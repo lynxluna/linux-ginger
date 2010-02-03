@@ -803,8 +803,8 @@ static void __init sr_read_efuse(struct omap_smartreflex_data *sr_data,
 }
 
 /* Hard coded nvalues for testing purposes, may cause device to hang! */
-static void __init sr_set_testing_nvalues(struct omap_smartreflex_data *sr_data,
-						int srid)
+static void __init omap34xx_sr_testing_nvalues(
+			struct omap_smartreflex_data *sr_data, int srid)
 {
 	if (srid == SR1) {
 		/* TODO: When opp framework come into picture use appropriate
@@ -845,13 +845,46 @@ static void __init sr_set_testing_nvalues(struct omap_smartreflex_data *sr_data,
 	}
 
 }
+static void __init omap36xx_sr_testing_nvalues(
+			struct omap_smartreflex_data *sr_data, int srid)
+{
+	if (srid == SR1) {
+		sr_data->no_opp = 4;
+		sr_data->sr_nvalue = kzalloc(sizeof(sr_data->sr_nvalue) *
+						sr_data->no_opp , GFP_KERNEL);
+		sr_data->senp_mod = 0x1;
+		sr_data->senn_mod = 0x1;
+
+		/* OMAP3630 nvalues for each VDD1 opp */
+		sr_data->sr_nvalue[3] = 0xaab197;
+		sr_data->sr_nvalue[2] = 0xaac5a8;
+		sr_data->sr_nvalue[1] = 0x999b83;
+		sr_data->sr_nvalue[0] = 0x898beb;
+
+
+	} else if (srid == SR2) {
+		sr_data->no_opp = 2;
+		sr_data->sr_nvalue = kzalloc(sizeof(sr_data->sr_nvalue) *
+						sr_data->no_opp , GFP_KERNEL);
+		sr_data->senp_mod = 0x1;
+		sr_data->senn_mod = 0x1;
+
+		/* OMAP3630 nvalues for each VDD2 opp */
+		sr_data->sr_nvalue[1] = 0x9a8cee;
+		sr_data->sr_nvalue[0] = 0x898beb;
+	}
+
+}
 
 static void __init sr_set_nvalues(struct omap_smartreflex_data *sr_data,
 						int srid)
 {
-	if (SR_TESTING_NVALUES)
-		sr_set_testing_nvalues(sr_data, srid);
-	else
+	if (SR_TESTING_NVALUES) {
+		if (cpu_is_omap3430())
+			omap34xx_sr_testing_nvalues(sr_data, srid);
+		else if (cpu_is_omap3630())
+			omap36xx_sr_testing_nvalues(sr_data, srid);
+	} else
 		sr_read_efuse(sr_data, srid);
 }
 

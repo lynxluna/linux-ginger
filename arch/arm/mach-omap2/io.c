@@ -48,6 +48,7 @@
 #include "omap_hwmod_2420.h"
 #include "omap_hwmod_2430.h"
 #include "omap_hwmod_34xx.h"
+#include "omap_hwmod_36xx.h"
 
 /*
  * The machine specific code may provide the extra mapping besides the
@@ -310,8 +311,12 @@ void __init omap2_init_common_hw(struct omap_sdrc_params *sdrc_cs0,
 		hwmods = omap2420_hwmods;
 	else if (cpu_is_omap2430())
 		hwmods = omap2430_hwmods;
-	else if (cpu_is_omap34xx())
-		hwmods = omap34xx_hwmods;
+	else if (cpu_is_omap34xx()) {
+		if (cpu_is_omap3630())
+			hwmods = omap36xx_hwmods;
+		else
+			hwmods = omap34xx_hwmods;
+	}
 
 #ifndef CONFIG_ARCH_OMAP4 /* FIXME: Remove this once the clkdev is ready */
 	/* The OPP tables have to be registered before a clk init */
