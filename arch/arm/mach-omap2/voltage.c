@@ -382,16 +382,23 @@ static int vp_forceupdate_scale_voltage(u32 vdd, u8 target_vsel,
 
 	/* OMAP3430 has errorgain varying btw higher and lower opp's */
 	if (cpu_is_omap34xx()) {
-		if (vdd == VDD1_OPP)
+		if (vdd == VDD1_OPP) {
 			vp_reg[vdd].vp_errorgain = (((get_vdd1_opp() > 2) ?
 					(OMAP3_VP_CONFIG_ERRORGAIN_HIGHOPP) :
 					(OMAP3_VP_CONFIG_ERRORGAIN_LOWOPP)) <<
 					OMAP3430_ERRORGAIN_SHIFT);
-		else if (vdd == VDD2_OPP)
+			voltage_modify_reg(vc_reg.vc_cmdval0_reg,
+					VC_CMD_ON_MASK,
+					(target_vsel << VC_CMD_ON_SHIFT));
+		} else if (vdd == VDD2_OPP) {
+			voltage_modify_reg(vc_reg.vc_cmdval1_reg,
+					VC_CMD_ON_MASK,
+					(target_vsel << VC_CMD_ON_SHIFT));
 			vp_reg[vdd].vp_errorgain = (((get_vdd2_opp() > 2) ?
 					(OMAP3_VP_CONFIG_ERRORGAIN_HIGHOPP) :
 					(OMAP3_VP_CONFIG_ERRORGAIN_LOWOPP)) <<
 					OMAP3430_ERRORGAIN_SHIFT);
+		}
 	}
 
 	/* Clear all pending TransactionDone interrupt/status. Typical latency
