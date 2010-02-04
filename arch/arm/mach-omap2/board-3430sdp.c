@@ -49,7 +49,7 @@
 #include "sdram-qimonda-hyb18m512160af-6.h"
 #include "mmc-twl4030.h"
 #include "twl4030-script.h"
-#include "pm.h"
+#include "voltage.h"
 #include "omap3-opp.h"
 
 #define SDP3430_TS_GPIO_IRQ_SDPV1	3
@@ -75,6 +75,10 @@ static struct cpuidle_params omap3_cpuidle_params_table[] = {
 	/* C6 */
 	{1, 3000, 8500, 15000},
 	/* C7 */
+	{1, 4000, 10000, 150000},
+	/* C8 */
+	{1, 8000, 25000, 250000},
+	/* C9 */
 	{1, 10000, 30000, 300000},
 };
 
@@ -351,10 +355,10 @@ static void __init omap_3430sdp_init_irq(void)
 {
 	omap_board_config = sdp3430_config;
 	omap_board_config_size = ARRAY_SIZE(sdp3430_config);
+	omap3_pm_init_opp_table();
 	omap3_pm_init_cpuidle(omap3_cpuidle_params_table);
-	omap3_pm_init_vc(&omap3_setuptime_table);
-	omap2_init_common_hw(hyb18m512160af6_sdrc_params, NULL, omap3_mpu_rate_table,
-			     omap3_dsp_rate_table, omap3_l3_rate_table);
+	omap_voltage_init_vc(&omap3_setuptime_table);
+	omap2_init_common_hw(hyb18m512160af6_sdrc_params, NULL);
 	omap_init_irq();
 	omap_gpio_init();
 }

@@ -321,9 +321,6 @@ static void omap_uart_save_context(struct omap_uart_state *uart)
 {
 	u16 lcr = 0;
 
-	if (!enable_off_mode)
-		return;
-
 	lcr = serial_read_reg(uart, UART_LCR);
 	serial_write_reg(uart, UART_LCR, 0xBF);
 	uart->dll = serial_read_reg(uart, UART_DLL);
@@ -389,8 +386,10 @@ static inline void omap_uart_disable_clocks(struct omap_uart_state *uart,
 {
 	if (!uart->clocked)
 		return;
+
 	if (power_state == PWRDM_POWER_OFF)
 		omap_uart_save_context(uart);
+
 	uart->clocked = 0;
 	clk_disable(uart->ick);
 	clk_disable(uart->fck);
@@ -475,6 +474,7 @@ static void omap_uart_idle_timer(unsigned long data)
 {
 	struct omap_uart_state *uart = (struct omap_uart_state *)data;
 
+	uart->timeout = DEFAULT_TIMEOUT;
 	omap_uart_allow_sleep(uart);
 }
 
@@ -496,7 +496,6 @@ void omap_uart_resume_idle(int num)
 
 	list_for_each_entry(uart, &uart_list, node) {
 		if (num == uart->num) {
-			omap_uart_enable_clocks(uart);
 
 			/* Check for IO pad wakeup */
 			if (cpu_is_omap34xx() && uart->padconf) {
@@ -592,7 +591,7 @@ static void omap_uart_idle_init(struct omap_uart_state *uart)
 	int ret;
 
 	uart->can_sleep = 0;
-	uart->timeout = DEFAULT_TIMEOUT;
+	uart->timeout = 30 * HZ;
 	setup_timer(&uart->timer, omap_uart_idle_timer,
 		    (unsigned long) uart);
 	mod_timer(&uart->timer, jiffies + uart->timeout);

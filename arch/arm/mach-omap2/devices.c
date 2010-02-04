@@ -15,6 +15,7 @@
 #include <linux/platform_device.h>
 #include <linux/io.h>
 #include <linux/clk.h>
+#include <linux/err.h>
 
 #include <mach/hardware.h>
 #include <asm/mach-types.h>
@@ -26,8 +27,13 @@
 #include <plat/mux.h>
 #include <mach/gpio.h>
 #include <plat/mmc.h>
-
+#include <plat/omap_hwmod.h>
+#include <plat/omap_device.h>
+#include <mach/omap_sgxdef.h>
 #include "mux.h"
+#include "smartreflex.h"
+
+#define MAX_HWMOD_NAME_LEN	16
 
 #if defined(CONFIG_VIDEO_OMAP2) || defined(CONFIG_VIDEO_OMAP2_MODULE)
 
@@ -734,6 +740,208 @@ void __init omap2_init_mmc(struct omap_mmc_platform_data **mmc_data,
 
 #endif
 
+#ifdef CONFIG_OMAP_SMARTREFLEX
+struct omap_device_pm_latency omap_sr_latency[] = {
+	{
+		.deactivate_lat	 = 1,
+		.deactivate_func = omap_device_idle_hwmods,
+		.activate_lat	 = 1,
+		.activate_func	 = omap_device_enable_hwmods,
+		.flags = OMAP_DEVICE_LATENCY_AUTO_ADJUST
+	},
+};
+
+/* Read EFUSE values from control registers */
+static void __init sr_read_efuse(struct omap_smartreflex_data *sr_data,
+						int sr_id)
+{
+	if (cpu_is_omap343x()) {
+		if (sr_id == SR1) {
+			/* TODO: When opp framework come into picture use
+			 * appropriate API's to find out number of opp's.
+			 */
+			sr_data->no_opp = 5;
+			sr_data->sr_nvalue =
+				kzalloc(sizeof(sr_data->sr_nvalue) *
+					sr_data->no_opp , GFP_KERNEL);
+			sr_data->senn_mod =
+				(omap_ctrl_readl(OMAP343X_CONTROL_FUSE_SR) &
+					OMAP343X_SR1_SENNENABLE_MASK) >>
+					OMAP343X_SR1_SENNENABLE_SHIFT;
+			sr_data->senp_mod =
+				(omap_ctrl_readl(OMAP343X_CONTROL_FUSE_SR) &
+					OMAP343X_SR1_SENPENABLE_MASK) >>
+					OMAP343X_SR1_SENPENABLE_SHIFT;
+			sr_data->sr_nvalue[4] = omap_ctrl_readl(
+					OMAP343X_CONTROL_FUSE_OPP5_VDD1);
+			sr_data->sr_nvalue[3] = omap_ctrl_readl(
+					OMAP343X_CONTROL_FUSE_OPP4_VDD1);
+			sr_data->sr_nvalue[2] = omap_ctrl_readl(
+					OMAP343X_CONTROL_FUSE_OPP3_VDD1);
+			sr_data->sr_nvalue[1] = omap_ctrl_readl(
+					OMAP343X_CONTROL_FUSE_OPP2_VDD1);
+			sr_data->sr_nvalue[0] = omap_ctrl_readl(
+					OMAP343X_CONTROL_FUSE_OPP1_VDD1);
+		} else if (sr_id == SR2) {
+			/* TODO: When opp framework come into picture use
+			 * appropriate API's to find out number of opp's.
+			 */
+			sr_data->no_opp = 3;
+			sr_data->sr_nvalue =
+				kzalloc(sizeof(sr_data->sr_nvalue) *
+				sr_data->no_opp , GFP_KERNEL);
+
+			sr_data->senn_mod =
+				(omap_ctrl_readl(OMAP343X_CONTROL_FUSE_SR) &
+					OMAP343X_SR2_SENNENABLE_MASK) >>
+					OMAP343X_SR2_SENNENABLE_SHIFT;
+			sr_data->senp_mod =
+				(omap_ctrl_readl(OMAP343X_CONTROL_FUSE_SR) &
+					OMAP343X_SR2_SENPENABLE_MASK) >>
+					OMAP343X_SR2_SENPENABLE_SHIFT;
+			sr_data->sr_nvalue[2] = omap_ctrl_readl(
+					OMAP343X_CONTROL_FUSE_OPP3_VDD2);
+			sr_data->sr_nvalue[1] = omap_ctrl_readl(
+					OMAP343X_CONTROL_FUSE_OPP2_VDD2);
+			sr_data->sr_nvalue[0] = omap_ctrl_readl(
+					OMAP343X_CONTROL_FUSE_OPP1_VDD2);
+		}
+	}
+	/*TODO: Add 3630/OMAP4 support */
+
+}
+
+/* Hard coded nvalues for testing purposes, may cause device to hang! */
+static void __init omap34xx_sr_testing_nvalues(
+			struct omap_smartreflex_data *sr_data, int srid)
+{
+	if (srid == SR1) {
+		/* TODO: When opp framework come into picture use appropriate
+		 * API's to find out number of opp's.
+		 */
+		sr_data->no_opp = 5;
+		sr_data->sr_nvalue = kzalloc(sizeof(sr_data->sr_nvalue) *
+				sr_data->no_opp , GFP_KERNEL);
+
+		sr_data->senp_mod = 0x03;	/* SenN-M5 enabled */
+		sr_data->senn_mod = 0x03;
+		/* calculate nvalues for each opp */
+		sr_data->sr_nvalue[4] = cal_test_nvalue(0xacd + 0x330,
+					0x848 + 0x330);
+		sr_data->sr_nvalue[3] = cal_test_nvalue(0x964 + 0x2a0,
+					0x727 + 0x2a0);
+		sr_data->sr_nvalue[2] = cal_test_nvalue(0x85b + 0x200,
+					0x655 + 0x200);
+		sr_data->sr_nvalue[1] = cal_test_nvalue(0x506 + 0x1a0,
+					0x3be + 0x1a0);
+		sr_data->sr_nvalue[0] = cal_test_nvalue(0x373 + 0x100,
+					0x28c + 0x100);
+	} else if (srid == SR2) {
+		/* TODO: When opp framework come into picture use appropriate
+		 * API's to find out number of opp's.
+		 */
+		sr_data->no_opp = 3;
+		sr_data->sr_nvalue = kzalloc(sizeof(sr_data->sr_nvalue) *
+					sr_data->no_opp , GFP_KERNEL);
+
+		sr_data->senp_mod = 0x03;	/* SenN-M5 enabled */
+		sr_data->senn_mod = 0x03;
+		sr_data->sr_nvalue[2] = cal_test_nvalue(0x76f + 0x200,
+					0x579 + 0x200);
+		sr_data->sr_nvalue[1] = cal_test_nvalue(0x4f5 + 0x1c0,
+					0x390 + 0x1c0);
+		sr_data->sr_nvalue[0] = cal_test_nvalue(0x359, 0x25d);
+	}
+
+}
+static void __init omap36xx_sr_testing_nvalues(
+			struct omap_smartreflex_data *sr_data, int srid)
+{
+	if (srid == SR1) {
+		sr_data->no_opp = 4;
+		sr_data->sr_nvalue = kzalloc(sizeof(sr_data->sr_nvalue) *
+						sr_data->no_opp , GFP_KERNEL);
+		sr_data->senp_mod = 0x1;
+		sr_data->senn_mod = 0x1;
+
+		/* OMAP3630 nvalues for each VDD1 opp */
+		sr_data->sr_nvalue[3] = 0xaab197;
+		sr_data->sr_nvalue[2] = 0xaac5a8;
+		sr_data->sr_nvalue[1] = 0x999b83;
+		sr_data->sr_nvalue[0] = 0x898beb;
+
+
+	} else if (srid == SR2) {
+		sr_data->no_opp = 2;
+		sr_data->sr_nvalue = kzalloc(sizeof(sr_data->sr_nvalue) *
+						sr_data->no_opp , GFP_KERNEL);
+		sr_data->senp_mod = 0x1;
+		sr_data->senn_mod = 0x1;
+
+		/* OMAP3630 nvalues for each VDD2 opp */
+		sr_data->sr_nvalue[1] = 0x9a8cee;
+		sr_data->sr_nvalue[0] = 0x898beb;
+	}
+
+}
+
+static void __init sr_set_nvalues(struct omap_smartreflex_data *sr_data,
+						int srid)
+{
+	if (SR_TESTING_NVALUES) {
+		if (cpu_is_omap3430())
+			omap34xx_sr_testing_nvalues(sr_data, srid);
+		else if (cpu_is_omap3630())
+			omap36xx_sr_testing_nvalues(sr_data, srid);
+	} else
+		sr_read_efuse(sr_data, srid);
+}
+
+static void __init omap_init_smartreflex(void)
+{
+	int i = 0;
+	char *name = "smartreflex";
+
+	do {
+		struct omap_smartreflex_data *sr_data;
+		struct omap_device *od;
+		struct omap_hwmod *oh;
+		char oh_name[MAX_HWMOD_NAME_LEN];
+
+		snprintf(oh_name, MAX_HWMOD_NAME_LEN, "sr%d_hwmod", i + 1);
+		oh = omap_hwmod_lookup(oh_name);
+		if (!oh)
+			break;
+
+		sr_data = kzalloc(sizeof(struct omap_smartreflex_data),
+								GFP_KERNEL);
+		if (!sr_data)
+			return;
+
+		/* Enable the SR module by default if it is a OMAP3430
+		 * ES3.1 chip
+		 */
+		if (omap_rev() == OMAP3430_REV_ES3_1)
+			sr_data->init_enable = true;
+		else
+			sr_data->init_enable = false;
+		sr_data->device_enable = omap_device_enable;
+		sr_data->device_shutdown = omap_device_shutdown;
+		sr_data->device_idle = omap_device_idle;
+		sr_set_nvalues(sr_data, i + 1);
+
+		od = omap_device_build(name, i, oh, sr_data, sizeof(*sr_data),
+				       omap_sr_latency,
+				       ARRAY_SIZE(omap_sr_latency));
+		WARN(IS_ERR(od), "Could not build omap_device for %s: %s.\n",
+		     name, oh->name);
+		i++;
+	} while (1);
+}
+#else
+static inline void omap_init_smartreflex(void) { }
+#endif
+
 /*-------------------------------------------------------------------------*/
 
 #if defined(CONFIG_HDQ_MASTER_OMAP) || defined(CONFIG_HDQ_MASTER_OMAP_MODULE)
@@ -768,6 +976,28 @@ static inline void omap_hdq_init(void)
 static inline void omap_hdq_init(void) {}
 #endif
 
+struct sgx_platform_data omap_sgx_data = {
+	.set_min_bus_tput = omap_pm_set_min_bus_tput,
+};
+
+static struct platform_device powervr_device = {
+	.name            = "pvrsrvkm",
+	.id              = -1,
+#ifdef CONFIG_PM
+	.dev            = {
+	.platform_data = &omap_sgx_data,
+       }
+#else
+	.dev            = {
+	.platform_data = NULL,}
+#endif
+};
+static void omap_init_sgx(void)
+{
+       (void) platform_device_register(&powervr_device);
+}
+
+
 /*-------------------------------------------------------------------------*/
 
 static int __init omap2_init_devices(void)
@@ -782,7 +1012,8 @@ static int __init omap2_init_devices(void)
 	omap_hdq_init();
 	omap_init_sti();
 	omap_init_sha1_md5();
-
+	omap_init_smartreflex();
+	omap_init_sgx();
 	return 0;
 }
 arch_initcall(omap2_init_devices);

@@ -120,6 +120,7 @@ static void do_suspend(void)
 		cancelled = 1;
 	}
 
+out_resume:
 	if (!cancelled) {
 		xen_arch_resume();
 		xs_resume();

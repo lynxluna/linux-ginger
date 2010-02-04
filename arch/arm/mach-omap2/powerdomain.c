@@ -170,8 +170,10 @@ static __init void _pwrdm_setup(struct powerdomain *pwrdm)
 
 	for (i = 0; i < PWRDM_MAX_PWRSTS; i++)
 		pwrdm->state_counter[i] = 0;
+
 	pwrdm->ret_logic_off_counter = 0;
 	pwrdm->ret_mem_off_counter = 0;
+
 	pwrdm_wait_transition(pwrdm);
 	pwrdm->state = pwrdm_read_pwrst(pwrdm);
 	pwrdm->state_counter[pwrdm->state] = 1;
@@ -997,7 +999,6 @@ int pwrdm_read_next_logic_pwrst(struct powerdomain *pwrdm)
 					OMAP3430_LOGICSTATEST);
 }
 
-
 /**
  * pwrdm_read_mem_pwrst - get current memory bank power state
  * @pwrdm: struct powerdomain * to get current memory bank power state
@@ -1070,6 +1071,7 @@ int pwrdm_read_prev_mem_pwrst(struct powerdomain *pwrdm, u8 bank)
 
 	if (pwrdm->flags & PWRDM_HAS_MPU_QUIRK)
 		bank = 1;
+
 	/*
 	 * The register bit names below may not correspond to the
 	 * actual names of the bits in each powerdomain's register,

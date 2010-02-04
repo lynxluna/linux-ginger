@@ -275,10 +275,7 @@ extern void omap1_init_common_hw(void);
 
 extern void omap2_map_common_io(void);
 extern void omap2_init_common_hw(struct omap_sdrc_params *sdrc_cs0,
-				 struct omap_sdrc_params *sdrc_cs1,
-				 struct omap_opp *mpu_opps,
-				 struct omap_opp *dsp_opps,
-				 struct omap_opp *l3_opps);
+				 struct omap_sdrc_params *sdrc_cs1);
 
 #define __arch_ioremap(p,s,t)	omap_ioremap(p,s,t)
 #define __arch_iounmap(v)	omap_iounmap(v)

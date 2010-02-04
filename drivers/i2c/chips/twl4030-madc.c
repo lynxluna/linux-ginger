@@ -48,7 +48,6 @@ struct twl4030_madc_data {
 };
 
 static struct twl4030_madc_data *the_madc;
-static int twl4030_madc_set_current_generator(struct twl4030_madc_data *madc, int chan, int on);
 
 static
 const struct twl4030_madc_conversion_method twl4030_conversion_methods[] = {
@@ -255,11 +254,9 @@ static int twl4030_madc_wait_conversion_ready(
 
 	timeout = jiffies + msecs_to_jiffies(timeout_ms);
 	do {
-		int reg;
+		u8 reg;
 
 		reg = twl4030_madc_read(madc, status_reg);
-		if (unlikely(reg < 0))
-			return reg;
 		if (!(reg & TWL4030_MADC_BUSY) && (reg & TWL4030_MADC_EOC_SW))
 			return 0;
 	} while (!time_after(jiffies, timeout));
@@ -267,7 +264,6 @@ static int twl4030_madc_wait_conversion_ready(
 	return -EAGAIN;
 }
 
-static int twl4030_madc_set_power(struct twl4030_madc_data *madc, int on);
 int twl4030_madc_conversion(struct twl4030_madc_request *req)
 {
 	const struct twl4030_madc_conversion_method *method;
@@ -278,8 +274,6 @@ int twl4030_madc_conversion(struct twl4030_madc_request *req)
 		return -EINVAL;
 
 	mutex_lock(&the_madc->lock);
-
-	twl4030_madc_set_power(the_madc, 1);
 
 	/* Do we have a conversion request ongoing */
 	if (the_madc->requests[req->method].active) {
@@ -332,8 +326,6 @@ int twl4030_madc_conversion(struct twl4030_madc_request *req)
 
 	the_madc->requests[req->method].active = 0;
 
-	twl4030_madc_set_power(the_madc, 0);
-
 out:
 	mutex_unlock(&the_madc->lock);
 
@@ -354,48 +346,28 @@ static int twl4030_madc_set_current_generator(struct twl4030_madc_data *madc,
 
 	ret = twl_i2c_read_u8(TWL4030_MODULE_MAIN_CHARGE,
 				  &regval, TWL4030_BCI_BCICTL1);
-	if (ret) {
-		dev_dbg(madc->dev, "unable to read register 0x%X\n", TWL4030_BCI_BCICTL1);
-		return ret;
-	}
-
-	if (on) {
+	if (on)
 		regval |= (chan) ? TWL4030_BCI_ITHEN : TWL4030_BCI_TYPEN;
-		regval |= TWL4030_BCI_MESBAT;
-	}
-	else {
+	else
 		regval &= (chan) ? ~TWL4030_BCI_ITHEN : ~TWL4030_BCI_TYPEN;
-		regval &= ~TWL4030_BCI_MESBAT;
-	}
-
 	ret = twl_i2c_write_u8(TWL4030_MODULE_MAIN_CHARGE,
 				   regval, TWL4030_BCI_BCICTL1);
-	if (ret) {
-		dev_dbg(madc->dev, "unable to write register 0x%X\n", TWL4030_BCI_BCICTL1);
-	}
+
 	return ret;
 }
 
 static int twl4030_madc_set_power(struct twl4030_madc_data *madc, int on)
 {
-	int ret = 0;
 	u8 regval;
 
-	if (on) {
-		regval = twl4030_madc_read(madc, TWL4030_MADC_CTRL1);
+	regval = twl4030_madc_read(madc, TWL4030_MADC_CTRL1);
+	if (on)
 		regval |= TWL4030_MADC_MADCON;
-		twl4030_madc_write(madc, TWL4030_MADC_CTRL1, regval);
-
-		ret |= twl4030_madc_set_current_generator(madc, 0, 1);
-
-	} else {
-		ret |= twl4030_madc_set_current_generator(madc, 0, 0);
-
-		regval = twl4030_madc_read(madc, TWL4030_MADC_CTRL1);
+	else
 		regval &= ~TWL4030_MADC_MADCON;
-		twl4030_madc_write(madc, TWL4030_MADC_CTRL1, regval);
-	}
-	return ret;
+	twl4030_madc_write(madc, TWL4030_MADC_CTRL1, regval);
+
+	return 0;
 }
 
 static long twl4030_madc_ioctl(struct file *filp, unsigned int cmd,
@@ -420,16 +392,13 @@ static long twl4030_madc_ioctl(struct file *filp, unsigned int cmd,
 		req.do_avg	= par.average;
 		req.method	= TWL4030_MADC_SW1;
 		req.func_cb	= NULL;
-		req.type	= TWL4030_MADC_WAIT;
 
 		val = twl4030_madc_conversion(&req);
-		if (likely(val > 0)) {
+		if (val <= 0) {
+			par.status = -1;
+		} else {
 			par.status = 0;
 			par.result = (u16)req.rbuf[par.channel];
-		} else if (val == 0) {
-			par.status = -ENODATA;
-		} else {
-			par.status = val;
 		}
 		break;
 					     }
@@ -453,7 +422,7 @@ static struct file_operations twl4030_madc_fileops = {
 
 static struct miscdevice twl4030_madc_device = {
 	.minor = MISC_DYNAMIC_MINOR,
-	.name = "twl4030-adc",
+	.name = "twl4030-madc",
 	.fops = &twl4030_madc_fileops
 };
 
@@ -461,7 +430,6 @@ static int __init twl4030_madc_probe(struct platform_device *pdev)
 {
 	struct twl4030_madc_data *madc;
 	struct twl4030_madc_platform_data *pdata = pdev->dev.platform_data;
-
 	int ret;
 	u8 regval;
 
@@ -483,6 +451,16 @@ static int __init twl4030_madc_probe(struct platform_device *pdev)
 		dev_dbg(&pdev->dev, "could not register misc_device\n");
 		goto err_misc;
 	}
+	twl4030_madc_set_power(madc, 1);
+	twl4030_madc_set_current_generator(madc, 0, 1);
+
+	ret = twl_i2c_read_u8(TWL4030_MODULE_MAIN_CHARGE,
+				  &regval, TWL4030_BCI_BCICTL1);
+
+	regval |= TWL4030_BCI_MESBAT;
+
+	ret = twl_i2c_write_u8(TWL4030_MODULE_MAIN_CHARGE,
+				   regval, TWL4030_BCI_BCICTL1);
 
 	ret = request_irq(platform_get_irq(pdev, 0), twl4030_madc_irq_handler,
 			  0, "twl4030_madc", madc);
@@ -513,6 +491,8 @@ static int __exit twl4030_madc_remove(struct platform_device *pdev)
 {
 	struct twl4030_madc_data *madc = platform_get_drvdata(pdev);
 
+	twl4030_madc_set_power(madc, 0);
+	twl4030_madc_set_current_generator(madc, 0, 0);
 	free_irq(platform_get_irq(pdev, 0), madc);
 	cancel_work_sync(&madc->ws);
 	misc_deregister(&twl4030_madc_device);

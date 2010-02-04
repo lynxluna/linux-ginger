@@ -310,6 +310,8 @@ struct rcu_state {
 	unsigned long jiffies_stall;		/* Time at which to check */
 						/*  for CPU stalls. */
 #endif /* #ifdef CONFIG_RCU_CPU_STALL_DETECTOR */
+	long dynticks_completed;		/* Value of completed @ snap. */
+						/*  Protected by fqslock. */
 };
 
 /* Return values for rcu_preempt_offline_tasks(). */

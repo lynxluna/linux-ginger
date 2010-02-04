@@ -25,34 +25,13 @@
 
 #include <plat/common.h>
 #include <plat/usb.h>
+#include <plat/control.h>
 
 #include "mux.h"
 #include "mmc-twl4030.h"
 #include "twl4030-script.h"
 #include "pm.h"
-
-/* FIXME: These are not the optimal setup values */
-static struct prm_setup_vc omap3_setuptime_table = {
-	/* CLK SETUPTIME for RET & OFF */
-	.clksetup_ret = 0xff,
-	.clksetup_off = 0xff,
-	/* VOLT SETUPTIME for RET & OFF */
-	.voltsetup_time1_ret = 0xfff,
-	.voltsetup_time2_ret = 0xfff,
-	.voltsetup_time1_off = 0xfff,
-	.voltsetup_time2_off = 0xfff,
-	.voltoffset = 0xff,
-	.voltsetup2 = 0xff,
-	/* VC COMMAND VALUES for VDD1/VDD2 */
-	.vdd0_on = 0x30,
-	.vdd0_onlp = 0x20,
-	.vdd0_ret = 0x1e,
-	.vdd0_off = 0x00,
-	.vdd1_on = 0x2c,
-	.vdd1_onlp = 0x20,
-	.vdd1_ret = 0x1e,
-	.vdd1_off = 0x00,
-};
+#include "voltage.h"
 
 #define OMAP_SYNAPTICS_GPIO		163
 
@@ -156,19 +135,19 @@ static struct twl4030_power_data zoom_t2scripts_data __initdata = {
 };
 
 #ifdef CONFIG_TWL4030_POWER
-static void use_generic_twl4030_script(void)
+static void use_generic_twl4030_script(struct prm_setup_vc *setup_vc)
 {
-	omap3_setuptime_table.voltsetup_time1_ret =
+	setup_vc->voltsetup_time1_ret =
 				twl4030_voltsetup_time.voltsetup_time1_ret;
-	omap3_setuptime_table.voltsetup_time2_ret =
+	setup_vc->voltsetup_time2_ret =
 				twl4030_voltsetup_time.voltsetup_time2_ret;
-	omap3_setuptime_table.voltsetup_time1_off =
+	setup_vc->voltsetup_time1_off =
 				twl4030_voltsetup_time.voltsetup_time1_off;
-	omap3_setuptime_table.voltsetup_time2_off =
+	setup_vc->voltsetup_time2_off =
 				twl4030_voltsetup_time.voltsetup_time1_off;
 
-	omap3_setuptime_table.voltoffset = twl4030_voltsetup_time.voltoffset;
-	omap3_setuptime_table.voltsetup2 = twl4030_voltsetup_time.voltsetup2;
+	setup_vc->voltoffset = twl4030_voltsetup_time.voltoffset;
+	setup_vc->voltsetup2 = twl4030_voltsetup_time.voltsetup2;
 
 	zoom_t2scripts_data.scripts = twl4030_generic_script.scripts;
 	zoom_t2scripts_data.num = twl4030_generic_script.num;
@@ -376,6 +355,26 @@ static struct i2c_board_info __initdata zoom_i2c_boardinfo[] = {
 
 static int __init omap_i2c_init(void)
 {
+	/* Disable OMAP 3630 internal pull-ups for I2Ci */
+	if (cpu_is_omap3630()) {
+		u32 prog_io;
+		prog_io = omap_ctrl_readl(OMAP343X_CONTROL_PROG_IO1);
+		/* Program (bit 19)=1 to disable internal pull-up on I2C1 */
+		prog_io |= OMAP3630_PRG_I2C1_PULLUPRESX;
+		/* Program (bit 0)=1 to disable internal pull-up on I2C2 */
+		prog_io |= OMAP3630_PRG_I2C2_PULLUPRESX;
+		omap_ctrl_writel(prog_io, OMAP343X_CONTROL_PROG_IO1);
+
+		prog_io = omap_ctrl_readl(OMAP36XX_CONTROL_PROG_IO2);
+		/* Program (bit 7)=1 to disable internal pull-up on I2C3 */
+		prog_io |= OMAP3630_PRG_I2C3_PULLUPRESX;
+		omap_ctrl_writel(prog_io, OMAP36XX_CONTROL_PROG_IO2);
+
+		prog_io = omap_ctrl_readl(OMAP36XX_CONTROL_PROG_IO_WKUP1);
+		/* Program (bit 5)=1 to disable internall pull-up on I2C4(SR) */
+		prog_io |= OMAP3630_PRG_SR_PULLUPRESX;
+		omap_ctrl_writel(prog_io, OMAP36XX_CONTROL_PROG_IO_WKUP1);
+	}
 	omap_register_i2c_bus(1, 2400, zoom_i2c_boardinfo,
 			ARRAY_SIZE(zoom_i2c_boardinfo));
 	omap_register_i2c_bus(2, 100, zoom_i2c_boardinfo2,
@@ -404,16 +403,16 @@ static struct platform_device *zoom_devices[] __initdata = {
        &zoom_btfmgps_device,
 };
 
-void __init zoom_peripherals_init(void)
+void __init zoom_peripherals_init(void * peripheral_data)
 {
 #ifdef CONFIG_TWL4030_POWER
-	use_generic_twl4030_script();
+	use_generic_twl4030_script((struct prm_setup_vc *) peripheral_data);
 #endif
 	omap_i2c_init();
 	synaptics_dev_init();
 	omap_serial_init();
 	usb_musb_init();
 	enable_board_wakeup_source();
-	omap3_pm_init_vc(&omap3_setuptime_table);
 	platform_add_devices(zoom_devices, ARRAY_SIZE(zoom_devices));
+	omap_voltage_init_vc((struct prm_setup_vc *) peripheral_data);
 }

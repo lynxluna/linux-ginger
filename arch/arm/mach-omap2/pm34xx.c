@@ -47,11 +47,12 @@
 #include "cm.h"
 #include "cm-regbits-34xx.h"
 #include "prm-regbits-34xx.h"
-
 #include "smartreflex.h"
+#include "voltage.h"
 #include "prm.h"
 #include "pm.h"
 #include "sdrc.h"
+#include "omap3-opp.h"
 
 #ifdef CONFIG_SUSPEND
 static suspend_state_t suspend_state = PM_SUSPEND_ON;
@@ -72,8 +73,8 @@ static inline bool is_suspending(void)
 #define OMAP343X_CONTROL_REG_VALUE_OFFSET  0x32
 
 u32 enable_off_mode;
-u32 enable_oswr_ret;
 u32 sleep_while_idle;
+u32 enable_oswr;
 u32 wakeup_timer_seconds;
 u32 voltage_off_while_idle;
 
@@ -95,28 +96,6 @@ static int (*_omap_save_secure_sram)(u32 *addr);
 static struct powerdomain *mpu_pwrdm, *neon_pwrdm;
 static struct powerdomain *core_pwrdm, *per_pwrdm;
 static struct powerdomain *cam_pwrdm;
-
-static struct prm_setup_vc prm_setup = {
-	/* CLK SETUPTIME for RET & OFF */
-	.clksetup_ret = 0xff,
-	.clksetup_off = 0xff,
-	/* VOLT SETUPTIME for RET & OFF */
-	.voltsetup_time1_ret = 0xfff,
-	.voltsetup_time2_ret = 0xfff,
-	.voltsetup_time1_off = 0xfff,
-	.voltsetup_time2_off = 0xfff,
-	.voltoffset = 0xff,
-	.voltsetup2 = 0xff,
-	/* VC COMMAND VALUES for VDD1/VDD2 */
-	.vdd0_on = 0x30,	/* 1.2v */
-	.vdd0_onlp = 0x20,	/* 1.0v */
-	.vdd0_ret = 0x1e,	/* 0.975v */
-	.vdd0_off = 0x00,	/* 0.6v */
-	.vdd1_on = 0x2c,	/* 1.15v */
-	.vdd1_onlp = 0x20,	/* 1.0v */
-	.vdd1_ret = 0x1e,	/* .975v */
-	.vdd1_off = 0x00,	/* 0.6v */
-};
 
 static inline void omap3_per_save_context(void)
 {
@@ -159,18 +138,19 @@ static void omap3_disable_io_chain(void)
 
 static void omap3_core_save_context(int core_state)
 {
-	u32 control_padconf_off;
-
 	if (core_state == PWRDM_POWER_OFF) {
+		u32 control_padconf_off;
+
 		/* Save the padconf registers */
-		control_padconf_off =
-			omap_ctrl_readl(OMAP343X_CONTROL_PADCONF_OFF);
+		control_padconf_off = omap_ctrl_readl(
+				OMAP343X_CONTROL_PADCONF_OFF);
 		control_padconf_off |= START_PADCONF_SAVE;
 		omap_ctrl_writel(control_padconf_off,
-				 OMAP343X_CONTROL_PADCONF_OFF);
+				OMAP343X_CONTROL_PADCONF_OFF);
 		/* wait for the save to complete */
-		while (!(omap_ctrl_readl(OMAP343X_CONTROL_GENERAL_PURPOSE_STATUS)
-				& PADCONF_SAVE_DONE))
+		while (!(omap_ctrl_readl(
+				OMAP343X_CONTROL_GENERAL_PURPOSE_STATUS) &
+				PADCONF_SAVE_DONE))
 			udelay(1);
 
 		/*
@@ -178,27 +158,35 @@ static void omap3_core_save_context(int core_state)
 		 * cases according to erratas 1.157, 1.185
 		 */
 		omap_ctrl_writel(omap_ctrl_readl(OMAP343X_PADCONF_ETK_D14),
-			OMAP343X_CONTROL_MEM_WKUP + 0x2a0);
+				OMAP343X_CONTROL_MEM_WKUP + 0x2a0);
+
+		/* Save the Interrupt controller context */
+		omap_intc_save_context();
+
+		/* Save the system control module context,
+		 * padconf already save above
+		 */
+		omap3_control_save_context();
+		omap_dma_global_context_save();
 	}
-	/* Save the Interrupt controller context */
-	omap_intc_save_context();
+
 	/* Save the GPMC context */
 	omap3_gpmc_save_context();
-	/* Save the system control module context, padconf already save above*/
-	omap3_control_save_context();
-	omap_dma_global_context_save();
 }
 
 static void omap3_core_restore_context(int core_state)
 {
-	/* Restore the control module context, padconf restored by h/w */
-	if (core_state == PWRDM_POWER_OFF)
+	if (core_state == PWRDM_POWER_OFF) {
+		/* Restore the control module context,
+		 * padconf restored by h/w
+		 */
 		omap3_control_restore_context();
+		/* Restore the interrupt controller context */
+		omap_intc_restore_context();
+		omap_dma_global_context_restore();
+	}
 	/* Restore the GPMC context */
 	omap3_gpmc_restore_context();
-	/* Restore the interrupt controller context */
-	omap_intc_restore_context();
-	omap_dma_global_context_restore();
 }
 
 /*
@@ -365,7 +353,7 @@ static void restore_table_entry(void)
 	*address = previous_value;
 	flush_tlb_all();
 	control_reg_value = __raw_readl(scratchpad_address
-				+ OMAP343X_CONTROL_REG_VALUE_OFFSET);
+					+ OMAP343X_CONTROL_REG_VALUE_OFFSET);
 	/* This will enable caches and prediction */
 	restore_control_register(control_reg_value);
 }
@@ -383,13 +371,10 @@ void omap_sram_idle(void)
 	int per_next_state = PWRDM_POWER_ON;
 	int core_next_state = PWRDM_POWER_ON;
 	int mpu_prev_state, core_prev_state, per_prev_state;
-	int mpu_logic_state, mpu_mem_state, core_logic_state, core_mem_state;
+	int mpu_logic_state, mpu_mem_state, core_logic_state;
 	u32 sdrc_pwr = 0;
 	int per_state_modified = 0;
 	u32 fclk_status;
-	u16 clksetup = 0xff;
-	u16 voltsetup_time1 = 0xfff;
-	u16 voltsetup_time2 = 0xfff;
 
 	if (!_omap_sram_idle)
 		return;
@@ -405,9 +390,9 @@ void omap_sram_idle(void)
 
 	switch (mpu_next_state) {
 	case PWRDM_POWER_ON:
-			/* No need to save context */
-			save_state = 0;
-			break;
+		/* No need to save context */
+		save_state = 0;
+		break;
 	case PWRDM_POWER_RET:
 		if (!mpu_logic_state && !mpu_mem_state)
 			save_state = 3;
@@ -438,8 +423,7 @@ void omap_sram_idle(void)
 	per_next_state = pwrdm_read_next_pwrst(per_pwrdm);
 	core_next_state = pwrdm_read_next_pwrst(core_pwrdm);
 	core_logic_state = pwrdm_read_next_logic_pwrst(core_pwrdm);
-	core_mem_state = pwrdm_read_next_mem_pwrst(core_pwrdm, 0) |
-				pwrdm_read_next_mem_pwrst(core_pwrdm, 1);
+
 	if (per_next_state < PWRDM_POWER_ON) {
 		omap_uart_prepare_idle(2, per_next_state);
 		omap2_gpio_prepare_for_idle(per_next_state);
@@ -461,11 +445,6 @@ void omap_sram_idle(void)
 		omap_uart_prepare_idle(0, core_next_state & core_logic_state);
 		omap_uart_prepare_idle(1, core_next_state & core_logic_state);
 		if (core_next_state == PWRDM_POWER_OFF) {
-			/* VOLT & CLK SETUPTIME for OFF */
-			clksetup = prm_setup.clksetup_off;
-			voltsetup_time1 = prm_setup.voltsetup_time1_off;
-			voltsetup_time2 = prm_setup.voltsetup_time2_off;
-
 			u32 voltctrl = OMAP3430_AUTO_OFF;
 
 			if (voltage_off_while_idle)
@@ -476,43 +455,25 @@ void omap_sram_idle(void)
 			omap3_core_save_context(PWRDM_POWER_OFF);
 			omap3_prcm_save_context();
 		} else if ((core_next_state == PWRDM_POWER_RET) &&
-				(core_logic_state == PWRDM_POWER_OFF) &&
-				(core_mem_state == PWRDM_POWER_OFF)) {
-			omap3_core_save_context(PWRDM_POWER_RET);
-			omap3_prcm_save_context();
-			/*
-			 * This is a hack. Currently OSWR does not
-			 * work if rom code restores DPLL4 to non
-			 * auto idle mode.
-			 * ROM restore takes 20mS longer if PER/DPLL4
-			 * idle is enabled before OFF.So it is typically
-			 * not enabled. Since OSWR hangs if it is not enabled
-			 * enable it for OSWR alone. Later in the restore path
-			 * it is disabled again
+				(core_logic_state == PWRDM_POWER_OFF)) {
+			/* Disable DPLL4 autoidle bit so that register
+			 * contents match with that stored in the
+			 * scratchpad. If this is not done rom code
+			 * enters into some wrong path while coming
+			 * out of coreOSWR and causes a crash.
 			 */
-
-			omap3_scratchpad_dpll4autoidle(1);
+			cm_rmw_mod_reg_bits(OMAP3430_AUTO_PERIPH_DPLL_MASK,
+						0x0, PLL_MOD, CM_AUTOIDLE);
+			omap3_core_save_context(PWRDM_POWER_RET);
 			prm_set_mod_reg_bits(OMAP3430_AUTO_RET,
 						OMAP3430_GR_MOD,
 						OMAP3_PRM_VOLTCTRL_OFFSET);
 		} else if (core_next_state == PWRDM_POWER_RET) {
-			/* VOLT & CLK SETUPTIME for RET */
-			clksetup = prm_setup.clksetup_ret;
-			voltsetup_time1 = prm_setup.voltsetup_time1_ret;
-			voltsetup_time2 = prm_setup.voltsetup_time2_ret;
-
 			prm_set_mod_reg_bits(OMAP3430_AUTO_RET,
 						OMAP3430_GR_MOD,
 						OMAP3_PRM_VOLTCTRL_OFFSET);
 		}
-		/* Write setup times */
-		prm_write_mod_reg(clksetup, OMAP3430_GR_MOD,
-				OMAP3_PRM_CLKSETUP_OFFSET);
-		prm_write_mod_reg((voltsetup_time2 <<
-				OMAP3430_SETUP_TIME2_SHIFT) |
-				(voltsetup_time1 <<
-				OMAP3430_SETUP_TIME1_SHIFT),
-				OMAP3430_GR_MOD, OMAP3_PRM_VOLTSETUP1_OFFSET);
+		update_voltsetup_time(core_next_state);
 
 		/* Enable IO-PAD and IO-CHAIN wakeups */
 		prm_set_mod_reg_bits(OMAP3430_EN_IO, WKUP_MOD, PM_WKEN);
@@ -530,9 +491,9 @@ void omap_sram_idle(void)
 
 	if (!fclk_status) {
 		if (mpu_next_state <= PWRDM_POWER_RET)
-			disable_smartreflex(SR1);
+			omap_smartreflex_disable(SR1);
 		if (core_next_state <= PWRDM_POWER_RET)
-			disable_smartreflex(SR2);
+			omap_smartreflex_disable(SR2);
 	}
 
 	/*
@@ -567,11 +528,11 @@ void omap_sram_idle(void)
 		sdrc_write_reg(sdrc_pwr, SDRC_POWER);
 
 	mpu_prev_state = pwrdm_read_prev_pwrst(mpu_pwrdm);
-
 	/* Restore table entry modified during MMU restoration */
 	if (((mpu_prev_state == PWRDM_POWER_RET) &&
-		(pwrdm_read_prev_logic_pwrst(mpu_pwrdm) == PWRDM_POWER_OFF)) ||
-		(mpu_prev_state == PWRDM_POWER_OFF))
+			(pwrdm_read_prev_logic_pwrst(mpu_pwrdm) ==
+			 PWRDM_POWER_OFF)) || (mpu_prev_state ==
+			 PWRDM_POWER_OFF))
 		restore_table_entry();
 
 	/* CORE */
@@ -579,26 +540,27 @@ void omap_sram_idle(void)
 		core_prev_state = pwrdm_read_prev_pwrst(core_pwrdm);
 		if ((core_prev_state == PWRDM_POWER_OFF) ||
 				(core_prev_state == PWRDM_POWER_RET &&
-				 pwrdm_read_prev_logic_pwrst(core_pwrdm) ==
-				 PWRDM_POWER_OFF)) {
+				pwrdm_read_prev_logic_pwrst(core_pwrdm) ==
+				PWRDM_POWER_OFF)) {
 			omap3_core_restore_context(core_prev_state);
-			omap3_prcm_restore_context();
+			if (core_prev_state == PWRDM_POWER_OFF) {
+				omap3_prcm_restore_context();
+				omap2_sms_restore_context();
+			}
 			omap3_sram_restore_context();
-			omap2_sms_restore_context();
-			/*
-			 * For OSWR to work we put PER DPLL in auto
-			 * idle mode in scratchpad. Clear it so that
-			 * next time if a OFF is attempted the ROM restore
-			 * does nt take long
-			 */
-			if (core_prev_state == PWRDM_POWER_RET)
-				omap3_scratchpad_dpll4autoidle(0);
-
 			/*
 			 * Errata 1.164 fix : OTG autoidle can prevent
 			 * sleep
 			 */
 			usb_musb_disable_autoidle();
+			/* We do not program the scratchpad to restore back
+			 * PER DPLL in autoidle due to 20 ms delay in
+			 * rom code restore path. So enable it explicitly
+			 * after core off
+			 */
+			cm_rmw_mod_reg_bits(
+				0x0, (1 << OMAP3430_AUTO_PERIPH_DPLL_SHIFT),
+				PLL_MOD, CM_AUTOIDLE);
 		}
 		omap_uart_resume_idle(0);
 		omap_uart_resume_idle(1);
@@ -623,9 +585,9 @@ void omap_sram_idle(void)
 	 */
 	if (!fclk_status) {
 		if (mpu_next_state <= PWRDM_POWER_RET)
-			enable_smartreflex(SR1);
+			omap_smartreflex_enable(SR1);
 		if (core_next_state <= PWRDM_POWER_RET)
-			enable_smartreflex(SR2);
+			omap_smartreflex_enable(SR2);
 	}
 	/* PER */
 	if (per_next_state < PWRDM_POWER_ON) {
@@ -1184,36 +1146,10 @@ int omap3_pm_set_suspend_state(struct powerdomain *pwrdm, int state)
 	return -EINVAL;
 }
 
-void omap3_pm_init_vc(struct prm_setup_vc *setup_vc)
-{
-	if (!setup_vc)
-		return;
-	/* CLK SETUPTIME for RET & OFF */
-	prm_setup.clksetup_ret = setup_vc->clksetup_ret;
-	prm_setup.clksetup_off = setup_vc->clksetup_off;
-	/* VOLT SETUPTIME for RET & OFF */
-	prm_setup.voltsetup_time1_ret = setup_vc->voltsetup_time1_ret;
-	prm_setup.voltsetup_time2_ret = setup_vc->voltsetup_time2_ret;
-	prm_setup.voltsetup_time1_off = setup_vc->voltsetup_time1_off;
-	prm_setup.voltsetup_time2_off = setup_vc->voltsetup_time2_off;
-
-	/* VC COMMAND VALUES for VDD1/VDD2 */
-	prm_setup.voltoffset = setup_vc->voltoffset;
-	prm_setup.voltsetup2 = setup_vc->voltsetup2;
-	prm_setup.vdd0_on = setup_vc->vdd0_on;
-	prm_setup.vdd0_onlp = setup_vc->vdd0_onlp;
-	prm_setup.vdd0_ret = setup_vc->vdd0_ret;
-	prm_setup.vdd0_off = setup_vc->vdd0_off;
-	prm_setup.vdd1_on = setup_vc->vdd1_on;
-	prm_setup.vdd1_onlp = setup_vc->vdd1_onlp;
-	prm_setup.vdd1_ret = setup_vc->vdd1_ret;
-	prm_setup.vdd1_off = setup_vc->vdd1_off;
-}
-
 int omap3_get_max_vdd1_opp(void)
 {
 	if (cpu_is_omap3630())
-		return VDD1_OPP2;
+		return VDD1_OPP4;
 	else /* Place holder for other 34xx (3430/3440) */
 		return VDD1_OPP5;
 }
@@ -1385,59 +1321,16 @@ err2:
 	return ret;
 }
 
-static void __init configure_vc(void)
-{
-
-	prm_write_mod_reg((R_SRI2C_SLAVE_ADDR << OMAP3430_SMPS_SA1_SHIFT) |
-			  (R_SRI2C_SLAVE_ADDR << OMAP3430_SMPS_SA0_SHIFT),
-			  OMAP3430_GR_MOD, OMAP3_PRM_VC_SMPS_SA_OFFSET);
-	prm_write_mod_reg((R_VDD2_SR_CONTROL << OMAP3430_VOLRA1_SHIFT) |
-			  (R_VDD1_SR_CONTROL << OMAP3430_VOLRA0_SHIFT),
-			  OMAP3430_GR_MOD, OMAP3_PRM_VC_SMPS_VOL_RA_OFFSET);
-
-	prm_write_mod_reg((prm_setup.vdd0_on << OMAP3430_VC_CMD_ON_SHIFT) |
-		(prm_setup.vdd0_onlp << OMAP3430_VC_CMD_ONLP_SHIFT) |
-		(prm_setup.vdd0_ret << OMAP3430_VC_CMD_RET_SHIFT) |
-		(prm_setup.vdd0_off << OMAP3430_VC_CMD_OFF_SHIFT),
-		OMAP3430_GR_MOD, OMAP3_PRM_VC_CMD_VAL_0_OFFSET);
-
-	prm_write_mod_reg((prm_setup.vdd1_on << OMAP3430_VC_CMD_ON_SHIFT) |
-		(prm_setup.vdd1_onlp << OMAP3430_VC_CMD_ONLP_SHIFT) |
-		(prm_setup.vdd1_ret << OMAP3430_VC_CMD_RET_SHIFT) |
-		(prm_setup.vdd1_off << OMAP3430_VC_CMD_OFF_SHIFT),
-		OMAP3430_GR_MOD, OMAP3_PRM_VC_CMD_VAL_1_OFFSET);
-
-	prm_write_mod_reg(OMAP3430_CMD1 | OMAP3430_RAV1, OMAP3430_GR_MOD,
-			  OMAP3_PRM_VC_CH_CONF_OFFSET);
-
-	prm_write_mod_reg(OMAP3430_MCODE_SHIFT | OMAP3430_HSEN,
-			  OMAP3430_GR_MOD,
-			  OMAP3_PRM_VC_I2C_CFG_OFFSET);
-
-	/* Write setup times */
-	prm_write_mod_reg(prm_setup.clksetup_ret, OMAP3430_GR_MOD,
-			OMAP3_PRM_CLKSETUP_OFFSET);
-	prm_write_mod_reg((prm_setup.voltsetup_time2_ret <<
-			OMAP3430_SETUP_TIME2_SHIFT) |
-			(prm_setup.voltsetup_time1_ret <<
-			OMAP3430_SETUP_TIME1_SHIFT),
-			OMAP3430_GR_MOD, OMAP3_PRM_VOLTSETUP1_OFFSET);
-
-	prm_write_mod_reg(prm_setup.voltoffset, OMAP3430_GR_MOD,
-			OMAP3_PRM_VOLTOFFSET_OFFSET);
-	prm_write_mod_reg(prm_setup.voltsetup2, OMAP3430_GR_MOD,
-			OMAP3_PRM_VOLTSETUP2_OFFSET);
-}
-
 static int __init omap3_pm_early_init(void)
 {
 	prm_clear_mod_reg_bits(OMAP3430_OFFMODE_POL, OMAP3430_GR_MOD,
 				OMAP3_PRM_POLCTRL_OFFSET);
-
-	configure_vc();
+	/* Initializes OMAP3 voltage modules*/
+	omap_voltage_init();
 
 	return 0;
 }
 
 arch_initcall(omap3_pm_early_init);
 late_initcall(omap3_pm_init);
+

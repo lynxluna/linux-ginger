@@ -26,6 +26,28 @@
 #include "pm.h"
 #include "omap3-opp.h"
 
+static struct prm_setup_vc omap3_setuptime_table = {
+	/* CLK SETUPTIME for RET & OFF */
+	.clksetup_ret = 0xff,
+	.clksetup_off = 0xff,
+	/* VOLT SETUPTIME for RET & OFF */
+	.voltsetup_time1_ret = 0xfff,
+	.voltsetup_time2_ret = 0xfff,
+	.voltsetup_time1_off = 0xfff,
+	.voltsetup_time2_off = 0xfff,
+	.voltoffset = 0xff,
+	.voltsetup2 = 0xff,
+	/* VC COMMAND VALUES for VDD1/VDD2 */
+	.vdd0_on = 0x28,	/* 1.1v */
+	.vdd0_onlp = 0x20,	/* 1.0v */
+	.vdd0_ret = 0x13,	/* 0.83v */
+	.vdd0_off = 0x00,	/* 0.6v */
+	.vdd1_on = 0x2B,	/* 1.1375v */
+	.vdd1_onlp = 0x20,	/* 1.0v */
+	.vdd1_ret = 0x13,	/* 0.83v */
+	.vdd1_off = 0x00,	/* 0.6v */
+};
+
 static void __init omap_zoom_map_io(void)
 {
 	omap2_set_globals_343x();
@@ -87,11 +109,12 @@ static void __init omap_zoom_init_irq(void)
 {
 	omap_board_config = zoom_config;
 	omap_board_config_size = ARRAY_SIZE(zoom_config);
+
+	omap3_pm_init_opp_table();
+	/* TODO: Add RET, OFF, cpu_idle params */
+
 	omap2_init_common_hw(h8mbx00u0mer0em_sdrc_params,
-			     h8mbx00u0mer0em_sdrc_params,
-			     omap36xx_mpu_rate_table,
-			     omap36xx_dsp_rate_table,
-			     omap36xx_l3_rate_table);
+			     h8mbx00u0mer0em_sdrc_params);
 	omap_init_irq();
 	omap_gpio_init();
 }
@@ -107,7 +130,7 @@ static struct omap_board_mux board_mux[] __initdata = {
 static void __init omap_zoom_init(void)
 {
 	omap3_mux_init(board_mux, OMAP_PACKAGE_CBP);
-	zoom_peripherals_init();
+	zoom_peripherals_init(&omap3_setuptime_table);
 	zoom_flash_init(zoom_flash_partitions, ZOOM_NAND_CS);
 	zoom_debugboard_init();
 }

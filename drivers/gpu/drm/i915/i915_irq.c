@@ -301,19 +301,14 @@ irqreturn_t ironlake_irq_handler(struct drm_device *dev)
 		I915_WRITE(GTIIR, gt_iir);
 		new_gt_iir = I915_READ(GTIIR);
 
-		if (dev->primary->master) {
-			master_priv = dev->primary->master->driver_priv;
-			if (master_priv->sarea_priv)
-				master_priv->sarea_priv->last_dispatch =
-					READ_BREADCRUMB(dev_priv);
-		}
+	ret = IRQ_HANDLED;
 
-		if (gt_iir & GT_USER_INTERRUPT) {
-			u32 seqno = i915_get_gem_seqno(dev);
-			dev_priv->mm.irq_gem_seqno = seqno;
-			trace_i915_gem_request_complete(dev, seqno);
-			DRM_WAKEUP(&dev_priv->irq_queue);
-		}
+	if (dev->primary->master) {
+		master_priv = dev->primary->master->driver_priv;
+		if (master_priv->sarea_priv)
+			master_priv->sarea_priv->last_dispatch =
+				READ_BREADCRUMB(dev_priv);
+	}
 
 		if (de_iir & DE_GSE)
 			ironlake_opregion_gse_intr(dev);
@@ -329,6 +324,10 @@ irqreturn_t ironlake_irq_handler(struct drm_device *dev)
 		pch_iir = new_pch_iir;
 	}
 
+	I915_WRITE(GTIIR, gt_iir);
+	I915_WRITE(DEIIR, de_iir);
+
+done:
 	I915_WRITE(DEIER, de_ier);
 	(void)I915_READ(DEIER);
 

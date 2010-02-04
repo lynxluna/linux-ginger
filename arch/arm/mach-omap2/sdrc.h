@@ -66,6 +66,6 @@ static inline u32 sms_read_reg(u16 reg)
 #define SDRC_MPURATE_SCALE		8
 
 /* SDRC_TIME_STABILIZE: Time for SDRC to stabilize in us */
-#define       SDRC_TIME_STABILIZE             6
+#define       SDRC_TIME_STABILIZE             4
 
 #endif

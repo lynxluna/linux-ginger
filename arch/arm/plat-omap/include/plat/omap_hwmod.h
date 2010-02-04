@@ -39,19 +39,31 @@
 
 struct omap_device;
 
-/* OCP SYSCONFIG bit shifts/masks */
-#define SYSC_MIDLEMODE_SHIFT		12
-#define SYSC_MIDLEMODE_MASK		(0x3 << SYSC_MIDLEMODE_SHIFT)
-#define SYSC_CLOCKACTIVITY_SHIFT	8
-#define SYSC_CLOCKACTIVITY_MASK		(0x3 << SYSC_CLOCKACTIVITY_SHIFT)
-#define SYSC_SIDLEMODE_SHIFT		3
-#define SYSC_SIDLEMODE_MASK		(0x3 << SYSC_SIDLEMODE_SHIFT)
-#define SYSC_ENAWAKEUP_SHIFT		2
-#define SYSC_ENAWAKEUP_MASK		(1 << SYSC_ENAWAKEUP_SHIFT)
-#define SYSC_SOFTRESET_SHIFT		1
-#define SYSC_SOFTRESET_MASK		(1 << SYSC_SOFTRESET_SHIFT)
-#define SYSC_AUTOIDLE_SHIFT		0
-#define SYSC_AUTOIDLE_MASK		(1 << SYSC_AUTOIDLE_SHIFT)
+extern struct omap_hwmod_sysc_fields omap_hwmod_sysc_legacy;
+extern struct omap_hwmod_sysc_fields omap_hwmod_sysc_highlander;
+
+/* OCP SYSCONFIG bit shifts/masks Legacy scheme */
+#define SYSC_LGCY_MIDLEMODE_SHIFT		12
+#define SYSC_LGCY_MIDLEMODE_MASK		(0x3 << SYSC_MIDLEMODE_SHIFT)
+#define SYSC_LGCY_CLOCKACTIVITY_SHIFT		8
+#define SYSC_LGCY_CLOCKACTIVITY_MASK 		\
+					(0x3 << SYSC_CLOCKACTIVITY_SHIFT)
+#define SYSC_LGCY_SIDLEMODE_SHIFT		3
+#define SYSC_LGCY_SIDLEMODE_MASK		(0x3 << SYSC_SIDLEMODE_SHIFT)
+#define SYSC_LGCY_ENAWAKEUP_SHIFT		2
+#define SYSC_LGCY_ENAWAKEUP_MASK		(1 << SYSC_ENAWAKEUP_SHIFT)
+#define SYSC_LGCY_SOFTRESET_SHIFT		1
+#define SYSC_LGCY_SOFTRESET_MASK		(1 << SYSC_SOFTRESET_SHIFT)
+#define SYSC_LGCY_AUTOIDLE_SHIFT		0
+#define SYSC_LGCY_AUTOIDLE_MASK			(1 << SYSC_AUTOIDLE_SHIFT)
+
+/* OCP SYSCONFIG bit shifts/masks Highlander scheme */
+#define SYSC_HIGH_SOFTRESET_SHIFT	0
+#define SYSC_HIGH_SOFTRESET_MASK	(1 << SYSC_HIGH_SOFTRESET_SHIFT)
+#define SYSC_HIGH_SIDLEMODE_SHIFT	2
+#define SYSC_HIGH_SIDLEMODE_MASK	(0x3 << SYSC_HIGH_SIDLEMODE_SHIFT)
+#define SYSC_HIGH_MIDLEMODE_SHIFT	4
+#define SYSC_HIGH_MIDLEMODE_MASK	(0x3 << SYSC_HIGH_MIDLEMODE_SHIFT)
 
 /* OCP SYSSTATUS bit shifts/masks */
 #define SYSS_RESETDONE_SHIFT		0
@@ -61,7 +73,6 @@ struct omap_device;
 #define HWMOD_IDLEMODE_FORCE		(1 << 0)
 #define HWMOD_IDLEMODE_NO		(1 << 1)
 #define HWMOD_IDLEMODE_SMART		(1 << 2)
-
 
 /**
  * struct omap_hwmod_irq_info - MPU IRQs used by the hwmod
@@ -227,12 +238,31 @@ struct omap_hwmod_ocp_if {
 #define SYSC_HAS_SIDLEMODE	(1 << 5)
 #define SYSC_HAS_MIDLEMODE	(1 << 6)
 #define SYSS_MISSING		(1 << 7)
+#define SYSC_NO_CACHE		(1 << 8)  /* XXX SW flag, belongs elsewhere */
 
 /* omap_hwmod_sysconfig.clockact flags */
 #define CLOCKACT_TEST_BOTH	0x0
 #define CLOCKACT_TEST_MAIN	0x1
 #define CLOCKACT_TEST_ICLK	0x2
 #define CLOCKACT_TEST_NONE	0x3
+
+/**
+ * struct omap_hwmod_sysc_fields - hwmod OCP_SYSCONFIG register field offsets.
+ * @midle_shift: Offset of the midle bit
+ * @clkact_shift: Offset of the clockactivity bit
+ * @sidle_shift: Offset of the sidle bit
+ * @enawkup_shift: Offset of the enawakeup bit
+ * @sreset_shift: Offset of the softreset bit
+ * @autoidle_shift: Offset of the autoidle bit.
+ */
+struct omap_hwmod_sysc_fields {
+	u8 midle_shift;
+	u8 clkact_shift;
+	u8 sidle_shift;
+	u8 enwkup_shift;
+	u8 srst_shift;
+	u8 autoidle_shift;
+};
 
 /**
  * struct omap_hwmod_sysconfig - hwmod OCP_SYSCONFIG/OCP_SYSSTATUS data
@@ -251,6 +281,13 @@ struct omap_hwmod_ocp_if {
  * been associated with the clocks marked in @clockact.  This field is
  * only used if HWMOD_SET_DEFAULT_CLOCKACT is set (see below)
  *
+ *
+ * @sysc_fields: structure containing the offset positions of various bits in
+ * SYSCONFIG register. This can be populated using omap_hwmod_sysc_legacy or
+ * omap_hwmod_highlander_legacy defined in omap_hwmod_common_data.c if the
+ * device follows legacy or highlander scheme for the sysconfig register.
+ * If the device follows a differnet scheme for the sysconfig register ,
+ * then this field has to be populated with the correct offset structure.
  */
 struct omap_hwmod_sysconfig {
 	u16 rev_offs;
@@ -259,6 +296,7 @@ struct omap_hwmod_sysconfig {
 	u8 idlemodes;
 	u8 sysc_flags;
 	u8 clockact;
+	struct omap_hwmod_sysc_fields *sysc_fields;
 };
 
 /**
@@ -439,6 +477,8 @@ int omap_hwmod_shutdown(struct omap_hwmod *oh);
 
 int omap_hwmod_enable_clocks(struct omap_hwmod *oh);
 int omap_hwmod_disable_clocks(struct omap_hwmod *oh);
+
+int omap_hwmod_set_slave_idlemode(struct omap_hwmod *oh, u8 idlemode);
 
 int omap_hwmod_reset(struct omap_hwmod *oh);
 void omap_hwmod_ocp_barrier(struct omap_hwmod *oh);

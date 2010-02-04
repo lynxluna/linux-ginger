@@ -99,6 +99,22 @@ enum iTCO_chipsets {
 	TCO_ICH10DO,	/* ICH10DO */
 	TCO_PCH,	/* PCH Desktop Full Featured */
 	TCO_PCHM,	/* PCH Mobile Full Featured */
+	TCO_P55,	/* P55 */
+	TCO_PM55,	/* PM55 */
+	TCO_H55,	/* H55 */
+	TCO_QM57,	/* QM57 */
+	TCO_H57,	/* H57 */
+	TCO_HM55,	/* HM55 */
+	TCO_Q57,	/* Q57 */
+	TCO_HM57,	/* HM57 */
+	TCO_PCHMSFF,	/* PCH Mobile SFF Full Featured */
+	TCO_QS57,	/* QS57 */
+	TCO_3400,	/* 3400 */
+	TCO_3420,	/* 3420 */
+	TCO_3450,	/* 3450 */
+	TCO_EP80579,	/* EP80579 */
+	TCO_CPTD,	/* CPT Desktop */
+	TCO_CPTM,	/* CPT Mobile */
 	TCO_PCHMSFF,	/* PCH Mobile SFF Full Featured */
 };
 

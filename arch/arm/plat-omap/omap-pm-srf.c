@@ -25,10 +25,6 @@
 #include <plat/resource.h>
 #include <plat/omap_device.h>
 
-struct omap_opp *dsp_opps;
-struct omap_opp *mpu_opps;
-struct omap_opp *l3_opps;
-
 #define LAT_RES_POSTAMBLE "_latency"
 #define MAX_LATENCY_RES_NAME 30
 
@@ -180,7 +176,7 @@ const struct omap_opp *omap_pm_dsp_get_opp_table(void)
 	 * array should have .rate = .opp_id = 0.
 	 */
 
-	return dsp_opps;
+	return NULL;
 }
 
 void omap_pm_dsp_set_min_opp(u8 opp_id)
@@ -296,13 +292,8 @@ int omap_pm_get_dev_context_loss_count(struct device *dev)
 /*
  * Must be called before clk framework init
  */
-int __init omap_pm_if_early_init(struct omap_opp *mpu_opp_table,
-				 struct omap_opp *dsp_opp_table,
-				 struct omap_opp *l3_opp_table)
+int __init omap_pm_if_early_init(void)
 {
-	mpu_opps = mpu_opp_table;
-	dsp_opps = dsp_opp_table;
-	l3_opps = l3_opp_table;
 	return 0;
 }
 
