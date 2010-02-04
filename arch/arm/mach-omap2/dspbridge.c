@@ -62,8 +62,8 @@ static int get_opp_table(struct dspbridge_platform_data *pdata)
 	struct omap_opp *opp;
 	unsigned long freq, old_rate;
 
-	mpu_freqs = opp_get_opp_count(mpu_opps);
-	dsp_freqs = opp_get_opp_count(dsp_opps);
+	mpu_freqs = opp_get_opp_count(OPP_MPU);
+	dsp_freqs = opp_get_opp_count(OPP_DSP);
 	if (mpu_freqs < 0 || dsp_freqs < 0 || mpu_freqs != dsp_freqs) {
 		pr_err("mpu and dsp frequencies are inconsistent! "
 			"mpu_freqs=%d dsp_freqs=%d\n", mpu_freqs, dsp_freqs);
@@ -77,10 +77,9 @@ static int get_opp_table(struct dspbridge_platform_data *pdata)
 		"frequencies\n");
 		return -ENOMEM;
 	}
-	opp = mpu_opps;
 	i = 0;
 	freq = 0;
-	while (!IS_ERR(opp = opp_find_freq_ceil(opp, &freq))) {
+	while (!IS_ERR(opp = opp_find_freq_ceil(OPP_MPU, &freq))) {
 		pdata->mpu_speeds[i] = freq;
 		freq++;
 		i++;
@@ -98,7 +97,6 @@ static int get_opp_table(struct dspbridge_platform_data *pdata)
 		return -ENOMEM;
 	}
 
-	opp = dsp_opps;
 	i = 1;
 	freq = 0;
 	old_rate = 0;
@@ -106,7 +104,7 @@ static int get_opp_table(struct dspbridge_platform_data *pdata)
 	 * the freq table is in terms of khz.. so we need to
 	 * divide by 1000
 	 */
-	while (!IS_ERR(opp = opp_find_freq_ceil(opp, &freq))) {
+	while (!IS_ERR(opp = opp_find_freq_ceil(OPP_DSP, &freq))) {
 		/* dsp frequencies are in khz */
 		u32 rate = freq / 1000;
 		/*
