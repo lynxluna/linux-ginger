@@ -72,8 +72,8 @@ void regsupExit(void)
 	while (!LST_IsEmpty(pRegKey)) {
 		rv = (struct RegValue *) LST_GetHead(pRegKey);
 
-		MEM_Free(rv->pData);
-		MEM_Free(rv);
+		kfree(rv->pData);
+		kfree(rv);
 	}
 }
 
@@ -135,7 +135,7 @@ DSP_STATUS regsupSetValue(char *valName, void *pBuf, u32 dataSize)
 			/*  Make sure the new data size is the same.  */
 			if (dataSize != rv->dataSize) {
 				/*  The caller needs a different data size!  */
-				MEM_Free(rv->pData);
+				kfree(rv->pData);
 				rv->pData = MEM_Alloc(dataSize, MEM_NONPAGED);
 				if (rv->pData == NULL)
 					break;
@@ -238,8 +238,8 @@ DSP_STATUS regsupDeleteValue(IN CONST char *pstrValue)
 			 * key.
 			 */
 			LST_RemoveElem(pRegKey, (struct list_head *)rv);
-			MEM_Free(rv->pData);
-			MEM_Free(rv);
+			kfree(rv->pData);
+			kfree(rv);
 
 			/*  Set our status to good and exit...  */
 			retVal = DSP_SOK;

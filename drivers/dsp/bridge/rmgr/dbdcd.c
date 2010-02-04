@@ -563,13 +563,12 @@ DSP_STATUS DCD_GetObjectDef(IN struct DCD_MANAGER *hDcdMgr,
 	}
 
 	/* Free the previously allocated dynamic buffer. */
-	MEM_Free(pszCoffBuf);
+	kfree(pszCoffBuf);
 func_end:
 	if (lib)
 		COD_Close(lib);
 
-	if (szUuid)
-		MEM_Free(szUuid);
+	kfree(szUuid);
 
 	return status;
 }
@@ -690,7 +689,7 @@ DSP_STATUS DCD_GetObjects(IN struct DCD_MANAGER *hDcdMgr, IN char *pszCoffPath,
 	}
 
 	/* Free the previously allocated dynamic buffer. */
-	MEM_Free(pszCoffBuf);
+	kfree(pszCoffBuf);
 func_cont:
 	if (lib)
 		COD_Close(lib);
@@ -1345,9 +1344,9 @@ static DSP_STATUS GetAttrsFromBuf(char *pszBuf, u32 ulBufSize,
 
 	/* Check for Memory leak */
 	if (status == DSP_EMEMORY) {
-		MEM_Free(pGenObj->objData.nodeObj.pstrCreatePhaseFxn);
-		MEM_Free(pGenObj->objData.nodeObj.pstrExecutePhaseFxn);
-		MEM_Free(pGenObj->objData.nodeObj.pstrDeletePhaseFxn);
+		kfree(pGenObj->objData.nodeObj.pstrCreatePhaseFxn);
+		kfree(pGenObj->objData.nodeObj.pstrExecutePhaseFxn);
+		kfree(pGenObj->objData.nodeObj.pstrDeletePhaseFxn);
 	}
 
 	return status;
@@ -1537,11 +1536,9 @@ func_cont:
 		COD_Close(lib);
 
 	/* Free previously allocated dynamic buffers. */
-	if (pszFileName)
-		MEM_Free(pszFileName);
+	kfree(pszFileName);
 
-	if (pszCoffBuf)
-		MEM_Free(pszCoffBuf);
+	kfree(pszCoffBuf);
 
 	return status;
 }
