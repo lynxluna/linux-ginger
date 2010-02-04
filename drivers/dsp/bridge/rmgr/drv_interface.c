@@ -539,7 +539,8 @@ static int bridge_release(struct inode *ip, struct file *filp)
 	pr_ctxt = filp->private_data;
 	flush_signals(current);
 	DRV_RemoveAllResources(pr_ctxt);
-	PROC_Detach(pr_ctxt);
+	if (pr_ctxt->hProcessor)
+		PROC_Detach(pr_ctxt);
 	MEM_Free(pr_ctxt);
 
 	filp->private_data = NULL;
