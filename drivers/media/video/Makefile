@@ -10,7 +10,8 @@ stkwebcam-objs	:=	stk-webcam.o stk-sensor.o
 
 omap2cam-objs	:=	omap24xxcam.o omap24xxcam-dma.o
 
-videodev-objs	:=	v4l2-dev.o v4l2-ioctl.o v4l2-device.o
+videodev-objs	:=	v4l2-dev.o v4l2-ioctl.o v4l2-device.o v4l2-fh.o \
+			v4l2-event.o
 
 # V4L2 core modules
 
@@ -121,6 +122,16 @@ obj-$(CONFIG_VIDEO_CX2341X) += cx2341x.o
 obj-$(CONFIG_VIDEO_CAFE_CCIC) += cafe_ccic.o
 
 obj-$(CONFIG_VIDEO_OMAP3_OUT) += omap/
+obj-y				+= isp/
+
+obj-$(CONFIG_VIDEO_OMAP3) += omap34xxcam.o
+
+obj-$(CONFIG_VIDEO_MT9P012)     += mt9p012.o
+obj-$(CONFIG_VIDEO_DW9710)	+= dw9710.o
+obj-$(CONFIG_VIDEO_TPS61059)    += tps61059.o
+obj-$(CONFIG_VIDEO_OV3640)	+= ov3640.o
+obj-$(CONFIG_VIDEO_IMX046)      += imx046.o
+obj-$(CONFIG_VIDEO_LV8093)      += lv8093.o
 
 obj-$(CONFIG_USB_DABUSB)        += dabusb.o
 obj-$(CONFIG_USB_OV511)         += ov511.o
