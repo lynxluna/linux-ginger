@@ -184,7 +184,7 @@ static struct uart_port_info uart1_port_info = {
 };
 
 static struct uart_port_info uart2_port_info = {
-		.dma_enabled	= 0,
+		.dma_enabled	= 1,
 		.uartclk	= OMAP24XX_BASE_BAUD * 16
 };
 
