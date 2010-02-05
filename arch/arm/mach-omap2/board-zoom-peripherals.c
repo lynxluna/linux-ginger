@@ -564,7 +564,6 @@ void __init zoom_peripherals_init(void * peripheral_data)
 	omap_i2c_init();
 	synaptics_dev_init();
 	wlan_1273_reset();
-	platform_add_devices(zoom_devices, ARRAY_SIZE(zoom_devices));
 	omap_serial_init();
 	usb_musb_init();
 	enable_board_wakeup_source();
