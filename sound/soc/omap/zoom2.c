@@ -375,6 +375,7 @@ static const struct snd_kcontrol_new zoom2_controls[] = {
 		snd_soc_get_value_enum_double, snd_soc_put_value_enum_double),
 	SOC_ENUM_EXT("Voice Sample Rate", twl4030_voice_sample_rates_enum,
 		snd_soc_get_value_enum_double, snd_soc_put_value_enum_double),
+	SOC_SINGLE("256FS CLK Control Switch", TWL4030_REG_AUDIO_IF, 1, 1, 0),
 };
 
 static int zoom2_twl4030_init(struct snd_soc_codec *codec)
