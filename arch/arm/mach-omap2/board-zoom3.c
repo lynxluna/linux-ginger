@@ -133,6 +133,7 @@ static void __init omap_zoom_init(void)
 	zoom_peripherals_init(&omap3_setuptime_table);
 	zoom_flash_init(zoom_flash_partitions, ZOOM_NAND_CS);
 	zoom_debugboard_init();
+	zoom_display_init(OMAP_DSS_VENC_TYPE_COMPOSITE);
 }
 
 MACHINE_START(OMAP_ZOOM3, "OMAP Zoom3 board")

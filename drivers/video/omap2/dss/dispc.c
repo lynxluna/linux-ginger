@@ -132,6 +132,13 @@ struct dispc_reg { u16 idx; };
 
 #define DISPC_MAX_NR_ISRS		8
 
+#define LPR_GFX_FIFO_HIGH_THRES	0xB9C
+#define LPR_GFX_FIFO_LOW_THRES		0x7F8
+#define DISPC_VID_ATTRIBUTES_ENABLE	(1 << 0)
+#define DSS_CONTROL_APLL_CLK		1
+static int lpr_enabled;
+static int gfx_in_use;
+
 struct omap_dispc_isr_data {
 	omap_dispc_isr_t	isr;
 	void			*arg;
@@ -154,6 +161,7 @@ static struct {
 	u32	fifo_size[3];
 
 	spinlock_t irq_lock;
+	spinlock_t lpr_lock;
 	u32 irq_error_mask;
 	struct omap_dispc_isr_data registered_isr[DISPC_MAX_NR_ISRS];
 	u32 error_irqs;
@@ -913,6 +921,11 @@ static void _dispc_set_vid_color_conv(enum omap_plane plane, bool enable)
 	dispc_write_reg(dispc_reg_att[plane], val);
 }
 
+static void _dispc_set_alpha_blend_attrs(enum omap_plane plane, bool enable)
+{
+	REG_FLD_MOD(dispc_reg_att[plane], enable ? 1 : 0, 28, 28);
+}
+
 void dispc_enable_replication(enum omap_plane plane, bool enable)
 {
 	int bit;
@@ -1048,12 +1061,16 @@ static void _dispc_set_vid_accu1(enum omap_plane plane, int haccu, int vaccu)
 	dispc_write_reg(ac1_reg[plane-1], val);
 }
 
+static void _dispc_set_vdma_attrs(enum omap_plane plane, bool enable)
+{
+       REG_FLD_MOD(dispc_reg_att[plane], enable ? 1 : 0, 20, 20);
+}
 
 static void _dispc_set_scaling(enum omap_plane plane,
 		u16 orig_width, u16 orig_height,
 		u16 out_width, u16 out_height,
 		bool ilace, bool five_taps,
-		bool fieldmode)
+		bool fieldmode, bool vdma)
 {
 	int fir_hinc;
 	int fir_vinc;
@@ -1069,12 +1086,12 @@ static void _dispc_set_scaling(enum omap_plane plane,
 
 	_dispc_set_scale_coef(plane, hscaleup, vscaleup, five_taps);
 
-	if (!orig_width || orig_width == out_width)
+	if (!orig_width || (!vdma && (orig_width == out_width)))
 		fir_hinc = 0;
 	else
 		fir_hinc = 1024 * orig_width / out_width;
 
-	if (!orig_height || orig_height == out_height)
+	if (!orig_height || (!vdma && (orig_height == out_height)))
 		fir_vinc = 0;
 	else
 		fir_vinc = 1024 * orig_height / out_height;
@@ -1153,10 +1170,6 @@ static void _dispc_set_rotation_attrs(enum omap_plane plane, u8 rotation,
 
 		REG_FLD_MOD(dispc_reg_att[plane], vidrot, 13, 12);
 
-		if (rotation == OMAP_DSS_ROT_90 || rotation == OMAP_DSS_ROT_270)
-			REG_FLD_MOD(dispc_reg_att[plane], 0x1, 18, 18);
-		else
-			REG_FLD_MOD(dispc_reg_att[plane], 0x0, 18, 18);
 	} else {
 		REG_FLD_MOD(dispc_reg_att[plane], 0, 13, 12);
 		REG_FLD_MOD(dispc_reg_att[plane], 0, 18, 18);
@@ -1490,6 +1503,17 @@ static unsigned long calc_fclk(u16 width, u16 height,
 	return dispc_pclk_rate() * vf * hf;
 }
 
+static int dispc_is_vdma_req(u8 rotation, enum omap_color_mode color_mode)
+{
+/* TODO: VDMA support for RGB16 mode */
+	if (cpu_is_omap3630())
+		if ((color_mode == OMAP_DSS_COLOR_YUV2) ||
+			(color_mode == OMAP_DSS_COLOR_UYVY))
+			if ((rotation == 1) || (rotation == 3))
+				return true;
+	return false;
+}
+
 void dispc_set_channel_out(enum omap_plane plane, enum omap_channel channel_out)
 {
 	enable_clocks(1);
@@ -1609,6 +1633,8 @@ static int _dispc_setup_plane(enum omap_plane plane,
 			if (cpu_is_omap34xx() && height > out_height &&
 					fclk > dispc_fclk_rate())
 				five_taps = true;
+			if (dispc_is_vdma_req(rotation, color_mode))
+				five_taps = true;
 		}
 
 		if (width > (2048 >> five_taps)) {
@@ -1680,14 +1706,25 @@ static int _dispc_setup_plane(enum omap_plane plane,
 	_dispc_set_pic_size(plane, width, height);
 
 	if (plane != OMAP_DSS_GFX) {
-		_dispc_set_scaling(plane, width, height,
+		if (dispc_is_vdma_req(rotation, color_mode)) {
+			_dispc_set_scaling(plane, width, height,
 				   out_width, out_height,
-				   ilace, five_taps, fieldmode);
+				   ilace, five_taps, fieldmode, 1);
+			_dispc_set_vdma_attrs(plane, 1);
+		} else {
+			_dispc_set_scaling(plane, width, height,
+				   out_width, out_height,
+				   ilace, five_taps, fieldmode, 0);
+			_dispc_set_vdma_attrs(plane, 0);
+		}
 		_dispc_set_vid_size(plane, out_width, out_height);
 		_dispc_set_vid_color_conv(plane, cconv);
 	}
 
 	_dispc_set_rotation_attrs(plane, rotation, mirror, color_mode);
+
+	if (cpu_is_omap3630() && (plane != OMAP_DSS_VIDEO1))
+		_dispc_set_alpha_blend_attrs(plane, 1);
 
 	if (plane != OMAP_DSS_VIDEO1)
 		_dispc_setup_global_alpha(plane, global_alpha);
@@ -2625,6 +2662,116 @@ int omap_dispc_unregister_isr(omap_dispc_isr_t isr, void *arg, u32 mask)
 }
 EXPORT_SYMBOL(omap_dispc_unregister_isr);
 
+/* This functions adds the OMAPDSS power saving capability by
+ * FIFO Merge when display is not in use, thus ehancing the DSS for
+ * Screen saver support.
+ */
+int omap_dispc_lpr_enable(void)
+{
+	int rc = 0;
+	unsigned long flags;
+	struct omap_overlay *ovl;
+	int v_attr;
+
+	/* Cannot enable lpr if DSS is inactive */
+	if (!gfx_in_use) {
+		DSSDBG("\nGRX plane in use\n");
+		return -EBUSY;
+	}
+
+	spin_lock_irqsave(&dispc.lpr_lock, flags);
+
+	if (lpr_enabled) {
+		DSSDBG("\nLPR is enabled\n");
+		goto lpr_out;
+	}
+
+	/* Check whether LPR can be triggered
+	 * - gfx pipeline is routed to LCD
+	 * - both video pipelines are disabled (this allows FIFOs merge)
+	 */
+
+	ovl = omap_dss_get_overlay(0);
+
+	if (!ovl) {
+		rc = -ENODEV;
+		goto lpr_out;
+	}
+
+	if (ovl->manager->id != OMAP_DSS_CHANNEL_LCD) {
+		rc = -ENODEV;
+		goto lpr_out;
+	}
+
+	v_attr = dispc_read_reg(DISPC_VID_ATTRIBUTES(0)) |
+			dispc_read_reg(DISPC_VID_ATTRIBUTES(1));
+
+	if (v_attr & DISPC_VID_ATTRIBUTES_ENABLE) {
+		rc = -ENODEV;
+		goto lpr_out;
+	}
+
+	dispc_setup_plane_fifo(ovl->id, LPR_GFX_FIFO_LOW_THRES,
+				LPR_GFX_FIFO_HIGH_THRES);
+
+	dispc_enable_fifomerge(1);
+
+	/* Enable LCD */
+	dispc_enable_lcd_out(1);
+
+	spin_unlock_irqrestore(&dispc.lpr_lock, flags);
+
+	/* Let LPR settings take an effect */
+	dispc_go(ovl->manager->id);
+
+	lpr_enabled = 1;
+
+	return 0;
+
+lpr_out:
+	spin_unlock_irqrestore(&dispc.lpr_lock, flags);
+	return rc;
+}
+EXPORT_SYMBOL(omap_dispc_lpr_enable);
+
+int omap_dispc_lpr_disable(void)
+{
+	unsigned long flags;
+	struct omap_overlay *ovl;
+	u32 fifo_low, fifo_high;
+	enum omap_burst_size burst_size;
+
+	if (!gfx_in_use)
+		return -EBUSY;
+
+	spin_lock_irqsave(&dispc.lpr_lock, flags);
+
+	ovl = omap_dss_get_overlay(0);
+
+	if (!lpr_enabled) {
+		spin_unlock_irqrestore(&dispc.lpr_lock, flags);
+		return 0;
+	}
+	/* Disable Fifo Merge */
+	dispc_enable_fifomerge(0);
+
+	default_get_overlay_fifo_thresholds(ovl->id, dispc.fifo_size[ovl->id],
+				&burst_size, &fifo_low, &fifo_high);
+
+	/* Restore default fifo size*/
+	dispc_setup_plane_fifo(ovl->id, fifo_low, fifo_high);
+
+	lpr_enabled = 0;
+
+	spin_unlock_irqrestore(&dispc.lpr_lock, flags);
+
+	/* Let DSS take an effect */
+	dispc_go(ovl->manager->id);
+
+	return 0;
+}
+EXPORT_SYMBOL(omap_dispc_lpr_disable);
+
 #ifdef DEBUG
 static void print_irq_status(u32 status)
 {
@@ -3048,6 +3195,14 @@ int dispc_enable_plane(enum omap_plane plane, bool enable)
 
 	enable_clocks(1);
 	_dispc_enable_plane(plane, enable);
+
+	if (plane == OMAP_DSS_GFX) {
+		if (enable)
+			gfx_in_use = 1;
+		else
+			gfx_in_use = 0;
+	}
+
 	enable_clocks(0);
 
 	return 0;

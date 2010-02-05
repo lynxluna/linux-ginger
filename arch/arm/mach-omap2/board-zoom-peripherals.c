@@ -36,6 +36,8 @@
 #include "voltage.h"
 
 #define OMAP_SYNAPTICS_GPIO		163
+#define	HDMI_CTR_DRV_NAME		"sil9022"
+#define	HDMI_CTR_I2CSLAVEADDRESS	0x39
 
 #ifdef CONFIG_MMC_EMBEDDED_SDIO
 #include <plat/wifi_tiwlan.h>
@@ -243,6 +245,40 @@ static struct twl4030_hsmmc_info mmc[] __initdata = {
 	{}      /* Terminator */
 };
 
+static struct regulator_consumer_supply zoom_vdda_dac_supply = {
+	.supply         = "vdda_dac",
+};
+
+static struct regulator_consumer_supply zoom_vdds_dsi_supply = {
+	.supply		= "vdds_dsi",
+};
+
+static struct regulator_init_data zoom_vdac = {
+	.constraints = {
+		.min_uV                 = 1800000,
+		.max_uV                 = 1800000,
+		.valid_modes_mask       = REGULATOR_MODE_NORMAL
+					| REGULATOR_MODE_STANDBY,
+		.valid_ops_mask         = REGULATOR_CHANGE_MODE
+					| REGULATOR_CHANGE_STATUS,
+	},
+	.num_consumer_supplies  = 1,
+	.consumer_supplies      = &zoom_vdda_dac_supply,
+};
+
+static struct regulator_init_data zoom_vdsi = {
+	.constraints = {
+		.min_uV                 = 1800000,
+		.max_uV                 = 1800000,
+		.valid_modes_mask       = REGULATOR_MODE_NORMAL
+					| REGULATOR_MODE_STANDBY,
+		.valid_ops_mask         = REGULATOR_CHANGE_MODE
+					| REGULATOR_CHANGE_STATUS,
+	},
+	.num_consumer_supplies  = 1,
+	.consumer_supplies      = &zoom_vdds_dsi_supply,
+};
+
 static int zoom_twl_gpio_setup(struct device *dev,
 		unsigned gpio, unsigned ngpio)
 {
@@ -316,6 +352,8 @@ static struct twl4030_platform_data zoom_twldata = {
 	.vmmc1          = &zoom_vmmc1,
 	.vmmc2          = &zoom_vmmc2,
 	.vsim           = &zoom_vsim,
+	.vpll2		= &zoom_vdsi,
+	.vdac		= &zoom_vdac,
 
 };
 
@@ -346,6 +384,12 @@ static struct synaptics_i2c_rmi_platform_data synaptics_platform_data[] = {
 		.flags          = SYNAPTICS_SWAP_XY,
 		.irqflags       = IRQF_TRIGGER_LOW,
 	}
+};
+
+static struct i2c_board_info __initdata zoom_i2c_bus3_info[] = {
+	{
+		I2C_BOARD_INFO(HDMI_CTR_DRV_NAME, HDMI_CTR_I2CSLAVEADDRESS),
+	},
 };
 
 static struct i2c_board_info __initdata zoom_i2c_boardinfo2[] = {
@@ -391,7 +435,8 @@ static int __init omap_i2c_init(void)
 			ARRAY_SIZE(zoom_i2c_boardinfo));
 	omap_register_i2c_bus(2, 100, zoom_i2c_boardinfo2,
 			ARRAY_SIZE(zoom_i2c_boardinfo2));
-	omap_register_i2c_bus(3, 400, NULL, 0);
+	omap_register_i2c_bus(3, 400, zoom_i2c_bus3_info,
+			ARRAY_SIZE(zoom_i2c_bus3_info));
 	return 0;
 }
 

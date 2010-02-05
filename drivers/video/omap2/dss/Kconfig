@@ -37,6 +37,12 @@ config OMAP2_DSS_VENC
 	help
 	  OMAP Video Encoder support.
 
+config OMAP2_DSS_HDMI
+        bool "HDMI support"
+        default y
+        help
+          HDMI support.
+
 config OMAP2_DSS_SDI
 	bool "SDI support"
 	depends on ARCH_OMAP3
@@ -47,16 +53,24 @@ config OMAP2_DSS_SDI
 config OMAP2_DSS_DSI
 	bool "DSI support"
 	depends on ARCH_OMAP3
-        default n
+        default y
 	help
 	  MIPI DSI support.
 
 config OMAP2_DSS_USE_DSI_PLL
 	bool "Use DSI PLL for PCLK (EXPERIMENTAL)"
-	default n
+	default y
 	depends on OMAP2_DSS_DSI
 	help
 	  Use DSI PLL to generate pixel clock.  Currently only for DPI output.
+	  DSI PLL can be used to generate higher and more precise pixel clocks.
+
+config OMAP2_DSS_USE_DSI_PLL_FOR_HDMI
+	bool "Use DSI PLL for HDMI PCLK (EXPERIMENTAL)"
+	default y
+	depends on OMAP2_DSS_DSI
+	help
+	  Use DSI PLL to generate HDMI pixel clock. Only for HDMI output.
 	  DSI PLL can be used to generate higher and more precise pixel clocks.
 
 config OMAP2_DSS_FAKE_VSYNC

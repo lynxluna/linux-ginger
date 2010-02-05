@@ -167,6 +167,7 @@ void dss_clk_enable(enum dss_clock clks);
 void dss_clk_disable(enum dss_clock clks);
 unsigned long dss_clk_get_rate(enum dss_clock clk);
 int dss_need_ctx_restore(void);
+int is_dss_control_reset(void);
 void dss_dump_clocks(struct seq_file *s);
 struct bus_type *dss_get_bus(void);
 
@@ -366,5 +367,9 @@ void rfbi_transfer_area(u16 width, u16 height,
 void rfbi_set_timings(int rfbi_module, struct rfbi_timings *t);
 unsigned long rfbi_get_max_tx_rate(void);
 int rfbi_init_display(struct omap_dss_device *display);
+
+/* HDMI */
+void hdmi_exit(void);
+int hdmi_init_display(struct omap_dss_device *display);
 
 #endif

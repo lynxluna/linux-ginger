@@ -1,11 +1,10 @@
 /*
- * linux/drivers/video/omap2/dss/dpi.c
+ * linux/drivers/video/omap2/dss/hdmi.c
  *
- * Copyright (C) 2009 Nokia Corporation
- * Author: Tomi Valkeinen <tomi.valkeinen@nokia.com>
+ * Copyright (C) 2009 Texas Instruments, Inc.
+ * Author: srinivas pulukuru <srinivas.pulukuru@ti.com>
  *
- * Some code and ideas taken from drivers/video/omap/ driver
- * by Imre Deak.
+ * hdmi settings from TI's DSS driver
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
@@ -20,14 +19,17 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#define DSS_SUBSYS_NAME "DPI"
+#define DSS_SUBSYS_NAME "HDMI"
 
 #include <linux/kernel.h>
 #include <linux/clk.h>
 #include <linux/delay.h>
+#include <linux/string.h>
+#include <linux/platform_device.h>
 #include <linux/errno.h>
 #include <linux/i2c/twl.h>
 
+#include <plat/board.h>
 #include <plat/display.h>
 #include <plat/cpu.h>
 
@@ -39,12 +41,13 @@
 #define TWL4030_VPLL2_DEV_GRP           0x33
 #define TWL4030_VPLL2_DEDICATED         0x36
 
-static struct {
-	int update_enabled;
-} dpi;
 
-#ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL
+struct omap_dss_device *omap_dss_hdmi_device;
 
+static void hdmi_set_timings(struct omap_dss_device *dssdev,
+				struct omap_video_timings *timings);
+
+#ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL_FOR_HDMI
 static int enable_vpll2_power(int enable)
 {
 	twl_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
@@ -56,36 +59,33 @@ static int enable_vpll2_power(int enable)
 	return 0;
 }
 
-static int dpi_set_dsi_clk(bool is_tft, unsigned long pck_req,
+static int hdmi_set_dsi_clk(bool is_tft, unsigned long pck_req,
 		unsigned long *fck, int *lck_div, int *pck_div)
 {
-	struct dsi_clock_info dsi_cinfo;
+	struct dsi_clock_info cinfo;
 	struct dispc_clock_info dispc_cinfo;
 	int r;
 
-	r = dsi_pll_calc_clock_div_pck(is_tft, pck_req, &dsi_cinfo,
-			&dispc_cinfo);
+	r = dsi_pll_calc_clock_div_pck(is_tft, pck_req, &cinfo, &dispc_cinfo);
 	if (r)
 		return r;
 
-	r = dsi_pll_set_clock_div(&dsi_cinfo);
+	r = dsi_pll_set_clock_div(&cinfo);
 	if (r)
 		return r;
 
 	dss_select_clk_source(0, 1);
 
-	r = dispc_set_clock_div(&dispc_cinfo);
-	if (r)
-		return r;
+	dispc_set_clock_div(&dispc_cinfo);
 
-	*fck = dsi_cinfo.dsi1_pll_fclk;
+	*fck = cinfo.dsi1_pll_fclk;
 	*lck_div = dispc_cinfo.lck_div;
 	*pck_div = dispc_cinfo.pck_div;
 
 	return 0;
 }
 #else
-static int dpi_set_dispc_clk(bool is_tft, unsigned long pck_req,
+static int hdmi_set_dispc_clk(bool is_tft, unsigned long pck_req,
 		unsigned long *fck, int *lck_div, int *pck_div)
 {
 	struct dss_clock_info dss_cinfo;
@@ -112,7 +112,7 @@ static int dpi_set_dispc_clk(bool is_tft, unsigned long pck_req,
 }
 #endif
 
-static int dpi_set_mode(struct omap_dss_device *dssdev)
+static int hdmi_set_mode(struct omap_dss_device *dssdev)
 {
 	struct omap_video_timings *t = &dssdev->panel.timings;
 	int lck_div, pck_div;
@@ -128,11 +128,11 @@ static int dpi_set_mode(struct omap_dss_device *dssdev)
 
 	is_tft = (dssdev->panel.config & OMAP_DSS_LCD_TFT) != 0;
 
-#ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL
-	r = dpi_set_dsi_clk(is_tft, t->pixel_clock * 1000,
+#ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL_FOR_HDMI
+	r = hdmi_set_dsi_clk(is_tft, t->pixel_clock * 1000,
 			&fck, &lck_div, &pck_div);
 #else
-	r = dpi_set_dispc_clk(is_tft, t->pixel_clock * 1000,
+	r = hdmi_set_dispc_clk(is_tft, t->pixel_clock * 1000,
 			&fck, &lck_div, &pck_div);
 #endif
 	if (r)
@@ -155,7 +155,7 @@ err0:
 	return r;
 }
 
-static int dpi_basic_init(struct omap_dss_device *dssdev)
+static int hdmi_basic_init(struct omap_dss_device *dssdev)
 {
 	bool is_tft;
 
@@ -169,9 +169,9 @@ static int dpi_basic_init(struct omap_dss_device *dssdev)
 	return 0;
 }
 
-static int dpi_display_enable(struct omap_dss_device *dssdev)
+static int hdmi_enable_display(struct omap_dss_device *dssdev)
 {
-	int r;
+	int r = 0;
 
 	r = omap_dss_start_device(dssdev);
 	if (r) {
@@ -187,18 +187,22 @@ static int dpi_display_enable(struct omap_dss_device *dssdev)
 
 	dss_clk_enable(DSS_CLK_ICK | DSS_CLK_FCK1);
 
-	r = dpi_basic_init(dssdev);
+	r = hdmi_basic_init(dssdev);
 	if (r)
 		goto err2;
 
-#ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL
+#ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL_FOR_HDMI
 	dss_clk_enable(DSS_CLK_FCK2);
+	/* this needs to be done here in order to
+	 * get the VPLL2 to power up the DSI PLL module
+	 */
 	enable_vpll2_power(1);
+
 	r = dsi_pll_init(dssdev, 1, 1);
 	if (r)
 		goto err3;
 #endif
-	r = dpi_set_mode(dssdev);
+	r = hdmi_set_mode(dssdev);
 	if (r)
 		goto err4;
 
@@ -212,12 +216,17 @@ static int dpi_display_enable(struct omap_dss_device *dssdev)
 
 	dssdev->state = OMAP_DSS_DISPLAY_ACTIVE;
 
+	/* Default HDMI panel timings may not work for all monitors */
+	/* Reset HDMI panel timings after enabling HDMI. */
+	DSSINFO("Reset HDMI output timings based on monitor E-EDID timings\n");
+	hdmi_set_timings(dssdev, &dssdev->panel.timings);
+
 	return 0;
 
 err5:
 	dispc_enable_lcd_out(0);
 err4:
-#ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL
+#ifdef	CONFIG_OMAP2_DSS_USE_DSI_PLL_FOR_HDMI
 	dsi_pll_uninit();
 err3:
 	dss_clk_disable(DSS_CLK_FCK2);
@@ -230,21 +239,22 @@ err0:
 	return r;
 }
 
-static int dpi_display_resume(struct omap_dss_device *dssdev);
+static int hdmi_display_resume(struct omap_dss_device *dssdev);
 
-static void dpi_display_disable(struct omap_dss_device *dssdev)
+static void hdmi_disable_display(struct omap_dss_device *dssdev)
 {
+	DSSDBG("hdmi_disable_display\n");
 	if (dssdev->state == OMAP_DSS_DISPLAY_DISABLED)
 		return;
 
 	if (dssdev->state == OMAP_DSS_DISPLAY_SUSPENDED)
-		dpi_display_resume(dssdev);
+		hdmi_display_resume(dssdev);
 
 	dssdev->driver->disable(dssdev);
 
 	dispc_enable_lcd_out(0);
 
-#ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL
+#ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL_FOR_HDMI
 	dss_select_clk_source(0, 0);
 	dsi_pll_uninit();
 	enable_vpll2_power(0);
@@ -258,19 +268,19 @@ static void dpi_display_disable(struct omap_dss_device *dssdev)
 	omap_dss_stop_device(dssdev);
 }
 
-static int dpi_display_suspend(struct omap_dss_device *dssdev)
+static int hdmi_display_suspend(struct omap_dss_device *dssdev)
 {
 	if (dssdev->state != OMAP_DSS_DISPLAY_ACTIVE)
 		return -EINVAL;
 
-	DSSDBG("dpi_display_suspend\n");
+	DSSDBG("hdmi_display_suspend\n");
 
 	if (dssdev->driver->suspend)
 		dssdev->driver->suspend(dssdev);
 
 	dispc_enable_lcd_out(0);
 
-#ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL
+#ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL_FOR_HDMI
 	dss_select_clk_source(0, 0);
 	dsi_pll_uninit();
 	enable_vpll2_power(0);
@@ -284,18 +294,18 @@ static int dpi_display_suspend(struct omap_dss_device *dssdev)
 	return 0;
 }
 
-static int dpi_display_resume(struct omap_dss_device *dssdev)
+static int hdmi_display_resume(struct omap_dss_device *dssdev)
 {
 	int r = 0;
 
 	if (dssdev->state != OMAP_DSS_DISPLAY_SUSPENDED)
 		return -EINVAL;
 
-	DSSDBG("dpi_display_resume\n");
+	DSSDBG("hdmi_display_resume\n");
 
 	dss_clk_enable(DSS_CLK_ICK | DSS_CLK_FCK1);
 
-#ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL
+#ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL_FOR_HDMI
 	dss_clk_enable(DSS_CLK_FCK2);
 	enable_vpll2_power(1);
 
@@ -303,7 +313,7 @@ static int dpi_display_resume(struct omap_dss_device *dssdev)
 	if (r)
 		goto err0;
 
-	r = dpi_set_mode(dssdev);
+	r = hdmi_set_mode(dssdev);
 	if (r)
 		goto err0;
 #endif
@@ -315,6 +325,7 @@ static int dpi_display_resume(struct omap_dss_device *dssdev)
 		if (r)
 			goto err1;
 	}
+
 	dssdev->state = OMAP_DSS_DISPLAY_ACTIVE;
 
 	return 0;
@@ -322,7 +333,7 @@ static int dpi_display_resume(struct omap_dss_device *dssdev)
 err1:
 	dispc_enable_lcd_out(0);
 
-#ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL
+#ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL_FOR_HDMI
 err0:
 	DSSERR("<%s!!> err0: failed to init DSI_PLL = %d\n", __func__, r);
 	dss_select_clk_source(0, 0);
@@ -332,20 +343,27 @@ err0:
 #endif
 	dss_clk_disable(DSS_CLK_ICK | DSS_CLK_FCK1);
 	return r;
+
 }
 
-static void dpi_set_timings(struct omap_dss_device *dssdev,
+static void hdmi_get_timings(struct omap_dss_device *dssdev,
 			struct omap_video_timings *timings)
 {
-	DSSDBG("dpi_set_timings\n");
+	*timings = dssdev->panel.timings;
+}
+
+static void hdmi_set_timings(struct omap_dss_device *dssdev,
+			struct omap_video_timings *timings)
+{
+	DSSDBG("hdmi_set_timings\n");
 	dssdev->panel.timings = *timings;
 	if (dssdev->state == OMAP_DSS_DISPLAY_ACTIVE) {
-		dpi_set_mode(dssdev);
+		hdmi_set_mode(dssdev);
 		dispc_go(OMAP_DSS_CHANNEL_LCD);
 	}
 }
 
-static int dpi_check_timings(struct omap_dss_device *dssdev,
+static int hdmi_check_timings(struct omap_dss_device *dssdev,
 			struct omap_video_timings *timings)
 {
 	bool is_tft;
@@ -354,6 +372,7 @@ static int dpi_check_timings(struct omap_dss_device *dssdev,
 	unsigned long fck;
 	unsigned long pck;
 
+	DSSDBG("hdmi_check_timings\n");
 	if (!dispc_lcd_timings_ok(timings))
 		return -EINVAL;
 
@@ -362,7 +381,7 @@ static int dpi_check_timings(struct omap_dss_device *dssdev,
 
 	is_tft = (dssdev->panel.config & OMAP_DSS_LCD_TFT) != 0;
 
-#ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL
+#ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL_FOR_HDMI
 	{
 		struct dsi_clock_info dsi_cinfo;
 		struct dispc_clock_info dispc_cinfo;
@@ -381,6 +400,7 @@ static int dpi_check_timings(struct omap_dss_device *dssdev,
 	{
 		struct dss_clock_info dss_cinfo;
 		struct dispc_clock_info dispc_cinfo;
+
 		r = dss_calc_clock_div(is_tft, timings->pixel_clock * 1000,
 				&dss_cinfo, &dispc_cinfo);
 
@@ -400,59 +420,28 @@ static int dpi_check_timings(struct omap_dss_device *dssdev,
 	return 0;
 }
 
-static void dpi_get_timings(struct omap_dss_device *dssdev,
-			struct omap_video_timings *timings)
+void hdmi_exit(void)
 {
-	*timings = dssdev->panel.timings;
+	omap_dss_hdmi_device->driver->remove(omap_dss_hdmi_device);
 }
 
-static int dpi_display_set_update_mode(struct omap_dss_device *dssdev,
-		enum omap_dss_update_mode mode)
-{
-	if (mode == OMAP_DSS_UPDATE_MANUAL)
-		return -EINVAL;
-
-	if (mode == OMAP_DSS_UPDATE_DISABLED) {
-		dispc_enable_lcd_out(0);
-		dpi.update_enabled = 0;
-	} else {
-		dispc_enable_lcd_out(1);
-		dpi.update_enabled = 1;
-	}
-
-	return 0;
-}
-
-static enum omap_dss_update_mode dpi_display_get_update_mode(
-		struct omap_dss_device *dssdev)
-{
-	return dpi.update_enabled ? OMAP_DSS_UPDATE_AUTO :
-		OMAP_DSS_UPDATE_DISABLED;
-}
-
-int dpi_init_display(struct omap_dss_device *dssdev)
+int hdmi_init_display(struct omap_dss_device *dssdev)
 {
 	DSSDBG("init_display\n");
 
-	dssdev->enable = dpi_display_enable;
-	dssdev->disable = dpi_display_disable;
-	dssdev->suspend = dpi_display_suspend;
-	dssdev->resume = dpi_display_resume;
-	dssdev->set_timings = dpi_set_timings;
-	dssdev->check_timings = dpi_check_timings;
-	dssdev->get_timings = dpi_get_timings;
-	dssdev->set_update_mode = dpi_display_set_update_mode;
-	dssdev->get_update_mode = dpi_display_get_update_mode;
+	dssdev->enable = hdmi_enable_display;
+	dssdev->disable = hdmi_disable_display;
+	dssdev->suspend = hdmi_display_suspend;
+	dssdev->resume = hdmi_display_resume;
+	dssdev->get_timings = hdmi_get_timings;
+	dssdev->set_timings = hdmi_set_timings;
+	dssdev->check_timings = hdmi_check_timings;
+
+	/* store the dss device as we need this to unregister the
+	 * dss_hdmi driver when exiting
+	 */
+	omap_dss_hdmi_device = dssdev;
 
 	return 0;
-}
-
-int dpi_init(void)
-{
-	return 0;
-}
-
-void dpi_exit(void)
-{
 }
 

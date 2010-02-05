@@ -284,6 +284,8 @@ static const char *v4l2_ioctls[] = {
 	[_IOC_NR(VIDIOC_DBG_G_CHIP_IDENT)] = "VIDIOC_DBG_G_CHIP_IDENT",
 	[_IOC_NR(VIDIOC_S_HW_FREQ_SEEK)]   = "VIDIOC_S_HW_FREQ_SEEK",
 #endif
+	[_IOC_NR(VIDIOC_S_OMAP2_LINK)]	   = "VIDIOC_S_OMAP2_LINK",
+	[_IOC_NR(VIDIOC_G_OMAP2_LINK)]	   = "VIDIOC_G_OMAP2_LINK",
 };
 #define V4L2_IOCTLS ARRAY_SIZE(v4l2_ioctls)
 
@@ -1792,6 +1794,22 @@ static long __video_do_ioctl(struct file *file,
 		default:
 			dbgarg2("- Unknown type!\n");
 		}
+		break;
+	}
+	case VIDIOC_S_OMAP2_LINK:
+	{
+		int i = *(int *)arg;
+
+		if (!ops->vidioc_s_omap2_link)
+			break;
+		ret = ops->vidioc_s_omap2_link(file, fh, i);
+		break;
+	}
+	case VIDIOC_G_OMAP2_LINK:
+	{
+		if (!ops->vidioc_g_omap2_link)
+			break;
+		ret = ops->vidioc_g_omap2_link(file, fh);
 		break;
 	}
 
