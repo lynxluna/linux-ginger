@@ -35,6 +35,7 @@
 #include "omap-pcm.h"
 #include "../codecs/twl4030.h"
 
+#define ZOOM2_BT_MCBSP_GPIO		164
 #define ZOOM2_HEADSET_MUX_GPIO		(OMAP_MAX_GPIO_LINES + 15)
 #define ZOOM2_HEADSET_EXTMUTE_GPIO	153
 
@@ -94,6 +95,11 @@ static int zoom2_hw_voice_params(struct snd_pcm_substream *substream,
 	struct snd_soc_dai *cpu_dai = rtd->dai->cpu_dai;
 	int ret;
 
+	if (gpio_request(ZOOM2_BT_MCBSP_GPIO, "bt_mux") == 0) {
+		gpio_direction_output(ZOOM2_BT_MCBSP_GPIO, 1);
+		gpio_free(ZOOM2_BT_MCBSP_GPIO);
+	}
+
 	/* Set codec DAI configuration */
 	ret = snd_soc_dai_set_fmt(codec_dai,
 				SND_SOC_DAIFMT_DSP_A |
@@ -127,6 +133,47 @@ static int zoom2_hw_voice_params(struct snd_pcm_substream *substream,
 
 static struct snd_soc_ops zoom2_voice_ops = {
 	.hw_params = zoom2_hw_voice_params,
+};
+
+static int zoom2_fm_hw_params(struct snd_pcm_substream *substream,
+	struct snd_pcm_hw_params *params)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_dai *cpu_dai = rtd->dai->cpu_dai;
+	struct snd_soc_dai *codec_dai = rtd->dai->codec_dai;
+	int ret;
+
+	/*Set codec DAI configuration */
+	ret = snd_soc_dai_set_fmt(codec_dai,
+				SND_SOC_DAIFMT_I2S |
+				SND_SOC_DAIFMT_NB_NF |
+				SND_SOC_DAIFMT_CBS_CFS);
+	if (ret < 0) {
+		printk(KERN_ERR "can't set codec DAI configuration\n");
+		return ret;
+	}
+	/*Set cpu DAI configuration*/
+	ret = snd_soc_dai_set_fmt(cpu_dai,
+				SND_SOC_DAIFMT_I2S |
+				SND_SOC_DAIFMT_NB_NF |
+				SND_SOC_DAIFMT_CBS_CFS);
+	if (ret < 0) {
+		printk(KERN_ERR "can't set cpu DAI configuration\n");
+		return ret;
+	}
+	printk(KERN_ERR "Set the codec system clock for DAC and ADC \n");
+	/*Set the codec system clock for DAC and ADC */
+	ret = snd_soc_dai_set_sysclk(codec_dai, 0, 26000000,
+			SND_SOC_CLOCK_IN);
+	if (ret < 0) {
+		printk(KERN_ERR "can't set codec system clock\n");
+		return ret;
+	}
+
+	return 0;
+}
+static struct snd_soc_ops zoom2_fm_ops = {
+	.hw_params = zoom2_fm_hw_params,
 };
 
 /* Audio Sampling frequences supported by Triton */
@@ -404,6 +451,14 @@ static struct snd_soc_dai_link zoom2_dai[] = {
 		.init = zoom2_twl4030_voice_init,
 		.ops = &zoom2_voice_ops,
 	},
+	{
+		.name = "TWL4030_FM",
+		.stream_name = "TWL4030_FM",
+		.cpu_dai = &omap_mcbsp_dai[2],
+		.codec_dai = &twl4030_dai[TWL4030_DAI_VOICE],
+		.ops = &zoom2_fm_ops,
+	},
+
 };
 
 /* Audio machine driver */
@@ -457,6 +512,7 @@ static int __init zoom2_soc_init(void)
 	zoom2_snd_devdata.dev = &zoom2_snd_device->dev;
 	*(unsigned int *)zoom2_dai[0].cpu_dai->private_data = 1; /* McBSP2 */
 	*(unsigned int *)zoom2_dai[1].cpu_dai->private_data = 2; /* McBSP3 */
+	*(unsigned int *)zoom2_dai[2].cpu_dai->private_data = 3; /* McBSP4 */
 
 	ret = platform_device_add(zoom2_snd_device);
 	if (ret)

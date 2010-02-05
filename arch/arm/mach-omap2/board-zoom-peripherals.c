@@ -414,6 +414,19 @@ void wlan_1273_reset()
 #define wlan_1273_reset() do { } while (0)
 #endif
 
+/* GPIOS need to be in order of BT, FM and GPS
+ * provide -1 is Not applicable for chip */
+static int gpios[] = {109, 161, -1};
+static struct platform_device zoom_btfmgps_device = {
+	.name           = "kim", /* named after init manager for ST */
+	.id             = -1,
+	.dev.platform_data = &gpios,
+};
+
+static struct platform_device *zoom_devices[] __initdata = {
+       &zoom_btfmgps_device,
+};
+
 void __init zoom_peripherals_init(void * peripheral_data)
 {
 #ifdef CONFIG_TWL4030_POWER
@@ -425,5 +438,6 @@ void __init zoom_peripherals_init(void * peripheral_data)
 	omap_serial_init();
 	usb_musb_init();
 	enable_board_wakeup_source();
+	platform_add_devices(zoom_devices, ARRAY_SIZE(zoom_devices));
 	omap_voltage_init_vc((struct prm_setup_vc *) peripheral_data);
 }
