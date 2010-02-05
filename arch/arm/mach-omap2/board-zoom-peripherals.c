@@ -2,6 +2,8 @@
  * Copyright (C) 2009 Texas Instruments Inc.
  *
  * Modified from mach-omap2/board-zoom2.c
+ * Support for WLAN-device reset by:
+ * 	Ohad Ben-Cohen		<ohad@bencohen.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -34,6 +36,10 @@
 #include "voltage.h"
 
 #define OMAP_SYNAPTICS_GPIO		163
+
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+#include <plat/wifi_tiwlan.h>
+#endif
 
 /* Zoom2 has Qwerty keyboard*/
 static int board_keymap[] = {
@@ -228,6 +234,12 @@ static struct twl4030_hsmmc_info mmc[] __initdata = {
 		.nonremovable	= true,
 		.power_saving	= true,
 	},
+	{
+		.mmc		= 3,
+		.wires		= 4,
+		.gpio_cd	= -EINVAL,
+		.gpio_wp	= -EINVAL,
+	},
 	{}      /* Terminator */
 };
 
@@ -385,10 +397,22 @@ static int __init omap_i2c_init(void)
 
 static void enable_board_wakeup_source(void)
 {
-	/* T2 interrupt line (keypad) */
-	omap_mux_init_signal("sys_nirq",
-		OMAP_WAKEUP_EN | OMAP_PIN_INPUT_PULLUP);
+        /* T2 interrupt line (keypad) */
+        omap_mux_init_signal("sys_nirq",
+                OMAP_WAKEUP_EN | OMAP_PIN_INPUT_PULLUP);
 }
+
+#ifdef CONFIG_WLAN_1273
+void wlan_1273_reset()
+{
+	if (gpio_request(OMAP_ZOOM3_WIFI_PMENA_GPIO, NULL) != 0)
+		pr_err("GPIO 101 request failed\n");
+	gpio_direction_output(OMAP_ZOOM3_WIFI_PMENA_GPIO, 0);
+	return;
+}
+#else
+#define wlan_1273_reset() do { } while (0)
+#endif
 
 void __init zoom_peripherals_init(void * peripheral_data)
 {
@@ -397,6 +421,7 @@ void __init zoom_peripherals_init(void * peripheral_data)
 #endif
 	omap_i2c_init();
 	synaptics_dev_init();
+	wlan_1273_reset();
 	omap_serial_init();
 	usb_musb_init();
 	enable_board_wakeup_source();
