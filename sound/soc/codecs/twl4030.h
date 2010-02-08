@@ -36,8 +36,7 @@
 #define TWL4030_DAI_HIFI		0
 #define TWL4030_DAI_VOICE		1
 
-#define TWL4030_DAI_CLOCK		2
-extern struct snd_soc_dai twl4030_dai[];
+extern struct snd_soc_dai twl4030_dai[2];
 extern struct snd_soc_codec_device soc_codec_dev_twl4030;
 
 struct twl4030_setup_data {
