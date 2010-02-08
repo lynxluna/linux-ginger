@@ -2117,13 +2117,6 @@ static int vidioc_streamoff(struct file *file, void *fh,
 
 	omap_dispc_unregister_isr(omap_vout_isr, vout, mask);
 
-#ifdef CONFIG_PM
-	if (pdata->set_min_bus_tput)
-		pdata->set_min_bus_tput(
-			((vout->vid_dev)->v4l2_dev).dev,
-				OCP_INITIATOR_AGENT, 0);
-#endif
-
 	if (vout->linked)
 		for (t = 0; t < NUM_OF_VIDEO_CHANNELS; t++) {
 			struct omap_overlay *ovl = omap_dss_get_overlay(t+1);
@@ -2162,6 +2155,13 @@ static int vidioc_streamoff(struct file *file, void *fh,
 		rsz_configured  = 0;
 		rsz_put_resource();
 	}
+
+#ifdef CONFIG_PM
+	if (pdata->set_min_bus_tput)
+		pdata->set_min_bus_tput(
+			((vout->vid_dev)->v4l2_dev).dev,
+				OCP_INITIATOR_AGENT, 0);
+#endif
 
 	INIT_LIST_HEAD(&vout->dma_queue);
 	videobuf_streamoff(&vout->vbq);
