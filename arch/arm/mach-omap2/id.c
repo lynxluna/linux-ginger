@@ -26,7 +26,7 @@
 #include <plat/cpu.h>
 
 static struct omap_chip_id omap_chip;
-static unsigned int omap_revision;
+static unsigned int omap_revision, omap_revision_id;
 
 u32 omap3_features;
 
@@ -35,6 +35,12 @@ unsigned int omap_rev(void)
 	return omap_revision;
 }
 EXPORT_SYMBOL(omap_rev);
+
+unsigned int omap_rev_id(void)
+{
+	return omap_revision_id;
+}
+EXPORT_SYMBOL(omap_rev_id);
 
 /**
  * omap_chip_is - test whether currently running OMAP matches a chip type
@@ -417,3 +423,32 @@ void __init omap2_set_globals_tap(struct omap_globals *omap2_globals)
 	else
 		tap_prod_id = 0x0208;
 }
+
+/*
+  * Get OMAP chip version details from bootargs
+ */
+int  omap3_get_omap3630_version(char *str)
+{
+	unsigned int rev_id;
+	if (get_option(&str, &rev_id) == 1)	{
+		switch (rev_id) {
+		case 3630:
+			omap_revision_id = OMAP_3630;
+			break;
+		case 3630800:
+			omap_revision_id = OMAP_3630_800;
+			break;
+		case 36301000:
+			omap_revision_id = OMAP_3630_1000;
+			break;
+		default:
+			pr_err("OMAP revision unknown, please fix!\n");
+			return 1;
+		}
+	}
+
+	return 1;
+}
+
+__setup("omap_version=", omap3_get_omap3630_version);
+
