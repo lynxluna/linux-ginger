@@ -78,8 +78,13 @@ static inline void sr_modify_reg(struct omap_sr *sr, unsigned offset, u32 mask,
 	 * value. Now if there is an actual reguest to write to these bits
 	 * they will be set in the nex step.
 	 */
-	if (offset == ERRCONFIG)
-		reg_val &= ~ERRCONFIG_STATUS_MASK;
+	if (cpu_is_omap3430()) {
+		if (offset == ERRCONFIG)
+			reg_val &= ~ERRCONFIG_STATUS_MASK;
+	} else if (cpu_is_omap3630()) {
+		if (offset == ERRCONFIG_36XX)
+			reg_val &= ~ERRCONFIG_VPBOUNDINTST_36XX;
+	}
 
 	reg_val |= value;
 	__raw_writel(reg_val, SR_REGADDR(offset));
@@ -454,39 +459,76 @@ void sr_disable(int srid)
 	/* Check if SR Ris already disabled. If yes do nothing */
 	if (!(sr_read_reg(sr, SRCONFIG) & SRCONFIG_SRENABLE))
 		return;
-
-	/* Enable MCUDisableAcknowledge interrupt */
-	sr_modify_reg(sr, ERRCONFIG,
+	if (cpu_is_omap3430()) {
+		/* Enable MCUDisableAcknowledge interrupt */
+		sr_modify_reg(sr, ERRCONFIG,
 			ERRCONFIG_MCUDISACKINTEN, ERRCONFIG_MCUDISACKINTEN);
 
-	/* SRCONFIG - disable SR */
-	sr_modify_reg(sr, SRCONFIG, SRCONFIG_SRENABLE, ~SRCONFIG_SRENABLE);
+		/* SRCONFIG - disable SR */
+		sr_modify_reg(sr, SRCONFIG, SRCONFIG_SRENABLE, 0x0);
 
-	/* Disable all other SR interrupts and clear the status */
-	sr_modify_reg(sr, ERRCONFIG,
+		/* Disable all other SR interrupts and clear the status */
+		sr_modify_reg(sr, ERRCONFIG,
 			(ERRCONFIG_MCUACCUMINTEN | ERRCONFIG_MCUVALIDINTEN |
 			ERRCONFIG_MCUBOUNDINTEN | ERRCONFIG_VPBOUNDINTEN),
 			(ERRCONFIG_MCUACCUMINTST | ERRCONFIG_MCUVALIDINTST |
 			ERRCONFIG_MCUBOUNDINTST | ERRCONFIG_VPBOUNDINTST));
 
-	/* Wait for SR to be disabled.
-	 * wait until ERRCONFIG.MCUDISACKINTST = 1. Typical latency is 1us.
-	 */
-	while ((timeout < SR_DISABLE_TIMEOUT) &&
-		(!(sr_read_reg(sr, ERRCONFIG) & ERRCONFIG_MCUDISACKINTST))) {
+		/* Wait for SR to be disabled.
+		 * wait until ERRCONFIG.MCUDISACKINTST = 1.
+		 * Typical latency is 1us.
+		 */
+		while ((timeout < SR_DISABLE_TIMEOUT) &&
+			(!(sr_read_reg(sr, ERRCONFIG) &
+			ERRCONFIG_MCUDISACKINTST))) {
+			udelay(1);
+			timeout++;
+		}
 
-		udelay(1);
-		timeout++;
-	}
+		if (timeout == SR_DISABLE_TIMEOUT)
+			pr_warning("SR%d disable timedout\n", srid);
 
-	if (timeout == SR_DISABLE_TIMEOUT)
-		pr_warning("SR%d disable timedout\n", srid);
-
-	/* Disable MCUDisableAcknowledge interrupt & clear pending interrupt
-	 * Also enable VPBOUND interrrupt
-	 */
-	sr_modify_reg(sr, ERRCONFIG, ERRCONFIG_MCUDISACKINTEN,
+		/* Disable MCUDisableAcknowledge interrupt &
+		 * clear pending interrupt
+		 */
+		sr_modify_reg(sr, ERRCONFIG, ERRCONFIG_MCUDISACKINTEN,
 			ERRCONFIG_MCUDISACKINTST);
+	} else if (cpu_is_omap3630()) {
+		/* Enable MCUDisableAcknowledge interrupt */
+		sr_write_reg(sr, IRQENABLE_SET, IRQ_MCUDISACKINTENA);
+
+		/* SRCONFIG - disable SR */
+		sr_modify_reg(sr, SRCONFIG, SRCONFIG_SRENABLE, 0x0);
+
+		/* Disable all other SR interrupts and clear the status */
+		 sr_modify_reg(sr, ERRCONFIG_36XX,
+				ERRCONFIG_VPBOUNDINTEN_36XX,
+				ERRCONFIG_VPBOUNDINTST_36XX);
+		sr_write_reg(sr, IRQENABLE_CLR, IRQ_MCUACCUMINTENA |
+				IRQ_MCUVALIDINTENA | IRQ_MCUBOUNDINTENA);
+		sr_write_reg(sr, IRQSTATUS, IRQSTATUS_MCUACCUMINTST |
+				IRQSTATUS_MCUVALIDINTST |
+				IRQSTATUS_MCUBOUNDINTST);
+		/* Wait for SR to be disabled.
+		 * wait until ERRCONFIG.MCUDISACKINTST = 1.
+		 * Typical latency is 1us.
+		 */
+		while ((timeout < SR_DISABLE_TIMEOUT) &&
+				(!(sr_read_reg(sr, IRQSTATUS) &
+				IRQSTATUS_MCUDISACKINTST))) {
+			udelay(1);
+			timeout++;
+		}
+
+		if (timeout == SR_DISABLE_TIMEOUT)
+			pr_warning("SR%d disable timedout\n", srid);
+
+		/* Disable MCUDisableAcknowledge interrupt
+		 * & clear pending interrupt
+		 */
+		sr_write_reg(sr, IRQENABLE_CLR, IRQ_MCUDISACKINTENA);
+		sr_write_reg(sr, IRQSTATUS, IRQSTATUS_MCUDISACKINTST);
+	}
 }
 
 /**
