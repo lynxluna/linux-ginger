@@ -16,10 +16,12 @@
 #include <linux/spi/spi.h>
 #include <linux/regulator/machine.h>
 #include <linux/regulator/consumer.h>
+#include <linux/sil9022.h>
 #include <plat/common.h>
 #include <plat/control.h>
 #include <plat/mcspi.h>
 #include <plat/display.h>
+#include <plat/omap-pm.h>
 
 #define LCD_PANEL_ENABLE_GPIO		(7 + OMAP_MAX_GPIO_LINES)
 #define LCD_PANEL_RESET_GPIO_PROD	96
@@ -191,6 +193,12 @@ static void zoom_panel_disable_hdmi(struct omap_dss_device *dssdev)
 #endif
 }
 
+struct hdmi_platform_data zoom_hdmi_data = {
+#ifdef CONFIG_PM
+       .set_min_bus_tput = omap_pm_set_min_bus_tput,
+#endif
+};
+
 static struct omap_dss_device zoom_hdmi_device = {
 	.name = "hdmi",
 	.driver_name = "hdmi_panel",
@@ -198,6 +206,11 @@ static struct omap_dss_device zoom_hdmi_device = {
 	.phy.dpi.data_lines = 24,
 	.platform_enable = zoom_panel_enable_hdmi,
 	.platform_disable = zoom_panel_disable_hdmi,
+#ifdef CONFIG_PM
+	.dev = {
+		.platform_data = &zoom_hdmi_data,
+	},
+#endif
 };
 
 static struct zoom_dss_board_info zoom_dss_lcd_data = {
