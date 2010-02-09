@@ -276,7 +276,6 @@ DSP_STATUS WMD_IO_Destroy(struct IO_MGR *hIOMgr)
 
 		/* Free IO DPC object */
 		tasklet_kill(&hIOMgr->dpc_tasklet);
-		DBG_Trace(GT_2CLASS, "DPC_Destroy: SUCCESS\n");
 
 #ifndef DSP_TRACEBUF_DISABLED
 		kfree(hIOMgr->pMsg);
@@ -408,12 +407,9 @@ DSP_STATUS WMD_IO_OnLoaded(struct IO_MGR *hIOMgr)
 	if (DSP_SUCCEEDED(status)) {
 #ifndef DSP_TRACEBUF_DISABLED
 		status = COD_GetSymValue(hCodMan, DSP_TRACESEC_END, &ulShm0End);
-		DBG_Trace(DBG_LEVEL7, "_BRIDGE_TRACE_END value = %x \n",
-			 ulShm0End);
 #else
 		status = COD_GetSymValue(hCodMan, SHM0_SHARED_END_SYM,
 					 &ulShm0End);
-		DBG_Trace(DBG_LEVEL7, "_SHM0_END = %x \n", ulShm0End);
 #endif
 		if (DSP_FAILED(status))
 			status = CHNL_E_NOMEMMAP;
@@ -668,8 +664,7 @@ DSP_STATUS WMD_IO_OnLoaded(struct IO_MGR *hIOMgr)
 	 */
 	hIOMgr->extProcInfo.tyTlb[0].ulGppPhys = (ulGppVa + ulSeg1Size +
 						 ulPadSize);
-	DBG_Trace(DBG_LEVEL1, "*********extProcInfo *********%x \n",
-		  hIOMgr->extProcInfo.tyTlb[0].ulGppPhys);
+
 	/*
 	 * Need SHM Phys addr. IO supports only one DSP for now:
 	 * uNumProcs = 1.
@@ -697,8 +692,6 @@ DSP_STATUS WMD_IO_OnLoaded(struct IO_MGR *hIOMgr)
 		if (DSP_FAILED(status))
 			goto func_end;
 		ulShmBase = hIOMgr->extProcInfo.tyTlb[0].ulGppPhys;
-		DBG_Trace(DBG_LEVEL1, "extProcInfo.tyTlb[0].ulGppPhys %x \n ",
-				hIOMgr->extProcInfo.tyTlb[0].ulGppPhys);
 		ulShmBase += ulShmBaseOffset;
 		ulShmBase = (u32)MEM_LinearAddress((void *)ulShmBase,
 				    ulMemLength);
@@ -715,10 +708,7 @@ DSP_STATUS WMD_IO_OnLoaded(struct IO_MGR *hIOMgr)
 	hIOMgr->pOutput = hIOMgr->pInput + (ulShmLength -
 						sizeof(struct SHM)) / 2;
 	hIOMgr->uSMBufSize = hIOMgr->pOutput - hIOMgr->pInput;
-	DBG_Trace(DBG_LEVEL3, "hIOMgr: pInput %p pOutput %p ulShmLength %x\n",
-				 hIOMgr->pInput, hIOMgr->pOutput, ulShmLength);
-	DBG_Trace(DBG_LEVEL3, "pSharedMem %p uSMBufSize %x sizeof(SHM) %x\n",
-		 hIOMgr->pSharedMem, hIOMgr->uSMBufSize, sizeof(struct SHM));
+
 	 /*  Set up Shared memory addresses for messaging. */
 	hIOMgr->pMsgInputCtrl = (struct MSG *)((u8 *)hIOMgr->pSharedMem
 							+ ulShmLength);
@@ -778,7 +768,6 @@ DSP_STATUS WMD_IO_OnLoaded(struct IO_MGR *hIOMgr)
 	if (!hIOMgr->pMsg)
 		status = DSP_EMEMORY;
 
-	DBG_Trace(DBG_LEVEL1, "** hIOMgr->pMsg: 0x%x\n", hIOMgr->pMsg);
 	hIOMgr->ulDspVa = ulDspVa;
 	hIOMgr->ulGppVa = (ulGppVa + ulSeg1Size + ulPadSize);
 
@@ -988,7 +977,6 @@ void io_mbox_msg(u32 msg)
 		IO_DispatchPM(io_mgr);
 
 	if (io_mgr->wIntrVal == MBX_DEH_RESET) {
-		DBG_Trace(DBG_LEVEL6, "*** DSP RESET ***\n");
 		io_mgr->wIntrVal = 0;
 	} else {
 		spin_lock_irqsave(&io_mgr->dpc_lock, flags);
@@ -1159,9 +1147,7 @@ static void InputChnl(struct IO_MGR *pIOMgr, struct CHNL_OBJECT *pChnl,
 				pChirp->cBytes = uBytes;
 				pChirp->dwArg = dwArg;
 				pChirp->status = CHNL_IOCSTATCOMPLETE;
-				DBG_Trace(DBG_LEVEL7, "Input Chnl:status= 0x%x "
-					 "\n", *((RMS_WORD *)(pChirp->
-					 pHostSysBuf)));
+
 				if (uBytes == 0) {
 					/*
 					 * This assertion fails if the DSP
@@ -1183,8 +1169,6 @@ static void InputChnl(struct IO_MGR *pIOMgr, struct CHNL_OBJECT *pChnl,
 					 */
 					NTFY_Notify(pChnl->hNtfy,
 						   DSP_STREAMDONE);
-					DBG_Trace(DBG_LEVEL7, "Input Chnl NTFY "
-						 "chnl = 0x%x\n", pChnl);
 				}
 				/* Tell DSP if no more I/O buffers available */
 				if (!pChnl->pIORequests)
@@ -1588,8 +1572,6 @@ static DSP_STATUS registerSHMSegs(struct IO_MGR *hIOMgr,
 		/* Get start and length of message part of shared memory */
 		status = COD_GetSymValue(hCodMan, SHM0_SHARED_RESERVED_BASE_SYM,
 					&ulShm0_RsrvdStart);
-		DBG_Trace(DBG_LEVEL1, "***ulShm0_RsrvdStart  0x%x \n",
-			 ulShm0_RsrvdStart);
 		if (ulShm0_RsrvdStart == 0) {
 			status = DSP_EFAIL;
 			goto func_end;
@@ -1956,9 +1938,6 @@ DSP_STATUS PrintDspTraceBuffer(struct WMD_DEV_CONTEXT *hWmdContext)
 	if (DSP_SUCCEEDED(status)) {
 		/* Look for SYS_PUTCBEG/SYS_PUTCEND */
 		status = COD_GetSymValue(hCodMgr, COD_TRACEBEG, &ulTraceBegin);
-		GT_1trace(dsp_trace_mask, GT_2CLASS,
-			"PrintDspTraceBuffer: ulTraceBegin Value 0x%x\n",
-			ulTraceBegin);
 		if (DSP_FAILED(status))
 			GT_0trace(dsp_trace_mask, GT_2CLASS,
 				"PrintDspTraceBuffer: Failed on "
@@ -1966,9 +1945,6 @@ DSP_STATUS PrintDspTraceBuffer(struct WMD_DEV_CONTEXT *hWmdContext)
 	}
 	if (DSP_SUCCEEDED(status)) {
 		status = COD_GetSymValue(hCodMgr, COD_TRACEEND, &ulTraceEnd);
-		GT_1trace(dsp_trace_mask, GT_2CLASS,
-			"PrintDspTraceBuffer: ulTraceEnd Value 0x%x\n",
-			ulTraceEnd);
 		 if (DSP_FAILED(status))
 			GT_0trace(dsp_trace_mask, GT_2CLASS,
 				"PrintDspTraceBuffer: Failed on "
@@ -1985,11 +1961,7 @@ DSP_STATUS PrintDspTraceBuffer(struct WMD_DEV_CONTEXT *hWmdContext)
 
 		/* Make sure the data we request fits evenly */
 		ulNumBytes = (ulNumBytes / ulWordSize) * ulWordSize;
-		GT_1trace(dsp_trace_mask, GT_2CLASS, "PrintDspTraceBuffer: "
-			"ulNumBytes 0x%x\n", ulNumBytes);
 		ulNumWords = ulNumBytes * ulWordSize;
-		GT_1trace(dsp_trace_mask, GT_2CLASS, "PrintDspTraceBuffer: "
-			"ulNumWords 0x%x\n", ulNumWords);
 		status = DEV_GetIntfFxns(pDevObject, &pIntfFxns);
 	}
 
@@ -2008,9 +1980,6 @@ DSP_STATUS PrintDspTraceBuffer(struct WMD_DEV_CONTEXT *hWmdContext)
 
 			if (DSP_SUCCEEDED(status)) {
 				/* Pack and do newline conversion */
-				GT_0trace(dsp_trace_mask, GT_2CLASS,
-					"PrintDspTraceBuffer: "
-					"before pack and unpack.\n");
 				PackTraceBuffer(pszBuf, ulNumBytes, ulNumWords);
 				GT_1trace(dsp_trace_mask, GT_1CLASS,
 					"DSP Trace Buffer:\n%s\n", pszBuf);
