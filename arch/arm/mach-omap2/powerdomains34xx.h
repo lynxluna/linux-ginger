@@ -35,25 +35,10 @@
 #ifdef CONFIG_ARCH_OMAP34XX
 
 /*
- * 3430: PM_WKDEP_PER: IVA2, WKUP
- */
-static struct pwrdm_dep per_wkdeps[] = {
-	{
-		.pwrdm_name = "iva2_pwrdm",
-		.omap_chip = OMAP_CHIP_INIT(CHIP_IS_OMAP3430)
-	},
-	{
-		.pwrdm_name = "wkup_pwrdm",
-		.omap_chip = OMAP_CHIP_INIT(CHIP_IS_OMAP3430)
-	},
-	{ NULL },
-};
-
-/*
- * 3430: PM_WKDEP_USBHOST: CORE, IVA2, MPU, WKUP
+ * 3430: PM_WKDEP_{PER,USBHOST}: CORE, IVA2, MPU, WKUP
  * (USBHOST is ES2 only)
  */
-static struct pwrdm_dep usbhost_wkdeps[] = {
+static struct pwrdm_dep per_usbhost_wkdeps[] = {
 	{
 		.pwrdm_name = "core_pwrdm",
 		.omap_chip = OMAP_CHIP_INIT(CHIP_IS_OMAP3430)
@@ -320,7 +305,7 @@ static struct powerdomain per_pwrdm = {
 	.prcm_offs	  = OMAP3430_PER_MOD,
 	.omap_chip	  = OMAP_CHIP_INIT(CHIP_IS_OMAP3430),
 	.dep_bit	  = OMAP3430_EN_PER_SHIFT,
-	.wkdep_srcs	  = per_wkdeps,
+	.wkdep_srcs	  = per_usbhost_wkdeps,
 	.sleepdep_srcs	  = dss_per_usbhost_sleepdeps,
 	.pwrsts		  = PWRSTS_OFF_RET_ON,
 	.pwrsts_logic_ret = PWRSTS_OFF_RET,
@@ -352,7 +337,7 @@ static struct powerdomain usbhost_pwrdm = {
 	.name		  = "usbhost_pwrdm",
 	.prcm_offs	  = OMAP3430ES2_USBHOST_MOD,
 	.omap_chip	  = OMAP_CHIP_INIT(CHIP_GE_OMAP3430ES2),
-	.wkdep_srcs	  = usbhost_wkdeps,
+	.wkdep_srcs	  = per_usbhost_wkdeps,
 	.sleepdep_srcs	  = dss_per_usbhost_sleepdeps,
 	.pwrsts		  = PWRSTS_OFF_RET_ON,
 	.pwrsts_logic_ret = PWRDM_POWER_RET,
