@@ -108,9 +108,6 @@ irqreturn_t  MMU_FaultIsr(int irq, IN void *pRefData)
 			HW_MMU_EventDisable(resources.dwDmmuBase,
 					    HW_MMU_TRANSLATION_FAULT);
 		} else {
-			DBG_Trace(DBG_LEVEL7,
-				 "***** MMU FAULT ***** faultcode 0x%x\n",
-				 dmmuEventMask);
 			HW_MMU_EventDisable(resources.dwDmmuBase,
 					    HW_MMU_ALL_INTERRUPTS);
 		}
@@ -141,8 +138,6 @@ static bool MMU_CheckIfFault(struct WMD_DEV_CONTEXT *pDevContext)
 	hwStatus = HW_MMU_EventStatus(resources.dwDmmuBase, &dmmuEventMask);
 	if (dmmuEventMask  ==  HW_MMU_TRANSLATION_FAULT) {
 		HW_MMU_FaultAddrRead(resources.dwDmmuBase, &faultAddr);
-		DBG_Trace(DBG_LEVEL1, "WMD_DEH_Notify: DSP_MMUFAULT, fault "
-			 "address = 0x%x\n", faultAddr);
 		retVal = true;
 	}
 	return retVal;

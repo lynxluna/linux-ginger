@@ -117,7 +117,6 @@ DSP_STATUS WMD_DEH_Create(OUT struct DEH_MGR **phDehMgr,
 		*phDehMgr = NULL;
 	} else {
 		*phDehMgr = (struct DEH_MGR *)pDehMgr;
-		DBG_Trace(DBG_LEVEL1, "ISR_IRQ Object 0x%x \n", pDehMgr);
 	}
 
 	return status;
@@ -143,7 +142,6 @@ DSP_STATUS WMD_DEH_Destroy(struct DEH_MGR *hDehMgr)
 
 		/* Free DPC object */
 		tasklet_kill(&pDehMgr->dpc_tasklet);
-		DBG_Trace(GT_2CLASS, "DPC_Destroy: SUCCESS\n");
 
 		/* Deallocate the DEH manager object */
 		MEM_FreeObject(pDehMgr);
@@ -229,8 +227,6 @@ void WMD_DEH_Notify(struct DEH_MGR *hDehMgr, u32 ulEventMask,
 					MEM_PAGED);
 			memPhysical  = VirtToPhys(PG_ALIGN_LOW((u32)dummyVaAddr,
 								PG_SIZE_4K));
-DBG_Trace(DBG_LEVEL6, "WMD_DEH_Notify: DSP_MMUFAULT, "
-				 "mem Physical= 0x%x\n", memPhysical);
 			pDevContext = (struct WMD_DEV_CONTEXT *)
 						pDehMgr->hWmdContext;
 			/* Reset the dynamic mmu index to fixed count if it
@@ -242,9 +238,6 @@ DBG_Trace(DBG_LEVEL6, "WMD_DEH_Notify: DSP_MMUFAULT, "
 				pDevContext->numTLBEntries = pDevContext->
 					fixedTLBEntries;
 			}
-			DBG_Trace(DBG_LEVEL6, "Adding TLB Entry %d: VA: 0x%x, "
-				 "PA: 0x%x\n", pDevContext->
-				numTLBEntries, faultAddr, memPhysical);
 			if (DSP_SUCCEEDED(status)) {
 				hwStatus = HW_MMU_TLBAdd(resources.dwDmmuBase,
 					memPhysical, faultAddr,
