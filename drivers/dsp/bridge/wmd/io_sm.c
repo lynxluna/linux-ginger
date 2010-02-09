@@ -831,8 +831,6 @@ static void IO_DispatchChnl(IN struct IO_MGR *pIOMgr,
 	if (!MEM_IsValidHandle(pIOMgr, IO_MGRSIGNATURE))
 		goto func_end;
 
-	DBG_Trace(DBG_LEVEL3, "Entering IO_DispatchChnl \n");
-
 	/* See if there is any data available for transfer */
 	if (iMode != IO_SERVICE)
 		goto func_end;
@@ -853,8 +851,6 @@ static void IO_DispatchMsg(IN struct IO_MGR *pIOMgr, struct MSG_MGR *hMsgMgr)
 	if (!MEM_IsValidHandle(pIOMgr, IO_MGRSIGNATURE))
 		goto func_end;
 
-	DBG_Trace(DBG_LEVEL3, "Entering IO_DispatchMsg \n");
-
 	/* We are performing both input and output processing. */
 	InputMsg(pIOMgr, hMsgMgr);
 	OutputMsg(pIOMgr, hMsgMgr);
@@ -870,8 +866,6 @@ static void IO_DispatchPM(struct IO_MGR *pIOMgr)
 {
 	DSP_STATUS status;
 	u32 pArg[2];
-
-	DBG_Trace(DBG_LEVEL7, "IO_DispatchPM: Entering IO_DispatchPM : \n");
 
 	/* Perform Power message processing here */
 	pArg[0] = pIOMgr->wIntrVal;
@@ -934,7 +928,6 @@ void IO_DPC(IN OUT unsigned long pRefData)
 	DEV_GetDehMgr(pIOMgr->hDevObject, &hDehMgr);
 	if (!MEM_IsValidHandle(pChnlMgr, CHNL_MGRSIGNATURE))
 		goto func_end;
-	DBG_Trace(DBG_LEVEL7, "Entering IO_DPC(0x%x)\n", pRefData);
 
 
 	requested = pIOMgr->dpc_req;
@@ -982,8 +975,6 @@ void io_mbox_msg(u32 msg)
 	struct IO_MGR *io_mgr;
 	struct DEV_OBJECT *dev_obj;
 	unsigned long flags;
-
-	DBG_Trace(DBG_LEVEL3, "Entering io_mbox_msg\n");
 
 	dev_obj = DEV_GetFirst();
 	DEV_GetIOMgr(dev_obj, &io_mgr);
@@ -1130,8 +1121,6 @@ static void InputChnl(struct IO_MGR *pIOMgr, struct CHNL_OBJECT *pChnl,
 	sm = pIOMgr->pSharedMem;
 	pChnlMgr = pIOMgr->hChnlMgr;
 
-	DBG_Trace(DBG_LEVEL3, "> InputChnl\n");
-
 	/* Attempt to perform input */
 	if (!IO_GetValue(pIOMgr->hWmdContext, struct SHM, sm, inputFull))
 		goto func_end;
@@ -1234,7 +1223,7 @@ static void InputChnl(struct IO_MGR *pIOMgr, struct CHNL_OBJECT *pChnl,
 		NotifyChnlComplete(pChnl, pChirp);
 	}
 func_end:
-	DBG_Trace(DBG_LEVEL3, "< InputChnl\n");
+	return;
 }
 
 /*
@@ -1400,7 +1389,6 @@ static void OutputChnl(struct IO_MGR *pIOMgr, struct CHNL_OBJECT *pChnl,
 
 	pChnlMgr = pIOMgr->hChnlMgr;
 	sm = pIOMgr->pSharedMem;
-	DBG_Trace(DBG_LEVEL3, "> OutputChnl\n");
 	/* Attempt to perform output */
 	if (IO_GetValue(pIOMgr->hWmdContext, struct SHM, sm, outputFull))
 		goto func_end;
@@ -1464,7 +1452,7 @@ static void OutputChnl(struct IO_MGR *pIOMgr, struct CHNL_OBJECT *pChnl,
 		NTFY_Notify(pChnl->hNtfy, DSP_STREAMDONE);
 
 func_end:
-	DBG_Trace(DBG_LEVEL3, "< OutputChnl\n");
+	return;
 }
 /*
  *  ======== OutputMsg ========
@@ -1806,8 +1794,6 @@ DSP_STATUS WMD_IO_GetProcLoad(IN struct IO_MGR *hIOMgr,
 void PrintDSPDebugTrace(struct IO_MGR *hIOMgr)
 {
 	u32 ulNewMessageLength = 0, ulGPPCurPointer;
-
-	GT_0trace(dsp_trace_mask, GT_ENTER, "Entering PrintDSPDebugTrace\n");
 
 	while (true) {
 		/* Get the DSP current pointer */
