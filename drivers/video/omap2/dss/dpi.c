@@ -30,6 +30,7 @@
 
 #include <plat/display.h>
 #include <plat/cpu.h>
+#include <plat/omap-pm.h>
 
 #include "dss.h"
 
@@ -211,6 +212,7 @@ static int dpi_display_enable(struct omap_dss_device *dssdev)
 		goto err5;
 
 	dssdev->state = OMAP_DSS_DISPLAY_ACTIVE;
+	omap_pm_set_max_sdma_lat(&dssdev->dev, 11500);
 
 	return 0;
 
@@ -254,6 +256,7 @@ static void dpi_display_disable(struct omap_dss_device *dssdev)
 	dss_clk_disable(DSS_CLK_ICK | DSS_CLK_FCK1);
 
 	dssdev->state = OMAP_DSS_DISPLAY_DISABLED;
+	omap_pm_set_max_sdma_lat(&dssdev->dev, 40000);
 
 	omap_dss_stop_device(dssdev);
 }
@@ -280,6 +283,7 @@ static int dpi_display_suspend(struct omap_dss_device *dssdev)
 	dss_clk_disable(DSS_CLK_ICK | DSS_CLK_FCK1);
 
 	dssdev->state = OMAP_DSS_DISPLAY_SUSPENDED;
+	omap_pm_set_max_sdma_lat(&dssdev->dev, 40000);
 
 	return 0;
 }
@@ -290,6 +294,7 @@ static int dpi_display_resume(struct omap_dss_device *dssdev)
 
 	if (dssdev->state != OMAP_DSS_DISPLAY_SUSPENDED)
 		return -EINVAL;
+	omap_pm_set_max_sdma_lat(&dssdev->dev, 11500);
 
 	DSSDBG("dpi_display_resume\n");
 

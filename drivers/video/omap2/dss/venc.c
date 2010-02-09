@@ -36,6 +36,7 @@
 
 #include <plat/display.h>
 #include <plat/cpu.h>
+#include <plat/omap-pm.h>
 
 #include "dss.h"
 
@@ -425,6 +426,7 @@ static int venc_panel_enable(struct omap_dss_device *dssdev)
 
 	if (dssdev->platform_enable)
 		r = dssdev->platform_enable(dssdev);
+	omap_pm_set_max_sdma_lat(&dssdev->dev, 11500);
 
 	return r;
 }
@@ -433,6 +435,7 @@ static void venc_panel_disable(struct omap_dss_device *dssdev)
 {
 	if (dssdev->platform_disable)
 		dssdev->platform_disable(dssdev);
+	omap_pm_set_max_sdma_lat(&dssdev->dev, 40000);
 
 	/* wait at least 5 vsyncs after disabling the LCD */
 

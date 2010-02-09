@@ -35,6 +35,7 @@
 
 #include <plat/display.h>
 #include <plat/clock.h>
+#include <plat/omap-pm.h>
 
 #include "dss.h"
 
@@ -3205,6 +3206,7 @@ static int dsi_display_enable(struct omap_dss_device *dssdev)
 
 	dsi_bus_unlock();
 	mutex_unlock(&dsi.lock);
+	omap_pm_set_max_sdma_lat(&dssdev->dev, 11500);
 
 	return 0;
 
@@ -3250,6 +3252,7 @@ static void dsi_display_disable(struct omap_dss_device *dssdev)
 end:
 	dsi_bus_unlock();
 	mutex_unlock(&dsi.lock);
+	omap_pm_set_max_sdma_lat(&dssdev->dev, 40000);
 }
 
 static int dsi_display_suspend(struct omap_dss_device *dssdev)
@@ -3275,6 +3278,7 @@ static int dsi_display_suspend(struct omap_dss_device *dssdev)
 end:
 	dsi_bus_unlock();
 	mutex_unlock(&dsi.lock);
+	omap_pm_set_max_sdma_lat(&dssdev->dev, 40000);
 
 	return 0;
 }
@@ -3321,6 +3325,7 @@ static int dsi_display_resume(struct omap_dss_device *dssdev)
 
 	dsi_bus_unlock();
 	mutex_unlock(&dsi.lock);
+	omap_pm_set_max_sdma_lat(&dssdev->dev, 11500);
 
 	return 0;
 
