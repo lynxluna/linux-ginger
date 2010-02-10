@@ -71,6 +71,12 @@
 
 #define DSP_CACHE_LINE 128
 
+#define BUFMODE_MASK	(3 << 14)
+
+/* Buffer modes from DSP perspective */
+#define RBUF		0x4000		/* Input buffer */
+#define WBUF		0x8000		/* Output Buffer */
+
 extern char *iva_img;
 
 /*  ----------------------------------- Globals */
@@ -1010,11 +1016,13 @@ DSP_STATUS PROC_Map(void *hProcessor, void *pMpuAddr, u32 ulSize,
 	struct DMM_MAP_OBJECT *map_obj;
 
 #ifdef CONFIG_BRIDGE_CACHE_LINE_CHECK
-	if (!IS_ALIGNED((u32)pMpuAddr, DSP_CACHE_LINE) ||
-	    !IS_ALIGNED(ulSize, DSP_CACHE_LINE)) {
-		pr_err("%s: not aligned: 0x%x (%d)\n", __func__,
+	if ((ulMapAttr & BUFMODE_MASK) != RBUF) {
+		if (!IS_ALIGNED((u32)pMpuAddr, DSP_CACHE_LINE) ||
+		    !IS_ALIGNED(ulSize, DSP_CACHE_LINE)) {
+			pr_err("%s: not aligned: 0x%x (%d)\n", __func__,
 						(u32)pMpuAddr, ulSize);
-		return -EFAULT;
+			return -EFAULT;
+		}
 	}
 #endif
 
