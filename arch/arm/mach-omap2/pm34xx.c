@@ -107,6 +107,15 @@ static inline void omap3_per_restore_context(void)
 	omap_gpio_restore_context();
 }
 
+static inline void omap3_per_gpio_wait_ready()
+{
+	int i;
+	for (i = OMAP3430_ST_GPIO2_SHIFT; i <= OMAP3430_ST_GPIO6_SHIFT; i++)
+		while (cm_read_mod_reg(OMAP3430_PER_MOD, CM_IDLEST) & (1<<i))
+			;
+}
+
+
 static void omap3_enable_io_chain(void)
 {
 	int timeout = 0;
@@ -591,6 +600,7 @@ void omap_sram_idle(void)
 	}
 	/* PER */
 	if (per_next_state < PWRDM_POWER_ON) {
+		omap3_per_gpio_wait_ready();
 		if (per_next_state == PWRDM_POWER_OFF) {
 			/*
 			 * Reading the prev-state takes long time (11us@OPP2),
