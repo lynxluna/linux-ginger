@@ -474,6 +474,7 @@ static void omap_uart_idle_timer(unsigned long data)
 {
 	struct omap_uart_state *uart = (struct omap_uart_state *)data;
 
+	uart->timeout = DEFAULT_TIMEOUT;
 	omap_uart_allow_sleep(uart);
 }
 
@@ -495,7 +496,6 @@ void omap_uart_resume_idle(int num)
 
 	list_for_each_entry(uart, &uart_list, node) {
 		if (num == uart->num) {
-			omap_uart_enable_clocks(uart);
 
 			/* Check for IO pad wakeup */
 			if (cpu_is_omap34xx() && uart->padconf) {
@@ -591,7 +591,7 @@ static void omap_uart_idle_init(struct omap_uart_state *uart)
 	int ret;
 
 	uart->can_sleep = 0;
-	uart->timeout = DEFAULT_TIMEOUT;
+	uart->timeout = 30 * HZ;
 	setup_timer(&uart->timer, omap_uart_idle_timer,
 		    (unsigned long) uart);
 	mod_timer(&uart->timer, jiffies + uart->timeout);
