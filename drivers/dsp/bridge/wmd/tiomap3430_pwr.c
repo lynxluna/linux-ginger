@@ -124,7 +124,7 @@ DSP_STATUS handle_hibernation_fromDSP(struct WMD_DEV_CONTEXT *pDevContext)
 				    &pwrState);
 	}
 	if (timeout == 0) {
-		DBG_Trace(DBG_LEVEL7, "Timed out Waiting for DSP Off mode \n");
+		pr_err("%s: Timed out waiting for DSP off mode\n", __func__);
 		status = WMD_E_TIMEOUT;
 		return status;
 	} else {
@@ -239,8 +239,8 @@ DSP_STATUS SleepDSP(struct WMD_DEV_CONTEXT *pDevContext, IN u32 dwCmd,
 	}
 
 	if (!timeout) {
-		DBG_Trace(DBG_LEVEL7, "SleepDSP: Timed out Waiting for DSP"
-			 " STANDBY %x \n", pwrState);
+		pr_err("%s: Timed out waiting for DSP off mode, state %x\n",
+							__func__, pwrState);
 #ifdef CONFIG_BRIDGE_NTFY_PWRERR
 		DEV_GetDehMgr(pDevContext->hDevObject, &hDehMgr);
 		WMD_DEH_Notify(hDehMgr, DSP_PWRERROR, 0);
