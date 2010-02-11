@@ -75,6 +75,7 @@
 s32 dsp_debug;
 
 struct platform_device *omap_dspbridge_dev;
+struct device *bridge;
 
 /* This is a test variable used by Bridge to test different sleep states */
 s32 dsp_test_sleepstate;
@@ -196,6 +197,9 @@ static int __devinit omap34xx_bridge_probe(struct platform_device *pdev)
 	struct dspbridge_platform_data *pdata = pdev->dev.platform_data;
 
 	omap_dspbridge_dev = pdev;
+
+	/* Global bridge device */
+	bridge = &omap_dspbridge_dev->dev;
 
 	/* use 2.6 device model */
 	result = alloc_chrdev_region(&dev, 0, 1, driver_name);
