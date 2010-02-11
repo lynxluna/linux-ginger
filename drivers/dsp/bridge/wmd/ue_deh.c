@@ -189,9 +189,6 @@ void WMD_DEH_Notify(struct DEH_MGR *hDehMgr, u32 ulEventMask,
 	status = CFG_GetHostResources(
 			(struct CFG_DEVNODE *)DRV_GetFirstDevExtension(),
 			&resources);
-	if (DSP_FAILED(status))
-		DBG_Trace(DBG_LEVEL7,
-			 "**Failed to get Host Resources in MMU ISR **\n");
 
 	if (MEM_IsValidHandle(pDehMgr, SIGNATURE)) {
 		printk(KERN_INFO "WMD_DEH_Notify: ********** DEVICE EXCEPTION "
