@@ -573,12 +573,11 @@ static int imx046_set_virtual_id(struct i2c_client *client, u32 id)
 static int imx046_set_framerate(struct v4l2_int_device *s,
 						struct v4l2_fract *fper)
 {
-	int i, err = 0;
+	int err = 0;
 	u16 isize = isize_current;
 	u32 frame_length_lines, line_time_q8;
 	struct imx046_sensor *sensor = s->priv;
 	struct imx046_sensor_settings *ss;
-	struct vcontrol *lvc;
 
 	if ((fper->numerator == 0) || (fper->denominator == 0)) {
 		/* supply a default nominal_timeperframe */
