@@ -439,7 +439,7 @@ DSP_STATUS sm_interrupt_dsp(struct WMD_DEV_CONTEXT *pDevContext,
 		status = DSP_EFAIL;
 	}
 
-	DBG_Trace(DBG_LEVEL3, "writing %x to Mailbox\n", wMbVal);
+	dev_dbg(bridge, "MBX: writing %x to Mailbox\n", wMbVal);
 	return DSP_SOK;
 }
 
