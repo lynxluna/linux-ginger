@@ -83,9 +83,8 @@ irqreturn_t  MMU_FaultIsr(int irq, IN void *pRefData)
 			 (struct CFG_DEVNODE *)DRV_GetFirstDevExtension(),
 			 &resources);
 		if (DSP_FAILED(status))
-			DBG_Trace(DBG_LEVEL7,
-				 "**Failed to get Host Resources "
-				 "in MMU ISR **\n");
+			dev_dbg(bridge, "%s: Failed to get Host Resources\n",
+								__func__);
 		if (MMU_CheckIfFault(pDevContext)) {
 			printk(KERN_INFO "***** DSPMMU FAULT ***** IRQStatus "
 				"0x%x\n", dmmuEventMask);
@@ -132,8 +131,8 @@ static bool MMU_CheckIfFault(struct WMD_DEV_CONTEXT *pDevContext)
 	status = CFG_GetHostResources(
 		(struct CFG_DEVNODE *)DRV_GetFirstDevExtension(), &resources);
 	if (DSP_FAILED(status))
-		DBG_Trace(DBG_LEVEL7, "**Failed to get Host Resources in "
-			 "MMU_CheckIfFault **\n");
+		dev_dbg(bridge, "%s: Failed to get Host Resources in\n",
+								__func__);
 
 	hwStatus = HW_MMU_EventStatus(resources.dwDmmuBase, &dmmuEventMask);
 	if (dmmuEventMask  ==  HW_MMU_TRANSLATION_FAULT) {

@@ -370,9 +370,8 @@ DSP_STATUS WMD_IO_OnLoaded(struct IO_MGR *hIOMgr)
 	/* Get total length in bytes */
 	ulShmLength = (ulShmLimit - ulShmBase + 1) * hIOMgr->uWordSize;
 	/* Calculate size of a PROCCOPY shared memory region */
-	DBG_Trace(DBG_LEVEL7,
-		 "**(proc)PROCCOPY SHMMEM SIZE: 0x%x bytes\n",
-		  (ulShmLength - sizeof(struct SHM)));
+	dev_dbg(bridge, "%s: (proc)proccopy shmmem size: 0x%x bytes\n",
+				__func__, (ulShmLength - sizeof(struct SHM)));
 
 	if (DSP_SUCCEEDED(status)) {
 		/* Get start and length of message part of shared memory */
@@ -448,11 +447,11 @@ DSP_STATUS WMD_IO_OnLoaded(struct IO_MGR *hIOMgr)
 			if (ulPadSize == ulPageAlignSize)
 				ulPadSize = 0x0;
 
-		 DBG_Trace(DBG_LEVEL7, "ulGppPa %x, ulGppVa %x, ulDspVa %x, "
-			  "ulShm0End %x, ulDynExtBase %x, ulExtEnd %x, "
-			  "ulSegSize %x ulSeg1Size %x \n", ulGppPa, ulGppVa,
-			  ulDspVa, ulShm0End, ulDynExtBase, ulExtEnd, ulSegSize,
-			  ulSeg1Size);
+		 dev_dbg(bridge, "%s: ulGppPa %x, ulGppVa %x, ulDspVa %x, "
+				"ulShm0End %x, ulDynExtBase %x, ulExtEnd %x, "
+				"ulSegSize %x ulSeg1Size %x \n", __func__,
+				ulGppPa, ulGppVa, ulDspVa, ulShm0End,
+				ulDynExtBase, ulExtEnd, ulSegSize, ulSeg1Size);
 
 		if ((ulSegSize + ulSeg1Size + ulPadSize) >
 		   hostRes.dwMemLength[1]) {
@@ -488,7 +487,7 @@ DSP_STATUS WMD_IO_OnLoaded(struct IO_MGR *hIOMgr)
 		 * aligned.
 		 */
 		allBits = paCurr | vaCurr;
-		DBG_Trace(DBG_LEVEL1, "allBits %x, paCurr %x, vaCurr %x, "
+		dev_dbg(bridge, "allBits %x, paCurr %x, vaCurr %x, "
 			 "numBytes %x\n", allBits, paCurr, vaCurr, numBytes);
 		for (i = 0; i < 4; i++) {
 			if ((numBytes >= pgSize[i]) && ((allBits &
@@ -524,7 +523,7 @@ DSP_STATUS WMD_IO_OnLoaded(struct IO_MGR *hIOMgr)
 		 * aligned.
 		 */
 		allBits = paCurr | vaCurr;
-		DBG_Trace(DBG_LEVEL1, "allBits for Seg1 %x, paCurr %x, "
+		dev_dbg(bridge, "allBits for Seg1 %x, paCurr %x, "
 			 "vaCurr %x, numBytes %x\n", allBits, paCurr, vaCurr,
 			 numBytes);
 		for (i = 0; i < 4; i++) {
@@ -548,8 +547,8 @@ DSP_STATUS WMD_IO_OnLoaded(struct IO_MGR *hIOMgr)
 				aEProc[ndx].endianism = HW_LITTLE_ENDIAN;
 				aEProc[ndx].elemSize = HW_ELEM_SIZE_16BIT;
 				aEProc[ndx].mixedMode = HW_MMU_CPUES;
-				DBG_Trace(DBG_LEVEL1, "SHM MMU TLB entry PA %lx"
-					 " VA %lx DSP_VA %lx Size %lx\n",
+				dev_dbg(bridge, "SHM MMU TLB entry PA %x"
+					 " VA %x DSP_VA %x Size %x\n",
 					 aEProc[ndx].ulGppPa,
 					 aEProc[ndx].ulGppVa,
 					 aEProc[ndx].ulDspVa *
@@ -559,8 +558,8 @@ DSP_STATUS WMD_IO_OnLoaded(struct IO_MGR *hIOMgr)
 				status = hIOMgr->pIntfFxns->pfnBrdMemMap(
 				hIOMgr->hWmdContext, paCurr, vaCurr, pgSize[i],
 					mapAttrs);
-				DBG_Trace(DBG_LEVEL1, "SHM MMU PTE entry PA %lx"
-					 " VA %lx DSP_VA %lx Size %lx\n",
+				dev_dbg(bridge, "SHM MMU PTE entry PA %x"
+					 " VA %x DSP_VA %x Size %x\n",
 					 aEProc[ndx].ulGppPa,
 					 aEProc[ndx].ulGppVa,
 					 aEProc[ndx].ulDspVa *
@@ -595,7 +594,7 @@ DSP_STATUS WMD_IO_OnLoaded(struct IO_MGR *hIOMgr)
 				0x100000 / hIOMgr->uWordSize && hIOMgr->
 				extProcInfo.tyTlb[i].ulDspVirt
 				<= ulDspVa + ulSegSize / hIOMgr->uWordSize)) {
-			DBG_Trace(DBG_LEVEL7, "CDB MMU entry %d conflicts with "
+			dev_dbg(bridge, "CDB MMU entry %d conflicts with "
 				 "SHM.\n\tCDB: GppPa %x, DspVa %x.\n\tSHM: "
 				 "GppPa %x, DspVa %x, Bytes %x.\n", i,
 				 hIOMgr->extProcInfo.tyTlb[i].ulGppPhys,
@@ -611,7 +610,7 @@ DSP_STATUS WMD_IO_OnLoaded(struct IO_MGR *hIOMgr)
 				aEProc[ndx].ulGppVa = 0;
 				/* Can't convert, so set to zero */
 				aEProc[ndx].ulSize = 0x100000; 	/* 1 MB */
-				DBG_Trace(DBG_LEVEL1, "SHM MMU entry PA %x "
+				dev_dbg(bridge, "SHM MMU entry PA %x "
 					 "DSP_VA 0x%x\n", aEProc[ndx].ulGppPa,
 					aEProc[ndx].ulDspVa);
 				ndx++;
@@ -713,15 +712,15 @@ DSP_STATUS WMD_IO_OnLoaded(struct IO_MGR *hIOMgr)
 	hIOMgr->pMsgOutput = (u8 *)hIOMgr->pMsgOutputCtrl + sizeof(struct MSG);
 	hMsgMgr->uMaxMsgs = ((u8 *)hIOMgr->pMsgOutputCtrl - hIOMgr->pMsgInput)
 						/ sizeof(struct MSG_DSPMSG);
-	DBG_Trace(DBG_LEVEL7, "IO MGR SHM details : pSharedMem 0x%x, "
-		"pInput 0x%x, pOutput 0x%x, pMsgInputCtrl 0x%x, "
-		"pMsgInput 0x%x, pMsgOutputCtrl 0x%x, pMsgOutput "
-		"0x%x \n", (u8 *)hIOMgr->pSharedMem, (u8 *)hIOMgr->pInput,
-		(u8 *)hIOMgr->pOutput, (u8 *)hIOMgr->pMsgInputCtrl,
-		(u8 *)hIOMgr->pMsgInput, (u8 *)hIOMgr->pMsgOutputCtrl,
-		(u8 *)hIOMgr->pMsgOutput);
-	DBG_Trace(DBG_LEVEL7, "** (proc) MAX MSGS IN SHARED MEMORY: "
-					"0x%x\n", hMsgMgr->uMaxMsgs);
+	dev_dbg(bridge, "IO MGR SHM details: pSharedMem %p, pInput %p, "
+			"pOutput %p, pMsgInputCtrl %p, pMsgInput %p, "
+			"pMsgOutputCtrl %p, pMsgOutput %p\n",
+			(u8 *)hIOMgr->pSharedMem, hIOMgr->pInput,
+			hIOMgr->pOutput, (u8 *)hIOMgr->pMsgInputCtrl,
+			hIOMgr->pMsgInput, (u8 *)hIOMgr->pMsgOutputCtrl,
+			hIOMgr->pMsgOutput);
+	dev_dbg(bridge, "(proc) Mas msgs in shared memory: 0x%x\n",
+							hMsgMgr->uMaxMsgs);
 	memset((void *) hIOMgr->pSharedMem, 0, sizeof(struct SHM));
 
 #ifndef DSP_TRACEBUF_DISABLED
@@ -856,8 +855,7 @@ static void IO_DispatchPM(struct IO_MGR *pIOMgr)
 
 	/* Send the command to the WMD clk/pwr manager to handle */
 	if (pArg[0] ==  MBX_PM_HIBERNATE_EN) {
-		DBG_Trace(DBG_LEVEL7, "IO_DispatchPM : Hibernate "
-			 "command\n");
+		dev_dbg(bridge, "PM: Hibernate command\n");
 		status = pIOMgr->pIntfFxns->pfnDevCntrl(pIOMgr->
 			 hWmdContext, WMDIOCTL_PWR_HIBERNATE, pArg);
 		if (DSP_FAILED(status))
@@ -865,26 +863,21 @@ static void IO_DispatchPM(struct IO_MGR *pIOMgr)
 							__func__, status);
 	} else if (pArg[0] == MBX_PM_OPP_REQ) {
 		pArg[1] = pIOMgr->pSharedMem->oppRequest.rqstOppPt;
-		DBG_Trace(DBG_LEVEL7, "IO_DispatchPM : Value of OPP "
-			 "value =0x%x \n", pArg[1]);
+		dev_dbg(bridge, "PM: Requested OPP = 0x%x\n", pArg[1]);
 		status = pIOMgr->pIntfFxns->pfnDevCntrl(pIOMgr->
 			 hWmdContext, WMDIOCTL_CONSTRAINT_REQUEST,
 			 pArg);
-		if (DSP_FAILED(status)) {
-			DBG_Trace(DBG_LEVEL7, "IO_DispatchPM : Failed "
-				 "to set constraint = 0x%x \n",
-				 pArg[1]);
-		}
+		if (DSP_FAILED(status))
+			dev_dbg(bridge, "PM: Failed to set constraint "
+							"= 0x%x \n", pArg[1]);
 	} else {
-		DBG_Trace(DBG_LEVEL7, "IO_DispatchPM - clock control - "
-			 "value of msg = 0x%x: \n", pArg[0]);
+		dev_dbg(bridge, "PM: clk control value of msg = 0x%x\n",
+								pArg[0]);
 		status = pIOMgr->pIntfFxns->pfnDevCntrl(pIOMgr->
 			 hWmdContext, WMDIOCTL_CLK_CTRL, pArg);
-		if (DSP_FAILED(status)) {
-			DBG_Trace(DBG_LEVEL7, "IO_DispatchPM : Failed "
-				 "to control the DSP clk = 0x%x \n",
-				 *pArg);
-		}
+		if (DSP_FAILED(status))
+			dev_dbg(bridge, "PM: Failed to ctrl the DSP clk"
+							"= 0x%x\n", *pArg);
 	}
 }
 
@@ -965,7 +958,7 @@ void io_mbox_msg(u32 msg)
 		return;
 
 	io_mgr->wIntrVal = (u16)msg;
-	DBG_Trace(DBG_LEVEL3, "io_mbox_msg %x\n", io_mgr->wIntrVal);
+	dev_dbg(bridge, "MBX: %s message %x\n", __func__, io_mgr->wIntrVal);
 	if (io_mgr->wIntrVal & MBX_PM_CLASS)
 		IO_DispatchPM(io_mgr);
 
@@ -1244,7 +1237,7 @@ static void InputMsg(struct IO_MGR *pIOMgr, struct MSG_MGR *hMsgMgr)
 
 		/* Determine which queue to put the message in */
 		hMsgQueue = (struct MSG_QUEUE *)LST_First(hMsgMgr->queueList);
-		DBG_Trace(DBG_LEVEL7, "InputMsg RECVD: dwCmd=0x%x dwArg1=0x%x "
+		dev_dbg(bridge, "input msg: dwCmd=0x%x dwArg1=0x%x "
 			 "dwArg2=0x%x dwId=0x%x \n", msg.msg.dwCmd,
 			 msg.msg.dwArg1, msg.msg.dwArg2, msg.dwId);
 		/*
@@ -1691,35 +1684,30 @@ DSP_STATUS IO_SHMsetting(struct IO_MGR *hIOMgr, u8 desc, void *pArgs)
 		for (i = 0; i <= pdata->dsp_num_speeds; i++) {
 			hIOMgr->pSharedMem->oppTableStruct.oppPoint[i].voltage =
 				pdata->dsp_freq_table[i].u_volts;
-			DBG_Trace(DBG_LEVEL5, "OPP shared memory -voltage: "
-				 "%d\n", hIOMgr->pSharedMem->oppTableStruct.
-				 oppPoint[i].voltage);
+			dev_dbg(bridge, "OPP-SHM: voltage: %lx\n",
+				pdata->dsp_freq_table[i].u_volts);
 			hIOMgr->pSharedMem->oppTableStruct.oppPoint[i].
 				frequency = pdata->dsp_freq_table[i].dsp_freq;
-			DBG_Trace(DBG_LEVEL5, "OPP shared memory -frequency: "
-				 "%d\n", hIOMgr->pSharedMem->oppTableStruct.
-				 oppPoint[i].frequency);
+			dev_dbg(bridge, "OPP-SHM: frequency: %lx\n",
+				pdata->dsp_freq_table[i].dsp_freq);
 			hIOMgr->pSharedMem->oppTableStruct.oppPoint[i].minFreq =
 				pdata->dsp_freq_table[i].thresh_min_freq;
-			DBG_Trace(DBG_LEVEL5, "OPP shared memory -min value: "
-				 "%d\n", hIOMgr->pSharedMem->oppTableStruct.
-				  oppPoint[i].minFreq);
+			dev_dbg(bridge, "OPP-SHM: min freq: %lx\n",
+				pdata->dsp_freq_table[i].thresh_min_freq);
 			hIOMgr->pSharedMem->oppTableStruct.oppPoint[i].maxFreq =
 				pdata->dsp_freq_table[i].thresh_max_freq;
-			DBG_Trace(DBG_LEVEL5, "OPP shared memory -max value: "
-				 "%d\n", hIOMgr->pSharedMem->oppTableStruct.
-				 oppPoint[i].maxFreq);
+			dev_dbg(bridge, "OPP-SHM: max freq: %lx\n",
+				pdata->dsp_freq_table[i].thresh_max_freq);
 		}
 		hIOMgr->pSharedMem->oppTableStruct.numOppPts =
 			pdata->dsp_num_speeds;
-		DBG_Trace(DBG_LEVEL5, "OPP shared memory - max OPP number: "
-			 "%d\n", hIOMgr->pSharedMem->oppTableStruct.numOppPts);
+		dev_dbg(bridge, "OPP-SHM: max OPP number: %d\n",
+						pdata->dsp_num_speeds);
 		/* Update the current OPP number */
 		if (pdata->dsp_get_opp)
 			i = (*pdata->dsp_get_opp)();
 		hIOMgr->pSharedMem->oppTableStruct.currOppPt = i;
-		DBG_Trace(DBG_LEVEL7, "OPP value programmed to shared memory: "
-			 "%d\n", i);
+		dev_dbg(bridge, "OPP-SHM: value programmed = %d\n", i);
 		break;
 	case SHM_GETOPP:
 		/* Get the OPP that DSP has requested */
@@ -1744,7 +1732,7 @@ DSP_STATUS WMD_IO_GetProcLoad(IN struct IO_MGR *hIOMgr,
 	pProcStat->uCurrDspFreq = hIOMgr->pSharedMem->loadMonInfo.currDspFreq;
 	pProcStat->uPredictedFreq = hIOMgr->pSharedMem->loadMonInfo.predDspFreq;
 
-	DBG_Trace(DBG_LEVEL4, "Curr Load =%d, Pred Load = %d, Curr Freq = %d, "
+	dev_dbg(bridge, "Curr Load = %d, Pred Load = %d, Curr Freq = %d, "
 			     "Pred Freq = %d\n", pProcStat->uCurrLoad,
 			     pProcStat->uPredictedLoad, pProcStat->uCurrDspFreq,
 			     pProcStat->uPredictedFreq);
