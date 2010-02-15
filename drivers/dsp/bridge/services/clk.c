@@ -135,10 +135,8 @@ bool CLK_Init(void)
 			     SERVICES_Clks[i].clk_name);
 
 		if (!clk_handle) {
-			GT_2trace(CLK_debugMask, GT_7CLASS,
-				  "CLK_Init: failed to get Clk handle %s, "
-				  "CLK dev id = %s\n",
-				  SERVICES_Clks[i].clk_name,
+			pr_err("%s: failed to get clk handle %s, dev id = %s\n",
+				  __func__, SERVICES_Clks[i].clk_name,
 				  SERVICES_Clks[i].dev);
 			/* should we fail here?? */
 		}
@@ -205,8 +203,7 @@ DSP_STATUS CLK_Set_32KHz(IN enum SERVICES_ClkId clk_id)
 	pClk = SERVICES_Clks[clk_id].clk_handle;
 	if (pClk) {
 		if (!(clk_set_parent(pClk, pClkParent) == 0x0)) {
-			GT_2trace(CLK_debugMask, GT_7CLASS, "CLK_Set_32KHz: "
-				"Failed to set to 32KHz %s, CLK dev id = %s\n",
+			pr_err("%s: failed for %s, dev id = %s\n", __func__,
 				SERVICES_Clks[clk_id].clk_name,
 				SERVICES_Clks[clk_id].dev);
 			status = DSP_EFAIL;
@@ -279,10 +276,9 @@ DSP_STATUS CLK_GetRate(IN enum SERVICES_ClkId clk_id, u32 *speedKhz)
 			  "CLK_GetRate: clkSpeedHz = %d , "
 			 "speedinKhz=%d\n", clkSpeedHz, *speedKhz);
 	} else {
-		GT_2trace(CLK_debugMask, GT_7CLASS,
-			 "CLK_GetRate: failed to get CLK %s, "
-			 "CLK dev Id = %s\n", SERVICES_Clks[clk_id].clk_name,
-			 SERVICES_Clks[clk_id].dev);
+		pr_err("%s: failed to get %s, dev Id = %s\n", __func__,
+						SERVICES_Clks[clk_id].clk_name,
+						SERVICES_Clks[clk_id].dev);
 		status = DSP_EFAIL;
 	}
 	return status;
@@ -301,10 +297,9 @@ s32 CLK_Get_UseCnt(IN enum SERVICES_ClkId clk_id)
 		/* FIXME: usecount shouldn't be used */
 		useCount = pClk->usecount;
 	} else {
-		GT_2trace(CLK_debugMask, GT_7CLASS,
-			 "CLK_GetRate: failed to get CLK %s, "
-			 "CLK dev Id = %s\n", SERVICES_Clks[clk_id].clk_name,
-			 SERVICES_Clks[clk_id].dev);
+		pr_err("%s: failed to get %s, dev Id = %s\n", __func__,
+						SERVICES_Clks[clk_id].clk_name,
+						SERVICES_Clks[clk_id].dev);
 		status = DSP_EFAIL;
 	}
 	return useCount;
