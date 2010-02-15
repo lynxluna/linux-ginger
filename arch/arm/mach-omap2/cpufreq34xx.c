@@ -73,9 +73,9 @@ static struct omap_opp_def __initdata omap36xx_mpu_rate_table[] = {
 	/* OPP2 - OPP100 */
 	OMAP_OPP_DEF(true,  600000000, 1100000),
 	/* OPP3 - OPP-Turbo */
-	OMAP_OPP_DEF(true, 800000000, 1260000),
+	OMAP_OPP_DEF(false, 800000000, 1260000),
 	/* OPP4 - OPP-SB */
-	OMAP_OPP_DEF(true, 1000000000, 1350000),
+	OMAP_OPP_DEF(false, 1000000000, 1350000),
 	/* Terminator */
 	OMAP_OPP_DEF(0, 0, 0)
 };
@@ -95,9 +95,9 @@ static struct omap_opp_def __initdata omap36xx_dsp_rate_table[] = {
 	/* OPP2 - OPP100 */
 	OMAP_OPP_DEF(true,  520000000, 1100000),
 	/* OPP3 - OPP-Turbo */
-	OMAP_OPP_DEF(true, 660000000, 1260000),
+	OMAP_OPP_DEF(false, 660000000, 1260000),
 	/* OPP4 - OPP-SB */
-	OMAP_OPP_DEF(true, 800000000, 1350000),
+	OMAP_OPP_DEF(false, 800000000, 1350000),
 	/* Terminator */
 	OMAP_OPP_DEF(0, 0, 0)
 };
@@ -115,6 +115,26 @@ void __init omap3_pm_init_opp_table(void)
 		omap36xx_l3_rate_table,
 		omap36xx_dsp_rate_table
 	};
+
+	/*
+	* HACK: Just for SW Tiering purpose. Need to be replaced with dynamic
+	* CPU speed detection once available.
+	*/
+	switch (omap_rev_id()) {
+	case OMAP_3630:
+		break;
+	case OMAP_3630_800:
+		omap36xx_mpu_rate_table[2].enabled = true;
+		omap36xx_dsp_rate_table[2].enabled = true;
+		break;
+	case OMAP_3630_1000:
+	default:
+		omap36xx_mpu_rate_table[2].enabled = true;
+		omap36xx_dsp_rate_table[2].enabled = true;
+		omap36xx_mpu_rate_table[3].enabled = true;
+		omap36xx_dsp_rate_table[3].enabled = true;
+		break;
+	}
 
 	omap3_opp_def_list = cpu_is_omap3630() ? omap36xx_opp_def_list :
 				omap34xx_opp_def_list;
