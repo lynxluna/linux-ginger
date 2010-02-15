@@ -432,6 +432,7 @@ int sr_enable(int srid, u32 target_opp_no)
 
 	nvalue_reciprocal = pdata->sr_nvalue[target_opp_no - 1];
 	if (nvalue_reciprocal == 0) {
+		sr->is_sr_reset = 1;
 		pr_notice("OPP%d doesn't support SmartReflex\n",
 								target_opp_no);
 		return false;
