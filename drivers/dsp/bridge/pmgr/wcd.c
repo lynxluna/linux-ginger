@@ -183,11 +183,8 @@ static inline void __cp_fm_usr(void *to, const void __user *from,
 		return;
 	}
 
-	if (unlikely(copy_from_user(to, from, bytes))) {
-		GT_2trace(WCD_debugMask, GT_7CLASS,
-			  "%s failed, from=0x%08x\n", __func__, from);
+	if (unlikely(copy_from_user(to, from, bytes)))
 		*err = DSP_EPOINTER;
-	}
 }
 #define cp_fm_usr(to, from, err, n)				\
 	__cp_fm_usr(to, from, &(err), (n) * sizeof(*(to)))
@@ -203,11 +200,8 @@ static inline void __cp_to_usr(void __user *to, const void *from,
 		return;
 	}
 
-	if (unlikely(copy_to_user(to, from, bytes))) {
-		GT_2trace(WCD_debugMask, GT_7CLASS,
-			  "%s failed, to=0x%08x\n", __func__, to);
+	if (unlikely(copy_to_user(to, from, bytes)))
 		*err = DSP_EPOINTER;
-	}
 }
 #define cp_to_usr(to, from, err, n)				\
 	__cp_to_usr(to, from, &(err), (n) * sizeof(*(from)))
@@ -411,15 +405,10 @@ DSP_STATUS WCD_InitComplete2(void)
 
 		if ((devType == DSP_UNIT) || (devType == IVA_UNIT)) {
 			if (DSP_FAILED(PROC_AutoStart(DevNode, hDevObject))) {
-				GT_0trace(WCD_debugMask, GT_1CLASS,
-					 "WCD_InitComplete2 Failed\n");
 				status = DSP_EFAIL;
 				/* break; */
 			}
-		} else
-			GT_1trace(WCD_debugMask, GT_ENTER,
-				 "Ignoring PROC_AutoStart "
-				 "for Device Type = 0x%x \n", devType);
+		}
 	}			/* End For Loop */
 
 	return status;
