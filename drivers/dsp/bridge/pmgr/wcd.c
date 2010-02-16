@@ -78,9 +78,6 @@ struct WCD_Cmd {
 } ;
 
 /*  ----------------------------------- Globals */
-#if GT_TRACE
-static struct GT_Mask WCD_debugMask = { NULL, NULL };	/* Core VxD Mask */
-#endif
 static u32 WCD_cRefs;
 
 /*
@@ -304,9 +301,6 @@ bool WCD_Init(void)
 	bool fMGR, fPROC, fNODE, fDISP, fSTRM, fRMM;
 
 	if (WCD_cRefs == 0) {
-		/* initialize debugging module */
-		DBC_Assert(!WCD_debugMask.flags);
-		GT_create(&WCD_debugMask, "CD");    /* CD for class driver */
 		/* initialize class driver and other modules */
 		fDRV = DRV_Init();
 		fMGR = MGR_Init();
