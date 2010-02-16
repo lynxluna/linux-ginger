@@ -309,6 +309,7 @@ static int _prcm_int_handle_wakeup(void)
 static irqreturn_t prcm_interrupt_handler (int irq, void *dev_id)
 {
 	u32 irqstatus_mpu;
+	u32 irq_handling = OMAP3430_WKUP_ST | OMAP3430_IO_ST;
 	int c = 0;
 
 	do {
@@ -329,11 +330,11 @@ static irqreturn_t prcm_interrupt_handler (int irq, void *dev_id)
 			WARN(1, "prcm: WARNING: PRCM interrupt received, but "
 			     "no code to handle it (%08x)\n", irqstatus_mpu);
 		}
-
 		prm_write_mod_reg(irqstatus_mpu, OCP_MOD,
 					OMAP3_PRM_IRQSTATUS_MPU_OFFSET);
 
-	} while (prm_read_mod_reg(OCP_MOD, OMAP3_PRM_IRQSTATUS_MPU_OFFSET));
+	} while (prm_read_mod_reg(OCP_MOD, OMAP3_PRM_IRQSTATUS_MPU_OFFSET)
+		& irq_handling);
 
 	return IRQ_HANDLED;
 }
