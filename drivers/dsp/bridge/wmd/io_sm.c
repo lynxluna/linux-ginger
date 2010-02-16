@@ -35,7 +35,6 @@
 
 /* Trace & Debug */
 #include <dspbridge/dbc.h>
-#include <dspbridge/dbg.h>
 
 /* Services Layer */
 #include <dspbridge/cfg.h>
@@ -69,7 +68,6 @@
 /* This */
 #include <dspbridge/io_sm.h>
 #include "_msg_sm.h"
-#include <dspbridge/gt.h>
 
 /* Defines, Data Structures, Typedefs */
 #define OUTPUTNOTREADY  0xffff
