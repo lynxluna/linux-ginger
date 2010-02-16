@@ -35,10 +35,6 @@
 #include <dspbridge/reg.h>
 #include <regsup.h>
 
-#if GT_TRACE
-struct GT_Mask REG_debugMask = { NULL, NULL };	/* GT trace var. */
-#endif
-
 /*
  *  ======== REG_DeleteValue ========
  *  Deletes a registry entry value.  NOTE:  A registry entry value is not the
@@ -117,8 +113,6 @@ DSP_STATUS REG_GetValue(IN CONST char *pstrValue, OUT u8 *pbData,
 bool REG_Init(void)
 {
 	bool fInit;
-
-	GT_create(&REG_debugMask, "RG");	/* RG for ReG */
 
 	fInit = regsupInit();
 
