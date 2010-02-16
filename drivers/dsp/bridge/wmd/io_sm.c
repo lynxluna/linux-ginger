@@ -1943,8 +1943,7 @@ DSP_STATUS PrintDspTraceBuffer(struct WMD_DEV_CONTEXT *hWmdContext)
 			if (DSP_SUCCEEDED(status)) {
 				/* Pack and do newline conversion */
 				PackTraceBuffer(pszBuf, ulNumBytes, ulNumWords);
-				GT_1trace(dsp_trace_mask, GT_1CLASS,
-					"DSP Trace Buffer:\n%s\n", pszBuf);
+				pr_info("%s:\n%s\n", __func__, pszBuf);
 			}
 			kfree(pszBuf);
 			kfree(lpszBuf);
