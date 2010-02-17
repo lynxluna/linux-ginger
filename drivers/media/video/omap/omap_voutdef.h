@@ -25,12 +25,12 @@
 #define YUYV_VRFB_BPP   2
 #define RGB_VRFB_BPP    1
 #define MAX_CID		3
-#define MAC_VRFB_CTXS	4
+#define MAC_VRFB_CTXS	6
 #define MAX_VOUT_DEV	2
 #define MAX_OVLS	3
 #define MAX_DISPLAYS	3
 #define MAX_MANAGERS	3
-
+#define OMAP_VOUT_MAX_BUFFERS  6
 /* Enum for Rotation
  * DSS understands rotation in 0, 1, 2, 3 context
  * while V4L2 driver understands it as 0, 90, 180, 270
