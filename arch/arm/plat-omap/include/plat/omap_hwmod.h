@@ -294,7 +294,7 @@ struct omap_hwmod_sysconfig {
 	u16 sysc_offs;
 	u16 syss_offs;
 	u8 idlemodes;
-	u8 sysc_flags;
+	u16 sysc_flags;
 	u8 clockact;
 	struct omap_hwmod_sysc_fields *sysc_fields;
 };
@@ -317,9 +317,9 @@ struct omap_hwmod_sysconfig {
 struct omap_hwmod_omap2_prcm {
 	s16 module_offs;
 	u8 prcm_reg_id;
-	u8 module_bit;
+	u32 module_bit;
 	u8 idlest_reg_id;
-	u8 idlest_idle_bit;
+	u32 idlest_idle_bit;
 	u8 idlest_stdby_bit;
 };
 
