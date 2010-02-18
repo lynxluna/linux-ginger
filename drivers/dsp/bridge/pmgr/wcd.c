@@ -1054,12 +1054,13 @@ u32 PROCWRAP_ReserveMemory(union Trapped_Args *args, void *pr_ctxt)
 
 	GT_0trace(WCD_debugMask, GT_ENTER, "PROCWRAP_ReserveMemory: entered\n");
 	status = PROC_ReserveMemory(args->ARGS_PROC_RSVMEM.hProcessor,
-				   args->ARGS_PROC_RSVMEM.ulSize, &pRsvAddr);
+				   args->ARGS_PROC_RSVMEM.ulSize, &pRsvAddr,
+				   pr_ctxt);
 	if (DSP_SUCCEEDED(status)) {
 		if (put_user(pRsvAddr, args->ARGS_PROC_RSVMEM.ppRsvAddr)) {
 			status = DSP_EINVALIDARG;
 			PROC_UnReserveMemory(args->ARGS_PROC_RSVMEM.hProcessor,
-				pRsvAddr);
+				pRsvAddr, pr_ctxt);
 		}
 	}
 	return status;
@@ -1100,7 +1101,7 @@ u32 PROCWRAP_UnReserveMemory(union Trapped_Args *args, void *pr_ctxt)
 	GT_0trace(WCD_debugMask, GT_ENTER,
 		 "PROCWRAP_UnReserveMemory: entered\n");
 	status = PROC_UnReserveMemory(args->ARGS_PROC_UNRSVMEM.hProcessor,
-				     args->ARGS_PROC_UNRSVMEM.pRsvAddr);
+			     args->ARGS_PROC_UNRSVMEM.pRsvAddr, pr_ctxt);
 	return status;
 }
 
