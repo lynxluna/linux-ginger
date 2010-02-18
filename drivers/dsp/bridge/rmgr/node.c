@@ -454,7 +454,7 @@ DSP_STATUS NODE_Allocate(struct PROC_OBJECT *hProcessor,
 	status = PROC_ReserveMemory(hProcessor,
 			pNode->createArgs.asa.taskArgs.uHeapSize + PAGE_SIZE,
 			(void **)&(pNode->createArgs.asa.taskArgs.
-				uDSPHeapResAddr));
+				uDSPHeapResAddr), pr_ctxt);
 	if (DSP_FAILED(status)) {
 		GT_1trace(NODE_debugMask, GT_5CLASS,
 			 "NODE_Allocate:Failed to reserve "
@@ -2726,7 +2726,8 @@ static void DeleteNode(struct NODE_OBJECT *hNode,
 					 " Status = 0x%x\n", (u32)status);
 			}
 			status = PROC_UnReserveMemory(hNode->hProcessor,
-					(void *)taskArgs.uDSPHeapResAddr);
+					(void *)taskArgs.uDSPHeapResAddr,
+					pr_ctxt);
 			if (DSP_SUCCEEDED(status)) {
 				GT_0trace(NODE_debugMask, GT_5CLASS,
 					 "DSPProcessor_UnReserveMemory "
