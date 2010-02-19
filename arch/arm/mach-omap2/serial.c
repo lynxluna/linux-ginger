@@ -799,7 +799,9 @@ void __init omap_serial_init_port(int port)
 	struct omap_uart_state *uart;
 	struct platform_device *pdev;
 	struct device *dev;
-
+#ifndef CONFIG_SERIAL_OMAP
+	struct plat_serial8250_port *p;
+#endif
 	BUG_ON(port < 0);
 	BUG_ON(port >= ARRAY_SIZE(omap_uart));
 
@@ -808,7 +810,7 @@ void __init omap_serial_init_port(int port)
 	dev = &pdev->dev;
 
 #ifndef CONFIG_SERIAL_OMAP
-	struct plat_serial8250_port *p = dev->platform_data;
+	p = dev->platform_data;
 	p->membase = uart->membase;
 	p->private_data = uart;
 #endif
