@@ -208,7 +208,7 @@ static int imx046_sensor_power_set(struct v4l2_int_device *s, enum v4l2_power po
 		 * 3280 x 2464 x 2Bpp x 7.5fps x 3 memory ops = 355163 KByte/s
 		 */
 #ifdef CONFIG_OMAP_PM_SRF
-		omap_pm_set_min_bus_tput(vdev->cam->isp, OCP_INITIATOR_AGENT, 355163);
+		omap_pm_set_min_bus_tput(vdev->cam->isp, OCP_INITIATOR_AGENT, 450000);
 #endif
 
 		isp_csi2_reset(&isp->isp_csi2);
