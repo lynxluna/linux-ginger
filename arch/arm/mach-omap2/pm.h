@@ -24,6 +24,7 @@ extern void omap_sram_idle(void);
 extern int omap3_can_sleep(void);
 extern int set_pwrdm_state(struct powerdomain *pwrdm, u32 state);
 extern int omap3_idle_init(void);
+extern void vfp_pm_save_context(void);
 
 struct cpuidle_params {
 	u8  valid;
