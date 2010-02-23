@@ -24,4 +24,8 @@ config PANEL_NEC_NL8048HL11_01B
         help
           LCD Panel used in the Zoom boards
 
+config SIL9022
+        tristate "SIL9022 HDMI driver"
+        help
+          HDMI Driver
 endmenu
