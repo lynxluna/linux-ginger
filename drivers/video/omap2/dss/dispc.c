@@ -2675,7 +2675,7 @@ int omap_dispc_lpr_enable(void)
 
 	/* Cannot enable lpr if DSS is inactive */
 	if (!gfx_in_use) {
-		DSSDBG("\nGRX plane in use\n");
+		DSSDBG("\nGRX plane not in use\n");
 		return -EBUSY;
 	}
 
@@ -2716,13 +2716,7 @@ int omap_dispc_lpr_enable(void)
 
 	dispc_enable_fifomerge(1);
 
-	/* Enable LCD */
-	dispc_enable_lcd_out(1);
-
 	spin_unlock_irqrestore(&dispc.lpr_lock, flags);
-
-	/* Let LPR settings take an effect */
-	dispc_go(ovl->manager->id);
 
 	lpr_enabled = 1;
 
@@ -2740,9 +2734,6 @@ int omap_dispc_lpr_disable(void)
 	struct omap_overlay *ovl;
 	u32 fifo_low, fifo_high;
 	enum omap_burst_size burst_size;
-
-	if (!gfx_in_use)
-		return -EBUSY;
 
 	spin_lock_irqsave(&dispc.lpr_lock, flags);
 
@@ -2764,9 +2755,6 @@ int omap_dispc_lpr_disable(void)
 	lpr_enabled = 0;
 
 	spin_unlock_irqrestore(&dispc.lpr_lock, flags);
-
-	/* Let DSS take an effect */
-	dispc_go(ovl->manager->id);
 
 	return 0;
 }
@@ -3189,6 +3177,20 @@ void dispc_exit(void)
 	iounmap(dispc.base);
 }
 
+static void dispc_lpr_mode()
+{
+	bool gfx, vid1, vid2;
+
+	gfx = REG_GET(dispc_reg_att[0], 0, 0);
+	vid1 = REG_GET(dispc_reg_att[1], 0, 0);
+	vid2 = REG_GET(dispc_reg_att[2], 0, 0);
+
+	if (gfx && !vid1 && !vid2)
+		omap_dispc_lpr_enable();
+	else
+		omap_dispc_lpr_disable();
+}
+
 int dispc_enable_plane(enum omap_plane plane, bool enable)
 {
 	DSSDBG("dispc_enable_plane %d, %d\n", plane, enable);
@@ -3202,6 +3204,7 @@ int dispc_enable_plane(enum omap_plane plane, bool enable)
 		else
 			gfx_in_use = 0;
 	}
+	dispc_lpr_mode();
 
 	enable_clocks(0);
 
