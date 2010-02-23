@@ -1335,6 +1335,8 @@ static void serial8250_start_tx(struct uart_port *port)
 	struct uart_8250_port *up = (struct uart_8250_port *)port;
 
 	if (!(up->ier & UART_IER_THRI)) {
+		serial_omap_uart_check_clk(up->port.line);
+
 		up->ier |= UART_IER_THRI;
 		serial_out(up, UART_IER, up->ier);
 

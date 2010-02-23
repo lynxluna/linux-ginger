@@ -558,6 +558,18 @@ int omap_uart_can_sleep(void)
 	return can_sleep;
 }
 
+void serial_omap_uart_check_clk(int num)
+{
+	struct omap_uart_state *uart;
+
+	list_for_each_entry(uart, &uart_list, node) {
+		if (num == uart->num) {
+			if (!uart->clocked)
+				omap_uart_block_sleep(uart);
+			}
+	}
+}
+
 /**
  * omap_uart_interrupt()
  *
