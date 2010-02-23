@@ -1608,7 +1608,9 @@ int isppreview_try_pipeline(struct isp_prev_device *isp_prev,
 	/* output width must be even */
 	pipe->prv_out_w_img &= ~1;
 
-	if (pipe->modules == (OMAP_ISP_CCDC | OMAP_ISP_PREVIEW)) {
+	if (((pipe->modules & (OMAP_ISP_CCDC | OMAP_ISP_PREVIEW)) ==
+		(OMAP_ISP_CCDC | OMAP_ISP_PREVIEW)) &&
+		((pipe->modules & OMAP_ISP_RESIZER) != OMAP_ISP_RESIZER)) {
 		left_boundary = ALIGN(pipe->prv_out_w_img - 0x20, 0x20);
 		right_boundary = ALIGN(pipe->prv_out_w_img, 0x20);
 		if (wanted_width >= left_boundary &&
