@@ -48,6 +48,11 @@
 #include <dspbridge/wcdioctl.h>
 #include <dspbridge/_dcd.h>
 #include <dspbridge/dspdrv.h>
+#ifdef CONFIG_BRIDGE_WDT3
+#include <dspbridge/clk.h>
+#include <dspbridge/io_sm.h>
+#include <_tiomap.h>
+#endif
 
 /*  ----------------------------------- Resource Manager */
 #include <dspbridge/pwr.h>
@@ -99,6 +104,11 @@ struct omap34xx_bridge_suspend_data {
 };
 
 static struct omap34xx_bridge_suspend_data bridge_suspend_data;
+
+#ifdef CONFIG_BRIDGE_WDT3
+static void bridge_create_sysfs(void);
+static void bridge_destroy_sysfs(void);
+#endif
 
 static int omap34xxbridge_suspend_lockout(
 		struct omap34xx_bridge_suspend_data *s, struct file *f)
@@ -214,7 +224,9 @@ static int __devinit omap34xx_bridge_probe(struct platform_device *pdev)
 
 	device_create(bridge_class, NULL, MKDEV(driver_major, 0),
 			NULL, "DspBridge");
-
+#ifdef CONFIG_BRIDGE_WDT3
+	bridge_create_sysfs();
+#endif
 #ifdef CONFIG_PM
 	/* Initialize the wait queue */
 	if (!status) {
@@ -335,6 +347,9 @@ func_cont:
 
 	SERVICES_Exit();
 
+#ifdef CONFIG_BRIDGE_WDT3
+	bridge_destroy_sysfs();
+#endif
 	devno = MKDEV(driver_major, 0);
 	cdev_del(&bridge_cdev);
 	unregister_chrdev_region(devno, 1);
@@ -534,6 +549,78 @@ DSP_STATUS DRV_RemoveAllResources(HANDLE hPCtxt)
 	return status;
 }
 
+
+#ifdef CONFIG_BRIDGE_WDT3
+static ssize_t wdt3_show(struct device *dev, struct device_attribute *attr,
+							char *buf)
+{
+	return sprintf(buf, "%d\n", (dsp_wdt_get_enable()) ? 1 : 0);
+}
+
+static ssize_t wdt3_store(struct device *dev, struct device_attribute *attr,
+						const char *buf, size_t n)
+{
+	u32 wdt3;
+	struct DEV_OBJECT *dev_object;
+	struct WMD_DEV_CONTEXT *dev_ctxt;
+
+	if (sscanf(buf, "%d", &wdt3) != 1)
+		return -EINVAL;
+
+	dev_object = DEV_GetFirst();
+	if (dev_object == NULL)
+		goto func_end;
+	DEV_GetWMDContext(dev_object, &dev_ctxt);
+	if (dev_ctxt == NULL)
+		goto func_end;
+
+	/* enable WDT */
+	if (wdt3 == 1) {
+		if (dsp_wdt_get_enable())
+			goto func_end;
+		dsp_wdt_set_enable(true);
+		if (!CLK_Get_UseCnt(SERVICESCLK_wdt3_fck) &&
+				dev_ctxt->dwBrdState != BRD_DSP_HIBERNATION)
+			dsp_wdt_enable(true);
+	} else if (wdt3 == 0) {
+		if (!dsp_wdt_get_enable())
+			goto func_end;
+		if (CLK_Get_UseCnt(SERVICESCLK_wdt3_fck))
+			dsp_wdt_enable(false);
+		dsp_wdt_set_enable(false);
+	}
+func_end:
+	return n;
+}
+
+static DEVICE_ATTR(dsp_wdt, S_IWUSR | S_IRUGO, wdt3_show, wdt3_store);
+
+
+ static struct attribute *attrs[] = {
+	&dev_attr_dsp_wdt.attr,
+	NULL,
+ };
+
+static struct attribute_group attr_group = {
+	.attrs = attrs,
+};
+
+static void bridge_create_sysfs(void)
+{
+	int error;
+
+	error = sysfs_create_group(&omap_dspbridge_dev->dev.kobj, &attr_group);
+
+	if (error)
+		kobject_put(&omap_dspbridge_dev->dev.kobj);
+}
+
+static void bridge_destroy_sysfs(void)
+{
+	sysfs_remove_group(&omap_dspbridge_dev->dev.kobj, &attr_group);
+}
+
+#endif
 /* Bridge driver initialization and de-initialization functions */
 module_init(bridge_init);
 module_exit(bridge_exit);
