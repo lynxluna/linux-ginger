@@ -707,6 +707,11 @@ static DSP_STATUS WMD_BRD_Start(struct WMD_DEV_CONTEXT *hDevContext,
 			 */
 			*((volatile u32 *)dwSyncAddr) = 0XCAFECAFE;
 
+#ifdef CONFIG_BRIDGE_WDT3
+			/* Setting default WDT timeout  */
+			dsp_wdt_set_timeout(CONFIG_WDT_TIMEOUT);
+			dsp_wdt_enable(true);
+#endif
 			/* update board state */
 			pDevContext->dwBrdState = BRD_RUNNING;
 			/* (void)CHNLSM_EnableInterrupt(pDevContext);*/
@@ -772,6 +777,10 @@ static DSP_STATUS WMD_BRD_Stop(struct WMD_DEV_CONTEXT *hDevContext)
 		pDevContext->dwDspExtBaseAddr = 0;
 
 	pDevContext->dwBrdState = BRD_STOPPED;	/* update board state */
+
+#ifdef CONFIG_BRIDGE_WDT3
+	dsp_wdt_enable(false);
+#endif
 
 	/* This is a good place to clear the MMU page tables as well */
 	if (pDevContext->pPtAttrs) {
@@ -1040,6 +1049,9 @@ static DSP_STATUS WMD_DEV_Create(OUT struct WMD_DEV_CONTEXT **ppDevContext,
 		/* 24xx-Linux MMU address is obtained from the host
 		 * resources struct */
 		pDevContext->dwDSPMmuBase = resources.dwDmmuBase;
+#ifdef CONFIG_BRIDGE_WDT3
+		pDevContext->wdt3_base = resources.dwWdTimerDspBase;
+#endif
 	}
 	if (DSP_SUCCEEDED(status)) {
 		pDevContext->hDevObject = hDevObject;

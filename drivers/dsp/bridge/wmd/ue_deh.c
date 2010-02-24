@@ -259,6 +259,15 @@ void WMD_DEH_Notify(struct DEH_MGR *hDehMgr, u32 ulEventMask,
 					"= 0x%x\n", dwErrInfo);
 			break;
 #endif /* CONFIG_BRIDGE_NTFY_PWRERR */
+#ifdef CONFIG_BRIDGE_WDT3
+		case DSP_WDTOVERFLOW:
+			pDehMgr->errInfo.dwErrMask = DSP_WDTOVERFLOW;
+			pDehMgr->errInfo.dwVal1 = 0L;
+			pDehMgr->errInfo.dwVal2 = 0L;
+			pDehMgr->errInfo.dwVal3 = 0L;
+			pr_err("WMD_DEH_Notify: DSP_WDTOVERFLOW \n ");
+			break;
+#endif
 		default:
 			dev_dbg(bridge, "%s: Unknown Error, errInfo = 0x%x\n",
 							__func__, dwErrInfo);
@@ -275,6 +284,13 @@ void WMD_DEH_Notify(struct DEH_MGR *hDehMgr, u32 ulEventMask,
 		(void)DSP_PeripheralClocks_Disable(pDevContext, NULL);
 		/* Call DSP Trace Buffer */
 		PrintDspTraceBuffer(hDehMgr->hWmdContext);
+#ifdef CONFIG_BRIDGE_WDT3
+		/*
+		 * Avoid the subsequent WDT if it happens once,
+		 * also If MMU fault occurs
+		 */
+		dsp_wdt_enable(false);
+#endif
 
 	}
 }
