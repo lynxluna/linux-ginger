@@ -595,9 +595,30 @@ func_end:
 
 static DEVICE_ATTR(dsp_wdt, S_IWUSR | S_IRUGO, wdt3_show, wdt3_store);
 
+static ssize_t wdt3_timeout_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", dsp_wdt_get_timeout());
+}
+
+static ssize_t wdt3_timeout_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t n)
+{
+	u32 wdt3_to;
+
+	if (sscanf(buf, "%d", &wdt3_to) != 1)
+		return -EINVAL;
+
+	dsp_wdt_set_timeout(wdt3_to);
+	return n;
+}
+
+static DEVICE_ATTR(dsp_wdt_timeout, S_IWUSR | S_IRUGO, wdt3_timeout_show,
+			wdt3_timeout_store);
 
  static struct attribute *attrs[] = {
 	&dev_attr_dsp_wdt.attr,
+	&dev_attr_dsp_wdt_timeout.attr,
 	NULL,
  };
 
