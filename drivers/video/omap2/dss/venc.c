@@ -33,6 +33,7 @@
 #include <linux/seq_file.h>
 #include <linux/platform_device.h>
 #include <linux/regulator/consumer.h>
+#include <linux/gpio.h>
 
 #include <plat/display.h>
 #include <plat/cpu.h>
@@ -40,6 +41,8 @@
 
 #include "dss.h"
 
+#define TV_INT_GPIO			33
+#define TV_DETECT_DELAY 		40 /*Delay for TV detection logic*/
 #define VENC_BASE	0x48050C00
 
 /* Venc registers */
@@ -474,6 +477,7 @@ static struct omap_dss_driver venc_driver = {
 int venc_init(struct platform_device *pdev)
 {
 	u8 rev_id;
+	int ret;
 
 	mutex_init(&venc.venc_lock);
 
@@ -499,7 +503,14 @@ int venc_init(struct platform_device *pdev)
 
 	venc_enable_clocks(0);
 
+	ret = gpio_request(TV_INT_GPIO, "tv_detect");
+	if (ret)
+		pr_err("Failed to get TV_INT_GPIO gpio_33.\n");
+	else
+		gpio_direction_input(TV_INT_GPIO);
+
 	return omap_dss_register_driver(&venc_driver);
+
 }
 
 void venc_exit(void)
@@ -719,6 +730,46 @@ static int venc_set_wss(struct omap_dss_device *dssdev,	u32 wss)
 	return 0;
 }
 
+/**
+ * Enables TVDET pulse generation
+ */
+static void venc_enable_tv_detect(void)
+{
+	u32 l;
+
+	l = venc_read_reg(VENC_GEN_CTRL);
+	/* TVDET Active High Setting */
+	l |= FLD_VAL(1, 16, 16);
+	/* Enable TVDET pulse generation */
+	l |= FLD_VAL(1, 0, 0);
+	venc_write_reg(VENC_GEN_CTRL, l);
+}
+
+/**
+ * Disables TVDET pulse generation
+ */
+static void venc_disable_tv_detect(void)
+{
+	u32 l;
+
+	/* Disable TVDET pulse generation */
+	l = venc_read_reg(VENC_GEN_CTRL);
+	l |= FLD_VAL(0, 0, 0);
+	venc_write_reg(VENC_GEN_CTRL, l);
+}
+
+static u32 venc_detect_device(struct omap_dss_device *dssdev)
+{
+	u32 tv_state;
+
+	venc_enable_tv_detect();
+	mdelay(TV_DETECT_DELAY);
+	tv_state = gpio_get_value(TV_INT_GPIO);
+	venc_disable_tv_detect();
+
+	return tv_state;
+}
+
 static enum omap_dss_update_mode venc_display_get_update_mode(
 		struct omap_dss_device *dssdev)
 {
@@ -739,6 +790,7 @@ int venc_init_display(struct omap_dss_device *dssdev)
 	dssdev->get_timings = venc_get_timings;
 	dssdev->set_timings = venc_set_timings;
 	dssdev->check_timings = venc_check_timings;
+	dssdev->get_device_state = venc_detect_device;
 	dssdev->get_wss = venc_get_wss;
 	dssdev->set_wss = venc_set_wss;
 	dssdev->get_update_mode = venc_display_get_update_mode;

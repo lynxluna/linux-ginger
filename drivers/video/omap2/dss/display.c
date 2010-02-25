@@ -277,6 +277,26 @@ static ssize_t display_wss_store(struct device *dev,
 	return size;
 }
 
+static ssize_t device_state_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct omap_dss_device *dssdev = to_dss_device(dev);
+	unsigned int device_state;
+
+	if (!dssdev->get_device_state)
+		return -ENOENT;
+
+	device_state = dssdev->get_device_state(dssdev);
+
+	return snprintf(buf, PAGE_SIZE, "%u\n", device_state);
+}
+
+static ssize_t device_state_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	return size;
+}
+
 static DEVICE_ATTR(enabled, S_IRUGO|S_IWUSR,
 		display_enabled_show, display_enabled_store);
 static DEVICE_ATTR(update_mode, S_IRUGO|S_IWUSR,
@@ -289,6 +309,8 @@ static DEVICE_ATTR(rotate, S_IRUGO|S_IWUSR,
 		display_rotate_show, display_rotate_store);
 static DEVICE_ATTR(mirror, S_IRUGO|S_IWUSR,
 		display_mirror_show, display_mirror_store);
+static DEVICE_ATTR(device_state, S_IRUGO|S_IWUSR,
+		device_state_show, device_state_store);
 static DEVICE_ATTR(wss, S_IRUGO|S_IWUSR,
 		display_wss_show, display_wss_store);
 
@@ -300,6 +322,7 @@ static struct device_attribute *display_sysfs_attrs[] = {
 	&dev_attr_rotate,
 	&dev_attr_mirror,
 	&dev_attr_wss,
+	&dev_attr_device_state,
 	NULL
 };
 
