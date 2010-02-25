@@ -774,7 +774,7 @@ u32 PROCWRAP_FlushMemory(union Trapped_Args *args, void *pr_ctxt)
 		return DSP_EHANDLE;
 
 	if (args->ARGS_PROC_FLUSHMEMORY.ulFlags >
-					 PROC_WRITEBACK_INVALIDATE_MEM)
+					 PROC_WRBK_INV_ALL)
 		return DSP_EINVALIDARG;
 
 	status = PROC_FlushMemory(args->ARGS_PROC_FLUSHMEMORY.hProcessor,
