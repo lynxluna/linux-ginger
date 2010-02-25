@@ -420,7 +420,7 @@ void MEM_Exit(void)
  *  Purpose:
  *      Flush cache
  */
-void MEM_FlushCache(void *pMemBuf, u32 cBytes, s32 FlushType)
+void MEM_FlushCache(void *pMemBuf, u32 cBytes, u32 FlushType)
 {
 	if (!pMemBuf)
 		return;
@@ -444,6 +444,10 @@ void MEM_FlushCache(void *pMemBuf, u32 cBytes, s32 FlushType)
 		outer_flush_range(__pa((u32)pMemBuf), __pa((u32)pMemBuf +
 				  cBytes));
 	break;
+	/* Writeback and Invalidate all */
+	case PROC_WRBK_INV_ALL:
+		__cpuc_flush_kern_all();
+		break;
 	}
 
 }

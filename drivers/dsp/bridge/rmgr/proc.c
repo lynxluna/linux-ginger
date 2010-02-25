@@ -599,8 +599,7 @@ static int memory_check_vma(unsigned long start, u32 len)
 }
 
 static DSP_STATUS proc_memory_sync(void *hProcessor, void *pMpuAddr,
-				   u32 ulSize, u32 ulFlags,
-				   enum DSP_FLUSHTYPE FlushMemType)
+				   u32 ulSize, u32 ulFlags)
 {
 	/* Keep STATUS here for future additions to this function */
 	DSP_STATUS status = DSP_SOK;
@@ -620,7 +619,7 @@ static DSP_STATUS proc_memory_sync(void *hProcessor, void *pMpuAddr,
 	}
 
 	(void)SYNC_EnterCS(hProcLock);
-	MEM_FlushCache(pMpuAddr, ulSize, FlushMemType);
+	MEM_FlushCache(pMpuAddr, ulSize, ulFlags);
 	(void)SYNC_LeaveCS(hProcLock);
 
 err_out:
@@ -638,9 +637,7 @@ err_out:
 DSP_STATUS PROC_FlushMemory(void *hProcessor, void *pMpuAddr,
 			    u32 ulSize, u32 ulFlags)
 {
-	enum DSP_FLUSHTYPE mtype = PROC_WRITEBACK_INVALIDATE_MEM;
-
-	return proc_memory_sync(hProcessor, pMpuAddr, ulSize, ulFlags, mtype);
+	return proc_memory_sync(hProcessor, pMpuAddr, ulSize, ulFlags);
 }
 
 /*
@@ -651,9 +648,7 @@ DSP_STATUS PROC_FlushMemory(void *hProcessor, void *pMpuAddr,
 DSP_STATUS PROC_InvalidateMemory(void *hProcessor, void *pMpuAddr,
 				 u32 ulSize)
 {
-	enum DSP_FLUSHTYPE mtype = PROC_INVALIDATE_MEM;
-
-	return proc_memory_sync(hProcessor, pMpuAddr, ulSize, 0, mtype);
+	return proc_memory_sync(hProcessor, pMpuAddr, ulSize, 0);
 }
 
 /*
