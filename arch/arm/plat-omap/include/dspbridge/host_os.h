@@ -46,12 +46,12 @@
 #include <dspbridge/dbtype.h>
 #include <plat/clock.h>
 #include <linux/clk.h>
+#include <plat/mailbox.h>
 #include <linux/pagemap.h>
 #include <asm/cacheflush.h>
 #include <linux/dma-mapping.h>
 
 /* TODO -- Remove, once BP defines them */
-#define INT_MAIL_MPU_IRQ        26
 #define INT_DSP_MMU_IRQ        28
 
 struct dsp_shm_freq_table {

@@ -21,7 +21,6 @@
 
 #include <dspbridge/devdefs.h>
 #include <hw_defs.h>
-#include <hw_mbox.h>
 #include <dspbridge/wmdioctl.h>		/* for WMDIOCTL_EXTPROC defn */
 #include <dspbridge/sync.h>
 #include <dspbridge/clk.h>
@@ -317,7 +316,6 @@ struct WMD_DEV_CONTEXT {
 	u32 dwDspExtBaseAddr;		/* See the comment above */
 	u32 dwAPIRegBase;		/* API mem map'd registers */
 	void __iomem *dwDSPMmuBase;	/* DSP MMU Mapped registers */
-	u32 dwMailBoxBase;		/* Mail box mapped registers */
 	u32 dwAPIClkBase;		/* CLK Registers */
 	u32 dwDSPClkM2Base;		/* DSP Clock Module m2 */
 	u32 dwPublicRhea;		/* Pub Rhea */
@@ -327,6 +325,8 @@ struct WMD_DEV_CONTEXT {
 	u32 dwSelfLoop;			/* Pointer to the selfloop */
 	u32 dwDSPStartAdd;		/* API Boot vector */
 	u32 dwInternalSize;		/* Internal memory size */
+
+	struct omap_mbox *mbox;		/* Mail box handle*/
 
 	/*
 	 * Processor specific info is set when prog loaded and read from DCD.
