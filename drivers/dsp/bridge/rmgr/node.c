@@ -729,7 +729,9 @@ DBAPI NODE_AllocMsgBuf(struct NODE_OBJECT *hNode, u32 uSize,
 		 " 0x%x\tpAttr: 0x%x\tpBuffer: %d\n", pNode, uSize, pAttr,
 		 pBuffer);
 
-	if (NODE_GetType(pNode) == NODE_DEVICE)
+	if (!MEM_IsValidHandle(pNode, NODE_SIGNATURE))
+		status = DSP_EHANDLE;
+	else if (NODE_GetType(pNode) == NODE_DEVICE)
 		status = DSP_ENODETYPE;
 
 	if (DSP_FAILED(status))
@@ -818,7 +820,7 @@ DSP_STATUS NODE_ChangePriority(struct NODE_OBJECT *hNode, s32 nPriority)
 	GT_2trace(NODE_debugMask, GT_ENTER, "NODE_ChangePriority: "
 		 "hNode: 0x%x\tnPriority: %d\n", hNode, nPriority);
 
-	if (!hNode->hNodeMgr) {
+	if (!MEM_IsValidHandle(hNode, NODE_SIGNATURE) || !hNode->hNodeMgr) {
 		GT_1trace(NODE_debugMask, GT_7CLASS,
 			 "Invalid NODE Handle: 0x%x\n", hNode);
 		status = DSP_EHANDLE;
@@ -1197,7 +1199,10 @@ DSP_STATUS NODE_Create(struct NODE_OBJECT *hNode)
 	DBC_Require(cRefs > 0);
 	GT_1trace(NODE_debugMask, GT_ENTER, "NODE_Create: hNode: 0x%x\n",
 		 hNode);
-
+	if (!MEM_IsValidHandle(pNode, NODE_SIGNATURE)) {
+		status = DSP_EHANDLE;
+		goto func_end;
+	}
 	hProcessor = hNode->hProcessor;
 	status = PROC_GetState(hProcessor, &procStatus,
 					sizeof(struct DSP_PROCESSORSTATE));
@@ -1511,6 +1516,10 @@ DSP_STATUS NODE_Delete(struct NODE_OBJECT *hNode,
 	DBC_Require(cRefs > 0);
 	GT_1trace(NODE_debugMask, GT_ENTER, "NODE_Delete: hNode: 0x%x\n",
 		  hNode);
+	if (!MEM_IsValidHandle(hNode, NODE_SIGNATURE)) {
+		status = DSP_EHANDLE;
+		goto func_end;
+	}
 	/* create struct DSP_CBDATA struct for PWR call */
 	cbData.cbData = PWR_TIMEOUT;
 	hNodeMgr = hNode->hNodeMgr;
@@ -1750,6 +1759,10 @@ DSP_STATUS NODE_FreeMsgBuf(struct NODE_OBJECT *hNode, IN u8 *pBuffer,
 	DBC_Require(pNode->hXlator != NULL);
 	GT_3trace(NODE_debugMask, GT_ENTER, "NODE_FreeMsgBuf: hNode: 0x%x\t"
 		 "pBuffer: 0x%x\tpAttr: 0x%x\n", hNode, pBuffer, pAttr);
+	if (!MEM_IsValidHandle(hNode, NODE_SIGNATURE)) {
+		status = DSP_EHANDLE;
+		goto func_end;
+	}
 	status = PROC_GetProcessorId(pNode->hProcessor, &procId);
 	if (procId == DSP_UNIT) {
 		if (DSP_SUCCEEDED(status)) {
@@ -1767,7 +1780,7 @@ DSP_STATUS NODE_FreeMsgBuf(struct NODE_OBJECT *hNode, IN u8 *pBuffer,
 	} else {
 		DBC_Assert(NULL);	/* BUG */
 	}
-
+func_end:
 	return status;
 }
 
@@ -1788,32 +1801,34 @@ DSP_STATUS NODE_GetAttr(struct NODE_OBJECT *hNode,
 	GT_3trace(NODE_debugMask, GT_ENTER, "NODE_GetAttr: hNode: "
 		 "0x%x\tpAttr: 0x%x \tuAttrSize: 0x%x\n", hNode, pAttr,
 		 uAttrSize);
-
-	hNodeMgr = hNode->hNodeMgr;
-	 /* Enter hNodeMgr critical section (since we're accessing
-	  * data that could be changed by NODE_ChangePriority() and
-	  * NODE_Connect().  */
-	status = SYNC_EnterCS(hNodeMgr->hSync);
-	if (DSP_SUCCEEDED(status)) {
-		pAttr->cbStruct = sizeof(struct DSP_NODEATTR);
-		/* DSP_NODEATTRIN */
-		pAttr->inNodeAttrIn.cbStruct =
-				 sizeof(struct DSP_NODEATTRIN);
-		pAttr->inNodeAttrIn.iPriority = hNode->nPriority;
-		pAttr->inNodeAttrIn.uTimeout = hNode->uTimeout;
-		pAttr->inNodeAttrIn.uHeapSize =
-			hNode->createArgs.asa.taskArgs.uHeapSize;
-		pAttr->inNodeAttrIn.pGPPVirtAddr = (void *)
-			hNode->createArgs.asa.taskArgs.uGPPHeapAddr;
-		pAttr->uInputs = hNode->uNumGPPInputs;
-		pAttr->uOutputs = hNode->uNumGPPOutputs;
-		/* DSP_NODEINFO */
-		GetNodeInfo(hNode, &(pAttr->iNodeInfo));
+	if (!MEM_IsValidHandle(hNode, NODE_SIGNATURE)) {
+		status = DSP_EHANDLE;
+	} else {
+		hNodeMgr = hNode->hNodeMgr;
+		 /* Enter hNodeMgr critical section (since we're accessing
+		  * data that could be changed by NODE_ChangePriority() and
+		  * NODE_Connect().  */
+		status = SYNC_EnterCS(hNodeMgr->hSync);
+		if (DSP_SUCCEEDED(status)) {
+			pAttr->cbStruct = sizeof(struct DSP_NODEATTR);
+			/* DSP_NODEATTRIN */
+			pAttr->inNodeAttrIn.cbStruct =
+					 sizeof(struct DSP_NODEATTRIN);
+			pAttr->inNodeAttrIn.iPriority = hNode->nPriority;
+			pAttr->inNodeAttrIn.uTimeout = hNode->uTimeout;
+			pAttr->inNodeAttrIn.uHeapSize =
+				hNode->createArgs.asa.taskArgs.uHeapSize;
+			pAttr->inNodeAttrIn.pGPPVirtAddr = (void *)
+				hNode->createArgs.asa.taskArgs.uGPPHeapAddr;
+			pAttr->uInputs = hNode->uNumGPPInputs;
+			pAttr->uOutputs = hNode->uNumGPPOutputs;
+			/* DSP_NODEINFO */
+			GetNodeInfo(hNode, &(pAttr->iNodeInfo));
+		}
+		/* end of SYNC_EnterCS */
+		/* Exit critical section */
+		(void)SYNC_LeaveCS(hNodeMgr->hSync);
 	}
-	/* end of SYNC_EnterCS */
-	/* Exit critical section */
-	(void)SYNC_LeaveCS(hNodeMgr->hSync);
-
 	return status;
 }
 
@@ -1834,6 +1849,10 @@ DSP_STATUS NODE_GetChannelId(struct NODE_OBJECT *hNode, u32 uDir, u32 uIndex,
 	GT_4trace(NODE_debugMask, GT_ENTER, "NODE_GetChannelId: hNode: "
 		 "0x%x\tuDir: %d\tuIndex: %d\tpulId: 0x%x\n", hNode, uDir,
 		 uIndex, pulId);
+	if (!MEM_IsValidHandle(hNode, NODE_SIGNATURE)) {
+		status = DSP_EHANDLE;
+		return status;
+	}
 	nodeType = NODE_GetType(hNode);
 	if (nodeType != NODE_TASK && nodeType != NODE_DAISSOCKET) {
 		status = DSP_ENODETYPE;
@@ -1879,7 +1898,10 @@ DSP_STATUS NODE_GetMessage(struct NODE_OBJECT *hNode, OUT struct DSP_MSG *pMsg,
 	GT_3trace(NODE_debugMask, GT_ENTER,
 		 "NODE_GetMessage: hNode: 0x%x\tpMsg: "
 		 "0x%x\tuTimeout: 0x%x\n", hNode, pMsg, uTimeout);
-
+	if (!MEM_IsValidHandle(hNode, NODE_SIGNATURE)) {
+		status = DSP_EHANDLE;
+		goto func_end;
+	}
 	hProcessor = hNode->hProcessor;
 	status = PROC_GetState(hProcessor, &procStatus,
 					sizeof(struct DSP_PROCESSORSTATE));
@@ -1974,7 +1996,10 @@ DSP_STATUS NODE_GetStrmMgr(struct NODE_OBJECT *hNode,
 
 	DBC_Require(cRefs > 0);
 
-	*phStrmMgr = hNode->hNodeMgr->hStrmMgr;
+	if (!MEM_IsValidHandle(hNode, NODE_SIGNATURE))
+		status = DSP_EHANDLE;
+	else
+		*phStrmMgr = hNode->hNodeMgr->hStrmMgr;
 
 	return status;
 }
@@ -1986,8 +2011,14 @@ enum NLDR_LOADTYPE NODE_GetLoadType(struct NODE_OBJECT *hNode)
 {
 	DBC_Require(cRefs > 0);
 	DBC_Require(MEM_IsValidHandle(hNode, NODE_SIGNATURE));
-
-	return hNode->dcdProps.objData.nodeObj.usLoadType;
+	if (!MEM_IsValidHandle(hNode, NODE_SIGNATURE)) {
+		GT_1trace(NODE_debugMask, GT_5CLASS,
+			"NODE_GetLoadType: Failed. hNode:"
+			" 0x%x\n", hNode);
+		return -1;
+	} else {
+		return hNode->dcdProps.objData.nodeObj.usLoadType;
+	}
 }
 
 /*
@@ -1999,8 +2030,14 @@ u32 NODE_GetTimeout(struct NODE_OBJECT *hNode)
 {
 	DBC_Require(cRefs > 0);
 	DBC_Require(MEM_IsValidHandle(hNode, NODE_SIGNATURE));
-
-	return hNode->uTimeout;
+	if (!MEM_IsValidHandle(hNode, NODE_SIGNATURE)) {
+		GT_1trace(NODE_debugMask, GT_5CLASS,
+			"NODE_GetTimeout: Failed. hNode:"
+			" 0x%x\n", hNode);
+		return 0;
+	} else {
+		return hNode->uTimeout;
+	}
 }
 
 /*
@@ -2014,8 +2051,12 @@ enum NODE_TYPE NODE_GetType(struct NODE_OBJECT *hNode)
 
 	if (hNode == (struct NODE_OBJECT *) DSP_HGPPNODE)
 		nodeType = NODE_GPP;
-	else
-		nodeType = hNode->nType;
+	else {
+		if (!MEM_IsValidHandle(hNode, NODE_SIGNATURE))
+			nodeType = -1;
+		else
+			nodeType = hNode->nType;
+	}
 	return nodeType;
 }
 
@@ -2086,10 +2127,13 @@ DSP_STATUS NODE_Pause(struct NODE_OBJECT *hNode)
 
 	GT_1trace(NODE_debugMask, GT_ENTER, "NODE_Pause: hNode: 0x%x\n", hNode);
 
-	nodeType = NODE_GetType(hNode);
-	if (nodeType != NODE_TASK && nodeType != NODE_DAISSOCKET)
-		status = DSP_ENODETYPE;
-
+	if (!MEM_IsValidHandle(hNode, NODE_SIGNATURE)) {
+		status = DSP_EHANDLE;
+	} else {
+		nodeType = NODE_GetType(hNode);
+		if (nodeType != NODE_TASK && nodeType != NODE_DAISSOCKET)
+			status = DSP_ENODETYPE;
+	}
 	if (DSP_FAILED(status))
 		goto func_end;
 
@@ -2181,7 +2225,10 @@ DSP_STATUS NODE_PutMessage(struct NODE_OBJECT *hNode,
 	GT_3trace(NODE_debugMask, GT_ENTER,
 		 "NODE_PutMessage: hNode: 0x%x\tpMsg: "
 		 "0x%x\tuTimeout: 0x%x\n", hNode, pMsg, uTimeout);
-
+	if (!MEM_IsValidHandle(hNode, NODE_SIGNATURE)) {
+		status = DSP_EHANDLE;
+		goto func_end;
+	}
 	hProcessor = hNode->hProcessor;
 	status = PROC_GetState(hProcessor, &procStatus,
 					sizeof(struct DSP_PROCESSORSTATE));
@@ -2279,21 +2326,24 @@ DSP_STATUS NODE_RegisterNotify(struct NODE_OBJECT *hNode, u32 uEventMask,
 		 "uEventMask: 0x%x\tuNotifyType: 0x%x\thNotification: 0x%x\n",
 		 hNode, uEventMask, uNotifyType, hNotification);
 
-	/* Check if event mask is a valid node related event */
-	if (uEventMask & ~(DSP_NODESTATECHANGE |
-	   DSP_NODEMESSAGEREADY))
-		status = DSP_EVALUE;
+	if (!MEM_IsValidHandle(hNode, NODE_SIGNATURE)) {
+		status = DSP_EHANDLE;
+	} else {
+		/* Check if event mask is a valid node related event */
+		if (uEventMask & ~(DSP_NODESTATECHANGE |
+		   DSP_NODEMESSAGEREADY))
+			status = DSP_EVALUE;
 
-	/* Check if notify type is valid */
-	if (uNotifyType != DSP_SIGNALEVENT)
-		status = DSP_EVALUE;
+		/* Check if notify type is valid */
+		if (uNotifyType != DSP_SIGNALEVENT)
+			status = DSP_EVALUE;
 
-	/* Only one Notification can be registered at a
-	 * time - Limitation */
-	if (uEventMask == (DSP_NODESTATECHANGE |
-	   DSP_NODEMESSAGEREADY))
-		status = DSP_EVALUE;
-
+		/* Only one Notification can be registered at a
+		 * time - Limitation */
+		if (uEventMask == (DSP_NODESTATECHANGE |
+		   DSP_NODEMESSAGEREADY))
+			status = DSP_EVALUE;
+	}
 	if (DSP_SUCCEEDED(status)) {
 		if (uEventMask == DSP_NODESTATECHANGE) {
 			status = NTFY_Register(hNode->hNtfy, hNotification,
@@ -2334,7 +2384,10 @@ DSP_STATUS NODE_Run(struct NODE_OBJECT *hNode)
 
 	DBC_Require(cRefs > 0);
 	GT_1trace(NODE_debugMask, GT_ENTER, "NODE_Run: hNode: 0x%x\n", hNode);
-
+	if (!MEM_IsValidHandle(hNode, NODE_SIGNATURE)) {
+		status = DSP_EHANDLE;
+		goto func_end;
+	}
 	hProcessor = hNode->hProcessor;
 	status = PROC_GetState(hProcessor, &procStatus,
 					sizeof(struct DSP_PROCESSORSTATE));
@@ -2456,7 +2509,7 @@ DSP_STATUS NODE_Terminate(struct NODE_OBJECT *hNode, OUT DSP_STATUS *pStatus)
 
 	GT_1trace(NODE_debugMask, GT_ENTER,
 		 "NODE_Terminate: hNode: 0x%x\n", hNode);
-	if (!hNode->hNodeMgr) {
+	if (!MEM_IsValidHandle(hNode, NODE_SIGNATURE) || !hNode->hNodeMgr) {
 		status = DSP_EHANDLE;
 		goto func_end;
 	}
@@ -2608,7 +2661,8 @@ static void DeleteNode(struct NODE_OBJECT *hNode,
 			(struct PROC_OBJECT *)hNode->hProcessor;
 #endif
 	DSP_STATUS status;
-
+	if (!MEM_IsValidHandle(hNode, NODE_SIGNATURE))
+		goto func_end;
 	hNodeMgr = hNode->hNodeMgr;
 	if (!MEM_IsValidHandle(hNodeMgr, NODEMGR_SIGNATURE))
 		goto func_end;
@@ -2984,6 +3038,7 @@ void GetNodeInfo(struct NODE_OBJECT *hNode, struct DSP_NODEINFO *pNodeInfo)
 {
 	u32 i;
 
+	DBC_Require(MEM_IsValidHandle(hNode, NODE_SIGNATURE));
 	DBC_Require(pNodeInfo != NULL);
 
 	pNodeInfo->cbStruct = sizeof(struct DSP_NODEINFO);
@@ -3282,6 +3337,8 @@ static u32 Ovly(void *pPrivRef, u32 ulDspRunAddr, u32 ulDspLoadAddr,
 	struct WMD_DEV_CONTEXT *hWmdContext;
 	struct WMD_DRV_INTERFACE *pIntfFxns;	/* Function interface to WMD */
 
+	DBC_Require(MEM_IsValidHandle(hNode, NODE_SIGNATURE));
+
 	hNodeMgr = hNode->hNodeMgr;
 
 	ulSize = ulNumBytes / hNodeMgr->uDSPWordSize;
@@ -3320,6 +3377,7 @@ static u32 Write(void *pPrivRef, u32 ulDspAddr, void *pBuf,
 	struct WMD_DEV_CONTEXT *hWmdContext;
 	struct WMD_DRV_INTERFACE *pIntfFxns;	/* Function interface to WMD */
 
+	DBC_Require(MEM_IsValidHandle(hNode, NODE_SIGNATURE));
 	DBC_Require(nMemSpace & DBLL_CODE || nMemSpace & DBLL_DATA);
 
 	hNodeMgr = hNode->hNodeMgr;
