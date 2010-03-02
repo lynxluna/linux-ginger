@@ -11,6 +11,7 @@
 #include <linux/platform_device.h>
 #include <linux/dma-mapping.h>
 #include <linux/delay.h>
+#include <linux/interrupt.h>
 #include <linux/jiffies.h>
 #include <linux/sched.h>
 #include <linux/mtd/mtd.h>
@@ -21,12 +22,6 @@
 #include <plat/dma.h>
 #include <plat/gpmc.h>
 #include <plat/nand.h>
-
-#define GPMC_IRQ_STATUS		0x18
-#define GPMC_ECC_CONFIG		0x1F4
-#define GPMC_ECC_CONTROL	0x1F8
-#define GPMC_ECC_SIZE_CONFIG	0x1FC
-#define GPMC_ECC1_RESULT	0x200
 
 #define	DRIVER_NAME	"omap2-nand"
 
@@ -115,17 +110,28 @@ module_param(use_prefetch, bool, 0);
 MODULE_PARM_DESC(use_prefetch, "enable/disable use of PREFETCH");
 
 #ifdef CONFIG_MTD_NAND_OMAP_PREFETCH_DMA
+const int use_interrupt;
 static int use_dma = 1;
 
 /* "modprobe ... use_dma=0" etc */
 module_param(use_dma, bool, 0);
-MODULE_PARM_DESC(use_dma, "enable/disable use of DMA");
+MODULE_PARM_DESC(use_dma, "enable/disable use of DMA mode");
 #else
 const int use_dma;
+#ifdef CONFIG_MTD_NAND_OMAP_PREFETCH_IRQ
+static int use_interrupt = 1;
+
+/* "modprobe ... use_dma=0" etc */
+module_param(use_interrupt, bool, 0);
+MODULE_PARM_DESC(use_interrupt, "enable/disable use of IRQ mode");
+#else
+const int use_interrupt;
+#endif
 #endif
 #else
 const int use_prefetch;
 const int use_dma;
+const int use_interrupt;
 #endif
 
 struct omap_nand_info {
@@ -143,6 +149,8 @@ struct omap_nand_info {
 	void __iomem			*nand_pref_fifo_add;
 	struct completion		comp;
 	int				dma_ch;
+	int				gpmc_irq;
+	u_char				*buf;
 };
 
 static struct nand_ecclayout hw_x8_romcode_oob_64 = {
@@ -540,6 +548,150 @@ static void omap_write_buf_dma_pref(struct mtd_info *mtd,
 		omap_nand_dma_transfer(mtd, (u_char *) buf, len, 0x1);
 }
 
+/*
+ * omap_nand_irq - GMPC irq handler
+ * @this_irq: gpmc irq number
+ * @dev: omap_nand_info structure pointer is passed here
+ */
+static irqreturn_t
+omap_nand_irq(int this_irq, void *dev)
+{
+	struct omap_nand_info *info = (struct omap_nand_info *) dev;
+	u32 irq_enb = 0, pfpw_status = 0, r_count = 0;
+	u32 prefetch_config = __raw_readl(info->gpmc_baseaddr +
+						GPMC_PREFETCH_CONFIG1);
+	u32 irq_stats = __raw_readl(info->gpmc_baseaddr + GPMC_IRQSTATUS);
+
+	if (prefetch_config & 0x1) {
+		if (irq_stats & 0x2)
+			goto done;
+		if (irq_stats & 0x1) {
+			int i = 0;
+			u16 *p = (u16 *) info->buf;
+			for (; i < 32; i++)
+				iowrite16(*p++, info->nand_pref_fifo_add);
+			info->buf = (u_char *) p;
+		}
+	} else {
+		if (irq_stats & 0x1) {
+			u32 *p = (u32 *) info->buf;
+			ioread32_rep(info->nand_pref_fifo_add, p, 16);
+			info->buf = (u_char *) (p + 16);
+		}
+		if (irq_stats & 0x2) {
+			pfpw_status = gpmc_prefetch_status();
+			r_count = ((pfpw_status >> 24) & 0x7F) >> 2;
+			if (r_count > 0) {
+				u32 *p = (u32 *) info->buf;
+				ioread32_rep(info->nand_pref_fifo_add,
+						 p, r_count);
+				info->buf = (u_char *) (p + r_count);
+			}
+			goto done;
+		}
+	}
+	__raw_writel(irq_stats, info->gpmc_baseaddr + GPMC_IRQSTATUS);
+	irq_stats = __raw_readl(info->gpmc_baseaddr + GPMC_IRQSTATUS);
+
+	return IRQ_HANDLED;
+
+done:
+	complete(&info->comp);
+	irq_enb = __raw_readl(info->gpmc_baseaddr + GPMC_IRQENABLE);
+	__raw_writel((irq_enb & ~0x3), info->gpmc_baseaddr + GPMC_IRQENABLE);
+	__raw_writel(irq_stats, info->gpmc_baseaddr + GPMC_IRQSTATUS);
+	irq_stats = __raw_readl(info->gpmc_baseaddr + GPMC_IRQSTATUS);
+
+	return IRQ_HANDLED;
+}
+
+/*
+ * omap_read_buf_irq_pref - read data from NAND controller into buffer
+ * @mtd: MTD device structure
+ * @buf: buffer to store date
+ * @len: number of bytes to read
+ */
+static void omap_read_buf_irq_pref(struct mtd_info *mtd, u_char *buf, int len)
+{
+	struct omap_nand_info *info = container_of(mtd,
+						struct omap_nand_info, mtd);
+	u32 irq_enb = __raw_readl(info->gpmc_baseaddr + GPMC_IRQENABLE);
+	int ret = 0;
+
+	if (len <= mtd->oobsize) {
+		omap_read_buf_pref(mtd, buf, len);
+		return;
+	}
+
+	info->buf = buf;
+	init_completion(&info->comp);
+
+	/*  configure and start prefetch transfer */
+	ret = gpmc_prefetch_enable(info->gpmc_cs, 0x0, len, 0x0);
+	if (ret)
+		/* PFPW engine is busy, use cpu copy methode */
+		goto out_copy;
+
+	__raw_writel((irq_enb | 0x3), info->gpmc_baseaddr + GPMC_IRQENABLE);
+
+	/* setup and start DMA using dma_addr */
+	wait_for_completion(&info->comp);
+
+	/* disable and stop the PFPW engine */
+	gpmc_prefetch_reset();
+
+	return;
+out_copy:
+	if (info->nand.options & NAND_BUSWIDTH_16)
+		omap_read_buf16(mtd, buf, len);
+	else
+		omap_read_buf8(mtd, buf, len);
+}
+
+/*
+ * omap_write_buf_irq_pref - write buffer to NAND controller
+ * @mtd: MTD device structure
+ * @buf: data buffer
+ * @len: number of bytes to write
+ */
+static void omap_write_buf_irq_pref(struct mtd_info *mtd,
+					const u_char *buf, int len)
+{
+	struct omap_nand_info *info = container_of(mtd,
+						struct omap_nand_info, mtd);
+	u32 irq_enb = __raw_readl(info->gpmc_baseaddr + GPMC_IRQENABLE);
+	int ret = 0;
+
+	if (len <= mtd->oobsize) {
+		omap_write_buf_pref(mtd, buf, len);
+		return;
+	}
+
+	info->buf = (u_char *) buf;
+	init_completion(&info->comp);
+
+	/*  configure and start prefetch transfer */
+	ret = gpmc_prefetch_enable(info->gpmc_cs, 0x0, len, 0x1);
+	if (ret)
+		/* PFPW engine is busy, use cpu copy methode */
+		goto out_copy;
+
+	__raw_writel((irq_enb | 0x3), info->gpmc_baseaddr + GPMC_IRQENABLE);
+
+	/* setup and start DMA using dma_addr */
+	wait_for_completion(&info->comp);
+
+	/* disable and stop the PFPW engine */
+	gpmc_prefetch_reset();
+
+	return;
+out_copy:
+	if (info->nand.options & NAND_BUSWIDTH_16)
+		omap_write_buf16(mtd, buf, len);
+	else
+		omap_write_buf8(mtd, buf, len);
+}
+
 /**
  * omap_verify_buf - Verify chip data against buffer
  * @mtd: MTD device structure
@@ -887,20 +1039,20 @@ static int omap_dev_ready(struct mtd_info *mtd)
 {
 	struct omap_nand_info *info = container_of(mtd, struct omap_nand_info,
 							mtd);
-	unsigned int val = __raw_readl(info->gpmc_baseaddr + GPMC_IRQ_STATUS);
+	unsigned int val = __raw_readl(info->gpmc_baseaddr + GPMC_IRQSTATUS);
 
 	if ((val & 0x100) == 0x100) {
 		/* Clear IRQ Interrupt */
 		val |= 0x100;
 		val &= ~(0x0);
-		__raw_writel(val, info->gpmc_baseaddr + GPMC_IRQ_STATUS);
+		__raw_writel(val, info->gpmc_baseaddr + GPMC_IRQSTATUS);
 	} else {
 		unsigned int cnt = 0;
 		while (cnt++ < 0x1FF) {
 			if  ((val & 0x100) == 0x100)
 				return 0;
 			val = __raw_readl(info->gpmc_baseaddr +
-							GPMC_IRQ_STATUS);
+							GPMC_IRQSTATUS);
 		}
 	}
 
@@ -933,6 +1085,7 @@ static int __devinit omap_nand_probe(struct platform_device *pdev)
 	info->gpmc_cs		= pdata->cs;
 	info->gpmc_baseaddr	= pdata->gpmc_baseaddr;
 	info->gpmc_cs_baseaddr	= pdata->gpmc_cs_baseaddr;
+	info->gpmc_irq		= pdata->gpmc_irq;
 
 	info->mtd.priv		= &info->nand;
 	info->mtd.name		= dev_name(&pdev->dev);
@@ -1004,7 +1157,20 @@ static int __devinit omap_nand_probe(struct platform_device *pdev)
 				info->nand.read_buf   = omap_read_buf_dma_pref;
 				info->nand.write_buf  = omap_write_buf_dma_pref;
 			}
+		} else if (use_interrupt) {
+			err = request_irq(info->gpmc_irq, omap_nand_irq,
+					IRQF_SHARED, info->mtd.name, info);
+			if (err) {
+				printk(KERN_INFO"failure requesting irq %i."
+						" Prefetch will work in mpu"
+						" poling mode.\n",
+						info->gpmc_irq);
+			} else {
+				info->nand.read_buf   = omap_read_buf_irq_pref;
+				info->nand.write_buf  = omap_write_buf_irq_pref;
+			}
 		}
+
 	} else {
 		if (info->nand.options & NAND_BUSWIDTH_16) {
 			info->nand.read_buf   = omap_read_buf16;
@@ -1107,11 +1273,21 @@ static int __init omap_nand_init(void)
 	/* This check is required if driver is being
 	 * loaded run time as a module
 	 */
-	if ((1 == use_dma) && (0 == use_prefetch)) {
-		printk(KERN_INFO"Wrong parameters: 'use_dma' can not be 1 "
-				"without use_prefetch'. Prefetch will not be"
-				" used in either mode (mpu or dma)\n");
+	if ((1 == (use_dma | use_interrupt)) && (0 == use_prefetch)) {
+		printk(KERN_INFO "Wrong parameters: Neither 'dma' nor 'irq' "
+				"can used without 'use_prefetch' selected.\n");
+		printk(KERN_INFO "Prefetch will not be used in any mode: "
+				"poll, mpu or dma\n");
 	}
+	if ( 1 == use_prefetch) {
+		if (1 == use_interrupt && 1 == use_dma) {
+			printk(KERN_INFO "Wrong parameters: Both DMA and IRQ "
+					" modes can not be used together.\n");
+			printk(KERN_INFO "It has to be selected at compile "
+					"time and same will be used.\n");
+		}
+	}
+
 	return platform_driver_register(&omap_nand_driver);
 }
 
