@@ -670,7 +670,6 @@ u32 PROCWRAP_Ctrl(union Trapped_Args *args, void *pr_ctxt)
 			args->ARGS_PROC_CTRL.pArgs;
 	u8 *pArgs = NULL;
 	DSP_STATUS status = DSP_SOK;
-	struct PROCESS_CONTEXT *pCtxt = pr_ctxt;
 
 	GT_3trace(WCD_debugMask, GT_ENTER,
 		 "PROCWRAP_Ctrl: entered args:\n 0x%x"
@@ -678,10 +677,6 @@ u32 PROCWRAP_Ctrl(union Trapped_Args *args, void *pr_ctxt)
 		 args->ARGS_PROC_CTRL.hProcessor,
 		 args->ARGS_PROC_CTRL.dwCmd,
 		 args->ARGS_PROC_CTRL.pArgs);
-	if (args->ARGS_PROC_CTRL.hProcessor != pCtxt->hProcessor) {
-		status = DSP_EHANDLE;
-		goto func_end;
-	}
 	if (pSize) {
 		if (get_user(cbDataSize, pSize)) {
 			status = DSP_EFAIL;
@@ -729,7 +724,6 @@ u32 PROCWRAP_EnumNode_Info(union Trapped_Args *args, void *pr_ctxt)
 	void *aNodeTab[MAX_NODES];
 	u32 uNumNodes;
 	u32 uAllocated;
-	struct PROCESS_CONTEXT *pCtxt = pr_ctxt;
 
 	GT_5trace(WCD_debugMask, GT_ENTER,
 		 "PROCWRAP_EnumNode_Info:entered args:\n0x"
@@ -740,9 +734,6 @@ u32 PROCWRAP_EnumNode_Info(union Trapped_Args *args, void *pr_ctxt)
 		 args->ARGS_PROC_ENUMNODE_INFO.uNodeTabSize,
 		 args->ARGS_PROC_ENUMNODE_INFO.puNumNodes,
 		 args->ARGS_PROC_ENUMNODE_INFO.puAllocated);
-
-	if (args->ARGS_PROC_CTRL.hProcessor != pCtxt->hProcessor)
-		return DSP_EHANDLE;
 
 	if (!args->ARGS_PROC_ENUMNODE_INFO.uNodeTabSize)
 		return DSP_ESIZE;
@@ -766,12 +757,8 @@ u32 PROCWRAP_EnumNode_Info(union Trapped_Args *args, void *pr_ctxt)
 u32 PROCWRAP_FlushMemory(union Trapped_Args *args, void *pr_ctxt)
 {
 	DSP_STATUS status;
-	struct PROCESS_CONTEXT *pCtxt = pr_ctxt;
 
 	GT_0trace(WCD_debugMask, GT_ENTER, "PROCWRAP_FlushMemory: entered\n");
-
-	if (args->ARGS_PROC_CTRL.hProcessor != pCtxt->hProcessor)
-		return DSP_EHANDLE;
 
 	if (args->ARGS_PROC_FLUSHMEMORY.ulFlags >
 					 PROC_WRBK_INV_ALL)
@@ -791,13 +778,9 @@ u32 PROCWRAP_FlushMemory(union Trapped_Args *args, void *pr_ctxt)
 u32 PROCWRAP_InvalidateMemory(union Trapped_Args *args, void *pr_ctxt)
 {
 	DSP_STATUS status;
-	struct PROCESS_CONTEXT *pCtxt = pr_ctxt;
 
 	GT_0trace(WCD_debugMask, GT_ENTER,
 		 "PROCWRAP_InvalidateMemory:entered\n");
-
-	if (args->ARGS_PROC_CTRL.hProcessor != pCtxt->hProcessor)
-		return DSP_EHANDLE;
 
 	status = PROC_InvalidateMemory(
 				  args->ARGS_PROC_INVALIDATEMEMORY.hProcessor,
@@ -814,7 +797,6 @@ u32 PROCWRAP_EnumResources(union Trapped_Args *args, void *pr_ctxt)
 {
 	DSP_STATUS status = DSP_SOK;
 	struct DSP_RESOURCEINFO pResourceInfo;
-	struct PROCESS_CONTEXT *pCtxt = pr_ctxt;
 
 	GT_4trace(WCD_debugMask, GT_ENTER,
 		 "PROCWRAP_EnumResources: entered args:\n"
@@ -824,9 +806,6 @@ u32 PROCWRAP_EnumResources(union Trapped_Args *args, void *pr_ctxt)
 		 args->ARGS_PROC_ENUMRESOURCES.uResourceType,
 		 args->ARGS_PROC_ENUMRESOURCES.pResourceInfo,
 		 args->ARGS_PROC_ENUMRESOURCES.uResourceInfoSize);
-
-	if (args->ARGS_PROC_CTRL.hProcessor != pCtxt->hProcessor)
-		return DSP_EHANDLE;
 
 	if (args->ARGS_PROC_ENUMRESOURCES.uResourceInfoSize <
 		sizeof(struct DSP_RESOURCEINFO))
@@ -851,12 +830,7 @@ u32 PROCWRAP_GetState(union Trapped_Args *args, void *pr_ctxt)
 {
 	DSP_STATUS status;
 	struct DSP_PROCESSORSTATE procStatus;
-	struct PROCESS_CONTEXT *pCtxt = pr_ctxt;
-
 	GT_0trace(WCD_debugMask, GT_ENTER, "PROCWRAP_GetState: entered\n");
-
-	if (args->ARGS_PROC_CTRL.hProcessor != pCtxt->hProcessor)
-		return DSP_EHANDLE;
 
 	if (args->ARGS_PROC_GETSTATE.uStateInfoSize <
 		sizeof(struct DSP_PROCESSORSTATE))
@@ -876,12 +850,8 @@ u32 PROCWRAP_GetTrace(union Trapped_Args *args, void *pr_ctxt)
 {
 	DSP_STATUS status;
 	u8 *pBuf;
-	struct PROCESS_CONTEXT *pCtxt = pr_ctxt;
 
 	GT_0trace(WCD_debugMask, GT_ENTER, "PROCWRAP_GetTrace: entered\n");
-
-	if (args->ARGS_PROC_CTRL.hProcessor != pCtxt->hProcessor)
-		return DSP_EHANDLE;
 
 	if (args->ARGS_PROC_GETTRACE.uMaxSize > MAX_TRACEBUFLEN)
 		return DSP_ESIZE;
@@ -911,12 +881,6 @@ u32 PROCWRAP_Load(union Trapped_Args *args, void *pr_ctxt)
 	char *temp;
 	s32 count = args->ARGS_PROC_LOAD.iArgc;
 	u8 **argv = NULL, **envp = NULL;
-	struct PROCESS_CONTEXT *pCtxt = pr_ctxt;
-
-	if (args->ARGS_PROC_CTRL.hProcessor != pCtxt->hProcessor) {
-		status = DSP_EHANDLE;
-		goto func_cont;
-	}
 
 	if (count <= 0 || count > MAX_LOADARGS) {
 		status = DSP_EINVALIDARG;
@@ -1035,12 +999,8 @@ u32 PROCWRAP_Map(union Trapped_Args *args, void *pr_ctxt)
 {
 	DSP_STATUS status;
 	void *pMapAddr;
-	struct PROCESS_CONTEXT *pCtxt = pr_ctxt;
 
 	GT_0trace(WCD_debugMask, GT_ENTER, "PROCWRAP_Map: entered\n");
-
-	if (args->ARGS_PROC_CTRL.hProcessor != pCtxt->hProcessor)
-		return DSP_EHANDLE;
 
 	if (!args->ARGS_PROC_MAPMEM.ulSize)
 		return DSP_ESIZE;
@@ -1068,13 +1028,9 @@ u32 PROCWRAP_RegisterNotify(union Trapped_Args *args, void *pr_ctxt)
 {
 	DSP_STATUS status;
 	struct DSP_NOTIFICATION notification;
-	struct PROCESS_CONTEXT *pCtxt = pr_ctxt;
 
 	GT_0trace(WCD_debugMask, GT_ENTER,
 		 "PROCWRAP_RegisterNotify: entered\n");
-
-	if (args->ARGS_PROC_CTRL.hProcessor != pCtxt->hProcessor)
-		return DSP_EHANDLE;
 
 	/* Initialize the notification data structure  */
 	notification.psName = NULL;
@@ -1096,17 +1052,12 @@ u32 PROCWRAP_ReserveMemory(union Trapped_Args *args, void *pr_ctxt)
 {
 	DSP_STATUS status;
 	void *pRsvAddr;
-	struct PROCESS_CONTEXT *pCtxt = pr_ctxt;
-
-	GT_0trace(WCD_debugMask, GT_ENTER, "PROCWRAP_ReserveMemory: entered\n");
-
-	if (args->ARGS_PROC_CTRL.hProcessor != pCtxt->hProcessor)
-		return DSP_EHANDLE;
 
 	if ((args->ARGS_PROC_RSVMEM.ulSize <= 0) ||
 		(args->ARGS_PROC_RSVMEM.ulSize & (PG_SIZE_4K - 1)) != 0)
 		return DSP_ESIZE;
 
+	GT_0trace(WCD_debugMask, GT_ENTER, "PROCWRAP_ReserveMemory: entered\n");
 	status = PROC_ReserveMemory(args->ARGS_PROC_RSVMEM.hProcessor,
 				   args->ARGS_PROC_RSVMEM.ulSize, &pRsvAddr);
 	if (DSP_SUCCEEDED(status)) {
@@ -1125,13 +1076,8 @@ u32 PROCWRAP_ReserveMemory(union Trapped_Args *args, void *pr_ctxt)
 u32 PROCWRAP_Start(union Trapped_Args *args, void *pr_ctxt)
 {
 	u32 retVal;
-	struct PROCESS_CONTEXT *pCtxt = pr_ctxt;
 
 	GT_0trace(WCD_debugMask, GT_ENTER, "PROCWRAP_Start: entered\n");
-
-	if (args->ARGS_PROC_CTRL.hProcessor != pCtxt->hProcessor)
-		return DSP_EHANDLE;
-
 	retVal = PROC_Start(args->ARGS_PROC_START.hProcessor);
 	return retVal;
 }
@@ -1142,13 +1088,8 @@ u32 PROCWRAP_Start(union Trapped_Args *args, void *pr_ctxt)
 u32 PROCWRAP_UnMap(union Trapped_Args *args, void *pr_ctxt)
 {
 	DSP_STATUS status;
-	struct PROCESS_CONTEXT *pCtxt = pr_ctxt;
 
 	GT_0trace(WCD_debugMask, GT_ENTER, "PROCWRAP_UnMap: entered\n");
-
-	if (args->ARGS_PROC_CTRL.hProcessor != pCtxt->hProcessor)
-		return DSP_EHANDLE;
-
 	status = PROC_UnMap(args->ARGS_PROC_UNMAPMEM.hProcessor,
 			   args->ARGS_PROC_UNMAPMEM.pMapAddr, pr_ctxt);
 	return status;
@@ -1160,14 +1101,9 @@ u32 PROCWRAP_UnMap(union Trapped_Args *args, void *pr_ctxt)
 u32 PROCWRAP_UnReserveMemory(union Trapped_Args *args, void *pr_ctxt)
 {
 	DSP_STATUS status;
-	struct PROCESS_CONTEXT *pCtxt = pr_ctxt;
 
 	GT_0trace(WCD_debugMask, GT_ENTER,
 		 "PROCWRAP_UnReserveMemory: entered\n");
-
-	if (args->ARGS_PROC_CTRL.hProcessor != pCtxt->hProcessor)
-		return DSP_EHANDLE;
-
 	status = PROC_UnReserveMemory(args->ARGS_PROC_UNRSVMEM.hProcessor,
 				     args->ARGS_PROC_UNRSVMEM.pRsvAddr);
 	return status;
@@ -1179,13 +1115,8 @@ u32 PROCWRAP_UnReserveMemory(union Trapped_Args *args, void *pr_ctxt)
 u32 PROCWRAP_Stop(union Trapped_Args *args, void *pr_ctxt)
 {
 	u32 retVal;
-	struct PROCESS_CONTEXT *pCtxt = pr_ctxt;
 
 	GT_0trace(WCD_debugMask, GT_ENTER, "PROCWRAP_Stop: entered\n");
-
-	if (args->ARGS_PROC_CTRL.hProcessor != pCtxt->hProcessor)
-		return DSP_EHANDLE;
-
 	retVal = PROC_Stop(args->ARGS_PROC_STOP.hProcessor);
 
 	return retVal;
@@ -1227,14 +1158,8 @@ u32 NODEWRAP_Allocate(union Trapped_Args *args, void *pr_ctxt)
 	u8 *pArgs = NULL;
 	struct DSP_NODEATTRIN attrIn, *pAttrIn = NULL;
 	struct NODE_OBJECT *hNode;
-	struct PROCESS_CONTEXT *pCtxt = pr_ctxt;
 
 	GT_0trace(WCD_debugMask, GT_ENTER, "NODEWRAP_Allocate: entered\n");
-
-	if (args->ARGS_PROC_CTRL.hProcessor != pCtxt->hProcessor) {
-		status =  DSP_EHANDLE;
-		goto func_cont;
-	}
 
 	/* Optional argument */
 	if (pSize) {
@@ -1632,13 +1557,9 @@ u32 NODEWRAP_GetUUIDProps(union Trapped_Args *args, void *pr_ctxt)
 	DSP_STATUS status = DSP_SOK;
 	struct DSP_UUID nodeId;
 	struct DSP_NDBPROPS    *pnodeProps = NULL;
-	struct PROCESS_CONTEXT *pCtxt = pr_ctxt;
 
 	GT_0trace(WCD_debugMask, GT_ENTER,
 		 "NODEWRAP_GetUUIDPropste: entered\n");
-
-	if (args->ARGS_PROC_CTRL.hProcessor != pCtxt->hProcessor)
-		return DSP_EHANDLE;
 
 	cp_fm_usr(&nodeId, args->ARGS_NODE_GETUUIDPROPS.pNodeID, status, 1);
 	if (DSP_FAILED(status))
@@ -1980,11 +1901,6 @@ u32 CMMWRAP_GetHandle(union Trapped_Args *args, void *pr_ctxt)
 {
 	DSP_STATUS status = DSP_SOK;
 	struct CMM_OBJECT *hCmmMgr;
-	struct PROCESS_CONTEXT *pCtxt = pr_ctxt;
-
-	if (args->ARGS_PROC_CTRL.hProcessor &&
-		args->ARGS_PROC_CTRL.hProcessor != pCtxt->hProcessor)
-		return DSP_EHANDLE;
 
 	status = CMM_GetHandle(args->ARGS_CMM_GETHANDLE.hProcessor, &hCmmMgr);
 

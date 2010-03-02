@@ -439,38 +439,42 @@ DSP_STATUS PROC_Ctrl(void *hProcessor, u32 dwCmd,
 		 "Entered PROC_Ctrl, args:\n\thProcessor:"
 		 " 0x%x\n\tdwCmd: 0x%x\n\targ: 0x%x\n", hProcessor, dwCmd, arg);
 
-
-	/* intercept PWR deep sleep command */
-	if (dwCmd == WMDIOCTL_DEEPSLEEP) {
-		timeout = arg->cbData;
-		status = PWR_SleepDSP(PWR_DEEPSLEEP, timeout);
-	}
-	/* intercept PWR emergency sleep command */
-	else if (dwCmd == WMDIOCTL_EMERGENCYSLEEP) {
-		timeout = arg->cbData;
-		status = PWR_SleepDSP(PWR_EMERGENCYDEEPSLEEP, timeout);
-	} else if (dwCmd == PWR_DEEPSLEEP) {
-		/* timeout = arg->cbData; */
-		status = PWR_SleepDSP(PWR_DEEPSLEEP, timeout);
-	}
-	/* intercept PWR wake commands */
-	else if (dwCmd == WMDIOCTL_WAKEUP) {
-		timeout = arg->cbData;
-		status = PWR_WakeDSP(timeout);
-	} else if (dwCmd == PWR_WAKEUP) {
-		/* timeout = arg->cbData; */
-		status = PWR_WakeDSP(timeout);
-	} else
-	    if (DSP_SUCCEEDED
-		((*pProcObject->pIntfFxns->pfnDevCntrl)
-			(pProcObject->hWmdContext, dwCmd, arg))) {
-		status = DSP_SOK;
+	if (MEM_IsValidHandle(pProcObject, PROC_SIGNATURE)) {
+		/* intercept PWR deep sleep command */
+		if (dwCmd == WMDIOCTL_DEEPSLEEP) {
+			timeout = arg->cbData;
+			status = PWR_SleepDSP(PWR_DEEPSLEEP, timeout);
+		}
+		/* intercept PWR emergency sleep command */
+		else if (dwCmd == WMDIOCTL_EMERGENCYSLEEP) {
+			timeout = arg->cbData;
+			status = PWR_SleepDSP(PWR_EMERGENCYDEEPSLEEP, timeout);
+		} else if (dwCmd == PWR_DEEPSLEEP) {
+			/* timeout = arg->cbData; */
+			status = PWR_SleepDSP(PWR_DEEPSLEEP, timeout);
+		}
+		/* intercept PWR wake commands */
+		else if (dwCmd == WMDIOCTL_WAKEUP) {
+			timeout = arg->cbData;
+			status = PWR_WakeDSP(timeout);
+		} else if (dwCmd == PWR_WAKEUP) {
+			/* timeout = arg->cbData; */
+			status = PWR_WakeDSP(timeout);
+		} else
+		    if (DSP_SUCCEEDED
+			((*pProcObject->pIntfFxns->pfnDevCntrl)
+				(pProcObject->hWmdContext, dwCmd, arg))) {
+			status = DSP_SOK;
+		} else {
+			status = DSP_EFAIL;
+			GT_0trace(PROC_DebugMask, GT_7CLASS,
+				 "PROC_Ctrl: Failed \n");
+		}
 	} else {
-		status = DSP_EFAIL;
+		status = DSP_EHANDLE;
 		GT_0trace(PROC_DebugMask, GT_7CLASS,
-			 "PROC_Ctrl: Failed \n");
+			 "PROC_Ctrl: InValid Processor Handle \n");
 	}
-
 	GT_1trace(PROC_DebugMask, GT_ENTER, "Exiting PROC_Ctrl, 0x%x\n",
 		 status);
 	return status;
@@ -514,7 +518,6 @@ DSP_STATUS PROC_Detach(struct PROCESS_CONTEXT *pr_ctxt)
 		GT_0trace(PROC_DebugMask, GT_7CLASS,
 			 "PROC_Detach: InValid Processor Handle \n");
 	}
-
 	GT_1trace(PROC_DebugMask, GT_ENTER, "Exiting PROC_Detach, 0x%x\n",
 		 status);
 	return status;
@@ -544,17 +547,21 @@ DSP_STATUS PROC_EnumNodes(void *hProcessor, void **aNodeTab,
 			" 0x%x\n\t puNumNodes 0x%x\n\t puAllocated: 0x%x\n",
 			hProcessor, aNodeTab, uNodeTabSize, puNumNodes,
 			puAllocated);
-
-	if (DSP_SUCCEEDED(DEV_GetNodeManager(pProcObject->hDevObject,
-			 &hNodeMgr))) {
-		if (hNodeMgr) {
-			status = NODE_EnumNodes(hNodeMgr, aNodeTab,
-						uNodeTabSize,
-						puNumNodes,
-						puAllocated);
+	if (MEM_IsValidHandle(pProcObject, PROC_SIGNATURE)) {
+		if (DSP_SUCCEEDED(DEV_GetNodeManager(pProcObject->hDevObject,
+				 &hNodeMgr))) {
+			if (hNodeMgr) {
+				status = NODE_EnumNodes(hNodeMgr, aNodeTab,
+							uNodeTabSize,
+							puNumNodes,
+							puAllocated);
+			}
 		}
+	} else {
+		status = DSP_EHANDLE;
+		GT_0trace(PROC_DebugMask, GT_7CLASS, "PROC_EnumNodes: "
+			 "InValid Processor Handle \n");
 	}
-
 	GT_6trace(PROC_DebugMask, GT_ENTER, "Exit PROC_EnumNodes, args:\n\t"
 			"hProcessor:  0x%x\n\taNodeTab:  0x%x\n\tuNodeTabSize: "
 			" 0x%x\n\t puNumNodes 0x%x\n\t puAllocated: 0x%x\n\t "
@@ -603,6 +610,7 @@ static DSP_STATUS proc_memory_sync(void *hProcessor, void *pMpuAddr,
 {
 	/* Keep STATUS here for future additions to this function */
 	DSP_STATUS status = DSP_SOK;
+	struct PROC_OBJECT *pProcObject = (struct PROC_OBJECT *)hProcessor;
 
 	DBC_Require(cRefs > 0);
 	GT_5trace(PROC_DebugMask, GT_ENTER,
@@ -610,10 +618,17 @@ static DSP_STATUS proc_memory_sync(void *hProcessor, void *pMpuAddr,
 		  "hProcessor: 0x%x pMpuAddr: 0x%x ulSize 0x%x, ulFlags 0x%x\n",
 		  __func__, hProcessor, pMpuAddr, ulSize, ulFlags);
 
+	if (!MEM_IsValidHandle(pProcObject, PROC_SIGNATURE)) {
+		GT_1trace(PROC_DebugMask, GT_7CLASS,
+			  "%s: InValid Processor Handle\n", __func__);
+		status = DSP_EHANDLE;
+		goto err_out;
+	}
+
 	if (memory_check_vma((u32)pMpuAddr, ulSize)) {
 		GT_3trace(PROC_DebugMask, GT_7CLASS,
-			  "%s: InValid address parameters\n",
-			  __func__, pMpuAddr, ulSize);
+			"%s: InValid address parameters\n",
+			__func__, pMpuAddr, ulSize);
 		status = DSP_EHANDLE;
 		goto err_out;
 	}
@@ -675,7 +690,13 @@ DSP_STATUS PROC_GetResourceInfo(void *hProcessor, u32 uResourceType,
 		 "hProcessor:  0x%x\n\tuResourceType:  0x%x\n\tpResourceInfo:"
 		 " 0x%x\n\t uResourceInfoSize 0x%x\n", hProcessor,
 		 uResourceType, pResourceInfo, uResourceInfoSize);
-
+	if (!MEM_IsValidHandle(pProcObject, PROC_SIGNATURE)) {
+		status = DSP_EHANDLE;
+		GT_0trace(PROC_DebugMask, GT_7CLASS,
+			 "PROC_GetResourceInfo: InValid "
+			 "Processor Handle \n");
+		goto func_end;
+	}
 	switch (uResourceType) {
 	case DSP_RESOURCE_DYNDARAM:
 	case DSP_RESOURCE_DYNSARAM:
@@ -754,8 +775,13 @@ DSP_STATUS PROC_GetDevObject(void *hProcessor,
 	DBC_Require(cRefs > 0);
 	DBC_Require(phDevObject != NULL);
 
-	*phDevObject = pProcObject->hDevObject;
-	status = DSP_SOK;
+	if (MEM_IsValidHandle(pProcObject, PROC_SIGNATURE)) {
+		*phDevObject = pProcObject->hDevObject;
+		status = DSP_SOK;
+	} else {
+		*phDevObject = NULL;
+		status = DSP_EHANDLE;
+	}
 
 	DBC_Ensure((DSP_SUCCEEDED(status) && *phDevObject != NULL) ||
 		   (DSP_FAILED(status) && *phDevObject == NULL));
@@ -784,38 +810,38 @@ DSP_STATUS PROC_GetState(void *hProcessor,
 	GT_3trace(PROC_DebugMask, GT_ENTER, "Entering PROC_GetState, args:\n\t"
 		 "pProcStatus: 0x%x\n\thProcessor: 0x%x\n\t uStateInfoSize"
 		 " 0x%x\n", pProcStatus, hProcessor, uStateInfoSize);
-
-	/* First, retrieve BRD state information */
-	status = (*pProcObject->pIntfFxns->pfnBrdStatus)
-			   (pProcObject->hWmdContext, &brdStatus);
-	if (DSP_SUCCEEDED(status)) {
-		switch (brdStatus) {
-		case BRD_STOPPED:
-			pProcStatus->iState = PROC_STOPPED;
-			break;
-		case BRD_SLEEP_TRANSITION:
-		case BRD_DSP_HIBERNATION:
-			/* Fall through */
-		case BRD_RUNNING:
-			pProcStatus->iState = PROC_RUNNING;
-			break;
-		case BRD_LOADED:
-			pProcStatus->iState = PROC_LOADED;
-			break;
-		case BRD_ERROR:
-			pProcStatus->iState = PROC_ERROR;
-			break;
-		default:
-			pProcStatus->iState = 0xFF;
-			status = DSP_EFAIL;
+	if (MEM_IsValidHandle(pProcObject, PROC_SIGNATURE)) {
+		/* First, retrieve BRD state information */
+		status = (*pProcObject->pIntfFxns->pfnBrdStatus)
+				   (pProcObject->hWmdContext, &brdStatus);
+		if (DSP_SUCCEEDED(status)) {
+			switch (brdStatus) {
+			case BRD_STOPPED:
+				pProcStatus->iState = PROC_STOPPED;
+				break;
+			case BRD_SLEEP_TRANSITION:
+			case BRD_DSP_HIBERNATION:
+				/* Fall through */
+			case BRD_RUNNING:
+				pProcStatus->iState = PROC_RUNNING;
+				break;
+			case BRD_LOADED:
+				pProcStatus->iState = PROC_LOADED;
+				break;
+			case BRD_ERROR:
+				pProcStatus->iState = PROC_ERROR;
+				break;
+			default:
+				pProcStatus->iState = 0xFF;
+				status = DSP_EFAIL;
+				break;
+			}
+		} else {
+			GT_0trace(PROC_DebugMask, GT_7CLASS,
+				 "PROC_GetState: General Failure"
+				 " to read the PROC Status \n");
 		}
-	} else {
-		GT_0trace(PROC_DebugMask, GT_7CLASS,
-			 "PROC_GetState: General Failure"
-			 " to read the PROC Status \n");
-	}
-	/* Next, retrieve error information, if any */
-	if (DSP_SUCCEEDED(status)) {
+		/* Next, retrieve error information, if any */
 		status = DEV_GetDehMgr(pProcObject->hDevObject, &hDehMgr);
 		if (DSP_SUCCEEDED(status) && hDehMgr) {
 			status = (*pProcObject->pIntfFxns->pfnDehGetInfo)
@@ -830,6 +856,10 @@ DSP_STATUS PROC_GetState(void *hProcessor,
 				 "PROC_GetState: Failed to "
 				 "retrieve DEH handle.\n");
 		}
+	} else {
+		status = DSP_EHANDLE;
+		GT_0trace(PROC_DebugMask, GT_7CLASS,
+			 "PROC_GetState:InValid Processor Handle \n");
 	}
 	GT_2trace(PROC_DebugMask, GT_ENTER,
 		 "Exiting PROC_GetState, results:\n\t"
@@ -935,7 +965,12 @@ DSP_STATUS PROC_Load(void *hProcessor, IN CONST s32 iArgc,
 	GT_2trace(PROC_DebugMask, GT_ENTER, "Entered PROC_Load, args:\n\t"
 		 "hProcessor:  0x%x\taArgv: 0x%x\n", hProcessor, aArgv[0]);
 	/* Call the WMD_BRD_Load Fxn */
-
+	if (!MEM_IsValidHandle(pProcObject, PROC_SIGNATURE)) {
+		status = DSP_EHANDLE;
+		GT_0trace(PROC_DebugMask, GT_1CLASS,
+			 "PROC_Load: Invalid Processor Handle..\n");
+		goto func_end;
+	}
 	if (pProcObject->bIsAlreadyAttached) {
 		GT_0trace(PROC_DebugMask, GT_7CLASS,
 			 "PROC_Load GPP "
@@ -1226,6 +1261,12 @@ DSP_STATUS PROC_Map(void *hProcessor, void *pMpuAddr, u32 ulSize,
 	GT_3trace(PROC_DebugMask, GT_ENTER, "PROC_Map: vaAlign %x, paAlign %x, "
 		 "sizeAlign %x\n", vaAlign, paAlign, sizeAlign);
 
+	if (!MEM_IsValidHandle(pProcObject, PROC_SIGNATURE)) {
+		status = DSP_EHANDLE;
+		GT_0trace(PROC_DebugMask, GT_7CLASS, "PROC_Map: "
+			 "InValid Processor Handle \n");
+		goto func_end;
+	}
 	/* Critical section */
 	(void)SYNC_EnterCS(hProcLock);
 	status = DMM_GetHandle(pProcObject, &hDmmMgr);
@@ -1257,6 +1298,7 @@ DSP_STATUS PROC_Map(void *hProcessor, void *pMpuAddr, u32 ulSize,
 		DRV_UpdateDMMResElement(dmmRes, (u32)pMpuAddr, ulSize,
 				(u32)pReqAddr, (u32)*ppMapAddr, hProcessor);
 	}
+func_end:
 	GT_1trace(PROC_DebugMask, GT_ENTER, "Leaving PROC_Map [0x%x]", status);
 	return status;
 }
@@ -1283,6 +1325,14 @@ DSP_STATUS PROC_RegisterNotify(void *hProcessor, u32 uEventMask,
 		 " 0x%x\n\t hNotification 0x%x\n", hProcessor, uEventMask,
 		 uNotifyType, hNotification);
 
+	/* Check processor handle */
+	if (!MEM_IsValidHandle(pProcObject, PROC_SIGNATURE)) {
+		status = DSP_EHANDLE;
+		GT_1trace(PROC_DebugMask, GT_7CLASS,
+			 "PROC_RegsiterNotify Invalid "
+			 "ProcessorHandle 0x%x\n", hProcessor);
+		goto func_end;
+	}
 	/* Check if event mask is a valid processor related event */
 	if (uEventMask & ~(DSP_PROCESSORSTATECHANGE | DSP_PROCESSORATTACH |
 	   DSP_PROCESSORDETACH | DSP_PROCESSORRESTART | DSP_MMUFAULT |
@@ -1330,6 +1380,7 @@ DSP_STATUS PROC_RegisterNotify(void *hProcessor, u32 uEventMask,
 
 		}
 	}
+func_end:
 	return status;
 }
 
@@ -1349,7 +1400,12 @@ DSP_STATUS PROC_ReserveMemory(void *hProcessor, u32 ulSize,
 		 "Entered PROC_ReserveMemory, args:\n\t"
 		 "hProcessor: 0x%x ulSize: 0x%x ppRsvAddr: 0x%x\n", hProcessor,
 		 ulSize, ppRsvAddr);
-
+	if (!MEM_IsValidHandle(pProcObject, PROC_SIGNATURE)) {
+		status = DSP_EHANDLE;
+		GT_0trace(PROC_DebugMask, GT_7CLASS, "PROC_Map: "
+			 "InValid Processor Handle \n");
+		goto func_end;
+	}
 	status = DMM_GetHandle(pProcObject, &hDmmMgr);
 	if (DSP_FAILED(status)) {
 		GT_1trace(PROC_DebugMask, GT_7CLASS, "PROC_ReserveMemory: "
@@ -1359,6 +1415,7 @@ DSP_STATUS PROC_ReserveMemory(void *hProcessor, u32 ulSize,
 
 	GT_1trace(PROC_DebugMask, GT_ENTER, "Leaving PROC_ReserveMemory [0x%x]",
 		 status);
+func_end:
 	return status;
 }
 
@@ -1379,7 +1436,12 @@ DSP_STATUS PROC_Start(void *hProcessor)
 	DBC_Require(cRefs > 0);
 	GT_1trace(PROC_DebugMask, GT_ENTER, "Entered PROC_Start, args:\n\t"
 		 "hProcessor:  0x%x\n", hProcessor);
-
+	if (!MEM_IsValidHandle(pProcObject, PROC_SIGNATURE)) {
+		status = DSP_EHANDLE;
+		GT_0trace(PROC_DebugMask, GT_7CLASS,
+			 "PROC_Start :InValid Handle \n");
+		goto func_end;
+	}
 	/* Call the WMD_BRD_Start */
 	if (pProcObject->sState != PROC_LOADED) {
 		GT_0trace(PROC_DebugMask, GT_7CLASS,
@@ -1470,7 +1532,12 @@ DSP_STATUS PROC_Stop(void *hProcessor)
 	DBC_Require(cRefs > 0);
 	GT_1trace(PROC_DebugMask, GT_ENTER, "Entered PROC_Stop, args:\n\t"
 		 "hProcessor:  0x%x\n", hProcessor);
-
+	if (!MEM_IsValidHandle(pProcObject, PROC_SIGNATURE)) {
+		status = DSP_EHANDLE;
+		GT_0trace(PROC_DebugMask, GT_7CLASS,
+			 "PROC_Stop :InValid Handle \n");
+		goto func_end;
+	}
 	if (DSP_SUCCEEDED((*pProcObject->pIntfFxns->pfnBrdStatus)
 	   (pProcObject->hWmdContext, &uBrdState))) {
 		if (uBrdState == BRD_ERROR)
@@ -1522,7 +1589,7 @@ DSP_STATUS PROC_Stop(void *hProcessor)
 		GT_0trace(PROC_DebugMask, GT_7CLASS,
 			 "PROC_Stop Failed to Stop the processor/device \n");
 	}
-
+func_end:
 	GT_1trace(PROC_DebugMask, GT_ENTER, "Exiting PROC_Stop, status  0x%x\n",
 		 status);
 
@@ -1550,6 +1617,12 @@ DSP_STATUS PROC_UnMap(void *hProcessor, void *pMapAddr,
 		 "0x%x pMapAddr: 0x%x\n", hProcessor, pMapAddr);
 
 	vaAlign = PG_ALIGN_LOW((u32) pMapAddr, PG_SIZE_4K);
+	if (!MEM_IsValidHandle(pProcObject, PROC_SIGNATURE)) {
+		status = DSP_EHANDLE;
+		GT_0trace(PROC_DebugMask, GT_7CLASS, "PROC_UnMap: "
+			 "InValid Processor Handle \n");
+		goto func_end;
+	}
 
 	status = DMM_GetHandle(hProcessor, &hDmmMgr);
 	if (DSP_FAILED(status)) {
@@ -1600,7 +1673,12 @@ DSP_STATUS PROC_UnReserveMemory(void *hProcessor, void *pRsvAddr)
 	GT_2trace(PROC_DebugMask, GT_ENTER,
 		 "Entered PROC_UnReserveMemory, args:\n\t"
 		 "hProcessor: 0x%x pRsvAddr: 0x%x\n", hProcessor, pRsvAddr);
-
+	if (!MEM_IsValidHandle(pProcObject, PROC_SIGNATURE)) {
+		status = DSP_EHANDLE;
+		GT_0trace(PROC_DebugMask, GT_7CLASS, "PROC_UnMap: "
+			 "InValid Processor Handle \n");
+		goto func_end;
+	}
 	status = DMM_GetHandle(pProcObject, &hDmmMgr);
 	if (DSP_FAILED(status))
 		GT_1trace(PROC_DebugMask, GT_7CLASS,
@@ -1612,7 +1690,7 @@ DSP_STATUS PROC_UnReserveMemory(void *hProcessor, void *pRsvAddr)
 	GT_1trace(PROC_DebugMask, GT_ENTER,
 		 "Leaving PROC_UnReserveMemory [0x%x]",
 		 status);
-
+func_end:
 	return status;
 }
 
@@ -1643,6 +1721,7 @@ static DSP_STATUS PROC_Monitor(struct PROC_OBJECT *hProcObject)
 #endif
 
 	DBC_Require(cRefs > 0);
+	DBC_Require(MEM_IsValidHandle(pProcObject, PROC_SIGNATURE));
 
 	GT_1trace(PROC_DebugMask, GT_ENTER, "Entered PROC_Monitor, args:\n\t"
 		 "hProcessor: 0x%x\n", hProcObject);
@@ -1742,13 +1821,20 @@ DSP_STATUS PROC_NotifyClients(void *hProc, u32 uEvents)
 	DSP_STATUS status = DSP_SOK;
 	struct PROC_OBJECT *pProcObject = (struct PROC_OBJECT *)hProc;
 
+	DBC_Require(MEM_IsValidHandle(pProcObject, PROC_SIGNATURE));
 	DBC_Require(IsValidProcEvent(uEvents));
 	DBC_Require(cRefs > 0);
+	if (!MEM_IsValidHandle(pProcObject, PROC_SIGNATURE)) {
+		status = DSP_EHANDLE;
+		GT_0trace(PROC_DebugMask, GT_7CLASS, "PROC_NotifyClients: "
+			 "InValid Processor Handle \n");
+		goto func_end;
+	}
 
 	NTFY_Notify(pProcObject->hNtfy, uEvents);
 	GT_0trace(PROC_DebugMask, GT_1CLASS,
 		 "PROC_NotifyClients :Signaled. \n");
-
+func_end:
 	return status;
 }
 
