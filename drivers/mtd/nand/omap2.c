@@ -440,7 +440,7 @@ static inline int omap_nand_dma_transfer(struct mtd_info *mtd, void *addr,
 	/* The fifo depth is 64 bytes. We have a sync at each frame and frame
 	 * length is 64 bytes.
 	 */
-	int buf_len = len >> 6;
+	int buf_len = len >> 5;
 
 	if (addr >= high_memory) {
 		struct page *p1;
@@ -467,7 +467,7 @@ static inline int omap_nand_dma_transfer(struct mtd_info *mtd, void *addr,
 	    omap_set_dma_src_params(info->dma_ch, 0, OMAP_DMA_AMODE_POST_INC,
 							dma_addr, 0, 0);
 	    omap_set_dma_transfer_params(info->dma_ch, OMAP_DMA_DATA_TYPE_S32,
-					0x10, buf_len, OMAP_DMA_SYNC_FRAME,
+					0x08, buf_len, OMAP_DMA_SYNC_FRAME,
 					OMAP24XX_DMA_GPMC, OMAP_DMA_DST_SYNC);
 	} else {
 	    omap_set_dma_src_params(info->dma_ch, 0, OMAP_DMA_AMODE_CONSTANT,
@@ -475,7 +475,7 @@ static inline int omap_nand_dma_transfer(struct mtd_info *mtd, void *addr,
 	    omap_set_dma_dest_params(info->dma_ch, 0, OMAP_DMA_AMODE_POST_INC,
 							dma_addr, 0, 0);
 	    omap_set_dma_transfer_params(info->dma_ch, OMAP_DMA_DATA_TYPE_S32,
-					0x10, buf_len, OMAP_DMA_SYNC_FRAME,
+					0x08, buf_len, OMAP_DMA_SYNC_FRAME,
 					OMAP24XX_DMA_GPMC, OMAP_DMA_SRC_SYNC);
 	}
 	/*  configure and start prefetch transfer */
@@ -568,15 +568,15 @@ omap_nand_irq(int this_irq, void *dev)
 		if (irq_stats & 0x1) {
 			int i = 0;
 			u16 *p = (u16 *) info->buf;
-			for (; i < 32; i++)
+			for (; i < 16; i++)
 				iowrite16(*p++, info->nand_pref_fifo_add);
 			info->buf = (u_char *) p;
 		}
 	} else {
 		if (irq_stats & 0x1) {
 			u32 *p = (u32 *) info->buf;
-			ioread32_rep(info->nand_pref_fifo_add, p, 16);
-			info->buf = (u_char *) (p + 16);
+			ioread32_rep(info->nand_pref_fifo_add, p, 8);
+			info->buf = (u_char *) (p + 8);
 		}
 		if (irq_stats & 0x2) {
 			pfpw_status = gpmc_prefetch_status();
