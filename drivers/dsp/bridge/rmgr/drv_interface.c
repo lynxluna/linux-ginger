@@ -113,10 +113,8 @@ struct omap34xx_bridge_suspend_data {
 
 static struct omap34xx_bridge_suspend_data bridge_suspend_data;
 
-#ifdef CONFIG_BRIDGE_WDT3
 static void bridge_create_sysfs(void);
 static void bridge_destroy_sysfs(void);
-#endif
 
 static int omap34xxbridge_suspend_lockout(
 		struct omap34xx_bridge_suspend_data *s, struct file *f)
@@ -257,9 +255,8 @@ static int __devinit omap34xx_bridge_probe(struct platform_device *pdev)
 
 	device_create(bridge_class, NULL, MKDEV(driver_major, 0),
 			NULL, "DspBridge");
-#ifdef CONFIG_BRIDGE_WDT3
+
 	bridge_create_sysfs();
-#endif
 #ifdef CONFIG_PM
 	/* Initialize the wait queue */
 	if (!status) {
@@ -677,9 +674,51 @@ static ssize_t wdt3_timeout_store(struct device *dev,
 static DEVICE_ATTR(dsp_wdt_timeout, S_IWUSR | S_IRUGO, wdt3_timeout_show,
 			wdt3_timeout_store);
 
+#endif
+
+/*
+ * this sysfs is intended to retrieve two MPU addresses
+ * needed for the INST2 utility.
+ * the inst_log script will run this sysfs
+ */
+static ssize_t mpu_address_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+    struct WMD_DEV_CONTEXT *dwContext = NULL;
+	struct DEV_OBJECT *hDevObject = NULL;
+	u32 mem_poolsize = 0;
+	u32 GppPa = 0, DspVa = 0;
+	u32 armPhyMemOffUncached = 0;
+	hDevObject = (struct DEV_OBJECT *)DRV_GetFirstDevObject();
+	DEV_GetWMDContext(hDevObject, &dwContext);
+	GppPa = dwContext->aTLBEntry[0].ulGppPa;
+	DspVa = dwContext->aTLBEntry[0].ulDspVa;
+
+	/*
+	 * the physical address offset, this offset is a
+	 * fixed value for a given platform.
+	 */
+	armPhyMemOffUncached = GppPa - DspVa;
+
+	/*
+	 * the offset value for cached address region
+	 * on DSP address space
+	 */
+	mem_poolsize = phys_mempool_base - 0x20000000;
+
+	/* Retrive the above calculated addresses */
+	return sprintf(buf, "mempoolsizeOffset 0x%x GppPaOffset 0x%x\n",
+					mem_poolsize, armPhyMemOffUncached);
+}
+
+static DEVICE_ATTR(mpu_address, S_IRUGO, mpu_address_show, NULL);
+
  static struct attribute *attrs[] = {
+#ifdef CONFIG_BRIDGE_WDT3
 	&dev_attr_dsp_wdt.attr,
 	&dev_attr_dsp_wdt_timeout.attr,
+#endif
+	&dev_attr_mpu_address.attr,
 	NULL,
  };
 
@@ -702,7 +741,6 @@ static void bridge_destroy_sysfs(void)
 	sysfs_remove_group(&omap_dspbridge_dev->dev.kobj, &attr_group);
 }
 
-#endif
 /* Bridge driver initialization and de-initialization functions */
 module_init(bridge_init);
 module_exit(bridge_exit);
