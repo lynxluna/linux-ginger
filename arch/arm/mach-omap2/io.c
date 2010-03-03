@@ -48,7 +48,6 @@
 #include "omap_hwmod_2420.h"
 #include "omap_hwmod_2430.h"
 #include "omap_hwmod_34xx.h"
-#include "omap_hwmod_36xx.h"
 
 /*
  * The machine specific code may provide the extra mapping besides the

@@ -193,15 +193,26 @@ static struct omap_hwmod omap34xx_mpu_hwmod = {
 };
 
 /* SR common */
-static struct omap_hwmod_sysc_fields sr_sysc_fields = {
+static struct omap_hwmod_sysc_fields omap3430_sr_sysc_fields = {
 	.clkact_shift	= 20,
 };
 
-static struct omap_hwmod_sysconfig sr_if_ctrl = {
+static struct omap_hwmod_sysc_fields omap3630_sr_sysc_fields = {
+	.sidle_shift	= 24,
+};
+
+static struct omap_hwmod_sysconfig omap3430_sr_if_ctrl = {
 	.sysc_offs	= 0x24,
 	.sysc_flags	= (SYSC_HAS_CLOCKACTIVITY | SYSC_NO_CACHE),
 	.clockact	= CLOCKACT_TEST_ICLK,
-	.sysc_fields	= &sr_sysc_fields,
+	.sysc_fields	= &omap3430_sr_sysc_fields,
+};
+
+static struct omap_hwmod_sysconfig omap3630_sr_if_ctrl = {
+	.sysc_offs	= 0x38,
+	.sysc_flags	= (SYSC_HAS_SIDLEMODE | SYSC_NO_CACHE),
+	.clockact	= CLOCKACT_TEST_ICLK,
+	.sysc_fields	= &omap3630_sr_sysc_fields,
 };
 
 /* SR1 */
@@ -217,9 +228,21 @@ static struct omap_hwmod omap34xx_sr1_hwmod = {
 	.clkdev_con_id	= "sr1_fck",
 	.slaves		= omap34xx_sr1_slaves,
 	.slaves_cnt	= ARRAY_SIZE(omap34xx_sr1_slaves),
-	.sysconfig	= &sr_if_ctrl,
+	.sysconfig	= &omap3430_sr_if_ctrl,
 	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP3430),
 	.flags		= HWMOD_SET_DEFAULT_CLOCKACT,
+};
+
+static struct omap_hwmod omap36xx_sr1_hwmod = {
+	.name		= "sr1_hwmod",
+	.mpu_irqs	= NULL,
+	.sdma_chs	= NULL,
+	.clkdev_dev_id	= NULL,
+	.clkdev_con_id	= "sr1_fck",
+	.slaves		= omap34xx_sr1_slaves,
+	.slaves_cnt	= ARRAY_SIZE(omap34xx_sr1_slaves),
+	.sysconfig	= &omap3630_sr_if_ctrl,
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP3630ES1),
 };
 
 /* SR2 */
@@ -235,11 +258,22 @@ static struct omap_hwmod omap34xx_sr2_hwmod = {
 	.clkdev_con_id	= "sr2_fck",
 	.slaves		= omap34xx_sr2_slaves,
 	.slaves_cnt	= ARRAY_SIZE(omap34xx_sr2_slaves),
-	.sysconfig	= &sr_if_ctrl,
+	.sysconfig	= &omap3430_sr_if_ctrl,
 	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP3430),
 	.flags		= HWMOD_SET_DEFAULT_CLOCKACT,
 };
 
+static struct omap_hwmod omap36xx_sr2_hwmod = {
+	.name		= "sr2_hwmod",
+	.mpu_irqs	= NULL,
+	.sdma_chs	= NULL,
+	.clkdev_dev_id	= NULL,
+	.clkdev_con_id	= "sr2_fck",
+	.slaves		= omap34xx_sr2_slaves,
+	.slaves_cnt	= ARRAY_SIZE(omap34xx_sr2_slaves),
+	.sysconfig	= &omap3630_sr_if_ctrl,
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP3630ES1),
+};
 
 static __initdata struct omap_hwmod *omap34xx_hwmods[] = {
 	&omap34xx_l3_hwmod,
@@ -249,6 +283,17 @@ static __initdata struct omap_hwmod *omap34xx_hwmods[] = {
 	&omap34xx_mpu_hwmod,
 	&omap34xx_sr1_hwmod,
 	&omap34xx_sr2_hwmod,
+	NULL,
+};
+
+static __initdata struct omap_hwmod *omap36xx_hwmods[] = {
+	&omap34xx_l3_hwmod,
+	&omap34xx_l4_core_hwmod,
+	&omap34xx_l4_per_hwmod,
+	&omap34xx_l4_wkup_hwmod,
+	&omap34xx_mpu_hwmod,
+	&omap36xx_sr1_hwmod,
+	&omap36xx_sr2_hwmod,
 	NULL,
 };
 
