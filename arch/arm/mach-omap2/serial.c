@@ -714,6 +714,7 @@ static inline void omap_uart_idle_init(struct omap_uart_state *uart) {}
 #endif /* CONFIG_PM */
 
 
+#ifndef CONFIG_SERIAL_OMAP
 /*
  * Override the default 8250 read handler: mem_serial_in()
  * Empty RX fifo read causes an abort on omap3630 and omap4
@@ -730,6 +731,7 @@ static unsigned int serial_in_override(struct uart_port *up, int offset)
 	}
 	return serial_read_reg(&omap_uart[up->line], offset);
 }
+#endif
 
 void __init omap_serial_early_init(void)
 {
