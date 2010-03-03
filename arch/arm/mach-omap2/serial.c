@@ -59,6 +59,7 @@ struct omap_uart_state {
 	struct clk *fck;
 	int clocked;
 
+	int dma_enabled;
 	int irq;
 	int regshift;
 	int irqflags;
@@ -801,6 +802,9 @@ void __init omap_serial_init_port(int port)
 	struct omap_uart_state *uart;
 	struct platform_device *pdev;
 	struct device *dev;
+#ifdef CONFIG_SERIAL_OMAP
+	struct uart_port_info *up_info;
+#endif
 #ifndef CONFIG_SERIAL_OMAP
 	struct plat_serial8250_port *p;
 #endif
@@ -811,6 +815,10 @@ void __init omap_serial_init_port(int port)
 	pdev = &uart->pdev;
 	dev = &pdev->dev;
 
+#ifdef CONFIG_SERIAL_OMAP
+	up_info = dev->platform_data;
+	uart->dma_enabled = up_info->dma_enabled;
+#endif
 #ifndef CONFIG_SERIAL_OMAP
 	p = dev->platform_data;
 	p->membase = uart->membase;
