@@ -275,8 +275,12 @@ void WMD_DEH_Notify(struct DEH_MGR *hDehMgr, u32 ulEventMask,
 		}
 
 		/* Filter subsequent notifications when an error occurs */
-		if (pDevContext->dwBrdState != BRD_ERROR)
+		if (pDevContext->dwBrdState != BRD_ERROR) {
 			NTFY_Notify(pDehMgr->hNtfy, ulEventMask);
+#ifdef CONFIG_BRIDGE_RECOVERY
+			bridge_recover_schedule();
+#endif
+		}
 
 		/* Set the Board state as ERROR */
 		pDevContext->dwBrdState = BRD_ERROR;

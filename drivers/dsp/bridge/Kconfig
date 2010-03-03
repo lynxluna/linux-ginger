@@ -52,6 +52,13 @@ config WDT_TIMEOUT
 	   Watchdog timer timeout value, after that time if the watchdog timer
 	   counter is not reset the wdt overflow interrupt will be triggered
 
+config BRIDGE_RECOVERY
+	bool "DSP Recovery Support"
+	depends on MPU_BRIDGE
+	help
+	  In case of DSP fatal error, BRIDGE driver will try to
+	  recover itself.
+
 comment "Bridge Notifications"
 	depends on MPU_BRIDGE
 

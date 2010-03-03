@@ -53,6 +53,7 @@
 #include <dspbridge/msg.h>
 #include <dspbridge/wmdioctl.h>
 #include <dspbridge/drv.h>
+#include <dspbridge/reg.h>
 
 /*  ----------------------------------- This */
 #include <dspbridge/proc.h>
@@ -258,7 +259,6 @@ DSP_STATUS PROC_AutoStart(struct CFG_DEVNODE *hDevNode,
 			 struct DEV_OBJECT *hDevObject)
 {
 	DSP_STATUS status = DSP_EFAIL;
-	u32 dwAutoStart = 0;	/* autostart flag */
 	struct PROC_OBJECT *pProcObject;
 	char szExecFile[MAXCMDLINELEN];
 	char *argv[2];
@@ -294,11 +294,6 @@ DSP_STATUS PROC_AutoStart(struct CFG_DEVNODE *hDevNode,
 	if (DSP_FAILED(status))
 		goto func_cont;
 
-	status = CFG_GetAutoStart(hDevNode, &dwAutoStart);
-	if (DSP_FAILED(status) || !dwAutoStart) {
-		status = DSP_EFAIL;
-		goto func_cont;
-	}
 	/* Get the default executable for this board... */
 	DEV_GetDevType(hDevObject, (u32 *)&devType);
 	pProcObject->uProcessor = devType;
@@ -969,13 +964,18 @@ DSP_STATUS PROC_Load(void *hProcessor, IN CONST s32 iArgc,
 		   (pProcObject->hWmdContext, &uBrdState))) {
 			pr_info("%s: Processor Loaded %s\n", __func__, pargv0);
 			DBC_Assert(uBrdState == BRD_LOADED);
+			/*
+			 * Save absolute path for base image so that recovery
+			 * can load it.
+			 */
+			REG_SetValue(DEFEXEC, (u8 *)pargv0,
+						 strlen(pargv0) + 1);
 		}
 	}
 
 func_end:
 	if (DSP_FAILED(status))
 		pr_err("%s: Processor failed to load\n", __func__);
-
 	DBC_Ensure((DSP_SUCCEEDED(status) && pProcObject->sState == PROC_LOADED)
 		   || DSP_FAILED(status));
 #ifdef OPT_LOAD_TIME_INSTRUMENTATION
