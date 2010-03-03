@@ -96,6 +96,14 @@ static s32 shm_size = 0x500000;	/* 5 MB */
 static u32 phys_mempool_base;
 static u32 phys_mempool_size;
 static int tc_wordswapon;	/* Default value is always false */
+#ifdef CONFIG_BRIDGE_RECOVERY
+static atomic_t bridge_cref;	/* number of bridge open handles */
+static struct workqueue_struct *bridge_rec_queue;
+static struct work_struct bridge_recovery_work;
+static DECLARE_COMPLETION_ONSTACK(bridge_comp);
+static DECLARE_COMPLETION_ONSTACK(bridge_open_comp);
+static bool recover;
+#endif
 
 #ifdef CONFIG_PM
 struct omap34xx_bridge_suspend_data {
@@ -166,6 +174,31 @@ static struct clk *clk_handle;
 #endif
 
 struct dspbridge_platform_data *omap_dspbridge_pdata;
+
+#ifdef CONFIG_BRIDGE_RECOVERY
+static void bridge_recover(struct work_struct *work)
+{
+	struct DEV_OBJECT *dev;
+	struct CFG_DEVNODE *dev_node;
+	if (atomic_read(&bridge_cref)) {
+		INIT_COMPLETION(bridge_comp);
+		wait_for_completion(&bridge_comp);
+	}
+	dev = DEV_GetFirst();
+	DEV_GetDevNode(dev, &dev_node);
+	if (!dev_node || DSP_FAILED(PROC_AutoStart(dev_node, dev)))
+		pr_err("DSP could not be restarted\n");
+	recover = false;
+	complete_all(&bridge_open_comp);
+}
+
+void bridge_recover_schedule(void)
+{
+	INIT_COMPLETION(bridge_open_comp);
+	recover = true;
+	queue_work(bridge_rec_queue, &bridge_recovery_work);
+}
+#endif
 
 #ifdef CONFIG_BRIDGE_DVFS
 static int dspbridge_scale_notification(struct notifier_block *op,
@@ -301,6 +334,12 @@ static int __devinit omap34xx_bridge_probe(struct platform_device *pdev)
 		}
 	}
 
+#ifdef CONFIG_BRIDGE_RECOVERY
+	bridge_rec_queue = create_workqueue("bridge_rec_queue");
+	INIT_WORK(&bridge_recovery_work, bridge_recover);
+	INIT_COMPLETION(bridge_comp);
+#endif
+
 	DBC_Assert(status == 0);
 	DBC_Assert(DSP_SUCCEEDED(initStatus));
 
@@ -427,6 +466,12 @@ static int bridge_open(struct inode *ip, struct file *filp)
 	 * Allocate a new process context and insert it into global
 	 * process context list.
 	 */
+
+#ifdef CONFIG_BRIDGE_RECOVERY
+	if (recover)
+		wait_for_completion(&bridge_open_comp);
+#endif
+
 	pr_ctxt = MEM_Calloc(sizeof(struct PROCESS_CONTEXT), MEM_PAGED);
 	if (pr_ctxt) {
 		pr_ctxt->resState = PROC_RES_ALLOCATED;
@@ -441,6 +486,11 @@ static int bridge_open(struct inode *ip, struct file *filp)
 	}
 
 	filp->private_data = pr_ctxt;
+
+#ifdef CONFIG_BRIDGE_RECOVERY
+	if (!status)
+		atomic_inc(&bridge_cref);
+#endif
 
 	return status;
 }
@@ -468,6 +518,10 @@ static int bridge_release(struct inode *ip, struct file *filp)
 	filp->private_data = NULL;
 
 err:
+#ifdef CONFIG_BRIDGE_RECOVERY
+	if (!atomic_dec_return(&bridge_cref))
+		complete(&bridge_comp);
+#endif
 	return status;
 }
 
@@ -480,6 +534,13 @@ static long bridge_ioctl(struct file *filp, unsigned int code,
 	union Trapped_Args pBufIn;
 
 	DBC_Require(filp != NULL);
+#ifdef CONFIG_BRIDGE_RECOVERY
+	if (recover) {
+		status = -EIO;
+		goto err;
+	}
+#endif
+
 #ifdef CONFIG_PM
 	status = omap34xxbridge_suspend_lockout(&bridge_suspend_data, filp);
 	if (status != 0)

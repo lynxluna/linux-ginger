@@ -393,4 +393,7 @@ struct PROCESS_CONTEXT{
 	extern DSP_STATUS DRV_ReleaseResources(IN u32 dwContext,
 					       struct DRV_OBJECT *hDrvObject);
 
+#ifdef CONFIG_BRIDGE_RECOVERY
+	void bridge_recover_schedule(void);
+#endif
 #endif				/* DRV_ */

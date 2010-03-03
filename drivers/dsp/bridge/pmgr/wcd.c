@@ -381,7 +381,7 @@ DSP_STATUS WCD_InitComplete2(void)
 	DSP_STATUS status = DSP_SOK;
 	struct CFG_DEVNODE *DevNode;
 	struct DEV_OBJECT *hDevObject;
-	u32 devType;
+	u32 devType, tmp;
 
 	DBC_Require(WCD_cRefs > 0);
 
@@ -397,10 +397,8 @@ DSP_STATUS WCD_InitComplete2(void)
 			continue;
 
 		if ((devType == DSP_UNIT) || (devType == IVA_UNIT)) {
-			if (DSP_FAILED(PROC_AutoStart(DevNode, hDevObject))) {
-				status = DSP_EFAIL;
-				/* break; */
-			}
+			if (CFG_GetAutoStart(DevNode, &tmp) == DSP_SOK && tmp)
+				PROC_AutoStart(DevNode, hDevObject);
 		}
 	}			/* End For Loop */
 
