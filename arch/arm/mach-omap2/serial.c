@@ -355,7 +355,10 @@ static void omap_uart_restore_context(struct omap_uart_state *uart)
 	serial_write_reg(uart, UART_DLM, uart->dlh);
 	serial_write_reg(uart, UART_LCR, 0x0); /* Operational mode */
 	serial_write_reg(uart, UART_IER, uart->ier);
-	serial_write_reg(uart, UART_FCR, 0xA1);
+	if (uart->dma_enabled)
+		serial_write_reg(uart, UART_FCR, 0x59);
+	else
+		serial_write_reg(uart, UART_FCR, 0x51);
 	serial_write_reg(uart, UART_LCR, 0xBF); /* Config B mode */
 	serial_write_reg(uart, UART_EFR, efr);
 	serial_write_reg(uart, UART_LCR, UART_LCR_WLEN8);
@@ -437,7 +440,8 @@ static void omap_uart_smart_idle_enable(struct omap_uart_state *p,
 
 	sysc = serial_read_reg(p, UART_OMAP_SYSC) & 0x7;
 	if (enable)
-		sysc |= 0x2 << 3;
+		/* Errata 2.15: Force idle if in DMA mode */
+		sysc |= p->dma_enabled ? 0x0 : (0x2 << 3);
 	else
 		sysc |= 0x1 << 3;
 
