@@ -259,6 +259,7 @@ static void serial_omap_start_tx(struct uart_port *port)
 {
 	struct uart_omap_port *up = (struct uart_omap_port *)port;
 
+	serial_omap_uart_check_clk(up->pdev->id - 1);
 	if (up->use_dma && !(up->port.x_char)) {
 
 		struct circ_buf *xmit = &up->port.state->xmit;
@@ -823,7 +824,10 @@ serial_omap_pm(struct uart_port *port, unsigned int state,
 {
 	struct uart_omap_port *up = (struct uart_omap_port *)port;
 	unsigned char efr;
+
 	dev_dbg(up->port.dev, "serial_omap_pm+%d\n", up->pdev->id);
+	serial_omap_uart_check_clk(up->pdev->id - 1);
+
 	efr = serial_in(up, UART_EFR);
 	serial_out(up, UART_LCR, 0xBF);
 	serial_out(up, UART_EFR, efr | UART_EFR_ECB);
