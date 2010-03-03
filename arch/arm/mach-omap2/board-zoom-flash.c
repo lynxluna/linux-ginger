@@ -29,6 +29,7 @@
 static struct omap_nand_platform_data zoom_nand_data = {
 	.nand_setup	= NULL,
 	.dma_channel	= -1,	/* disable DMA in OMAP NAND driver */
+	.gpmc_irq	= 20,
 	.dev_ready	= NULL,
 	.devsize	= 1,	/* '0' for 8-bit, '1' for 16-bit device */
 };

@@ -59,6 +59,7 @@ struct omap_uart_state {
 	struct clk *fck;
 	int clocked;
 
+	int dma_enabled;
 	int irq;
 	int regshift;
 	int irqflags;
@@ -354,7 +355,10 @@ static void omap_uart_restore_context(struct omap_uart_state *uart)
 	serial_write_reg(uart, UART_DLM, uart->dlh);
 	serial_write_reg(uart, UART_LCR, 0x0); /* Operational mode */
 	serial_write_reg(uart, UART_IER, uart->ier);
-	serial_write_reg(uart, UART_FCR, 0xA1);
+	if (uart->dma_enabled)
+		serial_write_reg(uart, UART_FCR, 0x59);
+	else
+		serial_write_reg(uart, UART_FCR, 0x51);
 	serial_write_reg(uart, UART_LCR, 0xBF); /* Config B mode */
 	serial_write_reg(uart, UART_EFR, efr);
 	serial_write_reg(uart, UART_LCR, UART_LCR_WLEN8);
@@ -436,7 +440,8 @@ static void omap_uart_smart_idle_enable(struct omap_uart_state *p,
 
 	sysc = serial_read_reg(p, UART_OMAP_SYSC) & 0x7;
 	if (enable)
-		sysc |= 0x2 << 3;
+		/* Errata 2.15: Force idle if in DMA mode */
+		sysc |= p->dma_enabled ? 0x0 : (0x2 << 3);
 	else
 		sysc |= 0x1 << 3;
 
@@ -475,6 +480,16 @@ static void omap_uart_idle_timer(unsigned long data)
 	struct omap_uart_state *uart = (struct omap_uart_state *)data;
 
 	uart->timeout = DEFAULT_TIMEOUT;
+#ifdef CONFIG_SERIAL_OMAP
+	/* check if the uart port in DMA Mode is active as
+	 * in DMA Mode Irqs are disbaled for UART Port
+	 * if port is active then dont allow sleep.
+	 */
+	if (uart->dma_enabled && omap_uart_active(uart->num)) {
+		omap_uart_block_sleep(uart);
+		return;
+	}
+#endif
 	omap_uart_allow_sleep(uart);
 }
 
@@ -541,6 +556,18 @@ int omap_uart_can_sleep(void)
 	}
 
 	return can_sleep;
+}
+
+void serial_omap_uart_check_clk(int num)
+{
+	struct omap_uart_state *uart;
+
+	list_for_each_entry(uart, &uart_list, node) {
+		if (num == uart->num) {
+			if (!uart->clocked)
+				omap_uart_block_sleep(uart);
+			}
+	}
 }
 
 /**
@@ -714,6 +741,7 @@ static inline void omap_uart_idle_init(struct omap_uart_state *uart) {}
 #endif /* CONFIG_PM */
 
 
+#ifndef CONFIG_SERIAL_OMAP
 /*
  * Override the default 8250 read handler: mem_serial_in()
  * Empty RX fifo read causes an abort on omap3630 and omap4
@@ -730,6 +758,7 @@ static unsigned int serial_in_override(struct uart_port *up, int offset)
 	}
 	return serial_read_reg(&omap_uart[up->line], offset);
 }
+#endif
 
 void __init omap_serial_early_init(void)
 {
@@ -799,6 +828,9 @@ void __init omap_serial_init_port(int port)
 	struct omap_uart_state *uart;
 	struct platform_device *pdev;
 	struct device *dev;
+#ifdef CONFIG_SERIAL_OMAP
+	struct uart_port_info *up_info;
+#endif
 #ifndef CONFIG_SERIAL_OMAP
 	struct plat_serial8250_port *p;
 #endif
@@ -809,6 +841,10 @@ void __init omap_serial_init_port(int port)
 	pdev = &uart->pdev;
 	dev = &pdev->dev;
 
+#ifdef CONFIG_SERIAL_OMAP
+	up_info = dev->platform_data;
+	uart->dma_enabled = up_info->dma_enabled;
+#endif
 #ifndef CONFIG_SERIAL_OMAP
 	p = dev->platform_data;
 	p->membase = uart->membase;
@@ -821,21 +857,21 @@ void __init omap_serial_init_port(int port)
 	list_add_tail(&uart->node, &uart_list);
 
 #ifndef CONFIG_SERIAL_OMAP
-		/* omap44xx: Never read empty UART fifo
-		 * omap3xxx: Never read empty UART fifo on UARTs
-		 * with IP rev >=0x52
-		 */
-		if (cpu_is_omap44xx())
-			p->serial_in = serial_in_override;
-		else if ((serial_read_reg(uart, UART_OMAP_MVER) & 0xFF)
-				>= UART_OMAP_NO_EMPTY_FIFO_READ_IP_REV)
-			p->serial_in = serial_in_override;
+	/* omap44xx: Never read empty UART fifo
+	 * omap3xxx: Never read empty UART fifo on UARTs
+	 * with IP rev >=0x52
+	 */
+	if (cpu_is_omap44xx())
+		p->serial_in = serial_in_override;
+	else if ((serial_read_reg(uart, UART_OMAP_MVER) & 0xFF)
+			>= UART_OMAP_NO_EMPTY_FIFO_READ_IP_REV)
+		p->serial_in = serial_in_override;
 #endif
 	if (WARN_ON(platform_device_register(pdev)))
 		return;
 
 	if ((cpu_is_omap34xx() && uart->padconf) ||
-	    (uart->wk_en && uart->wk_mask)) {
+		(uart->wk_en && uart->wk_mask)) {
 		device_init_wakeup(dev, true);
 		DEV_CREATE_FILE(dev, &dev_attr_sleep_timeout);
 	}

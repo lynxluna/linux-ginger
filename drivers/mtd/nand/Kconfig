@@ -85,6 +85,9 @@ config MTD_NAND_OMAP_PREFETCH
 	help
 	 The NAND device can be accessed for Read/Write using GPMC PREFETCH engine
 	 to improve the performance.
+	 GPMC PREFETCH can be configured eigther in MPU interrupt mode or in DMA
+	 interrupt mode. If not selected any of them prefetch will be used in
+	 polling mode.
 
 config MTD_NAND_OMAP_PREFETCH_DMA
 	depends on MTD_NAND_OMAP_PREFETCH
@@ -93,7 +96,16 @@ config MTD_NAND_OMAP_PREFETCH_DMA
 	help
 	 The GPMC PREFETCH engine can be configured eigther in MPU interrupt mode
 	 or in DMA interrupt mode.
-	 Say y for DMA mode or MPU mode will be used
+	 Say y for DMA mode
+
+config MTD_NAND_OMAP_PREFETCH_IRQ
+	depends on MTD_NAND_OMAP_PREFETCH && !MTD_NAND_OMAP_PREFETCH_DMA
+	bool "IRQ mode"
+	default n
+	help
+	 The GPMC PREFETCH engine can be configured eigther in MPU interrupt mode
+	 or in DMA interrupt mode.
+	 Say y for IRQ mode
 
 config MTD_NAND_TS7250
 	tristate "NAND Flash device on TS-7250 board"

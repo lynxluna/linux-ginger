@@ -107,14 +107,22 @@ static inline void omap3_per_restore_context(void)
 	omap_gpio_restore_context();
 }
 
-static inline void omap3_per_gpio_wait_ready()
+static inline void omap3_per_gpio_wait_ready(void)
 {
 	int i;
-	for (i = OMAP3430_ST_GPIO2_SHIFT; i <= OMAP3430_ST_GPIO6_SHIFT; i++)
-		while (cm_read_mod_reg(OMAP3430_PER_MOD, CM_IDLEST) & (1<<i))
-			;
-}
+	int timeout = 0;
 
+	for (i = OMAP3430_ST_GPIO2_SHIFT; i <= OMAP3430_ST_GPIO6_SHIFT; i++)
+		while (cm_read_mod_reg(OMAP3430_PER_MOD, CM_IDLEST)
+			& (1 << i)) {
+			timeout++;
+			if (timeout > 100000) {
+				printk(KERN_ERR "omap3_per_gpio_wait_ready"
+					"TIMEOUT cm_read_mod_reg .\n");
+				return;
+			}
+		}
+}
 
 static void omap3_enable_io_chain(void)
 {
@@ -737,16 +745,20 @@ static int omap3_pm_suspend(void)
 		omap2_pm_wakeup_on_timer(wakeup_timer_seconds);
 
 	/* Read current next_pwrsts */
-	list_for_each_entry(pwrst, &pwrst_list, node)
-		pwrst->saved_state = pwrdm_read_next_pwrst(pwrst->pwrdm);
-	/* Set ones wanted by suspend */
 	list_for_each_entry(pwrst, &pwrst_list, node) {
-		if (set_pwrdm_state(pwrst->pwrdm, pwrst->next_state))
-			goto restore;
-		if (pwrdm_clear_all_prev_pwrst(pwrst->pwrdm))
-			goto restore;
+		  if (strcmp("iva2_pwrdm", pwrst->pwrdm->name))
+			pwrst->saved_state =
+				pwrdm_read_next_pwrst(pwrst->pwrdm);
 	}
-
+		/* Set ones wanted by suspend */
+	list_for_each_entry(pwrst, &pwrst_list, node) {
+		if (strcmp("iva2_pwrdm", pwrst->pwrdm->name)) {
+			if (set_pwrdm_state(pwrst->pwrdm, pwrst->next_state))
+				goto restore;
+			if (pwrdm_clear_all_prev_pwrst(pwrst->pwrdm))
+				goto restore;
+		}
+	}
 	omap_uart_prepare_suspend();
 	omap3_intc_suspend();
 
@@ -755,14 +767,16 @@ static int omap3_pm_suspend(void)
 restore:
 	/* Restore next_pwrsts */
 	list_for_each_entry(pwrst, &pwrst_list, node) {
-		state = pwrdm_read_prev_pwrst(pwrst->pwrdm);
-		if (state > pwrst->next_state) {
-			printk(KERN_INFO "Powerdomain (%s) didn't enter "
-			       "target state %d\n",
-			       pwrst->pwrdm->name, pwrst->next_state);
-			ret = -1;
+		if (strcmp("iva2_pwrdm", pwrst->pwrdm->name)) {
+			state = pwrdm_read_prev_pwrst(pwrst->pwrdm);
+			if (state > pwrst->next_state) {
+				printk(KERN_INFO "Powerdomain (%s) didn't enter"
+					"target state %d\n", pwrst->pwrdm->name,
+					pwrst->next_state);
+				ret = -1;
+			}
+			set_pwrdm_state(pwrst->pwrdm, pwrst->saved_state);
 		}
-		set_pwrdm_state(pwrst->pwrdm, pwrst->saved_state);
 	}
 	if (ret)
 		printk(KERN_ERR "Could not enter target state in pm_suspend\n");
@@ -1104,6 +1118,12 @@ static void __init prcm_setup_regs(void)
 
 	/* Clear any pending PRCM interrupts */
 	prm_write_mod_reg(0, OCP_MOD, OMAP3_PRM_IRQSTATUS_MPU_OFFSET);
+	 /* Put the IVA2 In Idle */
+	prm_rmw_mod_reg_bits(OMAP3430_LASTPOWERSTATEENTERED_MASK, 0,
+			OMAP3430_IVA2_MOD, PM_PWSTCTRL);
+	/* Make Clock transition Automatic */
+	cm_rmw_mod_reg_bits(OMAP3430_CLKTRCTRL_IVA2_MASK, 0x3,
+			OMAP3430_IVA2_MOD, CM_CLKSTCTRL);
 
 	omap3_iva_idle();
 	omap3_d2d_idle();
@@ -1128,8 +1148,10 @@ void omap3_pm_off_mode_enable(int enable)
 	resource_unlock_opp(VDD2_OPP);
 #endif
 	list_for_each_entry(pwrst, &pwrst_list, node) {
-		pwrst->next_state = state;
-		set_pwrdm_state(pwrst->pwrdm, state);
+		if (strcmp("iva2_pwrdm", pwrst->pwrdm->name)) {
+			pwrst->next_state = state;
+			set_pwrdm_state(pwrst->pwrdm, state);
+		}
 	}
 }
 
@@ -1216,7 +1238,10 @@ static int __init pwrdms_setup(struct powerdomain *pwrdm, void *unused)
 	if (!pwrst)
 		return -ENOMEM;
 	pwrst->pwrdm = pwrdm;
-	pwrst->next_state = PWRDM_POWER_RET;
+	if (strcmp("iva2_pwrdm", pwrdm->name))
+		pwrst->next_state = PWRDM_POWER_RET;
+	else
+		 pwrst->next_state = PWRDM_POWER_OFF;
 	list_add(&pwrst->node, &pwrst_list);
 
 	if (pwrdm_has_hdwr_sar(pwrdm))

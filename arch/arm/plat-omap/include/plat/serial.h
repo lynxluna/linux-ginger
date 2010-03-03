@@ -60,6 +60,7 @@ extern void omap_uart_prepare_suspend(void);
 extern void omap_uart_prepare_idle(int num, int power_state);
 extern void omap_uart_resume_idle(int num);
 extern void omap_uart_enable_irqs(int enable);
+extern void serial_omap_uart_check_clk(int port);
 #endif
 
 #endif

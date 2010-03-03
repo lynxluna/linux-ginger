@@ -48,7 +48,6 @@
 #include "omap_hwmod_2420.h"
 #include "omap_hwmod_2430.h"
 #include "omap_hwmod_34xx.h"
-#include "omap_hwmod_36xx.h"
 
 #include <dspbridge/host_os.h>
 

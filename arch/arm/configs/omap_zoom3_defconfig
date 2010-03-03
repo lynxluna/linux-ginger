@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.32.7
-# Mon Feb  8 21:05:31 2010
+# Mon Mar  1 12:02:08 2010
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -629,6 +629,7 @@ CONFIG_MTD_NAND=y
 CONFIG_MTD_NAND_OMAP2=y
 CONFIG_MTD_NAND_OMAP_PREFETCH=y
 # CONFIG_MTD_NAND_OMAP_PREFETCH_DMA is not set
+# CONFIG_MTD_NAND_OMAP_PREFETCH_IRQ is not set
 CONFIG_MTD_NAND_IDS=y
 # CONFIG_MTD_NAND_DISKONCHIP is not set
 # CONFIG_MTD_NAND_NANDSIM is not set
