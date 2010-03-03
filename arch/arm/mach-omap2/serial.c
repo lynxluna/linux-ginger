@@ -778,8 +778,6 @@ void __init omap_serial_early_init(void)
 				continue;
 		}
 
-
-
 		if (cpu_is_omap44xx())
 			uart->irq += 32;
 	}
@@ -810,38 +808,35 @@ void __init omap_serial_init_port(int port)
 	dev = &pdev->dev;
 
 #ifndef CONFIG_SERIAL_OMAP
-		struct plat_serial8250_port *p = dev->platform_data;
-		p->membase = uart->membase;
-		p->private_data = uart;
+	struct plat_serial8250_port *p = dev->platform_data;
+	p->membase = uart->membase;
+	p->private_data = uart;
 #endif
-
 	omap_uart_enable_clocks(uart);
-
 	omap_uart_reset(uart);
 	omap_uart_idle_init(uart);
 
 	list_add_tail(&uart->node, &uart_list);
 
+#ifndef CONFIG_SERIAL_OMAP
+	/* omap44xx: Never read empty UART fifo
+	 * omap3xxx: Never read empty UART fifo on UARTs
+	 * with IP rev >=0x52
+	 */
+	if (cpu_is_omap44xx())
+		p->serial_in = serial_in_override;
+	else if ((serial_read_reg(uart, UART_OMAP_MVER) & 0xFF)
+			>= UART_OMAP_NO_EMPTY_FIFO_READ_IP_REV)
+		p->serial_in = serial_in_override;
+#endif
 	if (WARN_ON(platform_device_register(pdev)))
 		return;
 
 	if ((cpu_is_omap34xx() && uart->padconf) ||
-	    (uart->wk_en && uart->wk_mask)) {
+		(uart->wk_en && uart->wk_mask)) {
 		device_init_wakeup(dev, true);
 		DEV_CREATE_FILE(dev, &dev_attr_sleep_timeout);
 	}
-
-#ifndef CONFIG_SERIAL_OMAP
-		/* omap44xx: Never read empty UART fifo
-		 * omap3xxx: Never read empty UART fifo on UARTs
-		 * with IP rev >=0x52
-		 */
-		if (cpu_is_omap44xx())
-			p->serial_in = serial_in_override;
-		else if ((serial_read_reg(uart, UART_OMAP_MVER) & 0xFF)
-				>= UART_OMAP_NO_EMPTY_FIFO_READ_IP_REV)
-			p->serial_in = serial_in_override;
-#endif
 }
 
 /**
