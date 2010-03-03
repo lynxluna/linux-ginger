@@ -259,6 +259,7 @@ static void serial_omap_start_tx(struct uart_port *port)
 {
 	struct uart_omap_port *up = (struct uart_omap_port *)port;
 
+	serial_omap_uart_check_clk(up->pdev->id - 1);
 	if (up->use_dma && !(up->port.x_char)) {
 
 		struct circ_buf *xmit = &up->port.state->xmit;
@@ -823,7 +824,10 @@ serial_omap_pm(struct uart_port *port, unsigned int state,
 {
 	struct uart_omap_port *up = (struct uart_omap_port *)port;
 	unsigned char efr;
+
 	dev_dbg(up->port.dev, "serial_omap_pm+%d\n", up->pdev->id);
+	serial_omap_uart_check_clk(up->pdev->id - 1);
+
 	efr = serial_in(up, UART_EFR);
 	serial_out(up, UART_LCR, 0xBF);
 	serial_out(up, UART_EFR, efr | UART_EFR_ECB);
@@ -1319,6 +1323,35 @@ void __exit serial_omap_exit(void)
 {
 	platform_driver_unregister(&serial_omap_driver);
 	uart_unregister_driver(&serial_omap_reg);
+}
+
+/**
+ * omap_uart_active() - Check if any ports managed by this
+ * driver are currently busy.
+ * Basically used for DMA mode check before putting it to
+ * force idle mode for errata 2.15 implementation.
+ */
+
+int omap_uart_active(int num)
+{
+	struct uart_omap_port *up = ui[num];
+
+	/* check for recent driver activity */
+	/* if from now to last activty < 5 second keep clocks on */
+	if ((jiffies_to_msecs(jiffies - up->port_activity) < RX_TIMEOUT))
+		return 1;
+
+	/* for DMA mode status of DMA channel
+	 * will decide whether uart port can enter sleep
+	 * or should we block sleep state.
+	 */
+	if (up->use_dma &&
+		(up->uart_dma.tx_dma_channel != 0xFF ||
+		up->uart_dma.rx_dma_channel != 0xFF))
+		return 1;
+	else
+		return 0;
+
 }
 
 subsys_initcall(serial_omap_init);

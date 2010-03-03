@@ -119,4 +119,5 @@ struct uart_omap_port {
 };
 
 extern char *saved_command_line;
+int omap_uart_active(int num);
 #endif /* __OMAP_SERIAL_H__ */
