@@ -1325,6 +1325,35 @@ void __exit serial_omap_exit(void)
 	uart_unregister_driver(&serial_omap_reg);
 }
 
+/**
+ * omap_uart_active() - Check if any ports managed by this
+ * driver are currently busy.
+ * Basically used for DMA mode check before putting it to
+ * force idle mode for errata 2.15 implementation.
+ */
+
+int omap_uart_active(int num)
+{
+	struct uart_omap_port *up = ui[num];
+
+	/* check for recent driver activity */
+	/* if from now to last activty < 5 second keep clocks on */
+	if ((jiffies_to_msecs(jiffies - up->port_activity) < RX_TIMEOUT))
+		return 1;
+
+	/* for DMA mode status of DMA channel
+	 * will decide whether uart port can enter sleep
+	 * or should we block sleep state.
+	 */
+	if (up->use_dma &&
+		(up->uart_dma.tx_dma_channel != 0xFF ||
+		up->uart_dma.rx_dma_channel != 0xFF))
+		return 1;
+	else
+		return 0;
+
+}
+
 subsys_initcall(serial_omap_init);
 module_exit(serial_omap_exit);
 

@@ -480,6 +480,16 @@ static void omap_uart_idle_timer(unsigned long data)
 	struct omap_uart_state *uart = (struct omap_uart_state *)data;
 
 	uart->timeout = DEFAULT_TIMEOUT;
+#ifdef CONFIG_SERIAL_OMAP
+	/* check if the uart port in DMA Mode is active as
+	 * in DMA Mode Irqs are disbaled for UART Port
+	 * if port is active then dont allow sleep.
+	 */
+	if (uart->dma_enabled && omap_uart_active(uart->num)) {
+		omap_uart_block_sleep(uart);
+		return;
+	}
+#endif
 	omap_uart_allow_sleep(uart);
 }
 
