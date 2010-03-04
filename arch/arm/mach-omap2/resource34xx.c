@@ -497,7 +497,6 @@ int set_opp(struct shared_resource *resp, u32 target_level)
 	} else if (resp == vdd2_resp) {
 		unsigned long req_l3_freq;
 		struct omap_opp *oppx = NULL;
-		u8 opp;
 
 		/* Convert the tput in KiB/s to Bus frequency in MHz */
 		req_l3_freq = (target_level * 1000)/4;
@@ -518,7 +517,6 @@ int set_opp(struct shared_resource *resp, u32 target_level)
 		/* we dont expect this to fail */
 		BUG_ON(ret);
 
-		target_level = opp;
 		ret = resource_set_opp_level(VDD2_OPP, target_level, 0);
 	}
 	return 0;
