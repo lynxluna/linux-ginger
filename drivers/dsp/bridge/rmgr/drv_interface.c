@@ -48,10 +48,10 @@
 #include <dspbridge/wcdioctl.h>
 #include <dspbridge/_dcd.h>
 #include <dspbridge/dspdrv.h>
+#include <_tiomap.h>
 #ifdef CONFIG_BRIDGE_WDT3
 #include <dspbridge/clk.h>
 #include <dspbridge/io_sm.h>
-#include <_tiomap.h>
 #endif
 
 /*  ----------------------------------- Resource Manager */
@@ -383,9 +383,8 @@ func_cont:
 
 	SERVICES_Exit();
 
-#ifdef CONFIG_BRIDGE_WDT3
 	bridge_destroy_sysfs();
-#endif
+
 	devno = MKDEV(driver_major, 0);
 	cdev_del(&bridge_cdev);
 	unregister_chrdev_region(devno, 1);
