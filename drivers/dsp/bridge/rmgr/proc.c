@@ -538,15 +538,17 @@ static DSP_STATUS proc_memory_sync(void *hProcessor, void *pMpuAddr,
 		goto err_out;
 	}
 
-	down_read(&current->mm->mmap_sem);
-
-	if (memory_sync_vma((u32)pMpuAddr, ulSize, ulFlags)) {
-		pr_err("%s: InValid address parameters %p %x\n",
-		       __func__, pMpuAddr, ulSize);
-		status = DSP_EHANDLE;
+	if (ulFlags == 3) {
+		__cpuc_flush_kern_all();
+	} else {
+		down_read(&current->mm->mmap_sem);
+		if (memory_sync_vma((u32)pMpuAddr, ulSize, ulFlags)) {
+				pr_err("%s: InValid address parameters %p %x\n",
+				__func__, pMpuAddr, ulSize);
+				status = DSP_EHANDLE;
+		}
+		up_read(&current->mm->mmap_sem);
 	}
-
-	up_read(&current->mm->mmap_sem);
 
 err_out:
 	return status;
