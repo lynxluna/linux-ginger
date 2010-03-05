@@ -38,8 +38,6 @@
 #include <asm/div64.h>
 #include <asm/clkdev.h>
 
-#include <plat/pmc.h>
-
 #include <plat/sdrc.h>
 #include "clock.h"
 #include "clock34xx.h"
@@ -60,7 +58,6 @@
 
 /* needed by omap3_core_dpll_m2_set_rate() */
 struct clk *sdrc_ick_p, *arm_fck_p;
-unsigned int delay_sram;
 
 /**
  * omap3430es2_clk_ssi_find_idlest - return CM_IDLEST info for SSI
@@ -254,10 +251,16 @@ int omap3_core_dpll_m2_set_rate(struct clk *clk, unsigned long rate)
 		unlock_dll = 1;
 	}
 
-	/* Calculate the number of MPU cycles to wait for SDRC to stabilize */
-
+	/*
+	 * XXX This only needs to be done when the CPU frequency changes
+	 */
 	_mpurate = arm_fck_p->rate / CYCLES_PER_MHZ;
-	c = ((SDRC_TIME_STABILIZE * _mpurate) / (delay_sram * 2));
+	c = (_mpurate << SDRC_MPURATE_SCALE) >> SDRC_MPURATE_BASE_SHIFT;
+	c += 1;  /* for safety */
+	c *= SDRC_MPURATE_LOOPS;
+	c >>= SDRC_MPURATE_SCALE;
+	if (c == 0)
+		c = 1;
 
 	pr_debug("clock: changing CORE DPLL rate from %lu to %lu\n", clk->rate,
 		 validrate);
