@@ -78,8 +78,7 @@ extern unsigned long omap3_sram_configure_core_dpll_warmreset_sz;
 
 extern unsigned int measure_sram_delay(unsigned int);
 
-extern u32 __sram_wait_delay(
-		unsigned int);
+extern u32 __sram_wait_delay(unsigned int, unsigned int);
 extern unsigned long __sram_wait_delay_sz;
 
 #ifdef CONFIG_PM

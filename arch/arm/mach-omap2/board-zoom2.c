@@ -110,7 +110,7 @@ static struct mtd_partition zoom_nand_partitions[] = {
 		.offset		= 0,
 		.size		= 4 * (64 * 2048),	/* 512KB, 0x80000 */
 		.mask_flags	= MTD_WRITEABLE,	/* force read-only */
-},
+	},
 	{
 		.name		= "U-Boot-NAND",
 		.offset		= MTDPART_OFS_APPEND,	/* Offset = 0x80000 */
@@ -130,16 +130,16 @@ static struct mtd_partition zoom_nand_partitions[] = {
 	{
 		.name		= "system",
 		.offset		= MTDPART_OFS_APPEND,	/* Offset = 0x2000000 */
-		.size           = 1280 * (64 * 2048),	/* 160M, 0xA000000 */
+		.size           = 3328 * (64 * 2048),	/* 416M, 0x1A000000 */
 	},
 	{
 		.name		= "userdata",
-		.offset		= MTDPART_OFS_APPEND,	/* Offset = 0xC000000 */
+		.offset		= MTDPART_OFS_APPEND,	/* Offset = 0x1C000000*/
 		.size		= 256 * (64 * 2048),	/* 32M, 0x2000000 */
 	},
 	{
 		.name		= "cache",
-		.offset		= MTDPART_OFS_APPEND,	/* Offset = 0xE000000 */
+		.offset		= MTDPART_OFS_APPEND,	/* Offset = 0x1E000000*/
 		.size		= 256 * (64 * 2048),	/* 32M, 0x2000000 */
 	},
 };

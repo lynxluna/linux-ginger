@@ -65,7 +65,14 @@ static inline u32 sms_read_reg(u16 reg)
 /* Scale factor for fixed-point arith in omap3_core_dpll_m2_set_rate() */
 #define SDRC_MPURATE_SCALE		8
 
-/* SDRC_TIME_STABILIZE: Time for SDRC to stabilize in us */
-#define       SDRC_TIME_STABILIZE             4
+/* 2^SDRC_MPURATE_BASE_SHIFT: MPU MHz that SDRC_MPURATE_LOOPS is defined for */
+#define SDRC_MPURATE_BASE_SHIFT		9
+
+/*
+ * SDRC_MPURATE_LOOPS: Number of MPU loops to execute at
+ * 2^MPURATE_BASE_SHIFT MHz for SDRC to stabilize
+ */
+#define SDRC_MPURATE_LOOPS		96
+
 
 #endif

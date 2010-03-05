@@ -95,7 +95,7 @@ static int (*_omap_save_secure_sram)(u32 *addr);
 
 static struct powerdomain *mpu_pwrdm, *neon_pwrdm;
 static struct powerdomain *core_pwrdm, *per_pwrdm;
-static struct powerdomain *cam_pwrdm;
+static struct powerdomain *cam_pwrdm, *iva2_pwrdm;
 
 static inline void omap3_per_save_context(void)
 {
@@ -352,6 +352,13 @@ static void restore_control_register(u32 val)
 	__asm__ __volatile__ ("mcr p15, 0, %0, c1, c0, 0" : : "r" (val));
 }
 
+static inline void omap3_save_neon_context(void)
+{
+#ifdef CONFIG_VFP
+	vfp_pm_save_context();
+#endif
+}
+
 /* Function to restore the table entry that was modified for enabling MMU */
 static void restore_table_entry(void)
 {
@@ -386,13 +393,15 @@ void omap_sram_idle(void)
 	/* save_state = 3 => L1, L2 and logic lost */
 	int save_state = 0;
 	int mpu_next_state = PWRDM_POWER_ON;
+	int neon_next_state = PWRDM_POWER_ON;
 	int per_next_state = PWRDM_POWER_ON;
 	int core_next_state = PWRDM_POWER_ON;
 	int mpu_prev_state, core_prev_state, per_prev_state;
 	int mpu_logic_state, mpu_mem_state, core_logic_state;
+	int iva_next_state;
 	u32 sdrc_pwr = 0;
 	int per_state_modified = 0;
-	u32 fclk_status;
+	u32 fclk_status = 0;
 
 	if (!_omap_sram_idle)
 		return;
@@ -405,6 +414,7 @@ void omap_sram_idle(void)
 	mpu_next_state = pwrdm_read_next_pwrst(mpu_pwrdm);
 	mpu_logic_state = pwrdm_read_next_logic_pwrst(mpu_pwrdm);
 	mpu_mem_state = pwrdm_read_next_mem_pwrst(mpu_pwrdm, 0);
+	iva_next_state = pwrdm_read_next_pwrst(iva2_pwrdm);
 
 	switch (mpu_next_state) {
 	case PWRDM_POWER_ON:
@@ -434,8 +444,12 @@ void omap_sram_idle(void)
 	pwrdm_pre_transition();
 
 	/* NEON control */
-	if (pwrdm_read_pwrst(neon_pwrdm) == PWRDM_POWER_ON)
+	if (pwrdm_read_pwrst(neon_pwrdm) == PWRDM_POWER_ON) {
 		pwrdm_set_next_pwrst(neon_pwrdm, mpu_next_state);
+		neon_next_state = mpu_next_state;
+		if (neon_next_state == PWRDM_POWER_OFF)
+			omap3_save_neon_context();
+		}
 
 	/* PER */
 	per_next_state = pwrdm_read_next_pwrst(per_pwrdm);
@@ -503,12 +517,16 @@ void omap_sram_idle(void)
 	 * Disable smartreflex before entering WFI.
 	 * Only needed if we are going to enter retention or off.
 	 */
+	if ((mpu_next_state <= PWRDM_POWER_RET) || (core_next_state <= PWRDM_POWER_RET))
 	fclk_status = cm_read_mod_reg(OMAP3430_PER_MOD, CM_FCLKEN) |
 			cm_read_mod_reg(CORE_MOD, CM_FCLKEN1) |
-			cm_read_mod_reg(CORE_MOD, OMAP3430ES2_CM_FCLKEN3);
-
+			cm_read_mod_reg(CORE_MOD, OMAP3430ES2_CM_FCLKEN3) |
+			cm_read_mod_reg(OMAP3430_DSS_MOD, CM_FCLKEN) |
+			cm_read_mod_reg(OMAP3430_CAM_MOD, CM_FCLKEN) |
+			cm_read_mod_reg(OMAP3430ES2_SGX_MOD, CM_FCLKEN) |
+			cm_read_mod_reg(OMAP3430ES2_USBHOST_MOD, CM_FCLKEN);
 	if (!fclk_status) {
-		if (mpu_next_state <= PWRDM_POWER_RET)
+		if ((mpu_next_state <= PWRDM_POWER_RET) && (iva_next_state <=PWRDM_POWER_RET))
 			omap_smartreflex_disable(SR1);
 		if (core_next_state <= PWRDM_POWER_RET)
 			omap_smartreflex_disable(SR2);
@@ -1315,6 +1333,7 @@ static int __init omap3_pm_init(void)
 	per_pwrdm = pwrdm_lookup("per_pwrdm");
 	core_pwrdm = pwrdm_lookup("core_pwrdm");
 	cam_pwrdm = pwrdm_lookup("cam_pwrdm");
+	iva2_pwrdm = pwrdm_lookup("iva2_pwrdm");
 
 	omap_push_sram_idle();
 #ifdef CONFIG_SUSPEND

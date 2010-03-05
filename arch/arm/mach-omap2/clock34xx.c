@@ -27,17 +27,17 @@
 #include <linux/limits.h>
 #include <linux/bitops.h>
 #include <linux/err.h>
+#include <linux/i2c/twl.h>
 
 #include <plat/cpu.h>
 #include <plat/clock.h>
 #include <plat/sram.h>
 #include <plat/sdrc.h>
+#include <plat/prcm.h>
 #include <plat/omap-pm.h>
 
 #include <asm/div64.h>
 #include <asm/clkdev.h>
-
-#include <plat/pmc.h>
 
 #include <plat/sdrc.h>
 #include "clock.h"
@@ -50,6 +50,13 @@
 
 #define CYCLES_PER_MHZ			1000000
 
+#define        DPLL_M_MASK     0x7ff
+#define        DPLL_N_MASK     0x7f
+#define        DPLL_M2_MASK    0x1f
+#define        SHIFT_DPLL_M    16
+#define        SHIFT_DPLL_N    8
+#define        SHIFT_DPLL_M2   27
+
 /*
  * DPLL5_FREQ_FOR_USBHOST: USBHOST and USBTLL are the only clocks
  * that are sourced by DPLL5, and both of these require this clock
@@ -59,7 +66,6 @@
 
 /* needed by omap3_core_dpll_m2_set_rate() */
 struct clk *sdrc_ick_p, *arm_fck_p;
-unsigned int delay_sram;
 
 /**
  * omap3430es2_clk_ssi_find_idlest - return CM_IDLEST info for SSI
@@ -230,6 +236,11 @@ int omap3_core_dpll_m2_set_rate(struct clk *clk, unsigned long rate)
 	struct omap_sdrc_params *sdrc_cs0;
 	struct omap_sdrc_params *sdrc_cs1;
 	int ret;
+	u32 clk_sel_regval;
+	u32 core_dpll_mul_m, core_dpll_div_n, core_dpll_clkoutdiv_m2;
+	u32 sys_clk_rate, sdrc_clk_stab;
+	u32 nr1, nr2, nr, dr;
+	unsigned int delay_sram;
 
 	if (!clk || !rate)
 		return -EINVAL;
@@ -253,10 +264,36 @@ int omap3_core_dpll_m2_set_rate(struct clk *clk, unsigned long rate)
 		unlock_dll = 1;
 	}
 
-	/* Calculate the number of MPU cycles to wait for SDRC to stabilize */
+	clk_sel_regval = cm_read_mod_reg(PLL_MOD, CM_CLKSEL);
 
+	/* Get the M, N and M2 values required for getting sdrc clk stab */
+	core_dpll_mul_m = (clk_sel_regval >> SHIFT_DPLL_M) & DPLL_M_MASK;
+	core_dpll_div_n = (clk_sel_regval >> SHIFT_DPLL_N) & DPLL_N_MASK;
+	core_dpll_clkoutdiv_m2 = (clk_sel_regval >> SHIFT_DPLL_M2) &
+	DPLL_M2_MASK;
+	sys_clk_rate = clk_get_rate(clk_get(NULL, "osc_sys_ck"));
+
+	sys_clk_rate = sys_clk_rate / 1000000;
+
+	/* wait time for L3 clk stabilization = 4*REFCLK + 8*CLKOUTX2 */
+	nr1 = (4 * (core_dpll_div_n + 1) * 2 * core_dpll_clkoutdiv_m2 *
+	core_dpll_mul_m);
+	nr2 = 8 * (core_dpll_div_n + 1);
+	nr = nr1 + nr2;
+
+	dr = 2 * sys_clk_rate * core_dpll_mul_m * core_dpll_clkoutdiv_m2;
+
+	sdrc_clk_stab = nr / dr;
+
+	/* Adding 2us to sdrc clk stab */
+	sdrc_clk_stab = sdrc_clk_stab + 2;
+
+	delay_sram = delay_sram_val();
+
+	/* Calculate the number of MPU cycles to wait for SDRC to stabilize */
 	_mpurate = arm_fck_p->rate / CYCLES_PER_MHZ;
-	c = ((SDRC_TIME_STABILIZE * _mpurate) / (delay_sram * 2));
+
+	c = ((sdrc_clk_stab * _mpurate) / (delay_sram * 2));
 
 	pr_debug("clock: changing CORE DPLL rate from %lu to %lu\n", clk->rate,
 		 validrate);
@@ -309,6 +346,8 @@ struct clk_functions omap2_clk_functions = {
  */
 void omap2_clk_prepare_for_reboot(void)
 {
+	int err = 0;
+
 	/* REVISIT: Not ready for 343x */
 #if 0
 	u32 rate;
@@ -318,6 +357,18 @@ void omap2_clk_prepare_for_reboot(void)
 
 	rate = clk_get_rate(sclk);
 	clk_set_rate(vclk, rate);
+#endif
+
+	/*
+	 * PRCM on OMAP3 will drive SYS_OFFMODE low during DPLL3 warm reset.
+	 * This causes Gaia sleep script to execute, usually killing VDD1 and
+	 * VDD2 while code is running.  WA is to disable the sleep script
+	 * before warm reset.
+	 */
+#ifdef CONFIG_TWL4030_POWER
+	err = twl4030_remove_script(TWL4030_SLEEP_SCRIPT);
+	if (err)
+		pr_err("twl4030: error trying to disable sleep script!\n");
 #endif
 }
 
