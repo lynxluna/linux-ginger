@@ -1945,7 +1945,8 @@ static int vidioc_qbuf(struct file *file, void *fh,
 
 			/* We are going to do downsampling, 0.75x*/
 			isp_rsz_params.cbilin = 0;
-			isp_rsz_params.out_pitch = isp_rsz_params.out_hsize * 2;
+			isp_rsz_params.out_pitch = ALIGN(vout->win.w.width * 2,
+							 0x10);
 			isp_rsz_params.hstph = 0;
 			isp_rsz_params.vstph = 0;
 			isp_rsz_params.yenh_params.type = 0;
