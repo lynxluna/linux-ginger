@@ -173,6 +173,7 @@ MODULE_PARM_DESC(debug, "Debug level (0-1)");
 /* Local Helper functions */
 static void omap_vout_isr(void *arg, unsigned int irqstatus);
 static void omap_vout_cleanup_device(struct omap_vout_device *vout);
+static void omap_vout_disable_isr(void *arg, unsigned int irqstatus);
 /*
  * Maximum amount of memory to use for rendering buffers.
  * Default is enough to four (RGB24) DVI 720P buffers.
@@ -2126,6 +2127,7 @@ static int vidioc_streamoff(struct file *file, void *fh,
 	struct vout_platform_data *pdata =
 		(((vout->vid_dev)->v4l2_dev).dev)->platform_data;
 	u32 mask = 0;
+	struct completion frame_done_completion;
 
 	if (!vout->streaming)
 		return -EINVAL;
@@ -2151,6 +2153,12 @@ static int vidioc_streamoff(struct file *file, void *fh,
 			}
 		}
 	}
+	init_completion(&frame_done_completion);
+
+	r = omap_dispc_register_isr(omap_vout_disable_isr,
+				&frame_done_completion,	DISPC_IRQ_VSYNC);
+	if (r)
+		printk(KERN_ERR "failed to register VSYNC isr\n");
 
 	/* Turn of the pipeline */
 	r = omapvid_apply_changes(vout);
@@ -2158,6 +2166,14 @@ static int vidioc_streamoff(struct file *file, void *fh,
 		printk(KERN_ERR VOUT_NAME "failed to change mode\n");
 		return r;
 	}
+	if (!wait_for_completion_timeout(&frame_done_completion,
+				msecs_to_jiffies(100)))
+		printk(KERN_ERR VOUT_NAME "timeout waiting for VSYNC\n");
+
+	r = omap_dispc_unregister_isr(omap_vout_disable_isr,
+				&frame_done_completion,	DISPC_IRQ_VSYNC);
+	if (r)
+		printk(KERN_ERR VOUT_NAME "failed to unregister VSYNC isr\n");
 
 	/*release resizer now */
 	if (flg_720 == VIDEO_720_ENABLE) {
@@ -2167,6 +2183,10 @@ static int vidioc_streamoff(struct file *file, void *fh,
 		rsz_put_resource();
 	}
 
+	INIT_LIST_HEAD(&vout->dma_queue);
+	videobuf_streamoff(&vout->vbq);
+	videobuf_queue_cancel(&vout->vbq);
+
 #ifdef CONFIG_PM
 	if (pdata->set_min_bus_tput)
 		pdata->set_min_bus_tput(
@@ -2174,9 +2194,6 @@ static int vidioc_streamoff(struct file *file, void *fh,
 				OCP_INITIATOR_AGENT, 0);
 #endif
 
-	INIT_LIST_HEAD(&vout->dma_queue);
-	videobuf_streamoff(&vout->vbq);
-	videobuf_queue_cancel(&vout->vbq);
 	return 0;
 }
 
@@ -2725,6 +2742,12 @@ static struct platform_driver omap_vout_driver = {
 	.probe = omap_vout_probe,
 	.remove = omap_vout_remove,
 };
+
+void omap_vout_disable_isr(void *arg, unsigned int irqstatus)
+{
+	struct completion *compl = arg;
+	complete(compl);
+}
 
 void omap_vout_isr(void *arg, unsigned int irqstatus)
 {
