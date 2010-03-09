@@ -63,6 +63,8 @@ static ssize_t overlay_manager_store(struct omap_overlay *ovl, const char *buf,
 	if (len > 0) {
 		for (i = 0; i < omap_dss_get_num_overlay_managers(); ++i) {
 			mgr = omap_dss_get_overlay_manager(i);
+			if (mgr == NULL)
+				return size;
 
 			if (strncmp(buf, mgr->name, len) == 0)
 				break;
@@ -630,6 +632,8 @@ void dss_recheck_connections(struct omap_dss_device *dssdev, bool force)
 
 	lcd_mgr = omap_dss_get_overlay_manager(OMAP_DSS_OVL_MGR_LCD);
 	tv_mgr = omap_dss_get_overlay_manager(OMAP_DSS_OVL_MGR_TV);
+	if (lcd_mgr == NULL || tv_mgr == NULL)
+		return;
 
 	if (dssdev->type != OMAP_DISPLAY_TYPE_VENC) {
 		if (!lcd_mgr->device || force) {
