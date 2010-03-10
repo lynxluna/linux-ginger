@@ -238,6 +238,8 @@ DSP_STATUS DMM_GetHandle(void *hProcessor,
 
 	if (DSP_SUCCEEDED(status))
 		status = DEV_GetDmmMgr(hDevObject, phDmmMgr);
+	else
+		*phDmmMgr = NULL;
 
 	return status;
 }

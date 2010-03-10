@@ -699,12 +699,12 @@ DSP_STATUS DEV_GetSymbol(struct DEV_OBJECT *hDevObject,
 	DBC_Require(pstrSym != NULL && pulValue != NULL);
 
 	if (IsValidHandle(hDevObject)) {
-		status = DEV_GetCodMgr(hDevObject, &hCodMgr);
-		if (DSP_SUCCEEDED(status)) {
-			DBC_Assert(hCodMgr != NULL);
+		DEV_GetCodMgr(hDevObject, &hCodMgr);
+		if (hCodMgr)
 			status = COD_GetSymValue(hCodMgr, (char *)pstrSym,
-				 pulValue);
-		}
+							pulValue);
+		else
+			status = DSP_EHANDLE;
 	} else {
 		status = DSP_EHANDLE;
 	}

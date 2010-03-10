@@ -699,8 +699,8 @@ static DSP_STATUS WMD_BRD_Start(struct WMD_DEV_CONTEXT *hDevContext,
 		if (!WaitForStart(pDevContext, dwSyncAddr))
 			status = WMD_E_TIMEOUT;
 
-		status = DEV_GetIOMgr(pDevContext->hDevObject, &hIOMgr);
-		if (DSP_SUCCEEDED(status)) {
+		DEV_GetIOMgr(pDevContext->hDevObject, &hIOMgr);
+		if (hIOMgr) {
 			IO_SHMsetting(hIOMgr, SHM_OPPINFO, NULL);
 			/* Write the synchronization bit to indicate the
 			 * completion of OPP table update to DSP
@@ -716,6 +716,7 @@ static DSP_STATUS WMD_BRD_Start(struct WMD_DEV_CONTEXT *hDevContext,
 			pDevContext->dwBrdState = BRD_RUNNING;
 			/* (void)CHNLSM_EnableInterrupt(pDevContext);*/
 		} else {
+			status = DSP_EHANDLE;
 			pDevContext->dwBrdState = BRD_UNKNOWN;
 		}
 	}

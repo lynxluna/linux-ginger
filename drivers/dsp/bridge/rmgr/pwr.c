@@ -54,10 +54,10 @@ DSP_STATUS PWR_SleepDSP(IN CONST u32 sleepCode, IN CONST u32 timeout)
 		   (struct WMD_DEV_CONTEXT **)&dwContext))) {
 			continue;
 		}
-		if (DSP_FAILED(DEV_GetIntfFxns(hDevObject,
-		   (struct WMD_DRV_INTERFACE **)&pIntfFxns))) {
+		DEV_GetIntfFxns(hDevObject,
+				(struct WMD_DRV_INTERFACE **)&pIntfFxns);
+		if (!pIntfFxns)
 			continue;
-		}
 		if (sleepCode == PWR_DEEPSLEEP)
 			ioctlcode = WMDIOCTL_DEEPSLEEP;
 		else if (sleepCode == PWR_EMERGENCYDEEPSLEEP)
@@ -91,8 +91,9 @@ DSP_STATUS PWR_WakeDSP(IN CONST u32 timeout)
 			  ((u32)hDevObject)) {
 		if (DSP_SUCCEEDED(DEV_GetWMDContext(hDevObject,
 		   (struct WMD_DEV_CONTEXT **)&dwContext))) {
-			if (DSP_SUCCEEDED(DEV_GetIntfFxns(hDevObject,
-			   (struct WMD_DRV_INTERFACE **)&pIntfFxns))) {
+			DEV_GetIntfFxns(hDevObject,
+				(struct WMD_DRV_INTERFACE **)&pIntfFxns);
+			if (pIntfFxns) {
 				status = (*pIntfFxns->pfnDevCntrl)(dwContext,
 					 WMDIOCTL_WAKEUP, (void *)&arg);
 			}
@@ -122,8 +123,9 @@ DSP_STATUS PWR_PM_PreScale(IN u16 voltage_domain, u32 level)
 			 ((u32)hDevObject)) {
 		if (DSP_SUCCEEDED(DEV_GetWMDContext(hDevObject,
 		   (struct WMD_DEV_CONTEXT **)&dwContext))) {
-			if (DSP_SUCCEEDED(DEV_GetIntfFxns(hDevObject,
-			   (struct WMD_DRV_INTERFACE **)&pIntfFxns))) {
+			DEV_GetIntfFxns(hDevObject,
+				(struct WMD_DRV_INTERFACE **)&pIntfFxns);
+			if (pIntfFxns) {
 				status = (*pIntfFxns->pfnDevCntrl)(dwContext,
 					 WMDIOCTL_PRESCALE_NOTIFY,
 					 (void *)&arg);
@@ -154,8 +156,9 @@ DSP_STATUS PWR_PM_PostScale(IN u16 voltage_domain, u32 level)
 			  ((u32)hDevObject)) {
 		if (DSP_SUCCEEDED(DEV_GetWMDContext(hDevObject,
 		   (struct WMD_DEV_CONTEXT **)&dwContext))) {
-			if (DSP_SUCCEEDED(DEV_GetIntfFxns(hDevObject,
-			   (struct WMD_DRV_INTERFACE **)&pIntfFxns))) {
+			DEV_GetIntfFxns(hDevObject,
+				(struct WMD_DRV_INTERFACE **)&pIntfFxns);
+			if (pIntfFxns) {
 				status = (*pIntfFxns->pfnDevCntrl)(dwContext,
 					WMDIOCTL_POSTSCALE_NOTIFY,
 					(void *)&arg);

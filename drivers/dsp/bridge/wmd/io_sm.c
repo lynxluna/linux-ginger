@@ -357,9 +357,11 @@ DSP_STATUS WMD_IO_OnLoaded(struct IO_MGR *hIOMgr)
 	u32 pgSize[] = { HW_PAGE_SIZE_16MB, HW_PAGE_SIZE_1MB,
 			   HW_PAGE_SIZE_64KB, HW_PAGE_SIZE_4KB };
 
-	status = DEV_GetCodMgr(hIOMgr->hDevObject, &hCodMan);
-	if (DSP_FAILED(status))
+	DEV_GetCodMgr(hIOMgr->hDevObject, &hCodMan);
+	if (!hCodMan) {
+		status = DSP_EHANDLE;
 		goto func_end;
+	}
 	hChnlMgr = hIOMgr->hChnlMgr;
 	/* The message manager is destroyed when the board is stopped. */
 	DEV_GetMsgMgr(hIOMgr->hDevObject, &hIOMgr->hMsgMgr);
@@ -1913,7 +1915,9 @@ DSP_STATUS PrintDspTraceBuffer(struct WMD_DEV_CONTEXT *hWmdContext)
 	struct DEV_OBJECT *pDevObject = (struct DEV_OBJECT *)
 					    pWmdContext->hDevObject;
 
-	status = DEV_GetCodMgr(pDevObject, &hCodMgr);
+	DEV_GetCodMgr(pDevObject, &hCodMgr);
+	if (!hCodMgr)
+		status = DSP_EHANDLE;
 
 	if (DSP_SUCCEEDED(status)) {
 		/* Look for SYS_PUTCBEG/SYS_PUTCEND */
@@ -1934,7 +1938,9 @@ DSP_STATUS PrintDspTraceBuffer(struct WMD_DEV_CONTEXT *hWmdContext)
 		/* Make sure the data we request fits evenly */
 		ulNumBytes = (ulNumBytes / ulWordSize) * ulWordSize;
 		ulNumWords = ulNumBytes * ulWordSize;
-		status = DEV_GetIntfFxns(pDevObject, &pIntfFxns);
+		DEV_GetIntfFxns(pDevObject, &pIntfFxns);
+		if (!pIntfFxns)
+			status = DSP_EHANDLE;
 	}
 
 	if (DSP_SUCCEEDED(status)) {
