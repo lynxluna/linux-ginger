@@ -318,24 +318,6 @@ core_m2_mask_val:
 ENTRY(omap3_sram_configure_core_dpll_sz)
 	.word	. - omap3_sram_configure_core_dpll
 
-ENTRY(__sram_wait_delay)
-	stmfd   sp!, {r1-r12, lr}       @ store regs to stack
-	ldr     r2, [r0]
-
-	loop1:
-	subs    r1, r1, #1
-	bne     loop1
-
-	isb
-	ldr     r3, [r0]
-	subs    r4, r3, r2
-
-	mov     r0, r4                  @ return value
-	ldmfd   sp!, {r1-r12, pc}       @ restore regs and return
-
-ENTRY(__sram_wait_delay_sz)
-	.word   . - __sram_wait_delay
-
 
 /* omap3_sram_configure_core_dpll_warmreset
 * Enable SDRC self refresh on idle request, put SDRC in idle,

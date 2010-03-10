@@ -728,12 +728,6 @@ void omap_dm_timer_write_counter(struct omap_dm_timer *timer, unsigned int value
 }
 EXPORT_SYMBOL_GPL(omap_dm_timer_write_counter);
 
-unsigned int omap_dm_timer_get_phys_base(unsigned int gptimer)
-{
-	return dm_timers[gptimer - 1].phys_base;
-}
-EXPORT_SYMBOL_GPL(omap_dm_timer_get_phys_base);
-
 int omap_dm_timers_active(void)
 {
 	int i;
