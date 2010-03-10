@@ -239,7 +239,7 @@ int omap3_core_dpll_m2_set_rate(struct clk *clk, unsigned long rate)
 	u32 clk_sel_regval;
 	u32 core_dpll_mul_m, core_dpll_div_n, core_dpll_clkoutdiv_m2;
 	u32 sys_clk_rate, sdrc_clk_stab;
-	u32 refclk, outclkx2, switch_latency;
+	u32 refclk, outclkx2, switch_latency, dpll_lock_freq;
 	unsigned int delay_sram;
 
 	if (!clk || !rate)
@@ -275,26 +275,52 @@ int omap3_core_dpll_m2_set_rate(struct clk *clk, unsigned long rate)
 
 	sys_clk_rate = sys_clk_rate / 1000000;
 
-	/* wait time for L3 clk stabilization = 4*REFCLK + 8*CLKOUTX2 */
-	refclk = (4 *(core_dpll_div_n + 1)) / sys_clk_rate;
-	outclkx2 = ((core_dpll_div_n + 1) * core_dpll_clkoutdiv_m2) /
-				(sys_clk_rate * core_dpll_mul_m * 2);
-	switch_latency =  refclk + 8 * outclkx2;
+	if (cpu_is_omap3630()) {
+		/*
+		 * wait time for L3 clk stabilization = 2*SYS_CLK + 10*CLKOUTX2
+		 */
+		/* Avoid truncation of float values */
+		refclk = 2000 / sys_clk_rate;
+		dpll_lock_freq = (1000 * 100 * (core_dpll_div_n + 1))/
+					(2 * sys_clk_rate * core_dpll_mul_m);
+		outclkx2 = 10 * (dpll_lock_freq * core_dpll_clkoutdiv_m2) / 100;
+		switch_latency = refclk + outclkx2;
 
-	/* Adding 2us to sdrc clk stab */
-	sdrc_clk_stab =  switch_latency + 2;
+		/* Adding 1000 nano seconds to sdrc clk stab */
+		sdrc_clk_stab = switch_latency + 1000;
 
-	delay_sram = delay_sram_val();
+		delay_sram = delay_sram_val();
 
-	/* Calculate the number of MPU cycles to wait for SDRC to stabilize */
-	_mpurate = arm_fck_p->rate / CYCLES_PER_MHZ;
+		/*
+		 * Calculate the number of MPU cycles to wait for
+		 * SDRC to stabilize
+		 */
+		_mpurate = arm_fck_p->rate / CYCLES_PER_MHZ;
 
-	c = ((sdrc_clk_stab * _mpurate) / (delay_sram * 2));
+		c = ((sdrc_clk_stab * _mpurate) / (delay_sram * 2 * 1000));
+	} else {
+		/* wait time for L3 clk stabilization = 4*REFCLK + 8*CLKOUTX2 */
+		refclk = (4 *(core_dpll_div_n + 1)) / sys_clk_rate;
+		outclkx2 = ((core_dpll_div_n + 1) * core_dpll_clkoutdiv_m2) /
+					(sys_clk_rate * core_dpll_mul_m * 2);
+		switch_latency =  refclk + 8 * outclkx2;
+
+		/* Adding 2us to sdrc clk stab */
+		sdrc_clk_stab =  switch_latency + 2;
+
+		delay_sram = delay_sram_val();
+
+		/* Calculate the number of MPU cycles to wait for SDRC to stabilize */
+		_mpurate = arm_fck_p->rate / CYCLES_PER_MHZ;
+
+		c = ((sdrc_clk_stab * _mpurate) / (delay_sram * 2));
+	}
 
 	pr_debug("m = %d, n = %d, m2 =%d\n", core_dpll_mul_m, core_dpll_div_n,
 						core_dpll_clkoutdiv_m2);
 	pr_debug("switch_latency = %d, sys_clk_rate = %d, cycles = %d\n",
-		switch_latency, sys_clk_rate, c);
+					switch_latency, sys_clk_rate, c);
+
 	pr_debug("clock: changing CORE DPLL rate from %lu to %lu\n", clk->rate,
 		 validrate);
 	pr_debug("clock: SDRC CS0 timing params used:"
