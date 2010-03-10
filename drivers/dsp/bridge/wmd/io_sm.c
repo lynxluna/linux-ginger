@@ -1907,7 +1907,6 @@ DSP_STATUS PrintDspTraceBuffer(struct WMD_DEV_CONTEXT *hWmdContext)
 	u32 ulWordSize = 2;
 	CONST u32 uMaxSize = 512;
 	char *pszBuf;
-	u16 *lpszBuf;
 
 	struct WMD_DEV_CONTEXT *pWmdContext = (struct WMD_DEV_CONTEXT *)
 						     hWmdContext;
@@ -1945,7 +1944,6 @@ DSP_STATUS PrintDspTraceBuffer(struct WMD_DEV_CONTEXT *hWmdContext)
 
 	if (DSP_SUCCEEDED(status)) {
 		pszBuf = MEM_Calloc(uMaxSize, MEM_NONPAGED);
-		lpszBuf = MEM_Calloc(ulNumBytes * 2, MEM_NONPAGED);
 		if (pszBuf != NULL) {
 			/* Read bytes from the DSP trace buffer... */
 			status = (*pIntfFxns->pfnBrdRead)(hWmdContext,
@@ -1958,7 +1956,6 @@ DSP_STATUS PrintDspTraceBuffer(struct WMD_DEV_CONTEXT *hWmdContext)
 				pr_info("%s:\n%s\n", __func__, pszBuf);
 			}
 			kfree(pszBuf);
-			kfree(lpszBuf);
 		} else {
 			  status = DSP_EMEMORY;
 		}
