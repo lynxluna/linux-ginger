@@ -32,6 +32,8 @@
 
 #define VP_IDLE_TIMEOUT 	200
 #define VP_TRANXDONE_TIMEOUT	300
+#define ABO_LDO_TRANXDONE_TIMEOUT       100
+
 
 /**
  * OMAP3 Voltage controller SR parameters. TODO: Pass this info as part of
@@ -372,6 +374,7 @@ static int vp_forceupdate_scale_voltage(u32 vdd, u8 target_vsel,
 {
 	u32 smps_steps = 0, smps_delay = 0;
 	int timeout = 0;
+	u32 abb_tranxdone_st;
 
 	if (!((vdd == VDD1_OPP) || (vdd == VDD2_OPP))) {
 		pr_warning("Wrong vdd id passed to vp forceupdate\n");
@@ -379,6 +382,8 @@ static int vp_forceupdate_scale_voltage(u32 vdd, u8 target_vsel,
 	}
 
 	smps_steps = abs(target_vsel - current_vsel);
+	if (cpu_is_omap3630())
+		abb_tranxdone_st = OMAP3630_ABB_LDO_TRANXDONE_ST;
 
 	/* OMAP3430 has errorgain varying btw higher and lower opp's */
 	if (cpu_is_omap34xx()) {
@@ -468,6 +473,36 @@ static int vp_forceupdate_scale_voltage(u32 vdd, u8 target_vsel,
 	if (timeout >= VP_TRANXDONE_TIMEOUT)
 		pr_warning("VP%d TRANXDONE timeout exceeded while trying to \
 			clear the TRANXDONE status\n", vdd);
+
+	if (cpu_is_omap3630()) {
+		/*
+		 * Enable OPP change by setting OPP_CHANGE bit of
+		 * PRM_LDO_ABB_CTRL
+		 */
+		prm_set_mod_reg_bits(OMAP3630_OPP_CHANGE, OMAP3430_GR_MOD,
+					 OMAP3630_PRM_LDO_ABB_SETUP);
+
+		/* Wait For PRCM Interrupt */
+		timeout = 0;
+		while ((timeout < ABO_LDO_TRANXDONE_TIMEOUT) &&
+			(!(prm_read_mod_reg(OCP_MOD,
+			OMAP2_PRCM_IRQSTATUS_MPU_OFFSET) &
+			abb_tranxdone_st))) {
+			udelay(1);
+			timeout++;
+		}
+		/* Clear the Status Bit of ABB_LDO_TRANXDONE */
+		while (timeout < ABO_LDO_TRANXDONE_TIMEOUT) {
+			prm_write_mod_reg(abb_tranxdone_st, OCP_MOD,
+			OMAP2_PRCM_IRQSTATUS_MPU_OFFSET);
+			if (!(prm_read_mod_reg(OCP_MOD,
+				OMAP2_PRCM_IRQSTATUS_MPU_OFFSET)
+				& abb_tranxdone_st))
+				break;
+				udelay(1);
+				timeout++;
+		}
+	}
 
 	/* Clear initVDD copy trigger bit */
 	voltage_modify_reg(vp_reg[vdd].vp_vonfig_reg, VP_CONFIG_INITVDD, 0x0);

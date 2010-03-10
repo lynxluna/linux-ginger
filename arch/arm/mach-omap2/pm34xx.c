@@ -71,6 +71,9 @@ static inline bool is_suspending(void)
 #define OMAP343X_TABLE_ADDRESS_OFFSET	   0x31
 #define OMAP343X_TABLE_VALUE_OFFSET	   0x30
 #define OMAP343X_CONTROL_REG_VALUE_OFFSET  0x32
+/* 3630 specific Bits */
+#define OMAP3630_EFUSE_CNTRL		0x48002A8C
+#define ABO_LDO_TRANXDONE_TIMEOUT	100
 
 u32 enable_off_mode;
 u32 sleep_while_idle;
@@ -402,6 +405,8 @@ void omap_sram_idle(void)
 	u32 sdrc_pwr = 0;
 	int per_state_modified = 0;
 	u32 fclk_status = 0;
+	u32 prm_ldo_abb_ctrl;
+	int bypass = 0;
 
 	if (!_omap_sram_idle)
 		return;
@@ -441,6 +446,19 @@ void omap_sram_idle(void)
 		return;
 	}
 
+	if (cpu_is_omap3630()) {
+		/* Check SLEEP_RBB_SEL if ABB_LDO should be bypassed */
+		prm_ldo_abb_ctrl = prm_read_mod_reg(OMAP3430_GR_MOD,
+			OMAP3630_PRM_LDO_ABB_CTRL);
+		prm_ldo_abb_ctrl &= OMAP3630_SLEEP_RBB_SEL;
+		if (!(prm_ldo_abb_ctrl)) {
+			prm_clear_mod_reg_bits(OMAP3630_SR2_EN, OMAP3430_GR_MOD,
+				OMAP3630_PRM_LDO_ABB_CTRL);
+			bypass = 1;
+		} else
+			prm_set_mod_reg_bits(OMAP3630_SR2_EN, OMAP3430_GR_MOD,
+				OMAP3630_PRM_LDO_ABB_CTRL);
+	}
 	pwrdm_pre_transition();
 
 	/* NEON control */
@@ -655,6 +673,11 @@ void omap_sram_idle(void)
 
 
 	pwrdm_post_transition();
+
+	/* If ABO_LDO was Bypassed Enable it back.*/
+	if (bypass)
+		prm_set_mod_reg_bits(OMAP3630_SR2_EN, OMAP3430_GR_MOD,
+			OMAP3630_PRM_LDO_ABB_CTRL);
 
 	omap2_clkdm_allow_idle(mpu_pwrdm->pwrdm_clkdms[0]);
 }
@@ -926,6 +949,7 @@ static void __init omap3_d2d_idle(void)
 static void __init prcm_setup_regs(void)
 {
 	u32 cm_clksel1_mpu, cm_clksel1_iva2;
+	u32 efuse_cntrl;
 
 	/*set Bypass clock dividers for MPU and IVA */
 	cm_clksel1_mpu = cm_read_mod_reg(MPU_MOD, CM_CLKSEL1);
@@ -1142,6 +1166,25 @@ static void __init prcm_setup_regs(void)
 	/* Make Clock transition Automatic */
 	cm_rmw_mod_reg_bits(OMAP3430_CLKTRCTRL_IVA2_MASK, 0x3,
 			OMAP3430_IVA2_MOD, CM_CLKSTCTRL);
+
+	/* Intialize ABB LDO
+	* Set ACTIVE_FBB_SEL Clear ACTIVE_RBB_SEL
+	* And read the Efuse for SLEEP_RBB_SEL
+	*/
+	if (cpu_is_omap3630()) {
+		prm_set_mod_reg_bits(OMAP3630_ACTIVE_FBB_SEL,
+			OMAP3430_GR_MOD, OMAP3630_PRM_LDO_ABB_CTRL);
+		prm_clear_mod_reg_bits(OMAP3630_ACTIVE_RBB_SEL,
+			OMAP3430_GR_MOD, OMAP3630_PRM_LDO_ABB_CTRL);
+		efuse_cntrl = omap_readl(OMAP3630_EFUSE_CNTRL);
+		efuse_cntrl &= 0x1;
+		if (efuse_cntrl)
+			prm_set_mod_reg_bits(OMAP3630_SLEEP_RBB_SEL,
+				OMAP3430_GR_MOD, OMAP3630_PRM_LDO_ABB_CTRL);
+		else
+			prm_clear_mod_reg_bits(OMAP3630_SLEEP_RBB_SEL,
+				OMAP3430_GR_MOD, OMAP3630_PRM_LDO_ABB_CTRL);
+	}
 
 	omap3_iva_idle();
 	omap3_d2d_idle();

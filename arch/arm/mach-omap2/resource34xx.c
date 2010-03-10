@@ -26,6 +26,7 @@
 #include <plat/clockdomain.h>
 #include <plat/omap34xx.h>
 #include <plat/opp_twl_tps.h>
+#include <plat/io.h>
 #include <plat/omap-pm.h>
 
 #include "smartreflex.h"
@@ -34,6 +35,9 @@
 #include "pm.h"
 #include "cm.h"
 #include "cm-regbits-34xx.h"
+#include "prm.h"
+#include "clock34xx.h"
+#include "prm-regbits-34xx.h"
 
 #ifndef CONFIG_CPU_IDLE
 #warning MPU latency constraints require CONFIG_CPU_IDLE to function!
@@ -362,6 +366,13 @@ static int program_opp(int res, enum opp_t opp_type, int target_level,
 {
 	int i, ret = 0, raise;
 	unsigned long freq;
+	u32 sr2_wt_cnt_val  = 0x0;
+	struct clk *sys_ck;
+	u32 sys_clk_speed;
+	sys_ck = clk_get(NULL, "sys_ck");
+	sys_clk_speed = clk_get_rate(sys_ck);
+	sr2_wt_cnt_val = (30 * (sys_clk_speed))/8;
+	sr2_wt_cnt_val <<= 8;
 
 	/* See if have a freq associated, if not, invalid opp */
 	ret = opp_to_freq(&freq, opp_type, target_level);
@@ -374,6 +385,38 @@ static int program_opp(int res, enum opp_t opp_type, int target_level,
 		raise = 0;
 
 	omap_smartreflex_disable(res);
+
+	/*
+	 * Program the ABB LDO settling time counter (PRM_LDO_ABB_SETUP.SR2_
+	 * WTCNT_VALUE), Select the fast/slow OPP (PRM_LDO_ABB_CTRL.OPP_SEL)
+	 * according to OPP, Enable the ABB LDO (PRM_LDO_ABB_SETUP.SR2EN) if
+	 * it is a fast OPP so it can go in FBB mode else Clear the
+	 * PRM_LDO_ABB_SETUP.SR2EN if it is to be bypassed for
+	 * slow OPP.
+	 */
+	if (cpu_is_omap3630()) {
+		if (res == VDD1_OPP) {
+			prm_rmw_mod_reg_bits(OMAP3630_SR2_WT_CNT_MASK,
+			sr2_wt_cnt_val,	OMAP3430_GR_MOD,
+			OMAP3630_PRM_LDO_ABB_CTRL);
+			switch (target_level) {
+			case VDD1_OPP4:
+				prm_rmw_mod_reg_bits(OMAP3630_OPP_SEL, 0x1,
+				OMAP3430_GR_MOD, OMAP3630_PRM_LDO_ABB_SETUP);
+				prm_set_mod_reg_bits(OMAP3630_SR2_EN,
+				OMAP3430_GR_MOD, OMAP3630_PRM_LDO_ABB_CTRL);
+					break;
+			case VDD1_OPP1:
+			case VDD1_OPP2:
+			case VDD1_OPP3:
+				prm_rmw_mod_reg_bits(OMAP3630_OPP_SEL, 0x3,
+				OMAP3430_GR_MOD, OMAP3630_PRM_LDO_ABB_SETUP);
+				prm_clear_mod_reg_bits(OMAP3630_SR2_EN,
+				OMAP3430_GR_MOD, OMAP3630_PRM_LDO_ABB_CTRL);
+					break;
+				}
+			}
+	}
 	for (i = 0; i < 2; i++) {
 		if (i == raise)
 			ret = program_opp_freq(res, target_level,

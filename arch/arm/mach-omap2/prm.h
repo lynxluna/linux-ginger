@@ -219,6 +219,10 @@
 #define OMAP3430_PRM_IRQENABLE_IVA2			0x00fc
 
 
+/* 3630 Specific registers */
+#define OMAP3630_PRM_LDO_ABB_CTRL                       0x00F4
+#define OMAP3630_PRM_LDO_ABB_SETUP                      0x00F0
+
 #ifndef __ASSEMBLER__
 
 /* Power/reset management domain register get/set */

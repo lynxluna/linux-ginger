@@ -211,6 +211,9 @@
 
 /* PRM_SYSCONFIG specific bits */
 
+/* 3630 specific bits */
+#define OMAP3630_ABB_LDO_TRANXDONE_ST			(1 << 26)
+
 /* PRM_IRQSTATUS_MPU specific bits */
 #define OMAP3430ES2_SND_PERIPH_DPLL_ST_SHIFT		25
 #define OMAP3430ES2_SND_PERIPH_DPLL_ST			(1 << 25)
@@ -242,6 +245,10 @@
 #define OMAP3430_EVGENOFF_ST				(1 << 3)
 #define OMAP3430_EVGENON_ST				(1 << 2)
 #define OMAP3430_FS_USB_WKUP_ST				(1 << 1)
+
+/* 3630 specific bits */
+#define OMAP3630_ABO_LDO_TRANXDONE_EN				(1 << 26)
+
 
 /* PRM_IRQENABLE_MPU specific bits */
 #define OMAP3430ES2_SND_PERIPH_DPLL_RECAL_EN_SHIFT		25
@@ -556,6 +563,18 @@
 /* PRM_VOLTSETUP2 */
 #define OMAP3430_OFFMODESETUPTIME_SHIFT			0
 #define OMAP3430_OFFMODESETUPTIME_MASK			(0xffff << 0)
+
+/* 3630 specific Registers */
+/* PRM_LDO_ABB_CTRL */
+#define OMAP3630_SLEEP_RBB_SEL				(1 << 3)
+#define OMAP3630_ACTIVE_FBB_SEL				(1 << 2)
+#define OMAP3630_ACTIVE_RBB_SEL				(1 << 1)
+#define OMAP3630_SR2_EN					(1 << 0)
+#define OMAP3630_SR2_WT_CNT_MASK			(255 << 8)
+
+/* PRM_LBO_ABB_SETUP */
+#define OMAP3630_OPP_CHANGE				(1 << 2)
+#define OMAP3630_OPP_SEL				(3 << 0)
 
 /* PRM_VP1_CONFIG specific bits */
 
