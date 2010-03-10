@@ -30,6 +30,9 @@
 #include <plat/cpu.h>
 #include <plat/vram.h>
 
+#include <linux/clk.h>
+#include <plat/dmtimer.h>
+#include <plat/io.h>
 #include <plat/control.h>
 
 #if defined(CONFIG_ARCH_OMAP2) || defined(CONFIG_ARCH_OMAP3)
@@ -73,6 +76,9 @@
 #define GP_DEVICE		0x300
 
 #define ROUND_DOWN(value,boundary)	((value) & (~((boundary)-1)))
+
+/* GPT10 TCRR register offset */
+#define OMAP_TIMER_COUNTER_OFFSET	0x28
 
 static unsigned long omap_sram_start;
 static unsigned long omap_sram_base;
@@ -456,10 +462,54 @@ static inline int omap34xx_sram_init(void)
 }
 #endif
 
+#ifdef CONFIG_ARCH_OMAP3
+unsigned long (*_omap3_sram_delay)(void * __iomem, unsigned int); 
+unsigned int  measure_sram_delay(unsigned int loop)
+{
+	static struct omap_dm_timer *gpt;
+	unsigned long flags, diff = 0, gt_rate, mpurate;
+	unsigned int delay_sram, error_gain;
+	void __iomem *gpt10_counter_reg;
+
+	omap_dm_timer_init();
+	gpt = omap_dm_timer_request_specific(10);
+	if (!gpt)
+		pr_err("Could not get the gptimer\n");
+	omap_dm_timer_set_source(gpt, OMAP_TIMER_SRC_SYS_CLK);
+
+	gpt10_counter_reg =
+			OMAP2_L4_IO_ADDRESS(omap_dm_timer_get_phys_base(10) +
+					OMAP_TIMER_COUNTER_OFFSET);
+
+	gt_rate = clk_get_rate(omap_dm_timer_get_fclk(gpt));
+	omap_dm_timer_set_load_start(gpt, 0, 0);
+
+	local_irq_save(flags);
+	diff = _omap3_sram_delay(gpt10_counter_reg, loop);
+	local_irq_restore(flags);
+
+	omap_dm_timer_stop(gpt);
+	omap_dm_timer_free(gpt);
+
+	mpurate = clk_get_rate(clk_get(NULL, "arm_fck"));
+
+	/* calculate the sram delay */
+	delay_sram = (((mpurate / gt_rate) * diff) / (loop * 2));
+
+	error_gain = mpurate / gt_rate;
+	delay_sram = delay_sram + error_gain;
+
+	return delay_sram;
+}
+#endif
+
 int __init omap_sram_init(void)
 {
 	omap_detect_sram();
 	omap_map_sram();
+
+	_omap3_sram_delay = omap_sram_push(__sram_wait_delay,
+						__sram_wait_delay_sz);
 
 	if (!(cpu_class_is_omap2()))
 		omap1_sram_init();
