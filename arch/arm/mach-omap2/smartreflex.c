@@ -405,7 +405,8 @@ u32 cal_test_nvalue(u32 sennval, u32 senpval)
 *
 * This API is to be called from the smartreflex class driver to
 * enable a smartreflex module. Returns true on success.Returns false if the
-* target opp id passed is wrong or if ntarget value is wrong.
+* target opp id passed is wrong. If ntarget value is 0, then it treats that
+* sr should not be enabled for this OPP.
 */
 int sr_enable(int srid, u32 target_opp_no)
 {
@@ -416,6 +417,14 @@ int sr_enable(int srid, u32 target_opp_no)
 	if (target_opp_no > pdata->no_opp) {
 		pr_notice("Wrong target opp\n");
 		return false;
+	}
+	/* if nvalues are 0, autocompensation will not enabled for that opp */
+	nvalue_reciprocal = pdata->sr_nvalue[target_opp_no - 1];
+	if (nvalue_reciprocal == 0) {
+		sr->is_sr_reset = 1;
+		pr_notice("OPP%d doesn't support SmartReflex\n",
+								target_opp_no);
+		return true;
 	}
 
 	/* For OMAP3430 errminlimit is dependent on opp. So choose
@@ -429,15 +438,6 @@ int sr_enable(int srid, u32 target_opp_no)
 	/*Enable the clocks and configure SR*/
 	sr_clk_enable(sr);
 	sr_configure(sr);
-
-	nvalue_reciprocal = pdata->sr_nvalue[target_opp_no - 1];
-	if (nvalue_reciprocal == 0) {
-		sr->is_sr_reset = 1;
-		pr_notice("OPP%d doesn't support SmartReflex\n",
-								target_opp_no);
-		return false;
-	}
-
 	sr_write_reg(sr, NVALUERECIPROCAL, nvalue_reciprocal);
 
 	/* SRCONFIG - enable SR */
