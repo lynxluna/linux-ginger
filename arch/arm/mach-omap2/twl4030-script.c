@@ -13,7 +13,6 @@
 
 #include "twl4030-script.h"
 
-/* FIXME: These are not the optimal setup values */
 struct prm_setup_vc twl4030_voltsetup_time = {
 	/* VOLT SETUPTIME for RET & OFF */
 	.voltsetup_time1_ret = 0x005B,
@@ -77,6 +76,68 @@ static struct twl4030_script wakeup_p3_script __initdata = {
 	.flags  = TWL4030_WAKEUP3_SCRIPT,
 };
 
+#ifdef CONFIG_TWL5030_GLITCH_FIX
+struct prm_setup_vc twl4030_voltsetup_time_glitchfix = {
+	/* VOLT SETUPTIME for RET & OFF */
+	.voltsetup_time1_ret = 0x005B,
+	.voltsetup_time2_ret = 0x0055,
+	.voltsetup_time1_off = 0x00B3,
+	.voltsetup_time2_off = 0x00A0,
+	.voltoffset = 0x10,
+	.voltsetup2 = 0x16B,
+};
+
+/*
+ * Sequence to controll the TRITON Power resources,
+ * when the system goes into sleep.
+ * Executed upon P1_P2/P3 transition for sleep.
+ */
+static struct twl4030_ins __initdata sleep_on_seq_glitchfix[] = {
+	/* Singular message to disable HCLKOUT */
+	{MSG_SINGULAR(DEV_GRP_NULL, RES_HFCLKOUT, RES_STATE_SLEEP), 20},
+	/* Broadcast message to put res to sleep */
+	{MSG_BROADCAST(DEV_GRP_NULL, RES_GRP_ALL, RES_TYPE_R0, RES_TYPE2_R1,
+							RES_STATE_SLEEP), 2},
+	{MSG_BROADCAST(DEV_GRP_NULL, RES_GRP_ALL, RES_TYPE_R0, RES_TYPE2_R2,
+							RES_STATE_SLEEP), 2},
+};
+
+static struct twl4030_script sleep_on_script_glitchfix __initdata = {
+	.script	= sleep_on_seq_glitchfix,
+	.size	= ARRAY_SIZE(sleep_on_seq_glitchfix),
+	.flags	= TWL4030_SLEEP_SCRIPT,
+};
+
+/*
+ * Sequence to controll the TRITON Power resources,
+ * when the system wakeup from sleep.
+ * Executed upon P1/P2/P3 transition for wakeup.
+ */
+static struct twl4030_ins wakeup_seq_glitchfix[] __initdata = {
+	/* Broadcast message to put res(TYPE2 =1) to active */
+	{MSG_BROADCAST(DEV_GRP_NULL, RES_GRP_ALL, RES_TYPE_R0, RES_TYPE2_R2,
+							RES_STATE_ACTIVE), 55},
+	{MSG_BROADCAST(DEV_GRP_NULL, RES_GRP_ALL, RES_TYPE_R0, RES_TYPE2_R2,
+							RES_STATE_ACTIVE), 55},
+	{MSG_BROADCAST(DEV_GRP_NULL, RES_GRP_ALL, RES_TYPE_R0, RES_TYPE2_R2,
+							RES_STATE_ACTIVE), 54},
+	{MSG_BROADCAST(DEV_GRP_NULL, RES_GRP_ALL, RES_TYPE_R0, RES_TYPE2_R2,
+							RES_STATE_ACTIVE), 1},
+	/* Singular message to enable HCLKOUT */
+	{MSG_SINGULAR(DEV_GRP_NULL, RES_HFCLKOUT, RES_STATE_ACTIVE), 1},
+	/* Broadcast message to put res(TYPE2 =1) to active */
+	{MSG_BROADCAST(DEV_GRP_NULL, RES_GRP_ALL, RES_TYPE_R0, RES_TYPE2_R1,
+							RES_STATE_ACTIVE), 2},
+};
+
+static struct twl4030_script wakeup_script_glitchfix __initdata = {
+	.script	= wakeup_seq_glitchfix,
+	.size	= ARRAY_SIZE(wakeup_seq_glitchfix),
+	.flags	= TWL4030_WAKEUP12_SCRIPT | TWL4030_WAKEUP3_SCRIPT,
+};
+
+#endif
+
 /*
  * Sequence to reset the TRITON Power resources,
  * when the system gets warm reset.
@@ -92,16 +153,16 @@ static struct twl4030_ins wrst_seq[] __initdata = {
  * Reset RC.
  * Reenable twl4030.
  */
-	{MSG_SINGULAR(DEV_GRP_NULL, 0x1b, RES_STATE_OFF), 2},
-	{MSG_SINGULAR(DEV_GRP_NULL, 0x1c, RES_STATE_WRST), 2},
+	{MSG_SINGULAR(DEV_GRP_NULL, RES_RESET, RES_STATE_OFF), 2},
+	{MSG_SINGULAR(DEV_GRP_NULL, RES_Main_Ref, RES_STATE_WRST), 2},
 	{MSG_BROADCAST(DEV_GRP_NULL, RES_GRP_ALL, RES_TYPE_R0, RES_TYPE2_R2,
 							RES_STATE_WRST), 2},
-	{MSG_SINGULAR(DEV_GRP_NULL, 0x13, RES_STATE_WRST), 2},
+	{MSG_SINGULAR(DEV_GRP_NULL, RES_VUSB_3V1, RES_STATE_WRST), 2},
 	{MSG_BROADCAST(DEV_GRP_NULL, RES_GRP_ALL, RES_TYPE_R0, RES_TYPE2_R1,
 							RES_STATE_WRST), 2},
 	{MSG_BROADCAST(DEV_GRP_NULL, RES_GRP_RC, RES_TYPE_ALL, RES_TYPE2_R0,
 							RES_STATE_WRST), 2},
-	{MSG_SINGULAR(DEV_GRP_NULL, 0x1b, RES_STATE_ACTIVE), 2},
+	{MSG_SINGULAR(DEV_GRP_NULL, RES_RESET, RES_STATE_ACTIVE), 2},
 };
 
 static struct twl4030_script wrst_script __initdata = {
@@ -122,5 +183,46 @@ struct twl4030_power_data twl4030_generic_script __initdata = {
 	.scripts	= twl4030_scripts,
 	.num		= ARRAY_SIZE(twl4030_scripts),
 };
+
+void use_generic_twl4030_script(
+		struct twl4030_power_data *t2scripts_data,
+		struct prm_setup_vc *setup_vc)
+{
+	setup_vc->voltsetup_time1_ret =
+			twl4030_voltsetup_time.voltsetup_time1_ret;
+	setup_vc->voltsetup_time2_ret =
+			twl4030_voltsetup_time.voltsetup_time2_ret;
+	setup_vc->voltsetup_time1_off =
+			twl4030_voltsetup_time.voltsetup_time1_off;
+	setup_vc->voltsetup_time2_off =
+			twl4030_voltsetup_time.voltsetup_time1_off;
+
+	setup_vc->voltoffset = twl4030_voltsetup_time.voltoffset;
+	setup_vc->voltsetup2 = twl4030_voltsetup_time.voltsetup2;
+
+	t2scripts_data->scripts = twl4030_generic_script.scripts;
+	t2scripts_data->num = twl4030_generic_script.num;
+}
+
+#ifdef CONFIG_TWL5030_GLITCH_FIX
+/* TRITON script for sleep, wakeup & warm_reset */
+static struct twl4030_script *twl4030_scripts_glitchfix[] __initdata = {
+	&sleep_on_script_glitchfix,
+	&wakeup_script_glitchfix,
+	&wrst_script,
+};
+
+struct twl4030_power_data twl4030_script_glitchfix __initdata = {
+	.scripts	= twl4030_scripts_glitchfix,
+	.num		= ARRAY_SIZE(twl4030_scripts_glitchfix),
+};
+
+void use_twl4030_script_glitchfix(
+		struct twl4030_power_data *t2scripts_data)
+{
+	t2scripts_data->scripts = twl4030_script_glitchfix.scripts;
+	t2scripts_data->num = twl4030_script_glitchfix.num;
+}
+#endif
 
 #endif

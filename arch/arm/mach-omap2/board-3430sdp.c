@@ -116,15 +116,15 @@ static struct cpuidle_params omap3_cpuidle_params_table[] = {
 /* FIXME: These are not the optimal setup values to be used on 3430sdp */
 static struct prm_setup_vc omap3_setuptime_table = {
 	/* CLK SETUPTIME for RET & OFF */
-	.clksetup_ret = 0xff,
-	.clksetup_off = 0xff,
+	.clksetup_ret = 0x1,
+	.clksetup_off = 0x14A,
 	/* VOLT SETUPTIME for RET & OFF */
-	.voltsetup_time1_ret = 0xfff,
-	.voltsetup_time2_ret = 0xfff,
-	.voltsetup_time1_off = 0xfff,
-	.voltsetup_time2_off = 0xfff,
-	.voltoffset = 0xff,
-	.voltsetup2 = 0xff,
+	.voltsetup_time1_ret = 0x005B,
+	.voltsetup_time2_ret = 0x0055,
+	.voltsetup_time1_off = 0x00B3,
+	.voltsetup_time2_off = 0x00A0,
+	.voltoffset = 0x118,
+	.voltsetup2 = 0x32,
 	/* VC COMMAND VALUES for VDD1/VDD2 */
 	.vdd0_on = 0x30,
 	.vdd0_onlp = 0x20,
@@ -418,7 +418,6 @@ static void __init omap_3430sdp_init_irq(void)
 	omap_board_config_size = ARRAY_SIZE(sdp3430_config);
 	omap3_pm_init_opp_table();
 	omap3_pm_init_cpuidle(omap3_cpuidle_params_table);
-	omap_voltage_init_vc(&omap3_setuptime_table);
 	omap2_init_common_hw(hyb18m512160af6_sdrc_params, NULL);
 	omap_init_irq();
 	omap_gpio_init();
@@ -542,29 +541,39 @@ static struct twl4030_resconfig twl4030_rconfig[] = {
 	{ 0, 0},
 };
 
+#ifdef CONFIG_TWL5030_GLITCH_FIX
+static struct twl4030_resconfig twl4030_rconfig_glitchfix[] = {
+	{ .resource = RES_VPLL1, .devgroup = DEV_GRP_P1 | DEV_GRP_P3,
+		.type = 3, .type2 = 1, .remap_sleep = RES_STATE_OFF },
+	{ .resource = RES_VINTANA1, .devgroup = DEV_GRP_ALL, .type = 1,
+		.type2 = 2, .remap_sleep = RES_STATE_SLEEP },
+	{ .resource = RES_VINTANA2, .devgroup = DEV_GRP_ALL, .type = 0,
+		.type2 = 2, .remap_sleep = RES_STATE_SLEEP },
+	{ .resource = RES_VINTDIG, .devgroup = DEV_GRP_ALL, .type = 1,
+		.type2 = 2, .remap_sleep = RES_STATE_SLEEP },
+	{ .resource = RES_VIO, .devgroup = DEV_GRP_ALL, .type = 2,
+		.type2 = 2, .remap_sleep = RES_STATE_SLEEP },
+	{ .resource = RES_VDD1, .devgroup = DEV_GRP_P1 | DEV_GRP_P3,
+		.type = 4, .type2 = 1, .remap_sleep = RES_STATE_OFF },
+	{ .resource = RES_VDD2, .devgroup = DEV_GRP_P1 | DEV_GRP_P3,
+		.type = 3, .type2 = 1, .remap_sleep = RES_STATE_OFF },
+	{ .resource = RES_REGEN, .devgroup = DEV_GRP_ALL, .type = 2,
+		.type2 = 1, .remap_sleep = RES_STATE_SLEEP },
+	{ .resource = RES_NRES_PWRON, .devgroup = DEV_GRP_ALL, .type = 0,
+		.type2 = 1, .remap_sleep = RES_STATE_SLEEP },
+	{ .resource = RES_CLKEN, .devgroup = DEV_GRP_ALL, .type = 3,
+		.type2 = 2, .remap_sleep = RES_STATE_SLEEP },
+	{ .resource = RES_SYSEN, .devgroup = DEV_GRP_ALL, .type = 6,
+		.type2 = 1, .remap_sleep = RES_STATE_SLEEP },
+	{ .resource = RES_HFCLKOUT, .devgroup = DEV_GRP_P1 | DEV_GRP_P3,
+		.type = 0, .type2 = 1, .remap_sleep = RES_STATE_SLEEP },
+	{ 0, 0},
+};
+#endif
+
 static struct twl4030_power_data sdp3430_t2scripts_data __initdata = {
 	.resource_config = twl4030_rconfig,
 };
-
-#ifdef CONFIG_TWL4030_POWER
-static void use_generic_twl4030_script(void)
-{
-	omap3_setuptime_table.voltsetup_time1_ret =
-				twl4030_voltsetup_time.voltsetup_time1_ret;
-	omap3_setuptime_table.voltsetup_time2_ret =
-				twl4030_voltsetup_time.voltsetup_time2_ret;
-	omap3_setuptime_table.voltsetup_time1_off =
-				twl4030_voltsetup_time.voltsetup_time1_off;
-	omap3_setuptime_table.voltsetup_time2_off =
-				twl4030_voltsetup_time.voltsetup_time1_off;
-
-	omap3_setuptime_table.voltoffset = twl4030_voltsetup_time.voltoffset;
-	omap3_setuptime_table.voltsetup2 = twl4030_voltsetup_time.voltsetup2;
-
-	sdp3430_t2scripts_data.scripts = twl4030_generic_script.scripts;
-	sdp3430_t2scripts_data.num = twl4030_generic_script.num;
-}
-#endif
 
 /*
  * Apply all the fixed voltages since most versions of U-Boot
@@ -949,11 +958,22 @@ static struct flash_partitions sdp_flash_partitions[] = {
 	},
 };
 
+#ifdef CONFIG_TWL5030_GLITCH_FIX
+void twl5030_glitchfix_changes(void)
+{
+	sdp3430_t2scripts_data.resource_config = twl4030_rconfig_glitchfix;
+	use_twl4030_script_glitchfix(&sdp3430_t2scripts_data);
+	omap_voltage_twl5030_glitchfix();
+}
+EXPORT_SYMBOL(twl5030_glitchfix_changes);
+#endif
+
 static void __init omap_3430sdp_init(void)
 {
-#ifdef CONFIG_TWL4030_POWER
-	use_generic_twl4030_script();
-#endif
+	use_generic_twl4030_script(&sdp3430_t2scripts_data,
+					&omap3_setuptime_table);
+	omap_voltage_init_vc(&omap3_setuptime_table);
+
 	omap3_mux_init(board_mux, OMAP_PACKAGE_CBB);
 	omap3430_i2c_init();
 	platform_add_devices(sdp3430_devices, ARRAY_SIZE(sdp3430_devices));

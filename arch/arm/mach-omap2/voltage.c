@@ -763,6 +763,16 @@ void __init omap_voltage_init_vc(struct prm_setup_vc *setup_vc)
 	vc_config.vdd1_off = setup_vc->vdd1_off;
 }
 
+#ifdef CONFIG_TWL5030_GLITCH_FIX
+void omap_voltage_twl5030_glitchfix(void)
+{
+	vc_config.clksetup_off = 0x17B;
+
+	vc_config.voltoffset = 0x10;
+	vc_config.voltsetup2 = 0x16B;
+}
+#endif
+
 void update_voltsetup_time(int core_next_state)
 {
 	/* update voltsetup time */

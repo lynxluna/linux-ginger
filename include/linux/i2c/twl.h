@@ -546,6 +546,9 @@ struct twl4030_power_data {
 #define TWL4030_RESCONFIG_UNDEF	((u8)-1)
 };
 
+#ifdef CONFIG_TWL5030_GLITCH_FIX
+extern bool is_twl5030_glitchfix_required(void);
+#endif
 extern void twl4030_power_init(struct twl4030_power_data *triton2_scripts);
 extern int twl4030_remove_script(u8 flags);
 

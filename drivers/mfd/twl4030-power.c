@@ -30,8 +30,10 @@
 #include <linux/platform_device.h>
 
 #include <asm/mach-types.h>
+#include <mach/board-zoom.h>
 
 static u8 twl4030_start_script_address = 0x2b;
+static u32 twl4030_rev;
 
 #define PWR_P1_SW_EVENTS	0x10
 #define PWR_DEVOFF	(1<<0)
@@ -66,6 +68,23 @@ static u8 twl4030_start_script_address = 0x2b;
 #define R_PROTECT_KEY		0x0E
 #define R_KEY_1			0xC0
 #define R_KEY_2			0x0C
+
+#define R_VDD1_OSC		0x5C
+#define R_VDD2_OSC		0x6A
+#define R_VIO_OSC		0x52
+#define EXT_FS_CLK_EN		(0x1 << 6)
+
+#define R_WDT_CFG		0x03
+#define WDT_WRK_TIMEOUT		0x03
+
+#define R_UNLOCK_TEST_REG	0x12
+#define TWL_EEPROM_R_UNLOCK	0x49
+
+#define TWL_SIL_TYPE(rev)	((rev) & 0x00FFFFFF)
+#define TWL_SIL_REV(rev)	((rev) >> 24)
+#define TWL_SIL_5030		0x09002F
+#define TWL_REV_1_0		0x00
+#define TWL_REV_1_1		0x10
 
 /* resource configuration registers
    <RESOURCE>_DEV_GRP   at address 'n+0'
@@ -527,6 +546,79 @@ int twl4030_remove_script(u8 flags)
 	return err;
 }
 
+#ifdef CONFIG_TWL5030_GLITCH_FIX
+/**
+ * @brief twl_workaround - Fix for TWL5030 Silicon Errata 27 & 28:
+ * 27 - VDD1, VDD2, may have glitches when their output value is updated.
+ * 28 - VDD1 and / or VDD2 DCDC clock may stop working when internal clock is
+ * switched from internal to external.
+ *
+ * Workaround requires the TWL DCDCs to use HFCLK instead of
+ * internal oscillator. Also enable TWL watchdog before switching the osc
+ * to recover if the VDD1/VDD2 stop working.
+ *
+ * WARNING: Should change board dependent script file to handle
+ * RET and OFF mode sequences correctly.
+ */
+static void __init twl_workaround(void)
+{
+	u8 val;
+	u8 smps_osc_reg[] = {R_VDD1_OSC, R_VDD2_OSC, R_VIO_OSC};
+	u8 wdt_counter_val = 0;
+	int i;
+	int err;
+
+	/* Setup the twl wdt to take care of borderline failure case */
+	err = twl_i2c_read_u8(TWL4030_MODULE_PM_RECEIVER, &wdt_counter_val,
+			R_WDT_CFG);
+	err |= twl_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER, WDT_WRK_TIMEOUT,
+			R_WDT_CFG);
+
+	for (i = 0; i < sizeof(smps_osc_reg); i++) {
+		err |= twl_i2c_read_u8(TWL4030_MODULE_PM_RECEIVER, &val,
+							smps_osc_reg[i]);
+		val |= EXT_FS_CLK_EN;
+		err |= twl_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER, val,
+							smps_osc_reg[i]);
+	}
+
+	/* restore the original value */
+	err |= twl_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER, wdt_counter_val,
+			R_WDT_CFG);
+	if (err)
+		pr_warning("TWL4030: workaround setup failed!\n");
+}
+
+bool is_twl5030_glitchfix_required(void)
+{
+	int err = 0;
+
+	if (twl4030_rev == 0) {
+		err = twl_i2c_write_u8(TWL4030_MODULE_INTBR,
+				TWL_EEPROM_R_UNLOCK, R_UNLOCK_TEST_REG);
+		if (err)
+			pr_err("TWL4030 Unable to unlock IDCODE registers\n");
+
+		err = twl_i2c_read(TWL4030_MODULE_INTBR, (u8 *)(&twl4030_rev),
+				0x0, 4);
+		if (err)
+			pr_err("TWL4030: unable to read IDCODE-%d\n", err);
+
+		err = twl_i2c_write_u8(TWL4030_MODULE_INTBR, 0x0,
+				R_UNLOCK_TEST_REG);
+		if (err)
+			pr_err("TWL4030 Unable to relock IDCODE registers\n");
+	}
+
+	if ((TWL_SIL_TYPE(twl4030_rev) == TWL_SIL_5030) &&
+		(TWL_SIL_REV(twl4030_rev) <= TWL_REV_1_1))
+		return true;
+	else
+		return false;
+
+}
+#endif
+
 void __init twl4030_power_init(struct twl4030_power_data *twl4030_scripts)
 {
 	int err = 0;
@@ -543,6 +635,16 @@ void __init twl4030_power_init(struct twl4030_power_data *twl4030_scripts)
 				R_PROTECT_KEY);
 	if (err)
 		goto unlock;
+
+#ifdef CONFIG_TWL5030_GLITCH_FIX
+	/* Applying TWL5030 glitch fix based on Si revision */
+	if (is_twl5030_glitchfix_required()) {
+		pr_err("TWL5030: Enabling workaround for rev 0x%04X\n",
+				twl4030_rev);
+		twl_workaround();
+		twl5030_glitchfix_changes();
+	}
+#endif
 
 	for (i = 0; i < twl4030_scripts->num; i++) {
 		err = load_twl4030_script(twl4030_scripts->scripts[i], address);

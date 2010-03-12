@@ -157,29 +157,39 @@ static struct twl4030_resconfig twl4030_rconfig[] = {
 	{ 0, 0},
 };
 
+#ifdef CONFIG_TWL5030_GLITCH_FIX
+static struct twl4030_resconfig twl4030_rconfig_glitchfix[] = {
+	{ .resource = RES_VPLL1, .devgroup = DEV_GRP_P1 | DEV_GRP_P3,
+		.type = 3, .type2 = 1, .remap_sleep = RES_STATE_OFF },
+	{ .resource = RES_VINTANA1, .devgroup = DEV_GRP_ALL, .type = 1,
+		.type2 = 2, .remap_sleep = RES_STATE_SLEEP },
+	{ .resource = RES_VINTANA2, .devgroup = DEV_GRP_ALL, .type = 0,
+		.type2 = 2, .remap_sleep = RES_STATE_SLEEP },
+	{ .resource = RES_VINTDIG, .devgroup = DEV_GRP_ALL, .type = 1,
+		.type2 = 2, .remap_sleep = RES_STATE_SLEEP },
+	{ .resource = RES_VIO, .devgroup = DEV_GRP_ALL, .type = 2,
+		.type2 = 2, .remap_sleep = RES_STATE_SLEEP },
+	{ .resource = RES_VDD1, .devgroup = DEV_GRP_P1 | DEV_GRP_P3,
+		.type = 4, .type2 = 1, .remap_sleep = RES_STATE_OFF },
+	{ .resource = RES_VDD2, .devgroup = DEV_GRP_P1 | DEV_GRP_P3,
+		.type = 3, .type2 = 1, .remap_sleep = RES_STATE_OFF },
+	{ .resource = RES_REGEN, .devgroup = DEV_GRP_ALL, .type = 2,
+		.type2 = 1, .remap_sleep = RES_STATE_SLEEP },
+	{ .resource = RES_NRES_PWRON, .devgroup = DEV_GRP_ALL, .type = 0,
+		.type2 = 1, .remap_sleep = RES_STATE_SLEEP },
+	{ .resource = RES_CLKEN, .devgroup = DEV_GRP_ALL, .type = 3,
+		.type2 = 2, .remap_sleep = RES_STATE_SLEEP },
+	{ .resource = RES_SYSEN, .devgroup = DEV_GRP_ALL, .type = 6,
+		.type2 = 1, .remap_sleep = RES_STATE_SLEEP },
+	{ .resource = RES_HFCLKOUT, .devgroup = DEV_GRP_P1 | DEV_GRP_P3,
+		.type = 0, .type2 = 1, .remap_sleep = RES_STATE_SLEEP },
+	{ 0, 0},
+};
+#endif
+
 static struct twl4030_power_data zoom_t2scripts_data __initdata = {
 	.resource_config = twl4030_rconfig,
 };
-
-#ifdef CONFIG_TWL4030_POWER
-static void use_generic_twl4030_script(struct prm_setup_vc *setup_vc)
-{
-	setup_vc->voltsetup_time1_ret =
-				twl4030_voltsetup_time.voltsetup_time1_ret;
-	setup_vc->voltsetup_time2_ret =
-				twl4030_voltsetup_time.voltsetup_time2_ret;
-	setup_vc->voltsetup_time1_off =
-				twl4030_voltsetup_time.voltsetup_time1_off;
-	setup_vc->voltsetup_time2_off =
-				twl4030_voltsetup_time.voltsetup_time1_off;
-
-	setup_vc->voltoffset = twl4030_voltsetup_time.voltoffset;
-	setup_vc->voltsetup2 = twl4030_voltsetup_time.voltsetup2;
-
-	zoom_t2scripts_data.scripts = twl4030_generic_script.scripts;
-	zoom_t2scripts_data.num = twl4030_generic_script.num;
-}
-#endif
 
 static struct platform_device zoom_cam_device = {
 	.name		= "zoom_cam",
@@ -556,11 +566,22 @@ static struct platform_device *zoom_devices[] __initdata = {
 	&zoom_cam_device,
 };
 
+#ifdef CONFIG_TWL5030_GLITCH_FIX
+void twl5030_glitchfix_changes(void)
+{
+	zoom_t2scripts_data.resource_config = twl4030_rconfig_glitchfix;
+	use_twl4030_script_glitchfix(&zoom_t2scripts_data);
+	omap_voltage_twl5030_glitchfix();
+}
+EXPORT_SYMBOL(twl5030_glitchfix_changes);
+#endif
+
 void __init zoom_peripherals_init(void * peripheral_data)
 {
-#ifdef CONFIG_TWL4030_POWER
-	use_generic_twl4030_script((struct prm_setup_vc *) peripheral_data);
-#endif
+	struct prm_setup_vc *omap3_setuptime =
+				(struct prm_setup_vc *)peripheral_data;
+
+	use_generic_twl4030_script(&zoom_t2scripts_data , omap3_setuptime);
 	omap_i2c_init();
 	synaptics_dev_init();
 	wlan_1273_reset();
@@ -570,4 +591,5 @@ void __init zoom_peripherals_init(void * peripheral_data)
 	platform_add_devices(zoom_devices, ARRAY_SIZE(zoom_devices));
 	omap_voltage_init_vc((struct prm_setup_vc *) peripheral_data);
 	zoom_cam_init();
+	omap_voltage_init_vc(omap3_setuptime);
 }

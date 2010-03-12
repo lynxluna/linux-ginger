@@ -28,18 +28,17 @@
 #include "omap3-opp.h"
 #include "pm.h"
 
-/* FIXME: These are not the optimal setup values */
 static struct prm_setup_vc omap3_setuptime_table = {
 	/* CLK SETUPTIME for RET & OFF */
-	.clksetup_ret = 0xff,
-	.clksetup_off = 0xff,
+	.clksetup_ret = 0x1,
+	.clksetup_off = 0x14A,
 	/* VOLT SETUPTIME for RET & OFF */
-	.voltsetup_time1_ret = 0xfff,
-	.voltsetup_time2_ret = 0xfff,
-	.voltsetup_time1_off = 0xfff,
-	.voltsetup_time2_off = 0xfff,
-	.voltoffset = 0xff,
-	.voltsetup2 = 0xff,
+	.voltsetup_time1_ret = 0x005B,
+	.voltsetup_time2_ret = 0x0055,
+	.voltsetup_time1_off = 0x00B3,
+	.voltsetup_time2_off = 0x00A0,
+	.voltoffset = 0x118,
+	.voltsetup2 = 0x32,
 	/* VC COMMAND VALUES for VDD1/VDD2 */
 	.vdd0_on = 0x30,
 	.vdd0_onlp = 0x20,

@@ -75,6 +75,10 @@ void omap_voltageprocessor_enable(int vp_id);
 void omap_voltageprocessor_disable(int vp_id);
 void omap_voltage_init_vc(struct prm_setup_vc *setup_vc);
 void update_voltsetup_time(int core_next_state);
+#ifdef CONFIG_TWL5030_GLITCH_FIX
+void omap_voltage_twl5030_glitchfix(void);
+#endif
+
 void omap_voltage_init(void);
 int omap_voltage_scale(int vdd, u8 target_vsel, u8 current_vsel);
 void omap_reset_voltage(int vdd);
