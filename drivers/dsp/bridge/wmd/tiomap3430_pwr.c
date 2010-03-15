@@ -143,9 +143,9 @@ DSP_STATUS handle_hibernation_fromDSP(struct WMD_DEV_CONTEXT *pDevContext)
 			/* Update the Bridger Driver state */
 			pDevContext->dwBrdState = BRD_DSP_HIBERNATION;
 #ifdef CONFIG_BRIDGE_DVFS
-			status = DEV_GetIOMgr(pDevContext->hDevObject, &hIOMgr);
-			if (DSP_FAILED(status))
-				return status;
+			DEV_GetIOMgr(pDevContext->hDevObject, &hIOMgr);
+			if (!hIOMgr)
+				return DSP_EHANDLE;
 			IO_SHMsetting(hIOMgr, SHM_GETOPP, &opplevel);
 
 			/*

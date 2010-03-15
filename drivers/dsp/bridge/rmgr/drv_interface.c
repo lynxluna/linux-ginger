@@ -690,6 +690,10 @@ static ssize_t mpu_address_show(struct device *dev,
 	u32 armPhyMemOffUncached = 0;
 	hDevObject = (struct DEV_OBJECT *)DRV_GetFirstDevObject();
 	DEV_GetWMDContext(hDevObject, &dwContext);
+	if (!dwContext) {
+		pr_err("%s: failed to get the dev context handle\n", __func__);
+		return 0;
+	}
 	GppPa = dwContext->aTLBEntry[0].ulGppPa;
 	DspVa = dwContext->aTLBEntry[0].ulDspVa;
 
