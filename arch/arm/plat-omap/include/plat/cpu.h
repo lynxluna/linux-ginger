@@ -284,6 +284,8 @@ IS_OMAP_SUBCLASS(363x, 0x363)
  * cpu_is_omap2423():	True for OMAP2423
  * cpu_is_omap2430():	True for OMAP2430
  * cpu_is_omap3430():	True for OMAP3430
+ * cpu_is_omap3505():	True for OMAP3505
+ * cpu_is_omap3517():	True for OMAP3517
  */
 #define GET_OMAP_TYPE	((omap_rev() >> 16) & 0xffff)
 
@@ -307,6 +309,8 @@ IS_OMAP_TYPE(2422, 0x2422)
 IS_OMAP_TYPE(2423, 0x2423)
 IS_OMAP_TYPE(2430, 0x2430)
 IS_OMAP_TYPE(3430, 0x3430)
+IS_OMAP_TYPE(3505, 0x3505)
+IS_OMAP_TYPE(3517, 0x3517)
 
 #define cpu_is_omap310()		0
 #define cpu_is_omap730()		0
@@ -325,6 +329,8 @@ IS_OMAP_TYPE(3430, 0x3430)
 #define cpu_is_omap3515()		0
 #define cpu_is_omap3525()		0
 #define cpu_is_omap3530()		0
+#define cpu_is_omap3505()		0
+#define cpu_is_omap3517()		0
 #define cpu_is_omap3430()		0
 #define cpu_is_omap3630()		0
 
@@ -380,17 +386,21 @@ IS_OMAP_TYPE(3430, 0x3430)
 # undef cpu_is_omap3515
 # undef cpu_is_omap3525
 # undef cpu_is_omap3530
+# undef cpu_is_omap3505
+# undef cpu_is_omap3517
 # define cpu_is_omap3430()		is_omap3430()
-# define cpu_is_omap3503		(cpu_is_omap3430() &&		\
+# define cpu_is_omap3503()		(cpu_is_omap3430() &&		\
 						(!omap3_has_iva()) &&	\
 						(!omap3_has_sgx()))
-# define cpu_is_omap3515		(cpu_is_omap3430() &&		\
-						(omap3_has_iva()) &&	\
-						(!omap3_has_sgx()))
-# define cpu_is_omap3525		(cpu_is_omap3430() &&		\
+# define cpu_is_omap3515()		(cpu_is_omap3430() &&		\
 						(omap3_has_sgx()) &&	\
 						(!omap3_has_iva()))
-# define cpu_is_omap3530		(cpu_is_omap3430())
+# define cpu_is_omap3525()		(cpu_is_omap3430() &&		\
+						(omap3_has_iva()) &&	\
+						(!omap3_has_sgx()))
+# define cpu_is_omap3530()		(cpu_is_omap3430())
+# define cpu_is_omap3505()		is_omap3505()
+# define cpu_is_omap3517()		is_omap3517()
 # undef cpu_is_omap3630
 # define cpu_is_omap3630()		is_omap363x()
 #endif
@@ -430,8 +440,65 @@ IS_OMAP_TYPE(3430, 0x3430)
 #define OMAP3515_REV(v)		(OMAP35XX_CLASS | (0x3515 << 16) | (v << 12))
 #define OMAP3525_REV(v)		(OMAP35XX_CLASS | (0x3525 << 16) | (v << 12))
 #define OMAP3530_REV(v)		(OMAP35XX_CLASS | (0x3530 << 16) | (v << 12))
+#define OMAP3505_REV(v)		(OMAP35XX_CLASS | (0x3505 << 16) | (v << 12))
+#define OMAP3517_REV(v)		(OMAP35XX_CLASS | (0x3517 << 16) | (v << 12))
 
 #define OMAP443X_CLASS		0x44300034
+
+/*
+ * Silicon revisions
+ */
+#define OMAP_ES_1_0		0x00
+#define OMAP_ES_2_0		0x10
+#define OMAP_ES_2_1		0x20
+#define OMAP_ES_3_0		0x30
+#define OMAP_ES_3_1		0x40
+
+#define OMAP_REV_MASK		0x0000ff00
+#define OMAP_REV_BITS		((omap_rev() & OMAP_REV_MASK) >> 8)
+
+#define OMAP_REV_IS(revid)					\
+static inline u8 omap_rev_is_ ##revid (void)			\
+{								\
+	return (OMAP_REV_BITS == OMAP_ES_ ##revid) ? 1 : 0;	\
+}
+
+#define OMAP_REV_LT(revid)					\
+static inline u8 omap_rev_lt_ ##revid (void)			\
+{								\
+	return (OMAP_REV_BITS < OMAP_ES_ ##revid) ? 1 : 0;	\
+}
+
+#define OMAP_REV_LE(revid)					\
+static inline u8 omap_rev_le_ ##revid (void)			\
+{								\
+	return (OMAP_REV_BITS <= OMAP_ES_ ##revid) ? 1 : 0;	\
+}
+
+#define OMAP_REV_GT(revid)					\
+static inline u8 omap_rev_gt_ ##revid (void)			\
+{								\
+	return (OMAP_REV_BITS > OMAP_ES_ ##revid) ? 1 : 0;	\
+}
+
+#define OMAP_REV_GE(revid)					\
+static inline u8 omap_rev_ge_ ##revid (void)			\
+{								\
+	return (OMAP_REV_BITS >= OMAP_ES_ ##revid) ? 1 : 0;	\
+}
+
+#define OMAP_REV_FUNCTIONS(revid)	\
+	OMAP_REV_IS(revid)		\
+	OMAP_REV_LT(revid)		\
+	OMAP_REV_LE(revid)		\
+	OMAP_REV_GT(revid)		\
+	OMAP_REV_GE(revid)
+
+OMAP_REV_FUNCTIONS(1_0)
+OMAP_REV_FUNCTIONS(2_0)
+OMAP_REV_FUNCTIONS(2_1)
+OMAP_REV_FUNCTIONS(3_0)
+OMAP_REV_FUNCTIONS(3_1)
 
 /*
  * omap_chip bits
@@ -482,6 +549,7 @@ extern u32 omap3_features;
 #define OMAP3_HAS_SGX			BIT(2)
 #define OMAP3_HAS_NEON			BIT(3)
 #define OMAP3_HAS_ISP			BIT(4)
+#define OMAP3_HAS_720M			BIT(5)
 
 #define OMAP3_HAS_FEATURE(feat,flag)			\
 static inline unsigned int omap3_has_ ##feat(void)	\
@@ -494,5 +562,6 @@ OMAP3_HAS_FEATURE(sgx, SGX)
 OMAP3_HAS_FEATURE(iva, IVA)
 OMAP3_HAS_FEATURE(neon, NEON)
 OMAP3_HAS_FEATURE(isp, ISP)
+OMAP3_HAS_FEATURE(720m, 720M)
 
 #endif

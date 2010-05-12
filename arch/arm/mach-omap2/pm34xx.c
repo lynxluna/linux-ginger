@@ -26,7 +26,10 @@
 #include <linux/err.h>
 #include <linux/gpio.h>
 #include <linux/clk.h>
+#include <linux/delay.h>
+#include <linux/usb/musb.h>
 
+#include <plat/cpu.h>
 #include <plat/sram.h>
 #include <plat/clockdomain.h>
 #include <plat/powerdomain.h>
@@ -112,7 +115,7 @@ static void omap3_enable_io_chain(void)
 {
 	int timeout = 0;
 
-	if (omap_rev() >= OMAP3430_REV_ES3_1) {
+	if (omap_rev_ge_3_1()) {
 		prm_set_mod_reg_bits(OMAP3430_EN_IO_CHAIN, WKUP_MOD, PM_WKEN);
 		/* Do a readback to assure write has been done */
 		prm_read_mod_reg(WKUP_MOD, PM_WKEN);
@@ -133,7 +136,7 @@ static void omap3_enable_io_chain(void)
 
 static void omap3_disable_io_chain(void)
 {
-	if (omap_rev() >= OMAP3430_REV_ES3_1)
+	if (omap_rev_ge_3_1())
 		prm_clear_mod_reg_bits(OMAP3430_EN_IO_CHAIN, WKUP_MOD, PM_WKEN);
 }
 
@@ -146,9 +149,17 @@ static void omap3_core_save_context(void)
 	control_padconf_off |= START_PADCONF_SAVE;
 	omap_ctrl_writel(control_padconf_off, OMAP343X_CONTROL_PADCONF_OFF);
 	/* wait for the save to complete */
-	while (!omap_ctrl_readl(OMAP343X_CONTROL_GENERAL_PURPOSE_STATUS)
-			& PADCONF_SAVE_DONE)
-		;
+	while (!(omap_ctrl_readl(OMAP343X_CONTROL_GENERAL_PURPOSE_STATUS)
+			& PADCONF_SAVE_DONE))
+		udelay(1);
+
+	/*
+	 * Force write last pad into memory, as this can fail in some
+	 * cases according to erratas 1.157, 1.185
+	 */
+	omap_ctrl_writel(omap_ctrl_readl(OMAP343X_PADCONF_ETK_D14),
+		OMAP343X_CONTROL_MEM_WKUP + 0x2a0);
+
 	/* Save the Interrupt controller context */
 	omap_intc_save_context();
 	/* Save the GPMC context */
@@ -252,7 +263,7 @@ static int _prcm_int_handle_wakeup(void)
 	c = prcm_clear_mod_irqs(WKUP_MOD, 1);
 	c += prcm_clear_mod_irqs(CORE_MOD, 1);
 	c += prcm_clear_mod_irqs(OMAP3430_PER_MOD, 1);
-	if (omap_rev() > OMAP3430_REV_ES1_0) {
+	if (omap_rev_gt_1_0() || cpu_is_omap3505() || cpu_is_omap3517()) {
 		c += prcm_clear_mod_irqs(CORE_MOD, 3);
 		c += prcm_clear_mod_irqs(OMAP3430ES2_USBHOST_MOD, 1);
 	}
@@ -403,17 +414,27 @@ void omap_sram_idle(void)
 	if (pwrdm_read_pwrst(cam_pwrdm) == PWRDM_POWER_ON)
 		omap2_clkdm_deny_idle(mpu_pwrdm->pwrdm_clkdms[0]);
 
+	/*
+	 * Disable smartreflex before entering WFI.
+	 * Only needed if we are going to enter retention or off.
+	 */
+	if (mpu_next_state <= PWRDM_POWER_RET)
+		disable_smartreflex(SR1);
+	if (core_next_state <= PWRDM_POWER_RET)
+		disable_smartreflex(SR2);
+
 	/* CORE */
 	if (core_next_state < PWRDM_POWER_ON) {
-		/* Disable smartreflex before entering WFI */
-		disable_smartreflex(SR1);
-		disable_smartreflex(SR2);
 		omap_uart_prepare_idle(0);
 		omap_uart_prepare_idle(1);
 		if (core_next_state == PWRDM_POWER_OFF) {
 			prm_set_mod_reg_bits(OMAP3430_AUTO_OFF,
 					     OMAP3430_GR_MOD,
 					     OMAP3_PRM_VOLTCTRL_OFFSET);
+#ifndef CONFIG_USB_MUSB_HDRC_MODULE
+			/* Save the MUSB context */
+			musb_save_context();
+#endif
 			omap3_core_save_context();
 			omap3_prcm_save_context();
 		} else if (core_next_state == PWRDM_POWER_RET) {
@@ -425,6 +446,7 @@ void omap_sram_idle(void)
 		prm_set_mod_reg_bits(OMAP3430_EN_IO, WKUP_MOD, PM_WKEN);
 		omap3_enable_io_chain();
 	}
+	omap3_intc_prepare_idle();
 
 	/*
 	* On EMU/HS devices ROM code restores a SRDC value
@@ -432,7 +454,7 @@ void omap_sram_idle(void)
 	* of AUTO_CNT = 1 enabled. This takes care of errata 1.142.
 	* Hence store/restore the SDRC_POWER register here.
 	*/
-	if (omap_rev() >= OMAP3430_REV_ES3_0 &&
+	if (omap_rev_ge_3_0() &&
 	    omap_type() != OMAP2_DEVICE_TYPE_GP &&
 	    core_next_state == PWRDM_POWER_OFF)
 		sdrc_pwr = sdrc_read_reg(SDRC_POWER);
@@ -452,7 +474,7 @@ void omap_sram_idle(void)
 		pm_dbg_regset_save(2);
 
 	/* Restore normal SDRC POWER settings */
-	if (omap_rev() >= OMAP3430_REV_ES3_0 &&
+	if (omap_rev_ge_3_0() &&
 	    omap_type() != OMAP2_DEVICE_TYPE_GP &&
 	    core_next_state == PWRDM_POWER_OFF)
 		sdrc_write_reg(sdrc_pwr, SDRC_POWER);
@@ -469,6 +491,10 @@ void omap_sram_idle(void)
 			omap3_prcm_restore_context();
 			omap3_sram_restore_context();
 			omap2_sms_restore_context();
+#ifndef CONFIG_USB_MUSB_HDRC_MODULE
+			/* Restore the MUSB context */
+			musb_restore_context();
+#endif
 		}
 		omap_uart_resume_idle(0);
 		omap_uart_resume_idle(1);
@@ -480,19 +506,33 @@ void omap_sram_idle(void)
 			prm_clear_mod_reg_bits(OMAP3430_AUTO_RET,
 						OMAP3430_GR_MOD,
 						OMAP3_PRM_VOLTCTRL_OFFSET);
-		/* Enable smartreflex after WFI */
-		enable_smartreflex(SR1);
-		enable_smartreflex(SR2);
 	}
+	omap3_intc_resume_idle();
+
+	/*
+	 * Enable smartreflex after WFI. Only needed if we entered
+	 * retention or off
+	 */
+	if (mpu_next_state <= PWRDM_POWER_RET)
+		enable_smartreflex(SR1);
+	if (core_next_state <= PWRDM_POWER_RET)
+		enable_smartreflex(SR2);
 
 	/* PER */
 	if (per_next_state < PWRDM_POWER_ON) {
-		per_prev_state = pwrdm_read_prev_pwrst(per_pwrdm);
-		if (per_prev_state == PWRDM_POWER_OFF) {
-			omap3_per_restore_context();
-			omap3_gpio_restore_pad_context(0);
-		} else if (per_next_state == PWRDM_POWER_OFF)
-			omap3_gpio_restore_pad_context(1);
+		if (per_next_state == PWRDM_POWER_OFF) {
+			/*
+			 * Reading the prev-state takes long time (11us@OPP2),
+			 * only do it, if we really tried to put PER in OFF
+			 */
+			per_prev_state = pwrdm_read_prev_pwrst(per_pwrdm);
+			if (per_prev_state == PWRDM_POWER_OFF) {
+				omap3_per_restore_context();
+				omap3_gpio_restore_pad_context(0);
+			} else if (per_next_state == PWRDM_POWER_OFF) {
+				omap3_gpio_restore_pad_context(1);
+			}
+		}
 		omap2_gpio_resume_after_idle();
 		omap_uart_resume_idle(2);
 		if (per_state_modified)
@@ -513,6 +553,8 @@ void omap_sram_idle(void)
 
 int omap3_can_sleep(void)
 {
+	if (cpu_is_omap3505() || cpu_is_omap3517())
+		return 0;
 	if (!sleep_while_idle)
 		return 0;
 	if (!omap_uart_can_sleep())
@@ -628,6 +670,7 @@ static int omap3_pm_suspend(void)
 	}
 
 	omap_uart_prepare_suspend();
+	omap3_intc_suspend();
 
 	regset_save_on_suspend = 1;
 	omap_sram_idle();
@@ -782,7 +825,7 @@ static void __init prcm_setup_regs(void)
 	prm_write_mod_reg(0, OMAP3430_NEON_MOD, PM_WKDEP);
 	prm_write_mod_reg(0, OMAP3430_CAM_MOD, PM_WKDEP);
 	prm_write_mod_reg(0, OMAP3430_PER_MOD, PM_WKDEP);
-	if (omap_rev() > OMAP3430_REV_ES1_0) {
+	if (omap_rev_gt_1_0() || cpu_is_omap3505() || cpu_is_omap3517()) {
 		prm_write_mod_reg(0, OMAP3430ES2_SGX_MOD, PM_WKDEP);
 		prm_write_mod_reg(0, OMAP3430ES2_USBHOST_MOD, PM_WKDEP);
 	} else
@@ -833,7 +876,7 @@ static void __init prcm_setup_regs(void)
 		OMAP3430_AUTO_DES1,
 		CORE_MOD, CM_AUTOIDLE2);
 
-	if (omap_rev() > OMAP3430_REV_ES1_0) {
+	if (omap_rev_gt_1_0() || cpu_is_omap3505() || cpu_is_omap3517()) {
 		cm_write_mod_reg(
 			OMAP3430_AUTO_MAD2D |
 			OMAP3430ES2_AUTO_USBTLL,
@@ -881,12 +924,14 @@ static void __init prcm_setup_regs(void)
 		OMAP3430_PER_MOD,
 		CM_AUTOIDLE);
 
-	if (omap_rev() > OMAP3430_REV_ES1_0) {
+	if (omap_rev_gt_1_0() || cpu_is_omap3505() || cpu_is_omap3517()) {
 		cm_write_mod_reg(
 			OMAP3430ES2_AUTO_USBHOST,
 			OMAP3430ES2_USBHOST_MOD,
 			CM_AUTOIDLE);
 	}
+
+	omap_ctrl_writel(OMAP3430_AUTOIDLE, OMAP2_CONTROL_SYSCONFIG);
 
 	/*
 	 * Set all plls to autoidle. This is needed until autoidle is
@@ -957,24 +1002,6 @@ static void __init prcm_setup_regs(void)
 	/* Clear any pending PRCM interrupts */
 	prm_write_mod_reg(0, OCP_MOD, OMAP3_PRM_IRQSTATUS_MPU_OFFSET);
 
-	/* Don't attach IVA interrupts */
-	prm_write_mod_reg(0, WKUP_MOD, OMAP3430_PM_IVAGRPSEL);
-	prm_write_mod_reg(0, CORE_MOD, OMAP3430_PM_IVAGRPSEL1);
-	prm_write_mod_reg(0, CORE_MOD, OMAP3430ES2_PM_IVAGRPSEL3);
-	prm_write_mod_reg(0, OMAP3430_PER_MOD, OMAP3430_PM_IVAGRPSEL);
-
-	/* Clear any pending 'reset' flags */
-	prm_write_mod_reg(0xffffffff, MPU_MOD, RM_RSTST);
-	prm_write_mod_reg(0xffffffff, CORE_MOD, RM_RSTST);
-	prm_write_mod_reg(0xffffffff, OMAP3430_PER_MOD, RM_RSTST);
-	prm_write_mod_reg(0xffffffff, OMAP3430_EMU_MOD, RM_RSTST);
-	prm_write_mod_reg(0xffffffff, OMAP3430_NEON_MOD, RM_RSTST);
-	prm_write_mod_reg(0xffffffff, OMAP3430_DSS_MOD, RM_RSTST);
-	prm_write_mod_reg(0xffffffff, OMAP3430ES2_USBHOST_MOD, RM_RSTST);
-
-	/* Clear any pending PRCM interrupts */
-	prm_write_mod_reg(0, OCP_MOD, OMAP3_PRM_IRQSTATUS_MPU_OFFSET);
-
 	omap3_iva_idle();
 	omap3_d2d_idle();
 }
@@ -988,6 +1015,10 @@ void omap3_pm_off_mode_enable(int enable)
 		state = PWRDM_POWER_OFF;
 	else
 		state = PWRDM_POWER_RET;
+
+#ifdef CONFIG_CPU_IDLE
+	omap3_cpuidle_update_states();
+#endif
 
 #ifdef CONFIG_OMAP_PM_SRF
 	resource_lock_opp(VDD1_OPP);
@@ -1205,7 +1236,7 @@ static void __init configure_vc(void)
 	prm_write_mod_reg(OMAP3430_CMD1 | OMAP3430_RAV1, OMAP3430_GR_MOD,
 			  OMAP3_PRM_VC_CH_CONF_OFFSET);
 
-	prm_write_mod_reg(OMAP3430_MCODE_SHIFT | OMAP3430_HSEN | OMAP3430_SREN,
+	prm_write_mod_reg(OMAP3430_MCODE_SHIFT | OMAP3430_HSEN,
 			  OMAP3430_GR_MOD,
 			  OMAP3_PRM_VC_I2C_CFG_OFFSET);
 

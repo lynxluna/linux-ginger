@@ -43,6 +43,7 @@
 #include "prm-regbits-34xx.h"
 #include "cm.h"
 #include "cm-regbits-34xx.h"
+#include "omap3-opp.h"
 
 static const struct clkops clkops_noncore_dpll_ops;
 
@@ -97,140 +98,143 @@ struct omap_clk {
 #define CK_343X		(1 << 0)
 #define CK_3430ES1	(1 << 1)
 #define CK_3430ES2	(1 << 2)
+#define CK_3517 	(1 << 3)
+#define CK_3505 	(1 << 4)
+#define CK_35XX 	(CK_3517 | CK_3505)
 
 static struct omap_clk omap34xx_clks[] = {
-	CLK(NULL,	"omap_32k_fck",	&omap_32k_fck,	CK_343X),
-	CLK(NULL,	"virt_12m_ck",	&virt_12m_ck,	CK_343X),
-	CLK(NULL,	"virt_13m_ck",	&virt_13m_ck,	CK_343X),
-	CLK(NULL,	"virt_16_8m_ck", &virt_16_8m_ck, CK_3430ES2),
-	CLK(NULL,	"virt_19_2m_ck", &virt_19_2m_ck, CK_343X),
-	CLK(NULL,	"virt_26m_ck",	&virt_26m_ck,	CK_343X),
-	CLK(NULL,	"virt_38_4m_ck", &virt_38_4m_ck, CK_343X),
-	CLK(NULL,	"osc_sys_ck",	&osc_sys_ck,	CK_343X),
-	CLK(NULL,	"sys_ck",	&sys_ck,	CK_343X),
-	CLK(NULL,	"sys_altclk",	&sys_altclk,	CK_343X),
-	CLK(NULL,	"mcbsp_clks",	&mcbsp_clks,	CK_343X),
-	CLK(NULL,	"sys_clkout1",	&sys_clkout1,	CK_343X),
-	CLK(NULL,	"dpll1_ck",	&dpll1_ck,	CK_343X),
-	CLK(NULL,	"dpll1_x2_ck",	&dpll1_x2_ck,	CK_343X),
-	CLK(NULL,	"dpll1_x2m2_ck", &dpll1_x2m2_ck, CK_343X),
+	CLK(NULL,	"omap_32k_fck",	&omap_32k_fck,	CK_343X | CK_35XX),
+	CLK(NULL,	"virt_12m_ck",	&virt_12m_ck,	CK_343X | CK_35XX),
+	CLK(NULL,	"virt_13m_ck",	&virt_13m_ck,	CK_343X | CK_35XX),
+	CLK(NULL,	"virt_16_8m_ck", &virt_16_8m_ck, CK_3430ES2 | CK_35XX),
+	CLK(NULL,	"virt_19_2m_ck", &virt_19_2m_ck, CK_343X | CK_35XX),
+	CLK(NULL,	"virt_26m_ck",	&virt_26m_ck,	CK_343X | CK_35XX),
+	CLK(NULL,	"virt_38_4m_ck", &virt_38_4m_ck, CK_343X | CK_35XX),
+	CLK(NULL,	"osc_sys_ck",	&osc_sys_ck,	CK_343X | CK_35XX),
+	CLK(NULL,	"sys_ck",	&sys_ck,	CK_343X | CK_35XX),
+	CLK(NULL,	"sys_altclk",	&sys_altclk,	CK_343X | CK_35XX),
+	CLK(NULL,	"mcbsp_clks",	&mcbsp_clks,	CK_343X | CK_35XX),
+	CLK(NULL,	"sys_clkout1",	&sys_clkout1,	CK_343X | CK_35XX),
+	CLK(NULL,	"dpll1_ck",	&dpll1_ck,	CK_343X | CK_35XX),
+	CLK(NULL,	"dpll1_x2_ck",	&dpll1_x2_ck,	CK_343X | CK_35XX),
+	CLK(NULL,	"dpll1_x2m2_ck", &dpll1_x2m2_ck, CK_343X | CK_35XX),
 	CLK(NULL,	"dpll2_ck",	&dpll2_ck,	CK_343X),
 	CLK(NULL,	"dpll2_m2_ck",	&dpll2_m2_ck,	CK_343X),
-	CLK(NULL,	"dpll3_ck",	&dpll3_ck,	CK_343X),
-	CLK(NULL,	"core_ck",	&core_ck,	CK_343X),
-	CLK(NULL,	"dpll3_x2_ck",	&dpll3_x2_ck,	CK_343X),
-	CLK(NULL,	"dpll3_m2_ck",	&dpll3_m2_ck,	CK_343X),
-	CLK(NULL,	"dpll3_m2x2_ck", &dpll3_m2x2_ck, CK_343X),
-	CLK(NULL,	"dpll3_m3_ck",	&dpll3_m3_ck,	CK_343X),
-	CLK(NULL,	"dpll3_m3x2_ck", &dpll3_m3x2_ck, CK_343X),
-	CLK(NULL,	"emu_core_alwon_ck", &emu_core_alwon_ck, CK_343X),
-	CLK(NULL,	"dpll4_ck",	&dpll4_ck,	CK_343X),
-	CLK(NULL,	"dpll4_x2_ck",	&dpll4_x2_ck,	CK_343X),
-	CLK(NULL,	"omap_96m_alwon_fck", &omap_96m_alwon_fck, CK_343X),
-	CLK(NULL,	"omap_96m_fck",	&omap_96m_fck,	CK_343X),
-	CLK(NULL,	"cm_96m_fck",	&cm_96m_fck,	CK_343X),
-	CLK(NULL,	"omap_54m_fck",	&omap_54m_fck,	CK_343X),
-	CLK(NULL,	"omap_48m_fck",	&omap_48m_fck,	CK_343X),
-	CLK(NULL,	"omap_12m_fck",	&omap_12m_fck,	CK_343X),
-	CLK(NULL,	"dpll4_m2_ck",	&dpll4_m2_ck,	CK_343X),
-	CLK(NULL,	"dpll4_m2x2_ck", &dpll4_m2x2_ck, CK_343X),
-	CLK(NULL,	"dpll4_m3_ck",	&dpll4_m3_ck,	CK_343X),
-	CLK(NULL,	"dpll4_m3x2_ck", &dpll4_m3x2_ck, CK_343X),
-	CLK(NULL,	"dpll4_m4_ck",	&dpll4_m4_ck,	CK_343X),
-	CLK(NULL,	"dpll4_m4x2_ck", &dpll4_m4x2_ck, CK_343X),
-	CLK(NULL,	"dpll4_m5_ck",	&dpll4_m5_ck,	CK_343X),
-	CLK(NULL,	"dpll4_m5x2_ck", &dpll4_m5x2_ck, CK_343X),
-	CLK(NULL,	"dpll4_m6_ck",	&dpll4_m6_ck,	CK_343X),
-	CLK(NULL,	"dpll4_m6x2_ck", &dpll4_m6x2_ck, CK_343X),
-	CLK(NULL,	"emu_per_alwon_ck", &emu_per_alwon_ck, CK_343X),
-	CLK(NULL,	"dpll5_ck",	&dpll5_ck,	CK_3430ES2),
-	CLK(NULL,	"dpll5_m2_ck",	&dpll5_m2_ck,	CK_3430ES2),
-	CLK(NULL,	"clkout2_src_ck", &clkout2_src_ck, CK_343X),
-	CLK(NULL,	"sys_clkout2",	&sys_clkout2,	CK_343X),
-	CLK(NULL,	"corex2_fck",	&corex2_fck,	CK_343X),
-	CLK(NULL,	"dpll1_fck",	&dpll1_fck,	CK_343X),
-	CLK(NULL,	"mpu_ck",	&mpu_ck,	CK_343X),
-	CLK(NULL,	"arm_fck",	&arm_fck,	CK_343X),
-	CLK(NULL,	"emu_mpu_alwon_ck", &emu_mpu_alwon_ck, CK_343X),
+	CLK(NULL,	"dpll3_ck",	&dpll3_ck,	CK_343X | CK_35XX),
+	CLK(NULL,	"core_ck",	&core_ck,	CK_343X | CK_35XX),
+	CLK(NULL,	"dpll3_x2_ck",	&dpll3_x2_ck,	CK_343X | CK_35XX),
+	CLK(NULL,	"dpll3_m2_ck",	&dpll3_m2_ck,	CK_343X | CK_35XX),
+	CLK(NULL,	"dpll3_m2x2_ck", &dpll3_m2x2_ck, CK_343X | CK_35XX),
+	CLK(NULL,	"dpll3_m3_ck",	&dpll3_m3_ck,	CK_343X | CK_35XX),
+	CLK(NULL,	"dpll3_m3x2_ck", &dpll3_m3x2_ck, CK_343X | CK_35XX),
+	CLK(NULL, "emu_core_alwon_ck", &emu_core_alwon_ck, CK_343X | CK_35XX),
+	CLK(NULL,	"dpll4_ck",	&dpll4_ck,	CK_343X | CK_35XX),
+	CLK(NULL,	"dpll4_x2_ck",	&dpll4_x2_ck,	CK_343X | CK_35XX),
+	CLK(NULL, "omap_96m_alwon_fck", &omap_96m_alwon_fck, CK_343X | CK_35XX),
+	CLK(NULL,	"omap_96m_fck",	&omap_96m_fck,	CK_343X | CK_35XX),
+	CLK(NULL,	"cm_96m_fck",	&cm_96m_fck,	CK_343X | CK_35XX),
+	CLK(NULL,	"omap_54m_fck",	&omap_54m_fck,	CK_343X | CK_35XX),
+	CLK(NULL,	"omap_48m_fck",	&omap_48m_fck,	CK_343X | CK_35XX),
+	CLK(NULL,	"omap_12m_fck",	&omap_12m_fck,	CK_343X | CK_35XX),
+	CLK(NULL,	"dpll4_m2_ck",	&dpll4_m2_ck,	CK_343X | CK_35XX),
+	CLK(NULL,	"dpll4_m2x2_ck", &dpll4_m2x2_ck, CK_343X | CK_35XX),
+	CLK(NULL,	"dpll4_m3_ck",	&dpll4_m3_ck,	CK_343X | CK_35XX),
+	CLK(NULL,	"dpll4_m3x2_ck", &dpll4_m3x2_ck, CK_343X | CK_35XX),
+	CLK(NULL,	"dpll4_m4_ck",	&dpll4_m4_ck,	CK_343X | CK_35XX),
+	CLK(NULL,	"dpll4_m4x2_ck", &dpll4_m4x2_ck, CK_343X | CK_35XX),
+	CLK(NULL,	"dpll4_m5_ck",	&dpll4_m5_ck,	CK_343X | CK_35XX),
+	CLK(NULL,	"dpll4_m5x2_ck", &dpll4_m5x2_ck, CK_343X | CK_35XX),
+	CLK(NULL,	"dpll4_m6_ck",	&dpll4_m6_ck,	CK_343X | CK_35XX),
+	CLK(NULL,	"dpll4_m6x2_ck", &dpll4_m6x2_ck, CK_343X | CK_35XX),
+	CLK(NULL, "emu_per_alwon_ck", &emu_per_alwon_ck, CK_343X | CK_35XX),
+	CLK(NULL,	"dpll5_ck",	&dpll5_ck,	CK_3430ES2 | CK_35XX),
+	CLK(NULL,	"dpll5_m2_ck",	&dpll5_m2_ck,	CK_3430ES2 | CK_35XX),
+	CLK(NULL,	"clkout2_src_ck", &clkout2_src_ck, CK_343X | CK_35XX),
+	CLK(NULL,	"sys_clkout2",	&sys_clkout2,	CK_343X | CK_35XX),
+	CLK(NULL,	"corex2_fck",	&corex2_fck,	CK_343X | CK_35XX),
+	CLK(NULL,	"dpll1_fck",	&dpll1_fck,	CK_343X | CK_35XX),
+	CLK(NULL,	"mpu_ck",	&mpu_ck,	CK_343X | CK_35XX),
+	CLK(NULL,	"arm_fck",	&arm_fck,	CK_343X | CK_35XX),
+	CLK(NULL, "emu_mpu_alwon_ck", &emu_mpu_alwon_ck, CK_343X | CK_35XX),
 	CLK(NULL,	"dpll2_fck",	&dpll2_fck,	CK_343X),
 	CLK(NULL,	"iva2_ck",	&iva2_ck,	CK_343X),
-	CLK(NULL,	"l3_ick",	&l3_ick,	CK_343X),
-	CLK(NULL,	"l4_ick",	&l4_ick,	CK_343X),
-	CLK(NULL,	"rm_ick",	&rm_ick,	CK_343X),
+	CLK(NULL,	"l3_ick",	&l3_ick,	CK_343X | CK_35XX),
+	CLK(NULL,	"l4_ick",	&l4_ick,	CK_343X | CK_35XX),
+	CLK(NULL,	"rm_ick",	&rm_ick,	CK_343X | CK_35XX),
 	CLK(NULL,	"gfx_l3_ck",	&gfx_l3_ck,	CK_3430ES1),
 	CLK(NULL,	"gfx_l3_fck",	&gfx_l3_fck,	CK_3430ES1),
 	CLK(NULL,	"gfx_l3_ick",	&gfx_l3_ick,	CK_3430ES1),
 	CLK(NULL,	"gfx_cg1_ck",	&gfx_cg1_ck,	CK_3430ES1),
 	CLK(NULL,	"gfx_cg2_ck",	&gfx_cg2_ck,	CK_3430ES1),
-	CLK(NULL,	"sgx_fck",	&sgx_fck,	CK_3430ES2),
-	CLK(NULL,	"sgx_ick",	&sgx_ick,	CK_3430ES2),
+	CLK(NULL,	"sgx_fck",	&sgx_fck,	CK_3430ES2 | CK_3517),
+	CLK(NULL,	"sgx_ick",	&sgx_ick,	CK_3430ES2 | CK_3517),
 	CLK(NULL,	"d2d_26m_fck",	&d2d_26m_fck,	CK_3430ES1),
 	CLK(NULL,	"modem_fck",	&modem_fck,	CK_343X),
 	CLK(NULL,	"sad2d_ick",	&sad2d_ick,	CK_343X),
 	CLK(NULL,	"mad2d_ick",	&mad2d_ick,	CK_343X),
-	CLK(NULL,	"gpt10_fck",	&gpt10_fck,	CK_343X),
-	CLK(NULL,	"gpt11_fck",	&gpt11_fck,	CK_343X),
-	CLK(NULL,	"cpefuse_fck",	&cpefuse_fck,	CK_3430ES2),
-	CLK(NULL,	"ts_fck",	&ts_fck,	CK_3430ES2),
-	CLK(NULL,	"usbtll_fck",	&usbtll_fck,	CK_3430ES2),
-	CLK(NULL,	"core_96m_fck",	&core_96m_fck,	CK_343X),
-	CLK("mmci-omap-hs.2",	"fck",	&mmchs3_fck,	CK_3430ES2),
-	CLK("mmci-omap-hs.1",	"fck",	&mmchs2_fck,	CK_343X),
+	CLK(NULL,	"gpt10_fck",	&gpt10_fck,	CK_343X | CK_35XX),
+	CLK(NULL,	"gpt11_fck",	&gpt11_fck,	CK_343X | CK_35XX),
+	CLK(NULL,	"cpefuse_fck",	&cpefuse_fck,	CK_3430ES2 | CK_35XX),
+	CLK(NULL,	"ts_fck",	&ts_fck,	CK_3430ES2 | CK_35XX),
+	CLK(NULL,	"usbtll_fck",	&usbtll_fck,	CK_3430ES2 | CK_35XX),
+	CLK(NULL,	"core_96m_fck",	&core_96m_fck,	CK_343X | CK_35XX),
+	CLK("mmci-omap-hs.2",	"fck",	&mmchs3_fck,	CK_3430ES2 | CK_35XX),
+	CLK("mmci-omap-hs.1",	"fck",	&mmchs2_fck,	CK_343X | CK_35XX),
 	CLK(NULL,	"mspro_fck",	&mspro_fck,	CK_343X),
-	CLK("mmci-omap-hs.0",	"fck",	&mmchs1_fck,	CK_343X),
-	CLK("i2c_omap.3", "fck",	&i2c3_fck,	CK_343X),
-	CLK("i2c_omap.2", "fck",	&i2c2_fck,	CK_343X),
-	CLK("i2c_omap.1", "fck",	&i2c1_fck,	CK_343X),
-	CLK("omap-mcbsp.5", "fck",	&mcbsp5_fck,	CK_343X),
-	CLK("omap-mcbsp.1", "fck",	&mcbsp1_fck,	CK_343X),
-	CLK(NULL,	"core_48m_fck",	&core_48m_fck,	CK_343X),
-	CLK("omap2_mcspi.4", "fck",	&mcspi4_fck,	CK_343X),
-	CLK("omap2_mcspi.3", "fck",	&mcspi3_fck,	CK_343X),
-	CLK("omap2_mcspi.2", "fck",	&mcspi2_fck,	CK_343X),
-	CLK("omap2_mcspi.1", "fck",	&mcspi1_fck,	CK_343X),
-	CLK(NULL,	"uart2_fck",	&uart2_fck,	CK_343X),
-	CLK(NULL,	"uart1_fck",	&uart1_fck,	CK_343X),
+	CLK("mmci-omap-hs.0",	"fck",	&mmchs1_fck,	CK_343X | CK_35XX),
+	CLK("i2c_omap.3", "fck",	&i2c3_fck,	CK_343X | CK_35XX),
+	CLK("i2c_omap.2", "fck",	&i2c2_fck,	CK_343X | CK_35XX),
+	CLK("i2c_omap.1", "fck",	&i2c1_fck,	CK_343X | CK_35XX),
+	CLK("omap-mcbsp.5", "fck",	&mcbsp5_fck,	CK_343X | CK_35XX),
+	CLK("omap-mcbsp.1", "fck",	&mcbsp1_fck,	CK_343X | CK_35XX),
+	CLK(NULL,	"core_48m_fck",	&core_48m_fck,	CK_343X | CK_35XX),
+	CLK("omap2_mcspi.4", "fck",	&mcspi4_fck,	CK_343X | CK_35XX),
+	CLK("omap2_mcspi.3", "fck",	&mcspi3_fck,	CK_343X | CK_35XX),
+	CLK("omap2_mcspi.2", "fck",	&mcspi2_fck,	CK_343X | CK_35XX),
+	CLK("omap2_mcspi.1", "fck",	&mcspi1_fck,	CK_343X | CK_35XX),
+	CLK(NULL,	"uart2_fck",	&uart2_fck,	CK_343X | CK_35XX),
+	CLK(NULL,	"uart1_fck",	&uart1_fck,	CK_343X | CK_35XX),
 	CLK(NULL,	"fshostusb_fck", &fshostusb_fck, CK_3430ES1),
-	CLK(NULL,	"core_12m_fck",	&core_12m_fck,	CK_343X),
-	CLK("omap_hdq.0", "fck",	&hdq_fck,	CK_343X),
+	CLK(NULL,	"core_12m_fck",	&core_12m_fck,	CK_343X | CK_35XX),
+	CLK("omap_hdq.0", "fck",	&hdq_fck,	CK_343X | CK_35XX),
 	CLK(NULL,	"ssi_ssr_fck",	&ssi_ssr_fck_3430es1,	CK_3430ES1),
 	CLK(NULL,	"ssi_ssr_fck",	&ssi_ssr_fck_3430es2,	CK_3430ES2),
 	CLK(NULL,	"ssi_sst_fck",	&ssi_sst_fck_3430es1,	CK_3430ES1),
 	CLK(NULL,	"ssi_sst_fck",	&ssi_sst_fck_3430es2,	CK_3430ES2),
-	CLK(NULL,	"core_l3_ick",	&core_l3_ick,	CK_343X),
+	CLK(NULL,	"core_l3_ick",	&core_l3_ick,	CK_343X | CK_35XX),
 	CLK("musb_hdrc",	"ick",	&hsotgusb_ick_3430es1,	CK_3430ES1),
 	CLK("musb_hdrc",	"ick",	&hsotgusb_ick_3430es2,	CK_3430ES2),
-	CLK(NULL,	"sdrc_ick",	&sdrc_ick,	CK_343X),
-	CLK(NULL,	"gpmc_fck",	&gpmc_fck,	CK_343X),
+	CLK(NULL,	"sdrc_ick",	&sdrc_ick,	CK_343X | CK_35XX),
+	CLK(NULL,	"gpmc_fck",	&gpmc_fck,	CK_343X | CK_35XX),
 	CLK(NULL,	"security_l3_ick", &security_l3_ick, CK_343X),
 	CLK(NULL,	"pka_ick",	&pka_ick,	CK_343X),
-	CLK(NULL,	"core_l4_ick",	&core_l4_ick,	CK_343X),
-	CLK(NULL,	"usbtll_ick",	&usbtll_ick,	CK_3430ES2),
-	CLK("mmci-omap-hs.2",	"ick",	&mmchs3_ick,	CK_3430ES2),
+	CLK(NULL,	"core_l4_ick",	&core_l4_ick,	CK_343X | CK_35XX),
+	CLK(NULL,	"usbtll_ick",	&usbtll_ick,	CK_3430ES2 | CK_35XX),
+	CLK("mmci-omap-hs.2",	"ick",	&mmchs3_ick,	CK_3430ES2 | CK_35XX),
 	CLK(NULL,	"icr_ick",	&icr_ick,	CK_343X),
 	CLK(NULL,	"aes2_ick",	&aes2_ick,	CK_343X),
 	CLK(NULL,	"sha12_ick",	&sha12_ick,	CK_343X),
 	CLK(NULL,	"des2_ick",	&des2_ick,	CK_343X),
-	CLK("mmci-omap-hs.1",	"ick",	&mmchs2_ick,	CK_343X),
-	CLK("mmci-omap-hs.0",	"ick",	&mmchs1_ick,	CK_343X),
+	CLK("mmci-omap-hs.1",	"ick",	&mmchs2_ick,	CK_343X | CK_35XX),
+	CLK("mmci-omap-hs.0",	"ick",	&mmchs1_ick,	CK_343X | CK_35XX),
 	CLK(NULL,	"mspro_ick",	&mspro_ick,	CK_343X),
-	CLK("omap_hdq.0", "ick",	&hdq_ick,	CK_343X),
-	CLK("omap2_mcspi.4", "ick",	&mcspi4_ick,	CK_343X),
-	CLK("omap2_mcspi.3", "ick",	&mcspi3_ick,	CK_343X),
-	CLK("omap2_mcspi.2", "ick",	&mcspi2_ick,	CK_343X),
-	CLK("omap2_mcspi.1", "ick",	&mcspi1_ick,	CK_343X),
-	CLK("i2c_omap.3", "ick",	&i2c3_ick,	CK_343X),
-	CLK("i2c_omap.2", "ick",	&i2c2_ick,	CK_343X),
-	CLK("i2c_omap.1", "ick",	&i2c1_ick,	CK_343X),
-	CLK(NULL,	"uart2_ick",	&uart2_ick,	CK_343X),
-	CLK(NULL,	"uart1_ick",	&uart1_ick,	CK_343X),
-	CLK(NULL,	"gpt11_ick",	&gpt11_ick,	CK_343X),
-	CLK(NULL,	"gpt10_ick",	&gpt10_ick,	CK_343X),
-	CLK("omap-mcbsp.5", "ick",	&mcbsp5_ick,	CK_343X),
-	CLK("omap-mcbsp.1", "ick",	&mcbsp1_ick,	CK_343X),
+	CLK("omap_hdq.0", "ick",	&hdq_ick,	CK_343X | CK_35XX),
+	CLK("omap2_mcspi.4", "ick",	&mcspi4_ick,	CK_343X | CK_35XX),
+	CLK("omap2_mcspi.3", "ick",	&mcspi3_ick,	CK_343X | CK_35XX),
+	CLK("omap2_mcspi.2", "ick",	&mcspi2_ick,	CK_343X | CK_35XX),
+	CLK("omap2_mcspi.1", "ick",	&mcspi1_ick,	CK_343X | CK_35XX),
+	CLK("i2c_omap.3", "ick",    &i2c3_ick,  CK_343X | CK_35XX),
+	CLK("i2c_omap.2", "ick",	&i2c2_ick,	CK_343X | CK_35XX),
+	CLK("i2c_omap.1", "ick",	&i2c1_ick,	CK_343X | CK_35XX),
+	CLK(NULL,	"uart2_ick",	&uart2_ick,	CK_343X | CK_35XX),
+	CLK(NULL,	"uart1_ick",	&uart1_ick,	CK_343X | CK_35XX),
+	CLK(NULL,	"gpt11_ick",	&gpt11_ick,	CK_343X | CK_35XX),
+	CLK(NULL,	"gpt10_ick",	&gpt10_ick,	CK_343X | CK_35XX),
+	CLK("omap-mcbsp.5", "ick",	&mcbsp5_ick,	CK_343X | CK_35XX),
+	CLK("omap-mcbsp.1", "ick",	&mcbsp1_ick,	CK_343X | CK_35XX),
 	CLK(NULL,	"fac_ick",	&fac_ick,	CK_3430ES1),
 	CLK(NULL,	"mailboxes_ick", &mailboxes_ick, CK_343X),
-	CLK(NULL,	"omapctrl_ick",	&omapctrl_ick,	CK_343X),
+	CLK(NULL,	"omapctrl_ick",	&omapctrl_ick,	CK_343X | CK_35XX),
 	CLK(NULL,	"ssi_l4_ick",	&ssi_l4_ick,	CK_343X),
 	CLK(NULL,	"ssi_ick",	&ssi_ick_3430es1,	CK_3430ES1),
 	CLK(NULL,	"ssi_ick",	&ssi_ick_3430es2,	CK_3430ES2),
@@ -240,84 +244,134 @@ static struct omap_clk omap34xx_clks[] = {
 	CLK("omap_rng",	"ick",		&rng_ick,	CK_343X),
 	CLK(NULL,	"sha11_ick",	&sha11_ick,	CK_343X),
 	CLK(NULL,	"des1_ick",	&des1_ick,	CK_343X),
-	CLK("omapfb",	"dss1_fck",	&dss1_alwon_fck_3430es1, CK_3430ES1),
-	CLK("omapfb",	"dss1_fck",	&dss1_alwon_fck_3430es2, CK_3430ES2),
-	CLK("omapfb",	"tv_fck",	&dss_tv_fck,	CK_343X),
-	CLK("omapfb",	"video_fck",	&dss_96m_fck,	CK_343X),
-	CLK("omapfb",	"dss2_fck",	&dss2_alwon_fck, CK_343X),
-	CLK("omapfb",	"ick",		&dss_ick_3430es1,	CK_3430ES1),
-	CLK("omapfb",	"ick",		&dss_ick_3430es2,	CK_3430ES2),
+	CLK("omapdss",	"dss1_fck",	&dss1_alwon_fck_3430es1, CK_3430ES1),
+	CLK("omapdss", "dss1_fck", &dss1_alwon_fck_3430es2, CK_3430ES2 | CK_35XX),
+	CLK("omapdss",	"tv_fck",	&dss_tv_fck,	CK_343X | CK_35XX),
+	CLK("omapdss",	"video_fck",	&dss_96m_fck,	CK_343X | CK_35XX),
+	CLK("omapdss",	"dss2_fck",	&dss2_alwon_fck, CK_343X | CK_35XX),
+	CLK("omapdss",	"ick",		&dss_ick_3430es1,	CK_3430ES1),
+	CLK("omapdss", "ick", &dss_ick_3430es2, CK_3430ES2 | CK_35XX),
 	CLK(NULL,	"cam_mclk",	&cam_mclk,	CK_343X),
 	CLK(NULL,	"cam_ick",	&cam_ick,	CK_343X),
 	CLK(NULL,	"csi2_96m_fck",	&csi2_96m_fck,	CK_343X),
-	CLK(NULL,	"usbhost_120m_fck", &usbhost_120m_fck, CK_3430ES2),
-	CLK(NULL,	"usbhost_48m_fck", &usbhost_48m_fck, CK_3430ES2),
-	CLK(NULL,	"usbhost_ick",	&usbhost_ick,	CK_3430ES2),
+	CLK(NULL, "usbhost_120m_fck", &usbhost_120m_fck, CK_3430ES2 | CK_35XX),
+	CLK(NULL, "usbhost_48m_fck", &usbhost_48m_fck, CK_3430ES2 | CK_35XX),
+	CLK(NULL,	"usbhost_ick",	&usbhost_ick,	CK_3430ES2 | CK_35XX),
 	CLK(NULL,	"usim_fck",	&usim_fck,	CK_3430ES2),
-	CLK(NULL,	"gpt1_fck",	&gpt1_fck,	CK_343X),
-	CLK(NULL,	"wkup_32k_fck",	&wkup_32k_fck,	CK_343X),
-	CLK(NULL,	"gpio1_dbck",	&gpio1_dbck,	CK_343X),
-	CLK("omap_wdt",	"fck",		&wdt2_fck,	CK_343X),
-	CLK(NULL,	"wkup_l4_ick",	&wkup_l4_ick,	CK_343X),
+	CLK(NULL,	"gpt1_fck",	&gpt1_fck,	CK_343X | CK_35XX),
+	CLK(NULL,	"wkup_32k_fck",	&wkup_32k_fck,	CK_343X | CK_35XX),
+	CLK(NULL,	"gpio1_dbck",	&gpio1_dbck,	CK_343X | CK_35XX),
+	CLK("omap_wdt",	"fck",		&wdt2_fck,	CK_343X | CK_35XX),
+	CLK(NULL,	"wkup_l4_ick",	&wkup_l4_ick,	CK_343X | CK_35XX),
 	CLK(NULL,	"usim_ick",	&usim_ick,	CK_3430ES2),
-	CLK("omap_wdt",	"ick",		&wdt2_ick,	CK_343X),
-	CLK(NULL,	"wdt1_ick",	&wdt1_ick,	CK_343X),
-	CLK(NULL,	"gpio1_ick",	&gpio1_ick,	CK_343X),
-	CLK(NULL,	"omap_32ksync_ick", &omap_32ksync_ick, CK_343X),
-	CLK(NULL,	"gpt12_ick",	&gpt12_ick,	CK_343X),
-	CLK(NULL,	"gpt1_ick",	&gpt1_ick,	CK_343X),
-	CLK(NULL,	"per_96m_fck",	&per_96m_fck,	CK_343X),
-	CLK(NULL,	"per_48m_fck",	&per_48m_fck,	CK_343X),
-	CLK(NULL,	"uart3_fck",	&uart3_fck,	CK_343X),
-	CLK(NULL,	"gpt2_fck",	&gpt2_fck,	CK_343X),
-	CLK(NULL,	"gpt3_fck",	&gpt3_fck,	CK_343X),
-	CLK(NULL,	"gpt4_fck",	&gpt4_fck,	CK_343X),
-	CLK(NULL,	"gpt5_fck",	&gpt5_fck,	CK_343X),
-	CLK(NULL,	"gpt6_fck",	&gpt6_fck,	CK_343X),
-	CLK(NULL,	"gpt7_fck",	&gpt7_fck,	CK_343X),
-	CLK(NULL,	"gpt8_fck",	&gpt8_fck,	CK_343X),
-	CLK(NULL,	"gpt9_fck",	&gpt9_fck,	CK_343X),
-	CLK(NULL,	"per_32k_alwon_fck", &per_32k_alwon_fck, CK_343X),
-	CLK(NULL,	"gpio6_dbck",	&gpio6_dbck,	CK_343X),
-	CLK(NULL,	"gpio5_dbck",	&gpio5_dbck,	CK_343X),
-	CLK(NULL,	"gpio4_dbck",	&gpio4_dbck,	CK_343X),
-	CLK(NULL,	"gpio3_dbck",	&gpio3_dbck,	CK_343X),
-	CLK(NULL,	"gpio2_dbck",	&gpio2_dbck,	CK_343X),
-	CLK(NULL,	"wdt3_fck",	&wdt3_fck,	CK_343X),
-	CLK(NULL,	"per_l4_ick",	&per_l4_ick,	CK_343X),
-	CLK(NULL,	"gpio6_ick",	&gpio6_ick,	CK_343X),
-	CLK(NULL,	"gpio5_ick",	&gpio5_ick,	CK_343X),
-	CLK(NULL,	"gpio4_ick",	&gpio4_ick,	CK_343X),
-	CLK(NULL,	"gpio3_ick",	&gpio3_ick,	CK_343X),
-	CLK(NULL,	"gpio2_ick",	&gpio2_ick,	CK_343X),
-	CLK(NULL,	"wdt3_ick",	&wdt3_ick,	CK_343X),
-	CLK(NULL,	"uart3_ick",	&uart3_ick,	CK_343X),
-	CLK(NULL,	"gpt9_ick",	&gpt9_ick,	CK_343X),
-	CLK(NULL,	"gpt8_ick",	&gpt8_ick,	CK_343X),
-	CLK(NULL,	"gpt7_ick",	&gpt7_ick,	CK_343X),
-	CLK(NULL,	"gpt6_ick",	&gpt6_ick,	CK_343X),
-	CLK(NULL,	"gpt5_ick",	&gpt5_ick,	CK_343X),
-	CLK(NULL,	"gpt4_ick",	&gpt4_ick,	CK_343X),
-	CLK(NULL,	"gpt3_ick",	&gpt3_ick,	CK_343X),
-	CLK(NULL,	"gpt2_ick",	&gpt2_ick,	CK_343X),
-	CLK("omap-mcbsp.2", "ick",	&mcbsp2_ick,	CK_343X),
-	CLK("omap-mcbsp.3", "ick",	&mcbsp3_ick,	CK_343X),
-	CLK("omap-mcbsp.4", "ick",	&mcbsp4_ick,	CK_343X),
-	CLK("omap-mcbsp.2", "fck",	&mcbsp2_fck,	CK_343X),
-	CLK("omap-mcbsp.3", "fck",	&mcbsp3_fck,	CK_343X),
-	CLK("omap-mcbsp.4", "fck",	&mcbsp4_fck,	CK_343X),
-	CLK(NULL,	"emu_src_ck",	&emu_src_ck,	CK_343X),
-	CLK(NULL,	"pclk_fck",	&pclk_fck,	CK_343X),
-	CLK(NULL,	"pclkx2_fck",	&pclkx2_fck,	CK_343X),
-	CLK(NULL,	"atclk_fck",	&atclk_fck,	CK_343X),
-	CLK(NULL,	"traceclk_src_fck", &traceclk_src_fck, CK_343X),
-	CLK(NULL,	"traceclk_fck",	&traceclk_fck,	CK_343X),
+	CLK("omap_wdt",	"ick",		&wdt2_ick,	CK_343X | CK_35XX),
+	CLK(NULL,	"wdt1_ick",	&wdt1_ick,	CK_343X | CK_35XX),
+	CLK(NULL,	"gpio1_ick",	&gpio1_ick,	CK_343X | CK_35XX),
+	CLK(NULL, "omap_32ksync_ick", &omap_32ksync_ick, CK_343X | CK_35XX),
+	CLK(NULL,	"gpt12_ick",	&gpt12_ick,	CK_343X | CK_35XX),
+	CLK(NULL,	"gpt1_ick",	&gpt1_ick,	CK_343X | CK_35XX),
+	CLK(NULL,	"per_96m_fck",	&per_96m_fck,	CK_343X | CK_35XX),
+	CLK(NULL,	"per_48m_fck",	&per_48m_fck,	CK_343X | CK_35XX),
+	CLK(NULL,	"uart3_fck",	&uart3_fck,	CK_343X | CK_35XX),
+	CLK(NULL,	"gpt2_fck",	&gpt2_fck,	CK_343X | CK_35XX),
+	CLK(NULL,	"gpt3_fck",	&gpt3_fck,	CK_343X | CK_35XX),
+	CLK(NULL,	"gpt4_fck",	&gpt4_fck,	CK_343X | CK_35XX),
+	CLK(NULL,	"gpt5_fck",	&gpt5_fck,	CK_343X | CK_35XX),
+	CLK(NULL,	"gpt6_fck",	&gpt6_fck,	CK_343X | CK_35XX),
+	CLK(NULL,	"gpt7_fck",	&gpt7_fck,	CK_343X | CK_35XX),
+	CLK(NULL,	"gpt8_fck",	&gpt8_fck,	CK_343X | CK_35XX),
+	CLK(NULL,	"gpt9_fck",	&gpt9_fck,	CK_343X | CK_35XX),
+	CLK(NULL, "per_32k_alwon_fck", &per_32k_alwon_fck, CK_343X | CK_35XX),
+	CLK(NULL,	"gpio6_dbck",	&gpio6_dbck,	CK_343X | CK_35XX),
+	CLK(NULL,	"gpio5_dbck",	&gpio5_dbck,	CK_343X | CK_35XX),
+	CLK(NULL,	"gpio4_dbck",	&gpio4_dbck,	CK_343X | CK_35XX),
+	CLK(NULL,	"gpio3_dbck",	&gpio3_dbck,	CK_343X | CK_35XX),
+	CLK(NULL,	"gpio2_dbck",	&gpio2_dbck,	CK_343X | CK_35XX),
+	CLK(NULL,	"wdt3_fck",	&wdt3_fck,	CK_343X | CK_35XX),
+	CLK(NULL,	"per_l4_ick",	&per_l4_ick,	CK_343X | CK_35XX),
+	CLK(NULL,	"gpio6_ick",	&gpio6_ick,	CK_343X | CK_35XX),
+	CLK(NULL,	"gpio5_ick",	&gpio5_ick,	CK_343X | CK_35XX),
+	CLK(NULL,	"gpio4_ick",	&gpio4_ick,	CK_343X | CK_35XX),
+	CLK(NULL,	"gpio3_ick",	&gpio3_ick,	CK_343X | CK_35XX),
+	CLK(NULL,	"gpio2_ick",	&gpio2_ick,	CK_343X | CK_35XX),
+	CLK(NULL,	"wdt3_ick",	&wdt3_ick,	CK_343X | CK_35XX),
+	CLK(NULL,	"uart3_ick",	&uart3_ick,	CK_343X | CK_35XX),
+	CLK(NULL,	"gpt9_ick",	&gpt9_ick,	CK_343X | CK_35XX),
+	CLK(NULL,	"gpt8_ick",	&gpt8_ick,	CK_343X | CK_35XX),
+	CLK(NULL,	"gpt7_ick",	&gpt7_ick,	CK_343X | CK_35XX),
+	CLK(NULL,	"gpt6_ick",	&gpt6_ick,	CK_343X | CK_35XX),
+	CLK(NULL,	"gpt5_ick",	&gpt5_ick,	CK_343X | CK_35XX),
+	CLK(NULL,	"gpt4_ick",	&gpt4_ick,	CK_343X | CK_35XX),
+	CLK(NULL,	"gpt3_ick",	&gpt3_ick,	CK_343X | CK_35XX),
+	CLK(NULL,	"gpt2_ick",	&gpt2_ick,	CK_343X | CK_35XX),
+	CLK("omap-mcbsp.2", "ick",	&mcbsp2_ick,	CK_343X | CK_35XX),
+	CLK("omap-mcbsp.3", "ick",	&mcbsp3_ick,	CK_343X | CK_35XX),
+	CLK("omap-mcbsp.4", "ick",	&mcbsp4_ick,	CK_343X | CK_35XX),
+	CLK("omap-mcbsp.2", "fck",	&mcbsp2_fck,	CK_343X | CK_35XX),
+	CLK("omap-mcbsp.3", "fck",	&mcbsp3_fck,	CK_343X | CK_35XX),
+	CLK("omap-mcbsp.4", "fck",	&mcbsp4_fck,	CK_343X | CK_35XX),
+	CLK(NULL,	"emu_src_ck",	&emu_src_ck,	CK_343X | CK_35XX),
+	CLK(NULL,	"pclk_fck",	&pclk_fck,	CK_343X | CK_35XX),
+	CLK(NULL,	"pclkx2_fck",	&pclkx2_fck,	CK_343X | CK_35XX),
+	CLK(NULL,	"atclk_fck",	&atclk_fck,	CK_343X | CK_35XX),
+	CLK(NULL, "traceclk_src_fck", &traceclk_src_fck, CK_343X | CK_35XX),
+	CLK(NULL,	"traceclk_fck",	&traceclk_fck,	CK_343X | CK_35XX),
 	CLK(NULL,	"sr1_fck",	&sr1_fck,	CK_343X),
 	CLK(NULL,	"sr2_fck",	&sr2_fck,	CK_343X),
 	CLK(NULL,	"sr_l4_ick",	&sr_l4_ick,	CK_343X),
-	CLK(NULL,	"secure_32k_fck", &secure_32k_fck, CK_343X),
-	CLK(NULL,	"gpt12_fck",	&gpt12_fck,	CK_343X),
-	CLK(NULL,	"wdt1_fck",	&wdt1_fck,	CK_343X),
+	CLK(NULL,	"secure_32k_fck", &secure_32k_fck, CK_343X | CK_35XX),
+	CLK(NULL,	"gpt12_fck",	&gpt12_fck,	CK_343X | CK_35XX),
+	CLK(NULL,	"wdt1_fck",	&wdt1_fck,	CK_343X | CK_35XX),
+	CLK(NULL, "emac_ck", &emac_ck,  CK_35XX),
+	CLK(NULL, "emac_phy_ck", &emac_phy_ck, CK_35XX),
+	CLK(NULL, "usbotg_ck", &usbotg_ck, CK_35XX),
+	CLK(NULL, "usbotg_phy_ck", &usbotg_phy_ck, CK_35XX),
+	CLK(NULL, "hecc_ck", &hecc_ck, CK_35XX),
+	CLK(NULL, "vpfe_ck", &vpfe_ck, CK_35XX),
+	CLK(NULL, "vpfe_pck", &vpfe_pck, CK_35XX),
+	CLK(NULL, "uart4_ick", &uart4_ick, CK_35XX),
+};
+
+struct omap_opp omap3_mpu_rate_table[] = {
+	{0, 0, 0},
+	/*OPP1*/
+	{S125M, VDD1_OPP1, 0x1E},
+	/*OPP2*/
+	{S250M, VDD1_OPP2, 0x26},
+	/*OPP3*/
+	{S500M, VDD1_OPP3, 0x30},
+	/*OPP4*/
+	{S550M, VDD1_OPP4, 0x36},
+	/*OPP5*/
+	{S600M, VDD1_OPP5, 0x3C},
+	/*OPP6*/
+	{S720M, VDD1_OPP6, 0x3C},
+};
+
+struct omap_opp omap3_l3_rate_table[] = {
+	{0, 0, 0},
+	/*OPP1*/
+	{0, VDD2_OPP1, 0x1E},
+	/*OPP2*/
+	{S83M, VDD2_OPP2, 0x24},
+	/*OPP3*/
+	{S166M, VDD2_OPP3, 0x2C},
+};
+
+struct omap_opp omap3_dsp_rate_table[] = {
+	{0, 0, 0},
+	/*OPP1*/
+	{S90M, VDD1_OPP1, 0x1E},
+	/*OPP2*/
+	{S180M, VDD1_OPP2, 0x26},
+	/*OPP3*/
+	{S360M, VDD1_OPP3, 0x30},
+	/*OPP4*/
+	{S400M, VDD1_OPP4, 0x36},
+	/*OPP5*/
+	{S430M, VDD1_OPP5, 0x3C},
+	/*OPP5*/
+	{S520M, VDD1_OPP6, 0x3C},
 };
 
 /* CM_AUTOIDLE_PLL*.AUTO_* bit values */
@@ -811,7 +865,7 @@ static int omap3_dpll4_set_rate(struct clk *clk, unsigned long rate)
 	 * on 3430ES1 prevents us from changing DPLL multipliers or dividers
 	 * on DPLL4.
 	 */
-	if (omap_rev() == OMAP3430_REV_ES1_0) {
+	if (omap_rev_is_1_0()) {
 		printk(KERN_ERR "clock: DPLL4 cannot change rate due to "
 		       "silicon 'Limitation 2.5' on 3430ES1.\n");
 		return -EINVAL;
@@ -1132,12 +1186,78 @@ static void omap3_clk_lock_dpll5(void)
  */
 static int __init omap2_clk_arch_init(void)
 {
+	short opp=0, valid=0;
+	short i;
+	unsigned long dsprate, l3rate;
+	struct omap_opp *opp_table;
+	int l3div;
+
 	if (!mpurate)
 		return -EINVAL;
 
-	/* REVISIT: not yet ready for 343x */
+	if ((mpurate == S720M) && !omap3_has_720m()) {
+		/*
+		 * Silicon doesn't support this rate.
+		 * Use the next highest.
+		 */
+		mpurate = S600M;
+		printk(KERN_ERR "*** This silicon doesn't support 720MHz\n");
+	}
+
+	/* Check if mpurate is valid */
+	if (mpu_opps) {
+		opp_table = mpu_opps;
+
+		for (i = 1; opp_table[i].opp_id <= MAX_VDD1_OPP; i++) {
+			if (opp_table[i].rate == mpurate) {
+				valid = 1;
+				break;
+			}
+		}
+
+		if (valid) {
+			opp = opp_table[i].opp_id;
+			printk(KERN_INFO "Switching to OPP:%d\n", opp);
+		} else {
+			printk(KERN_ERR "*** Invalid MPU rate specified\n");
+			return 1;
+		}
+	}
+
 	if (clk_set_rate(&dpll1_ck, mpurate))
 		printk(KERN_ERR "*** Unable to set MPU rate\n");
+	omap3_dpll_recalc(&dpll1_ck);
+
+	/* Select VDD2_OPP2, if VDD1_OPP1 is chosen */
+	if (opp == VDD1_OPP1) {
+		l3div = cm_read_mod_reg(CORE_MOD, CM_CLKSEL) &
+			OMAP3430_CLKSEL_L3_MASK;
+
+		l3rate = l3_opps[VDD2_OPP2].rate * l3div;
+		if (clk_set_rate(&dpll3_m2_ck, l3rate))
+			printk(KERN_ERR "*** Unable to set L3 rate(%ld)\n", l3rate);
+		else
+			printk(KERN_INFO "Switching to L3 rate:%ld\n", l3rate);
+
+		omap3_dpll_recalc(&dpll3_m2_ck);
+	}
+
+	/* Get dsprate corresponding to the opp */
+	if ((cpu_is_omap3430() || cpu_is_omap3530() || cpu_is_omap3525())
+		&& (dsp_opps)
+		&& (opp >= MIN_VDD1_OPP) && (opp <= MAX_VDD1_OPP)) {
+		opp_table = dsp_opps;
+
+		for (i=0;  opp_table[i].opp_id <= MAX_VDD1_OPP; i++)
+			if (opp_table[i].opp_id == opp)
+				break;
+
+		dsprate = opp_table[i].rate;
+
+		if (clk_set_rate(&dpll2_ck, dsprate))
+			printk(KERN_ERR "*** Unable to set IVA2 rate\n");
+		omap3_dpll_recalc(&dpll2_ck);
+	}
 
 	recalculate_root_clocks();
 
@@ -1145,6 +1265,8 @@ static int __init omap2_clk_arch_init(void)
 	       "%ld.%01ld/%ld/%ld MHz\n",
 	       (osc_sys_ck.rate / 1000000), ((osc_sys_ck.rate / 100000) % 10),
 	       (core_ck.rate / 1000000), (arm_fck.rate / 1000000)) ;
+	printk(KERN_INFO "IVA2 clocking rate: %ld MHz\n",
+	       (iva2_ck.rate / 1000000)) ;
 
 	calibrate_delay();
 
@@ -1159,7 +1281,13 @@ int __init omap2_clk_init(void)
 	/* u32 clkrate; */
 	u32 cpu_clkflg;
 
-	if (cpu_is_omap34xx()) {
+	if (cpu_is_omap3517()) {
+		cpu_mask = RATE_IN_343X | RATE_IN_3430ES2;
+		cpu_clkflg = CK_3517;
+	} else if (cpu_is_omap3505()) {
+		cpu_mask = RATE_IN_343X | RATE_IN_3430ES2;
+		cpu_clkflg = CK_3505;
+	} else if (cpu_is_omap34xx()) {
 		cpu_mask = RATE_IN_343X;
 		cpu_clkflg = CK_343X;
 
@@ -1167,7 +1295,7 @@ int __init omap2_clk_init(void)
 		 * Update this if there are further clock changes between ES2
 		 * and production parts
 		 */
-		if (omap_rev() == OMAP3430_REV_ES1_0) {
+		if (omap_rev_is_1_0()) {
 			/* No 3430ES1-only rates exist, so no RATE_IN_3430ES1 */
 			cpu_clkflg |= CK_3430ES1;
 		} else {
@@ -1209,6 +1337,8 @@ int __init omap2_clk_init(void)
 	       "%ld.%01ld/%ld/%ld MHz\n",
 	       (osc_sys_ck.rate / 1000000), (osc_sys_ck.rate / 100000) % 10,
 	       (core_ck.rate / 1000000), (arm_fck.rate / 1000000));
+	printk(KERN_INFO "IVA2 clocking rate: %ld MHz\n",
+	       (iva2_ck.rate / 1000000)) ;
 
 	/*
 	 * Only enable those clocks we will need, let the drivers

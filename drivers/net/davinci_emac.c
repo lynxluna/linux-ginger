@@ -62,11 +62,10 @@
 #include <linux/bitops.h>
 #include <linux/io.h>
 #include <linux/uaccess.h>
+#include <linux/davinci_emac.h>
 
 #include <asm/irq.h>
 #include <asm/page.h>
-
-#include <mach/emac.h>
 
 static int debug_level;
 module_param(debug_level, int, 0);
@@ -164,16 +163,14 @@ static const char emac_version_string[] = "TI DaVinci EMAC Linux v6.1";
 # define EMAC_MBP_MCASTCHAN(ch)		((ch) & 0x7)
 
 /* EMAC mac_control register */
-#define EMAC_MACCONTROL_TXPTYPE		(0x200)
-#define EMAC_MACCONTROL_TXPACEEN	(0x40)
-#define EMAC_MACCONTROL_MIIEN		(0x20)
-#define EMAC_MACCONTROL_GIGABITEN	(0x80)
-#define EMAC_MACCONTROL_GIGABITEN_SHIFT (7)
-#define EMAC_MACCONTROL_FULLDUPLEXEN	(0x1)
+#define EMAC_MACCONTROL_TXPTYPE		BIT(9)
+#define EMAC_MACCONTROL_TXPACEEN	BIT(6)
+#define EMAC_MACCONTROL_GMIIEN		BIT(5)
+#define EMAC_MACCONTROL_GIGABITEN	BIT(7)
+#define EMAC_MACCONTROL_FULLDUPLEXEN	BIT(0)
 #define EMAC_MACCONTROL_RMIISPEED_MASK	BIT(15)
 
 /* GIGABIT MODE related bits */
-#define EMAC_DM646X_MACCONTORL_GMIIEN	BIT(5)
 #define EMAC_DM646X_MACCONTORL_GIG	BIT(7)
 #define EMAC_DM646X_MACCONTORL_GIGFORCE	BIT(17)
 
@@ -192,17 +189,16 @@ static const char emac_version_string[] = "TI DaVinci EMAC Linux v6.1";
 #define EMAC_RX_BUFFER_OFFSET_MASK	(0xFFFF)
 
 /* MAC_IN_VECTOR (0x180) register bit fields */
-#define EMAC_DM644X_MAC_IN_VECTOR_HOST_INT	      (0x20000)
-#define EMAC_DM644X_MAC_IN_VECTOR_STATPEND_INT	      (0x10000)
-#define EMAC_DM644X_MAC_IN_VECTOR_RX_INT_VEC	      (0x0100)
-#define EMAC_DM644X_MAC_IN_VECTOR_TX_INT_VEC	      (0x01)
+#define EMAC_DM644X_MAC_IN_VECTOR_HOST_INT	BIT(17)
+#define EMAC_DM644X_MAC_IN_VECTOR_STATPEND_INT	BIT(16)
+#define EMAC_DM644X_MAC_IN_VECTOR_RX_INT_VEC	BIT(8)
+#define EMAC_DM644X_MAC_IN_VECTOR_TX_INT_VEC	BIT(0)
 
 /** NOTE:: For DM646x the IN_VECTOR has changed */
 #define EMAC_DM646X_MAC_IN_VECTOR_RX_INT_VEC	BIT(EMAC_DEF_RX_CH)
 #define EMAC_DM646X_MAC_IN_VECTOR_TX_INT_VEC	BIT(16 + EMAC_DEF_TX_CH)
 #define EMAC_DM646X_MAC_IN_VECTOR_HOST_INT	BIT(26)
 #define EMAC_DM646X_MAC_IN_VECTOR_STATPEND_INT	BIT(27)
-
 
 /* CPPI bit positions */
 #define EMAC_CPPI_SOP_BIT		BIT(31)
@@ -468,6 +464,7 @@ struct emac_priv {
 	void __iomem *ctrl_base;
 	void __iomem *emac_ctrl_ram;
 	u32 ctrl_ram_size;
+	u32 hw_ram_addr;
 	struct emac_txch *txch[EMAC_DEF_MAX_TX_CH];
 	struct emac_rxch *rxch[EMAC_DEF_MAX_RX_CH];
 	u32 link; /* 1=link on, 0=link off */
@@ -491,18 +488,20 @@ struct emac_priv {
 	struct mii_bus *mii_bus;
 	struct phy_device *phydev;
 	spinlock_t lock;
+	/*platform specific members*/
+	void (*wrapper_int_enable) (void);
+	void (*wrapper_int_disable) (void);
 };
 
 /* clock frequency for EMAC */
-static struct clk *emac_clk;
+static struct clk *emac_clk = NULL;
+static struct clk *emac_phy_clk = NULL;
 static unsigned long emac_bus_frequency;
 static unsigned long mdio_max_freq;
 
-/* EMAC internal utility function */
-static inline u32 emac_virt_to_phys(void __iomem *addr)
-{
-	return (u32 __force) io_v2p(addr);
-}
+#define emac_virt_to_phys(addr, priv) \
+	(((u32 __force)(addr) - (u32 __force)(priv->emac_ctrl_ram)) \
+	+ priv->hw_ram_addr)
 
 /* Cache macros - Packet buffers would be from skb pool which is cached */
 #define EMAC_VIRT_NOCACHE(addr) (addr)
@@ -750,8 +749,7 @@ static void emac_update_phystatus(struct emac_priv *priv)
 
 	if (priv->speed == SPEED_1000 && (priv->version == EMAC_VERSION_2)) {
 		mac_control = emac_read(EMAC_MACCONTROL);
-		mac_control |= (EMAC_DM646X_MACCONTORL_GMIIEN |
-				EMAC_DM646X_MACCONTORL_GIG |
+		mac_control |= (EMAC_DM646X_MACCONTORL_GIG |
 				EMAC_DM646X_MACCONTORL_GIGFORCE);
 	} else {
 		/* Clear the GIG bit and GIGFORCE bit */
@@ -1006,6 +1004,8 @@ static void emac_int_disable(struct emac_priv *priv)
 		emac_ctrl_write(EMAC_DM646X_CMRXINTEN, 0x0);
 		emac_ctrl_write(EMAC_DM646X_CMTXINTEN, 0x0);
 		/* NOTE: Rx Threshold and Misc interrupts are not disabled */
+		if (priv->wrapper_int_disable)
+			priv->wrapper_int_disable();
 
 		local_irq_restore(flags);
 
@@ -1025,6 +1025,9 @@ static void emac_int_disable(struct emac_priv *priv)
 static void emac_int_enable(struct emac_priv *priv)
 {
 	if (priv->version == EMAC_VERSION_2) {
+		if (priv->wrapper_int_enable)
+			priv->wrapper_int_enable();
+
 		emac_ctrl_write(EMAC_DM646X_CMRXINTEN, 0xff);
 		emac_ctrl_write(EMAC_DM646X_CMTXINTEN, 0xff);
 
@@ -1306,7 +1309,7 @@ static int emac_tx_bdproc(struct emac_priv *priv, u32 ch, u32 budget)
 	curr_bd = txch->active_queue_head;
 	if (NULL == curr_bd) {
 		emac_write(EMAC_TXCP(ch),
-			   emac_virt_to_phys(txch->last_hw_bdprocessed));
+			   emac_virt_to_phys(txch->last_hw_bdprocessed, priv));
 		txch->no_active_pkts++;
 		spin_unlock_irqrestore(&priv->tx_lock, flags);
 		return 0;
@@ -1316,7 +1319,7 @@ static int emac_tx_bdproc(struct emac_priv *priv, u32 ch, u32 budget)
 	while ((curr_bd) &&
 	      ((frame_status & EMAC_CPPI_OWNERSHIP_BIT) == 0) &&
 	      (pkts_processed < budget)) {
-		emac_write(EMAC_TXCP(ch), emac_virt_to_phys(curr_bd));
+		emac_write(EMAC_TXCP(ch), emac_virt_to_phys(curr_bd, priv));
 		txch->active_queue_head = curr_bd->next;
 		if (frame_status & EMAC_CPPI_EOQ_BIT) {
 			if (curr_bd->next) {	/* misqueued packet */
@@ -1403,7 +1406,7 @@ static int emac_send(struct emac_priv *priv, struct emac_netpktobj *pkt, u32 ch)
 		txch->active_queue_tail = curr_bd;
 		if (1 != txch->queue_active) {
 			emac_write(EMAC_TXHDP(ch),
-					emac_virt_to_phys(curr_bd));
+					emac_virt_to_phys(curr_bd, priv));
 			txch->queue_active = 1;
 		}
 		++txch->queue_reinit;
@@ -1415,10 +1418,11 @@ static int emac_send(struct emac_priv *priv, struct emac_netpktobj *pkt, u32 ch)
 		tail_bd->next = curr_bd;
 		txch->active_queue_tail = curr_bd;
 		tail_bd = EMAC_VIRT_NOCACHE(tail_bd);
-		tail_bd->h_next = (int)emac_virt_to_phys(curr_bd);
+		tail_bd->h_next = (int)emac_virt_to_phys(curr_bd, priv);
 		frame_status = tail_bd->mode;
 		if (frame_status & EMAC_CPPI_EOQ_BIT) {
-			emac_write(EMAC_TXHDP(ch), emac_virt_to_phys(curr_bd));
+			emac_write(EMAC_TXHDP(ch),
+				emac_virt_to_phys(curr_bd, priv));
 			frame_status &= ~(EMAC_CPPI_EOQ_BIT);
 			tail_bd->mode = frame_status;
 			++txch->end_of_queue_add;
@@ -1608,7 +1612,8 @@ static int emac_init_rxch(struct emac_priv *priv, u32 ch, char *param)
 		}
 
 		/* populate the hardware descriptor */
-		curr_bd->h_next = emac_virt_to_phys(rxch->active_queue_head);
+		curr_bd->h_next = emac_virt_to_phys(rxch->active_queue_head,
+				priv);
 		/* FIXME buff_ptr = dma_map_single(... data_ptr ...) */
 		curr_bd->buff_ptr = virt_to_phys(curr_bd->data_ptr);
 		curr_bd->off_b_len = rxch->buf_size;
@@ -1883,7 +1888,7 @@ static void emac_addbd_to_rx_queue(struct emac_priv *priv, u32 ch,
 		rxch->active_queue_tail = curr_bd;
 		if (0 != rxch->queue_active) {
 			emac_write(EMAC_RXHDP(ch),
-				   emac_virt_to_phys(rxch->active_queue_head));
+			   emac_virt_to_phys(rxch->active_queue_head, priv));
 			rxch->queue_active = 1;
 		}
 	} else {
@@ -1894,11 +1899,11 @@ static void emac_addbd_to_rx_queue(struct emac_priv *priv, u32 ch,
 		rxch->active_queue_tail = curr_bd;
 		tail_bd->next = curr_bd;
 		tail_bd = EMAC_VIRT_NOCACHE(tail_bd);
-		tail_bd->h_next = emac_virt_to_phys(curr_bd);
+		tail_bd->h_next = emac_virt_to_phys(curr_bd, priv);
 		frame_status = tail_bd->mode;
 		if (frame_status & EMAC_CPPI_EOQ_BIT) {
 			emac_write(EMAC_RXHDP(ch),
-					emac_virt_to_phys(curr_bd));
+					emac_virt_to_phys(curr_bd, priv));
 			frame_status &= ~(EMAC_CPPI_EOQ_BIT);
 			tail_bd->mode = frame_status;
 			++rxch->end_of_queue_add;
@@ -1991,7 +1996,7 @@ static int emac_rx_bdproc(struct emac_priv *priv, u32 ch, u32 budget)
 		curr_pkt->num_bufs = 1;
 		curr_pkt->pkt_length =
 			(frame_status & EMAC_RX_BD_PKT_LENGTH_MASK);
-		emac_write(EMAC_RXCP(ch), emac_virt_to_phys(curr_bd));
+		emac_write(EMAC_RXCP(ch), emac_virt_to_phys(curr_bd, priv));
 		++rxch->processed_bd;
 		last_bd = curr_bd;
 		curr_bd = last_bd->next;
@@ -2002,7 +2007,7 @@ static int emac_rx_bdproc(struct emac_priv *priv, u32 ch, u32 budget)
 			if (curr_bd) {
 				++rxch->mis_queued_packets;
 				emac_write(EMAC_RXHDP(ch),
-					   emac_virt_to_phys(curr_bd));
+					   emac_virt_to_phys(curr_bd, priv));
 			} else {
 				++rxch->end_of_queue;
 				rxch->queue_active = 0;
@@ -2103,12 +2108,12 @@ static int emac_hw_enable(struct emac_priv *priv)
 		emac_write(EMAC_RXINTMASKSET, BIT(ch));
 		rxch->queue_active = 1;
 		emac_write(EMAC_RXHDP(ch),
-			   emac_virt_to_phys(rxch->active_queue_head));
+			   emac_virt_to_phys(rxch->active_queue_head, priv));
 	}
 
 	/* Enable MII */
 	val = emac_read(EMAC_MACCONTROL);
-	val |= (EMAC_MACCONTROL_MIIEN);
+	val |= (EMAC_MACCONTROL_GMIIEN);
 	emac_write(EMAC_MACCONTROL, val);
 
 	/* Enable NAPI and interrupts */
@@ -2139,9 +2144,6 @@ static int emac_poll(struct napi_struct *napi, int budget)
 	struct device *emac_dev = &ndev->dev;
 	u32 status = 0;
 	u32 num_pkts = 0;
-
-	if (!netif_running(ndev))
-		return 0;
 
 	/* Check interrupt vectors and call packet processing */
 	status = emac_read(EMAC_MACINVECTOR);
@@ -2631,9 +2633,16 @@ static int __devinit davinci_emac_probe(struct platform_device *pdev)
 	struct device *emac_dev;
 
 	/* obtain emac clock from kernel */
-	emac_clk = clk_get(&pdev->dev, NULL);
+	emac_clk = clk_get(&pdev->dev, "emac_ck");
 	if (IS_ERR(emac_clk)) {
 		printk(KERN_ERR "DaVinci EMAC: Failed to get EMAC clock\n");
+		return -EBUSY;
+	}
+	/* obtain emac phy clock from kernel */
+	emac_phy_clk = clk_get(&pdev->dev, "emac_phy_ck");
+	if (IS_ERR(emac_phy_clk)) {
+		printk(KERN_ERR "DaVinci EMAC: Failed to get EMAC PHY clock\n");
+		clk_put(emac_clk);
 		return -EBUSY;
 	}
 	emac_bus_frequency = clk_get_rate(emac_clk);
@@ -2643,6 +2652,7 @@ static int __devinit davinci_emac_probe(struct platform_device *pdev)
 	if (!ndev) {
 		printk(KERN_ERR "DaVinci EMAC: Error allocating net_device\n");
 		clk_put(emac_clk);
+		clk_put(emac_phy_clk);
 		return -ENOMEM;
 	}
 
@@ -2667,6 +2677,9 @@ static int __devinit davinci_emac_probe(struct platform_device *pdev)
 	priv->phy_mask = pdata->phy_mask;
 	priv->rmii_en = pdata->rmii_en;
 	priv->version = pdata->version;
+	priv->wrapper_int_enable = pdata->wrapper_interrupt_enable;
+	priv->wrapper_int_disable = pdata->wrapper_interrupt_disable;
+
 	emac_dev = &ndev->dev;
 	/* Get EMAC platform data */
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -2699,6 +2712,12 @@ static int __devinit davinci_emac_probe(struct platform_device *pdev)
 	priv->ctrl_ram_size = pdata->ctrl_ram_size;
 	priv->emac_ctrl_ram = priv->remap_addr + pdata->ctrl_ram_offset;
 
+	if (pdata->hw_ram_addr)
+		priv->hw_ram_addr = pdata->hw_ram_addr;
+	else
+		priv->hw_ram_addr = (u32 __force)res->start +
+					pdata->ctrl_ram_offset;
+
 	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 	if (!res) {
 		dev_err(emac_dev, "DaVinci EMAC: Error getting irq res\n");
@@ -2718,6 +2737,9 @@ static int __devinit davinci_emac_probe(struct platform_device *pdev)
 	SET_ETHTOOL_OPS(ndev, &ethtool_ops);
 	netif_napi_add(ndev, &priv->napi, emac_poll, EMAC_POLL_WEIGHT);
 
+	clk_enable(emac_clk);
+	clk_enable(emac_phy_clk);
+
 	/* register the network device */
 	SET_NETDEV_DEV(ndev, &pdev->dev);
 	rc = register_netdev(ndev);
@@ -2726,8 +2748,6 @@ static int __devinit davinci_emac_probe(struct platform_device *pdev)
 		rc = -ENODEV;
 		goto netdev_reg_err;
 	}
-
-	clk_enable(emac_clk);
 
 	/* MII/Phy intialisation, mdio bus registration */
 	emac_mii = mdiobus_alloc();
@@ -2774,6 +2794,7 @@ no_irq_res:
 
 probe_quit:
 	clk_put(emac_clk);
+	clk_put(emac_phy_clk);
 	free_netdev(ndev);
 	return rc;
 }
@@ -2805,16 +2826,49 @@ static int __devexit davinci_emac_remove(struct platform_device *pdev)
 	iounmap(priv->remap_addr);
 
 	clk_disable(emac_clk);
+	clk_disable(emac_phy_clk);
 	clk_put(emac_clk);
+	clk_put(emac_phy_clk);
 
 	return 0;
 }
 
+#ifdef CONFIG_PM
+static
+int davinci_emac_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	struct net_device *dev = platform_get_drvdata(pdev);
+
+	if (netif_running(dev))
+		emac_dev_stop(dev);
+
+	clk_disable(emac_clk);
+	clk_disable(emac_phy_clk);
+
+	return 0;
+}
+
+static int davinci_emac_resume(struct platform_device *pdev)
+{
+	struct net_device *dev = platform_get_drvdata(pdev);
+
+	clk_enable(emac_phy_clk);
+
+	clk_enable(emac_clk);
+
+	if (netif_running(dev))
+		emac_dev_open(dev);
+
+	return 0;
+}
+#else
+#define davinci_emac_suspend NULL
+#define davinci_emac_resume  NULL
+#endif
+
 /**
  * davinci_emac_driver: EMAC platform driver structure
- *
- * We implement only probe and remove functions - suspend/resume and
- * others not supported by this module
+ * Suspend/Resume supported for non-OFF mode use cases
  */
 static struct platform_driver davinci_emac_driver = {
 	.driver = {
@@ -2823,6 +2877,8 @@ static struct platform_driver davinci_emac_driver = {
 	},
 	.probe = davinci_emac_probe,
 	.remove = __devexit_p(davinci_emac_remove),
+	.suspend = davinci_emac_suspend,
+	.resume = davinci_emac_resume,
 };
 
 /**

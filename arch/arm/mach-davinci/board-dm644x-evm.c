@@ -29,6 +29,7 @@
 #include <linux/phy.h>
 #include <linux/clk.h>
 #include <linux/videodev2.h>
+#include <linux/davinci_emac.h>
 
 #include <media/tvp514x.h>
 
@@ -47,7 +48,6 @@
 #include <mach/psc.h>
 #include <mach/nand.h>
 #include <mach/mmc.h>
-#include <mach/emac.h>
 
 #define DM644X_EVM_PHY_MASK		(0x2)
 #define DM644X_EVM_MDIO_FREQUENCY	(2200000) /* PHY bus frequency */
@@ -258,6 +258,7 @@ static struct vpfe_subdev_info vpfe_sub_devs[] = {
 
 static struct vpfe_config vpfe_cfg = {
 	.num_subdevs = ARRAY_SIZE(vpfe_sub_devs),
+	.i2c_adapter_id = 1,
 	.sub_devs = vpfe_sub_devs,
 	.card_name = "DM6446 EVM",
 	.ccdc = "DM6446 CCDC",

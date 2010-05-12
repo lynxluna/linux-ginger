@@ -38,6 +38,9 @@
 
 #define MAX_TRIES 100
 
+#define SWCALC_OPP6_DELTA_NNT	379
+#define SWCALC_OPP6_DELTA_PNT	227
+
 struct omap_sr {
 	int		srid;
 	int		is_sr_reset;
@@ -47,7 +50,7 @@ struct omap_sr {
 	u32		clk_length;
 	u32		req_opp_no;
 	u32		opp1_nvalue, opp2_nvalue, opp3_nvalue, opp4_nvalue;
-	u32		opp5_nvalue;
+	u32		opp5_nvalue, opp6_nvalue;
 	u32		senp_mod, senn_mod;
 	void __iomem	*srbase_addr;
 	void __iomem	*vpbase_addr;
@@ -224,6 +227,49 @@ static void sr_set_clk_length(struct omap_sr *sr)
 	}
 }
 
+static void swcalc_opp6_RG(u32 rFuse, u32 gainFuse, u32 deltaNT,
+				u32* rAdj, u32* gainAdj)
+{
+	u32 nAdj;
+	u32 g, r;
+
+	nAdj = ((1 << (gainFuse + 8))/rFuse) + deltaNT;
+
+	for (g = 0; g < GAIN_MAXLIMIT; g++) {
+		r = (1 << (g + 8)) / nAdj;
+		if (r < 256) {
+			*rAdj = r;
+			*gainAdj = g;
+		}
+	}
+}
+
+static u32 swcalc_opp6_nvalue(void)
+{
+	u32 opp5_nvalue, opp6_nvalue;
+	u32 opp5_senPgain, opp5_senNgain, opp5_senPRN, opp5_senNRN;
+	u32 opp6_senPgain, opp6_senNgain, opp6_senPRN, opp6_senNRN;
+
+	opp5_nvalue = omap_ctrl_readl(OMAP343X_CONTROL_FUSE_OPP5_VDD1);
+
+	opp5_senPgain = (opp5_nvalue & 0x00f00000) >> 0x14;
+	opp5_senNgain = (opp5_nvalue & 0x000f0000) >> 0x10;
+
+	opp5_senPRN = (opp5_nvalue & 0x0000ff00) >> 0x8;
+	opp5_senNRN = (opp5_nvalue & 0x000000ff);
+
+	swcalc_opp6_RG(opp5_senNRN, opp5_senNgain, SWCALC_OPP6_DELTA_NNT,
+				&opp6_senNRN, &opp6_senNgain);
+
+	swcalc_opp6_RG(opp5_senPRN, opp5_senPgain, SWCALC_OPP6_DELTA_PNT,
+				&opp6_senPRN, &opp6_senPgain);
+
+	opp6_nvalue = (opp6_senPgain << 0x14) | (opp6_senNgain < 0x10) |
+			(opp6_senPRN << 0x8) | opp6_senNRN;
+
+	return opp6_nvalue;
+}
+
 static void sr_set_efuse_nvalues(struct omap_sr *sr)
 {
 	if (sr->srid == SR1) {
@@ -234,6 +280,7 @@ static void sr_set_efuse_nvalues(struct omap_sr *sr)
 					OMAP343X_SR1_SENPENABLE_MASK) >>
 					OMAP343X_SR1_SENPENABLE_SHIFT;
 
+		sr->opp6_nvalue = swcalc_opp6_nvalue();
 		sr->opp5_nvalue = omap_ctrl_readl(
 					OMAP343X_CONTROL_FUSE_OPP5_VDD1);
 		sr->opp4_nvalue = omap_ctrl_readl(
@@ -313,6 +360,15 @@ static void sr_configure_vp(int srid)
 			PRM_VP1_CONFIG_TIMEOUTEN |
 			vsel << OMAP3430_INITVOLTAGE_SHIFT;
 
+		/*
+		 * Update the 'ON' voltage levels based on the VSEL.
+		 * (See spruf8c.pdf sec 1.5.3.1)
+		 */
+		prm_rmw_mod_reg_bits(OMAP3430_VC_CMD_ON_MASK,
+				(vsel << OMAP3430_VC_CMD_ON_SHIFT),
+				OMAP3430_GR_MOD,
+				OMAP3_PRM_VC_CMD_VAL_0_OFFSET);
+
 		prm_write_mod_reg(vpconfig, OMAP3430_GR_MOD,
 					OMAP3_PRM_VP1_CONFIG_OFFSET);
 		prm_write_mod_reg(PRM_VP1_VSTEPMIN_SMPSWAITTIMEMIN |
@@ -354,6 +410,15 @@ static void sr_configure_vp(int srid)
 		else
 			vsel = l3_opps[target_opp_no].vsel;
 
+		/*
+		 * Update the 'ON' voltage levels based on the VSEL.
+		 * (See spruf8c.pdf sec 1.5.3.1)
+		 */
+		prm_rmw_mod_reg_bits(OMAP3430_VC_CMD_ON_MASK,
+				(vsel << OMAP3430_VC_CMD_ON_SHIFT),
+				OMAP3430_GR_MOD,
+				OMAP3_PRM_VC_CMD_VAL_1_OFFSET);
+
 		vpconfig = PRM_VP2_CONFIG_ERROROFFSET |
 			PRM_VP2_CONFIG_ERRORGAIN |
 			PRM_VP2_CONFIG_TIMEOUTEN |
@@ -391,7 +456,6 @@ static void sr_configure_vp(int srid)
 		/* Clear force bit */
 		prm_clear_mod_reg_bits(OMAP3430_FORCEUPDATE, OMAP3430_GR_MOD,
 				       OMAP3_PRM_VP2_CONFIG_OFFSET);
-
 	}
 }
 
@@ -454,6 +518,7 @@ static int sr_reset_voltage(int srid)
 
 	if (srid == SR1) {
 		target_opp_no = get_vdd1_opp();
+
 		if (!target_opp_no) {
 			pr_info("Current OPP unknown: Cannot reset voltage\n");
 			return 1;
@@ -525,6 +590,9 @@ static int sr_enable(struct omap_sr *sr, u32 target_opp_no)
 
 	if (sr->srid == SR1) {
 		switch (target_opp_no) {
+		case 6:
+			nvalue_reciprocal = sr->opp6_nvalue;
+			break;
 		case 5:
 			nvalue_reciprocal = sr->opp5_nvalue;
 			break;

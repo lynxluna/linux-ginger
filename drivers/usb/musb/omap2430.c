@@ -36,6 +36,7 @@
 #include <asm/mach-types.h>
 #include <mach/hardware.h>
 #include <plat/mux.h>
+#include <plat/board.h>
 
 #include "musb_core.h"
 #include "omap2430.h"
@@ -44,6 +45,7 @@
 #define	get_cpu_rev()	2
 #endif
 
+#define MUSB_TIMEOUT_A_WAIT_BCON	1100
 
 static struct timer_list musb_idle_timer;
 
@@ -203,6 +205,7 @@ int musb_platform_set_mode(struct musb *musb, u8 musb_mode)
 int __init musb_platform_init(struct musb *musb)
 {
 	u32 l;
+	u8 val;
 
 #if defined(CONFIG_ARCH_OMAP2430)
 	omap_cfg_reg(AE5_2430_USB0HS_STP);
@@ -239,6 +242,13 @@ int __init musb_platform_init(struct musb *musb)
 	l |= ULPI_12PIN;
 	omap_writel(l, OTG_INTERFSEL);
 
+	/* Program PHY to use external Vbus supply for OMAP3EVM Rev >= E */
+	if (get_omap3_evm_rev() >= OMAP3EVM_BOARD_GEN_2) {
+		val = musb_readb(musb->mregs, MUSB_ULPI_BUSCONTROL);
+		val |= ULPI_USE_EXTVBUS;
+		musb_writeb(musb->mregs, MUSB_ULPI_BUSCONTROL, val);
+	}
+
 	pr_debug("HS USB OTG: revision 0x%x, sysconfig 0x%02x, "
 			"sysstatus 0x%x, intrfsel 0x%x, simenable  0x%x\n",
 			omap_readl(OTG_REVISION), omap_readl(OTG_SYSCONFIG),
@@ -249,11 +259,28 @@ int __init musb_platform_init(struct musb *musb)
 
 	if (is_host_enabled(musb))
 		musb->board_set_vbus = omap_set_vbus;
+	musb->a_wait_bcon = MUSB_TIMEOUT_A_WAIT_BCON;
 
 	setup_timer(&musb_idle_timer, musb_do_idle, (unsigned long) musb);
 
 	return 0;
 }
+
+#ifdef CONFIG_PM
+void musb_platform_save_context(struct musb_context_registers
+		*musb_context)
+{
+	musb_context->otg_sysconfig = omap_readl(OTG_SYSCONFIG);
+	musb_context->otg_forcestandby = omap_readl(OTG_FORCESTDBY);
+}
+
+void musb_platform_restore_context(struct musb_context_registers
+		*musb_context)
+{
+	omap_writel(musb_context->otg_sysconfig, OTG_SYSCONFIG);
+	omap_writel(musb_context->otg_forcestandby, OTG_FORCESTDBY);
+}
+#endif
 
 int musb_platform_suspend(struct musb *musb)
 {

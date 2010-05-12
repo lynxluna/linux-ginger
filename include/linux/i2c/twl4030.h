@@ -360,6 +360,18 @@ struct twl4030_keypad_data {
 	unsigned rows;
 	unsigned cols;
 	bool rep;
+#ifdef CONFIG_PM
+	/*
+	 * Board specific information required during suspend, resume.
+	 * E.g. configuration as wake-up source.
+	 */
+	void *pm_state;
+	/*
+	 * Hooks for board specific execution during suspend, resume.
+	 */
+	void (*on_suspend)(void *pstate);
+	void (*on_resume)(void *pstate);
+#endif
 };
 
 enum twl4030_usb_mode {
@@ -422,6 +434,10 @@ struct twl4030_platform_data {
 	struct regulator_init_data		*vaux3;
 	struct regulator_init_data		*vaux4;
 
+	struct regulator_init_data		*vusb1v8;
+	struct regulator_init_data		*vusb1v5;
+	struct regulator_init_data		*vusb3v1;
+
 	/* REVISIT more to come ... _nothing_ should be hard-wired */
 };
 
@@ -430,14 +446,25 @@ struct twl4030_platform_data {
 int twl4030_sih_setup(int module);
 
 /* Offsets to Power Registers */
+#define TWL4030_VPLL2_DEV_GRP		0x33
 #define TWL4030_VDAC_DEV_GRP		0x3B
 #define TWL4030_VDAC_DEDICATED		0x3E
 #define TWL4030_VAUX1_DEV_GRP		0x17
+#define TWL4030_VAUX1_TYPE		0x18
+#define TWL4030_VAUX1_REMAP		0x19
 #define TWL4030_VAUX1_DEDICATED		0x1A
 #define TWL4030_VAUX2_DEV_GRP		0x1B
+#define TWL4030_VAUX2_TYPE		0x1C
+#define TWL4030_VAUX2_REMAP		0x1D
 #define TWL4030_VAUX2_DEDICATED		0x1E
 #define TWL4030_VAUX3_DEV_GRP		0x1F
+#define TWL4030_VAUX3_TYPE		0x20
+#define TWL4030_VAUX3_REMAP		0x21
 #define TWL4030_VAUX3_DEDICATED		0x22
+#define TWL4030_VAUX4_DEV_GRP		0x23
+#define TWL4030_VAUX4_TYPE		0x24
+#define TWL4030_VAUX4_REMAP		0x25
+#define TWL4030_VAUX4_DEDICATED		0x26
 
 #if defined(CONFIG_TWL4030_BCI_BATTERY) || \
 	defined(CONFIG_TWL4030_BCI_BATTERY_MODULE)

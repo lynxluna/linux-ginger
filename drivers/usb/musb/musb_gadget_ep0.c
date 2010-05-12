@@ -199,7 +199,6 @@ service_in_request(struct musb *musb, const struct usb_ctrlrequest *ctrlrequest)
 static void musb_g_ep0_giveback(struct musb *musb, struct usb_request *req)
 {
 	musb_g_giveback(&musb->endpoints[0].ep_in, req, 0);
-	musb->ep0_state = MUSB_EP0_STAGE_SETUP;
 }
 
 /*
@@ -753,6 +752,9 @@ setup:
 				printk(KERN_NOTICE "%s: peripheral reset "
 						"irq lost!\n",
 						musb_driver_name);
+#ifdef CONFIG_MACH_OMAP3517EVM
+				musb->read_mask &= ~AM3517_READ_ISSUE_POWER;
+#endif
 				power = musb_readb(mbase, MUSB_POWER);
 				musb->g.speed = (power & MUSB_POWER_HSMODE)
 					? USB_SPEED_HIGH : USB_SPEED_FULL;

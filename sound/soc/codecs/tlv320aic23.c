@@ -265,8 +265,8 @@ static const int bosr_usb_divisor_table[] = {
 #define UPPER_GROUP ((1<<8) | (1<<9) | (1<<10) | (1<<11)        | (1<<15))
 static const unsigned short sr_valid_mask[] = {
 	LOWER_GROUP|UPPER_GROUP,	/* Normal, bosr - 0*/
-	LOWER_GROUP|UPPER_GROUP,	/* Normal, bosr - 1*/
 	LOWER_GROUP,			/* Usb, bosr - 0*/
+	LOWER_GROUP|UPPER_GROUP,	/* Normal, bosr - 1*/
 	UPPER_GROUP,			/* Usb, bosr - 1*/
 };
 /*
@@ -565,13 +565,12 @@ static int tlv320aic23_set_bias_level(struct snd_soc_codec *codec,
 	case SND_SOC_BIAS_PREPARE:
 		break;
 	case SND_SOC_BIAS_STANDBY:
-		/* everything off except vref/vmid, */
-		tlv320aic23_write(codec, TLV320AIC23_PWR, reg | 0x0040);
+		/* Activate the digital interface */
+		tlv320aic23_write(codec, TLV320AIC23_ACTIVE, 0x1);
 		break;
 	case SND_SOC_BIAS_OFF:
-		/* everything off, dac mute, inactive */
+		/* Deactivate the digital interface */
 		tlv320aic23_write(codec, TLV320AIC23_ACTIVE, 0x0);
-		tlv320aic23_write(codec, TLV320AIC23_PWR, 0xffff);
 		break;
 	}
 	codec->bias_level = level;
@@ -615,7 +614,6 @@ static int tlv320aic23_suspend(struct platform_device *pdev,
 	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
 	struct snd_soc_codec *codec = socdev->card->codec;
 
-	tlv320aic23_write(codec, TLV320AIC23_ACTIVE, 0x0);
 	tlv320aic23_set_bias_level(codec, SND_SOC_BIAS_OFF);
 
 	return 0;
@@ -625,11 +623,10 @@ static int tlv320aic23_resume(struct platform_device *pdev)
 {
 	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
 	struct snd_soc_codec *codec = socdev->card->codec;
-	int i;
 	u16 reg;
 
 	/* Sync reg_cache with the hardware */
-	for (reg = 0; reg < ARRAY_SIZE(tlv320aic23_reg); i++) {
+	for (reg = 0; reg <= TLV320AIC23_ACTIVE; reg++) {
 		u16 val = tlv320aic23_read_reg_cache(codec, reg);
 		tlv320aic23_write(codec, reg, val);
 	}

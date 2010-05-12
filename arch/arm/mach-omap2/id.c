@@ -70,7 +70,6 @@ out:
 }
 EXPORT_SYMBOL(omap_type);
 
-
 /*----------------------------------------------------------------------------*/
 
 #define OMAP_TAP_IDCODE		0x0204
@@ -177,6 +176,14 @@ void __init omap3_check_features(void)
 	OMAP3_CHECK_FEATURE(status, ISP);
 
 	/*
+	 * Does it support 720MHz?
+	 */
+	status = ((OMAP3_SKUID_MASK & read_tap_reg(OMAP3_PRODID))
+			& OMAP3_SKUID_720MHZ) ? 1 : 0 ;
+	if (status)
+		omap3_features |= OMAP3_HAS_720M;
+
+	/*
 	 * TODO: Get additional info (where applicable)
 	 *       e.g. Size of L2 cache.
 	 */
@@ -242,6 +249,14 @@ void __init omap3_check_revision(void)
 			omap_revision = OMAP3630_REV_ES1_0;
 		}
 		break;
+	case 0xb868:
+		/* Handle OMAP35xx/AM35xx devices
+		 *
+		 * Set the device to be OMAP3505 here. Actual device
+		 * is identified later based on the features.
+		 */
+		omap_revision = OMAP3505_REV(rev);
+		break;
 	default:
 		/* Unknown default to latest silicon rev as default*/
 		omap_revision = OMAP3630_REV_ES1_0;
@@ -267,20 +282,36 @@ void __init omap3_cpuinfo(void)
 	 * and CPU class bits.
 	 */
 	if (cpu_is_omap3630())
-		strcpy(cpu_name, "3630");
-	else if (omap3_has_iva() && omap3_has_sgx())
-		strcpy(cpu_name, "3430/3530");
-	else if (omap3_has_sgx()) {
-		omap_revision = OMAP3525_REV(rev);
-		strcpy(cpu_name, "3525");
+		strcpy(cpu_name, "OMAP3630");
+	else if (cpu_is_omap3505()) {
+		/*
+		 * AM35xx devices
+		 */
+		if (omap3_has_sgx()) {
+			omap_revision = OMAP3517_REV(rev);
+			strcpy(cpu_name, "AM3517");
+		}
+		else {
+			/* Already set in omap3_check_revision() */
+			strcpy(cpu_name, "AM3505");
+		}
 	}
+	/*
+	 * OMAP3430, OMAP3525, OMAP3515, OMAP3503 devices
+	 */
+	else if (omap3_has_iva() && omap3_has_sgx())
+		strcpy(cpu_name, "OMAP3430/3530");
 	else if (omap3_has_iva()) {
+		omap_revision = OMAP3525_REV(rev);
+		strcpy(cpu_name, "OMAP3525");
+	}
+	else if (omap3_has_sgx()) {
 		omap_revision = OMAP3515_REV(rev);
-		strcpy(cpu_name, "3515");
+		strcpy(cpu_name, "OMAP3515");
 	}
 	else {
 		omap_revision = OMAP3503_REV(rev);
-		strcpy(cpu_name, "3503");
+		strcpy(cpu_name, "OMAP3503");
 	}
 
 	switch (rev) {
@@ -307,13 +338,14 @@ void __init omap3_cpuinfo(void)
 	/*
 	 * Print verbose information
 	 */
-	pr_info("OMAP%s ES%s\n", cpu_name, cpu_rev);
+	pr_info("%s ES%s\n", cpu_name, cpu_rev);
 
 	OMAP3_SHOW_FEATURE(l2cache);
 	OMAP3_SHOW_FEATURE(iva);
 	OMAP3_SHOW_FEATURE(sgx);
 	OMAP3_SHOW_FEATURE(neon);
 	OMAP3_SHOW_FEATURE(isp);
+	OMAP3_SHOW_FEATURE(720m);
 }
 
 /*
@@ -348,16 +380,17 @@ void __init omap2_check_revision(void)
 	} else if (cpu_is_omap242x()) {
 		/* Currently only supports 2420ES2.1.1 and 2420-all */
 		omap_chip.oc |= CHIP_IS_OMAP2420;
+	} else if (cpu_is_omap3505() || cpu_is_omap3517()) {
+		omap_chip.oc = CHIP_IS_OMAP3430 | CHIP_IS_OMAP3430ES3_1;
 	} else if (cpu_is_omap343x()) {
 		omap_chip.oc = CHIP_IS_OMAP3430;
-		if (omap_rev() == OMAP3430_REV_ES1_0)
+		if (omap_rev_is_1_0())
 			omap_chip.oc |= CHIP_IS_OMAP3430ES1;
-		else if (omap_rev() >= OMAP3430_REV_ES2_0 &&
-			 omap_rev() <= OMAP3430_REV_ES2_1)
+		else if (omap_rev_is_2_0() || omap_rev_is_2_1())
 			omap_chip.oc |= CHIP_IS_OMAP3430ES2;
-		else if (omap_rev() == OMAP3430_REV_ES3_0)
+		else if (omap_rev_is_3_0())
 			omap_chip.oc |= CHIP_IS_OMAP3430ES3_0;
-		else if (omap_rev() == OMAP3430_REV_ES3_1)
+		else if (omap_rev_is_3_1())
 			omap_chip.oc |= CHIP_IS_OMAP3430ES3_1;
 	} else {
 		pr_err("Uninitialized omap_chip, please fix!\n");

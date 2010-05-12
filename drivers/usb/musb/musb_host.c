@@ -176,7 +176,7 @@ static inline void musb_h_tx_dma_start(struct musb_hw_ep *ep)
 	/* NOTE: no locks here; caller should lock and select EP */
 	txcsr = musb_readw(ep->regs, MUSB_TXCSR);
 	txcsr |= MUSB_TXCSR_DMAENAB | MUSB_TXCSR_H_WZC_BITS;
-	if (is_cppi_enabled())
+	if (is_cppi_enabled() || is_cppi41_enabled())
 		txcsr |= MUSB_TXCSR_DMAMODE;
 	musb_writew(ep->regs, MUSB_TXCSR, txcsr);
 }
@@ -290,7 +290,8 @@ start:
 
 		if (!hw_ep->tx_channel)
 			musb_h_tx_start(hw_ep);
-		else if (is_cppi_enabled() || tusb_dma_omap())
+		else if (is_cppi_enabled() ||
+				tusb_dma_omap() || is_cppi41_enabled())
 			musb_h_tx_dma_start(hw_ep);
 	}
 }
@@ -640,7 +641,7 @@ static bool musb_tx_dma_program(struct dma_controller *dma,
 	channel->desired_mode = mode;
 	musb_writew(epio, MUSB_TXCSR, csr);
 #else
-	if (!is_cppi_enabled() && !tusb_dma_omap())
+	if (!is_cppi_enabled() && !tusb_dma_omap() && !is_cppi41_enabled())
 		return false;
 
 	channel->actual_len = 0;
@@ -826,7 +827,8 @@ static void musb_ep_program(struct musb *musb, u8 epnum,
 			csr = musb_readw(hw_ep->regs, MUSB_RXCSR);
 
 			if (csr & (MUSB_RXCSR_RXPKTRDY
-					| MUSB_RXCSR_DMAENAB
+				| (is_cppi_enabled() || is_cppi41_enabled())
+					? 0 : MUSB_RXCSR_DMAENAB
 					| MUSB_RXCSR_H_REQPKT))
 				ERR("broken !rx_reinit, ep%d csr %04x\n",
 						hw_ep->epnum, csr);
@@ -837,7 +839,8 @@ static void musb_ep_program(struct musb *musb, u8 epnum,
 
 		/* kick things off */
 
-		if ((is_cppi_enabled() || tusb_dma_omap()) && dma_channel) {
+		if ((is_cppi_enabled() || is_cppi41_enabled() ||
+				tusb_dma_omap()) && dma_channel) {
 			/* candidate for DMA */
 			if (dma_channel) {
 				dma_channel->actual_len = 0L;
@@ -1056,6 +1059,8 @@ irqreturn_t musb_h_ep0_irq(struct musb *musb)
 			else
 				csr = MUSB_CSR0_H_STATUSPKT
 					| MUSB_CSR0_TXPKTRDY;
+			/* disable ping token in status phase */
+				csr |= MUSB_CSR0_H_DIS_PING;
 
 			/* flag status stage */
 			musb->ep0_stage = MUSB_EP0_STATUS;
@@ -1301,8 +1306,12 @@ void musb_host_tx(struct musb *musb, u8 epnum)
 		return;
 	} else	if (usb_pipeisoc(pipe) && dma) {
 		if (musb_tx_dma_program(musb->dma_controller, hw_ep, qh, urb,
-				offset, length))
+				offset, length)) {
+			if (is_cppi_enabled() || tusb_dma_omap() ||
+					is_cppi41_enabled())
+				musb_h_tx_dma_start(hw_ep);
 			return;
+		}
 	} else	if (tx_csr & MUSB_TXCSR_DMAENAB) {
 		DBG(1, "not complete, but DMA enabled?\n");
 		return;
@@ -1562,9 +1571,12 @@ void musb_host_rx(struct musb *musb, u8 epnum)
 			| MUSB_RXCSR_H_AUTOREQ
 			| MUSB_RXCSR_AUTOCLEAR
 			| MUSB_RXCSR_RXPKTRDY);
+
+		if (is_cppi_enabled() || is_cppi41_enabled())
+			val |= MUSB_RXCSR_DMAENAB;
+
 		musb_writew(hw_ep->regs, MUSB_RXCSR, val);
 
-#ifdef CONFIG_USB_INVENTRA_DMA
 		if (usb_pipeisoc(pipe)) {
 			struct usb_iso_packet_descriptor *d;
 
@@ -1579,8 +1591,25 @@ void musb_host_rx(struct musb *musb, u8 epnum)
 
 			if (++qh->iso_idx >= urb->number_of_packets)
 				done = true;
-			else
+			else if (is_cppi_enabled() || is_cppi41_enabled()) {
+				struct dma_controller	*c;
+				void *buf;
+				u32 length, ret;
+
+				c = musb->dma_controller;
+				buf = (void *)
+					urb->iso_frame_desc[qh->iso_idx].offset
+					+ (u32)urb->transfer_dma;
+
+				length =
+					urb->iso_frame_desc[qh->iso_idx].length;
+
+				ret = c->channel_program(dma, qh->maxpacket,
+						0, (u32) buf, length);
 				done = false;
+			} else {
+				done = false;
+			}
 
 		} else  {
 		/* done if urb buffer is full or short packet is recd */
@@ -1600,9 +1629,6 @@ void musb_host_rx(struct musb *musb, u8 epnum)
 			done ? "off" : "reset",
 			musb_readw(epio, MUSB_RXCSR),
 			musb_readw(epio, MUSB_RXCOUNT));
-#else
-		done = true;
-#endif
 	} else if (urb->status == -EINPROGRESS) {
 		/* if no errors, be sure a packet is ready for unloading */
 		if (unlikely(!(rx_csr & MUSB_RXCSR_RXPKTRDY))) {
@@ -1620,7 +1646,6 @@ void musb_host_rx(struct musb *musb, u8 epnum)
 		}
 
 		/* we are expecting IN packets */
-#ifdef CONFIG_USB_INVENTRA_DMA
 		if (dma) {
 			struct dma_controller	*c;
 			u16			rx_count;
@@ -1734,7 +1759,6 @@ void musb_host_rx(struct musb *musb, u8 epnum)
 				/* REVISIT reset CSR */
 			}
 		}
-#endif	/* Mentor DMA */
 
 		if (!dma) {
 			done = musb_host_packet_rx(musb, urb,
@@ -2257,7 +2281,7 @@ static int musb_bus_suspend(struct usb_hcd *hcd)
 	}
 
 	if (musb->is_active) {
-		WARNING("trying to suspend as %s while active\n",
+		DBG(3, "trying to suspend as %s while active\n",
 				otg_state_string(musb));
 		return -EBUSY;
 	} else

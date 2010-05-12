@@ -37,6 +37,7 @@
 
 #include <linux/i2c.h>
 #include <linux/i2c/twl4030.h>
+#include <plat/board.h>
 
 #if defined(CONFIG_ARCH_OMAP2) || defined(CONFIG_ARCH_OMAP3)
 #include <plat/cpu.h>
@@ -649,6 +650,18 @@ add_children(struct twl4030_platform_data *pdata, unsigned long features)
 		child = add_regulator(TWL4030_REG_VAUX4, pdata->vaux4);
 		if (IS_ERR(child))
 			return PTR_ERR(child);
+
+		child = add_regulator(TWL4030_REG_VUSB1V5, pdata->vusb1v5);
+		if (IS_ERR(child))
+			return PTR_ERR(child);
+
+		child = add_regulator(TWL4030_REG_VUSB1V8, pdata->vusb1v8);
+		if (IS_ERR(child))
+			return PTR_ERR(child);
+
+		child = add_regulator(TWL4030_REG_VUSB3V1, pdata->vusb3v1);
+		if (IS_ERR(child))
+			return PTR_ERR(child);
 	}
 
 	return 0;
@@ -762,6 +775,31 @@ static int twl4030_remove(struct i2c_client *client)
 	return 0;
 }
 
+#define TWL4030_VAUX2_1P8V 0x5
+#define ENABLE_VAUX2_DEV_GRP 0x20
+
+/* Enable USB GPIOs on new OMAP3EVM */
+static void usb_gpio_settings(void)
+{
+	unsigned char val;
+
+	if (get_omap3_evm_rev() < OMAP3EVM_BOARD_GEN_2)
+		return;
+
+	/* Enable TWL GPIO Module */
+	twl4030_i2c_write_u8(TWL4030_MODULE_GPIO, 0x04, REG_GPIO_CTRL);
+
+	/* Configure GPIO-6 as output */
+	twl4030_i2c_read_u8(TWL4030_MODULE_GPIO, &val, REG_GPIODATADIR1);
+	val |= 0x4;
+	twl4030_i2c_write_u8(TWL4030_MODULE_GPIO, val, REG_GPIODATADIR1);
+
+	/* Set GPIO6 = 1 */
+	twl4030_i2c_read_u8(TWL4030_MODULE_GPIO, &val, REG_GPIODATAOUT1);
+	val |= 0x40;
+	twl4030_i2c_write_u8(TWL4030_MODULE_GPIO, val, REG_GPIODATAOUT1);
+}
+
 /* NOTE:  this driver only handles a single twl4030/tps659x0 chip */
 static int
 twl4030_probe(struct i2c_client *client, const struct i2c_device_id *id)
@@ -824,6 +862,8 @@ twl4030_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	}
 
 	status = add_children(pdata, id->driver_data);
+
+	usb_gpio_settings();
 fail:
 	if (status < 0)
 		twl4030_remove(client);
