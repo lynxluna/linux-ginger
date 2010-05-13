@@ -117,7 +117,7 @@ static int __init omap3beagle_soc_init(void)
 {
 	int ret;
 
-	if (!machine_is_omap3_beagle()) {
+	if (!machine_is_omap3_beagle() && !machine_is_ginger()) {
 		pr_debug("Not OMAP3 Beagle!\n");
 		return -ENODEV;
 	}

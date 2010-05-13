@@ -83,7 +83,8 @@ config SND_OMAP_SOC_OMAP3_PANDORA
 
 config SND_OMAP_SOC_OMAP3_BEAGLE
 	tristate "SoC Audio support for OMAP3 Beagle"
-	depends on TWL4030_CORE && SND_OMAP_SOC && MACH_OMAP3_BEAGLE
+	depends on TWL4030_CORE && SND_OMAP_SOC
+	depends on ( MACH_OMAP3_BEAGLE || MACH_GINGER )
 	select SND_OMAP_SOC_MCBSP
 	select SND_SOC_TWL4030
 	help

@@ -52,6 +52,14 @@ config MACH_OMAP_2430SDP
 config MACH_OMAP3_BEAGLE
 	bool "OMAP3 BEAGLE board"
 	depends on ARCH_OMAP3 && ARCH_OMAP34XX
+	
+config MACH_DEVKIT8000
+	bool "DEVKIT8000 board"
+	depends on ARCH_OMAP3 && ARCH_OMAP34XX
+	
+config MACH_GINGER
+	bool "Ginger Game Console"
+	depends on ARCH_OMAP3 && ARCH_OMAP34XX
 
 config MACH_OMAP_LDP
 	bool "OMAP3 LDP board"
