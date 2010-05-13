@@ -118,7 +118,7 @@ static int __init omap3beagle_soc_init(void)
 	int ret;
 
 	if (!machine_is_omap3_beagle() && !machine_is_ginger()) {
-		pr_debug("Not OMAP3 Beagle!\n");
+		pr_debug("Not OMAP3 Beagle! Nor Devkit Nor Ginger\n");
 		return -ENODEV;
 	}
 	pr_info("OMAP3 Beagle SoC init\n");
